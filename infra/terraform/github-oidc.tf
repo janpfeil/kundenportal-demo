@@ -1,5 +1,5 @@
 # GitHub Actions → AWS without access keys: the deploy workflow exchanges its OIDC token
-# for short-lived credentials of this role. Only the production environment of the one
+# for short-lived credentials of this role (deploy, teardown, DLQ probe, e2e test). Only the production environment of the one
 # repository qualifies, so pull requests from forks never get AWS access.
 
 data "aws_caller_identity" "current" {}
@@ -63,6 +63,29 @@ data "aws_iam_policy_document" "github_deploy" {
     sid       = "SendTestEventsToOwnBus"
     actions   = ["events:PutEvents"]
     resources = ["arn:aws:events:${var.region}:${local.account_id}:event-bus/kundenportal"]
+  }
+
+  statement {
+    sid       = "ReadStackOutputs"
+    actions   = ["cloudformation:DescribeStacks"]
+    resources = ["arn:aws:cloudformation:${var.region}:${local.account_id}:stack/Kundenportal/*"]
+  }
+
+  # End-to-end test: a throw-away user per run, only in the project's own user pool.
+  statement {
+    sid = "EndToEndTestUsers"
+    actions = [
+      "cognito-idp:AdminCreateUser",
+      "cognito-idp:AdminSetUserPassword",
+      "cognito-idp:AdminDeleteUser",
+    ]
+    resources = ["arn:aws:cognito-idp:${var.region}:${local.account_id}:userpool/*"]
+
+    condition {
+      test     = "StringEquals"
+      variable = "aws:ResourceTag/project"
+      values   = [var.project]
+    }
   }
 
   statement {

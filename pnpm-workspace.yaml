@@ -3,6 +3,7 @@ packages:
   - packages/*
   - services/*
   - infra/cdk
+  - tests/e2e
 
 minimumReleaseAgeExclude:
   - "@typescript-eslint/eslint-plugin@8.71.0"
@@ -32,6 +33,7 @@ minimumReleaseAgeExclude:
   - "@next/swc-win32-arm64-msvc@16.3.7"
   - "@next/swc-win32-x64-msvc@16.3.7"
   - next@16.3.7
+  - "@aws-sdk/client-cloudformation@3.1142.0"
 
 # Only these dependencies may run install scripts (native binaries).
 allowBuilds:
