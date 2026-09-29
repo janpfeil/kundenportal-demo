@@ -26,6 +26,17 @@ variable "github_repository" {
   default     = "janpfeil/kundenportal-demo"
 }
 
+variable "github_subject_prefix" {
+  description = "Subject prefix GitHub puts into OIDC tokens of the repository. GitHub uses immutable owner and repository IDs (owner@id/repo@id), so a renamed or re-created repository with the same name cannot assume the role. Read it with: gh api repos/<owner>/<repo>/actions/oidc/customization/sub"
+  type        = string
+  default     = "repo:janpfeil@5345175/kundenportal-demo@1395090655"
+
+  validation {
+    condition     = can(regex("^repo:[^/@]+@[0-9]+/[^/@]+@[0-9]+$", var.github_subject_prefix))
+    error_message = "github_subject_prefix must look like repo:owner@id/name@id."
+  }
+}
+
 variable "github_environment" {
   description = "GitHub environment that guards deployments (requires the owner's approval)."
   type        = string

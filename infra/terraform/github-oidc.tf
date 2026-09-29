@@ -33,7 +33,7 @@ data "aws_iam_policy_document" "github_trust" {
     condition {
       test     = "StringEquals"
       variable = "${local.github_issuer_host}:sub"
-      values   = ["repo:${var.github_repository}:environment:${var.github_environment}"]
+      values   = ["${var.github_subject_prefix}:environment:${var.github_environment}"]
     }
   }
 }
