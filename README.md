@@ -27,24 +27,35 @@ The concept, decisions and research are written in German:
 
 ## Repository layout
 
-| Path | Content |
-| --- | --- |
-| `apps/*` | Next.js zones (shell, contracts, consumption, cockpit, admin) |
-| `packages/*` | component library, API contract (OpenAPI), event schemas |
-| `services/*` | Lambda services per domain |
-| `infra/cdk` | AWS CDK application |
-| `infra/terraform` | platform layer (deployed from a private GitLab pipeline) |
-| `docs/` | wiki and reports |
+| Path              | Content                                                       |
+| ----------------- | ------------------------------------------------------------- |
+| `apps/*`          | Next.js zones (shell, contracts, consumption, cockpit, admin) |
+| `packages/*`      | component library, API contract (OpenAPI), event schemas      |
+| `services/*`      | Lambda services per domain                                    |
+| `infra/cdk`       | AWS CDK application                                           |
+| `infra/terraform` | platform layer (deployed from a private GitLab pipeline)      |
+| `docs/`           | wiki and reports                                              |
 
 ## Development
 
-Requirements: Node.js 24 (see `.nvmrc`) and Corepack.
+Requirements: Node.js 26 (see `.nvmrc`) and Corepack (`npm i -g corepack`, no longer bundled
+with Node.js). Lambda functions run on Node.js 24, the newest runtime AWS Lambda offers.
 
 ```sh
-corepack enable
+npm i -g corepack && corepack enable
 pnpm install
 pnpm lint && pnpm typecheck && pnpm test && pnpm build
 ```
+
+## Version policy
+
+All runtimes, frameworks and tools use their **newest stable release**. Deliberate exceptions,
+each re-checked on every dependency update:
+
+| Component             | Used | Newest stable | Reason                                                   |
+| --------------------- | ---- | ------------- | -------------------------------------------------------- |
+| Node.js in AWS Lambda | 24   | 26            | Lambda offers `nodejs24.x` as its newest Node.js runtime |
+| TypeScript            | 6.0  | 7.0           | `typescript-eslint` 8.x supports TypeScript `<6.1` only  |
 
 ## License
 
