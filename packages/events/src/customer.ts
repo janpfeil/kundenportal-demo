@@ -14,6 +14,8 @@ export const CustomerRegistered = {
   detail: eventDetailSchema(
     z.object({
       customerId: z.string().min(1),
+      /** Subject (`sub` claim) of the identity the customer signed in with. */
+      subject: z.string().min(1),
       email: z.email(),
       displayName: z.string().min(1),
       locale: Locale,

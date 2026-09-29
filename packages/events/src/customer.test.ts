@@ -8,6 +8,7 @@ const valid = {
   correlationId: "req-1",
   payload: {
     customerId: "c-1",
+    subject: "2f4c9b1e-0000-4000-8000-000000000001",
     email: "anna.becker@example.org",
     displayName: "Anna Becker",
     locale: "de",
@@ -23,6 +24,11 @@ describe("CustomerRegistered", () => {
   it("rejects an event without tenant", () => {
     const { tenantId: _tenantId, ...withoutTenant } = valid;
     expect(CustomerRegistered.detail.safeParse(withoutTenant).success).toBe(false);
+  });
+
+  it("rejects an event without subject", () => {
+    const { subject: _subject, ...payload } = valid.payload;
+    expect(CustomerRegistered.detail.safeParse({ ...valid, payload }).success).toBe(false);
   });
 
   it("rejects an unknown locale", () => {

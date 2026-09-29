@@ -1,0 +1,33 @@
+{
+  "name": "@kundenportal/service-kit",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Small helpers shared by the Lambda services: HTTP responses, problem details, caller identity, logging",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./testing": {
+      "types": "./dist/testing/api-event.d.ts",
+      "default": "./dist/testing/api-event.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.164"
+  }
+}

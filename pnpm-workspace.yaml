@@ -17,6 +17,7 @@ minimumReleaseAgeExclude:
   - "@typescript-eslint/utils@8.71.0"
   - "@typescript-eslint/visitor-keys@8.71.0"
   - typescript-eslint@8.71.0
+  - "@types/aws-lambda@8.10.164"
 
 onlyBuiltDependencies:
   - esbuild
