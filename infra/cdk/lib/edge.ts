@@ -16,6 +16,7 @@ import {
 import { FunctionUrlOrigin, HttpOrigin, S3BucketOrigin } from "aws-cdk-lib/aws-cloudfront-origins";
 import { Effect, PolicyStatement } from "aws-cdk-lib/aws-iam";
 import {
+  CfnPermission,
   Code,
   Function as LambdaFunction,
   FunctionUrlAuthType,
@@ -137,6 +138,21 @@ export class Edge extends Construct {
           originRequestPolicy: OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
         },
       },
+    });
+
+    // Since October 2025 function URLs also need lambda:InvokeFunction; CDK's OAC origin
+    // only grants lambda:InvokeFunctionUrl (https://docs.aws.amazon.com/lambda/latest/dg/urls-auth.html).
+    new CfnPermission(this, "ShellInvokeFromCloudFront", {
+      action: "lambda:InvokeFunction",
+      functionName: this.shell.functionName,
+      principal: "cloudfront.amazonaws.com",
+      sourceArn: Stack.of(this).formatArn({
+        service: "cloudfront",
+        region: "",
+        resource: "distribution",
+        resourceName: this.distribution.distributionId,
+      }),
+      invokedViaFunctionUrl: true,
     });
 
     const sources = [Source.asset(path.join(shellDir, ".next", "static"))];
