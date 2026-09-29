@@ -1,5 +1,6 @@
 // Prepares the standalone build for AWS Lambda: adds the start script the Lambda Web
 // Adapter runs. Static files (.next/static, public) are uploaded to S3 by the CDK app.
+import { execFileSync } from "node:child_process";
 import { chmodSync, existsSync, lstatSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
@@ -37,4 +38,11 @@ const run = path.join(standalone, "run.sh");
 // Listen on loopback only: the Lambda Web Adapter forwards to 127.0.0.1:$PORT.
 writeFileSync(run, "#!/bin/sh\nexport HOSTNAME=127.0.0.1\nexec node apps/shell/server.js\n");
 chmodSync(run, 0o755);
-console.log(`Lambda package ready: ${standalone}`);
+// Zip it ourselves and keep the symlinks (-y): the standalone output uses pnpm's layout,
+// where e.g. apps/shell/node_modules/next links into node_modules/.pnpm and finds its own
+// dependencies next to the link target. Following the links (as a copy would) breaks that
+// resolution. Lambda supports symlinks inside the deployment zip.
+const zipFile = path.join(standalone, "..", "shell-lambda.zip");
+rmSync(zipFile, { force: true });
+execFileSync("zip", ["-q", "-r", "-y", zipFile, "."], { cwd: standalone, stdio: "inherit" });
+console.log(`Lambda package ready: ${zipFile}`);

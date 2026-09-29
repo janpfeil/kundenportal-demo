@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
-import { Duration, Fn, RemovalPolicy, Stack, SymlinkFollowMode } from "aws-cdk-lib";
+import { Duration, Fn, RemovalPolicy, Stack } from "aws-cdk-lib";
 import type { ICertificate } from "aws-cdk-lib/aws-certificatemanager";
 import {
   AllowedMethods,
@@ -56,16 +56,17 @@ export class Edge extends Construct {
   constructor(scope: Construct, id: string, props: EdgeProps) {
     super(scope, id);
     const shellDir = path.join(REPO_ROOT, "apps", "shell");
-    const standalone = path.join(shellDir, ".next", "standalone");
-    if (!existsSync(path.join(standalone, "run.sh"))) {
-      throw new Error(`Shell build missing at ${standalone}; run "pnpm build" first`);
+    // Built by apps/shell/scripts/package-lambda.mjs; the zip keeps pnpm's symlinks.
+    const shellZip = path.join(shellDir, ".next", "shell-lambda.zip");
+    if (!existsSync(shellZip)) {
+      throw new Error(`Shell build missing at ${shellZip}; run "pnpm build" first`);
     }
     const region = Stack.of(this).region;
 
     this.shell = new LambdaFunction(this, "Shell", {
       ...baseFunctionProps(this, "Shell", props.reservedConcurrency),
       description: "Shell zone (Next.js standalone server)",
-      code: Code.fromAsset(standalone, { followSymlinks: SymlinkFollowMode.ALWAYS }),
+      code: Code.fromAsset(shellZip),
       handler: "run.sh",
       memorySize: 1024,
       timeout: Duration.seconds(15),
