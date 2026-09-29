@@ -33,12 +33,16 @@ destroy() {
 
 destroy KundenportalApp
 delete_log_groups /aws/lambda/KundenportalApp-
+delete_log_groups KundenportalApp-
 
 if [ "$ALL" = true ]; then
   destroy KundenportalEdge
   destroy KundenportalBase
   destroy KundenportalCertificate us-east-1
+  # Named log groups of the stacks (e.g. the static-file deployment) can be recreated by
+  # a handler that logs while its stack is being deleted.
   delete_log_groups /aws/lambda/Kundenportal
+  delete_log_groups Kundenportal
 fi
 
 log "Teardown done in $(( $(date +%s) - start )) s"

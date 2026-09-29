@@ -96,6 +96,7 @@ data "aws_iam_policy_document" "github_deploy" {
     ]
     resources = [
       "arn:aws:logs:*:${local.account_id}:log-group:/aws/lambda/Kundenportal*",
+      "arn:aws:logs:*:${local.account_id}:log-group:Kundenportal*",
       "arn:aws:logs:*:${local.account_id}:log-group::log-stream:",
     ]
   }
