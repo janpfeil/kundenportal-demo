@@ -1,0 +1,135 @@
+openapi: 3.1.0
+info:
+  title: Kundenportal API
+  version: 0.1.0
+  description: >-
+    REST API of the customer portal. The tenant is always taken from the access token,
+    never from the URL. Errors follow RFC 9457 (problem details).
+  license:
+    name: MIT
+    identifier: MIT
+servers:
+  - url: /api
+security:
+  - auth0: []
+paths:
+  /me:
+    get:
+      operationId: getMe
+      summary: Profile of the signed-in customer (created on first access)
+      responses:
+        "200":
+          description: Customer profile
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Customer" }
+        "401": { $ref: "#/components/responses/Problem" }
+    patch:
+      operationId: updateMe
+      summary: Change editable profile fields
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CustomerUpdate" }
+      responses:
+        "200":
+          description: Updated profile
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Customer" }
+        "400": { $ref: "#/components/responses/Problem" }
+        "401": { $ref: "#/components/responses/Problem" }
+  /notifications:
+    get:
+      operationId: listNotifications
+      summary: Demo mailbox of the signed-in customer, newest first
+      responses:
+        "200":
+          description: Notifications
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/Notification" }
+        "401": { $ref: "#/components/responses/Problem" }
+  /notifications/{notificationId}:
+    patch:
+      operationId: markNotificationRead
+      summary: Mark a notification as read
+      parameters:
+        - name: notificationId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [read]
+              properties:
+                read: { type: boolean, const: true }
+      responses:
+        "204": { description: Marked as read }
+        "401": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+components:
+  securitySchemes:
+    auth0:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Access token issued by Auth0 for the portal API audience
+  responses:
+    Problem:
+      description: Error as problem details
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+  schemas:
+    Locale:
+      type: string
+      enum: [de, en]
+    Customer:
+      type: object
+      required: [customerId, email, displayName, locale, origin, createdAt]
+      properties:
+        customerId: { type: string }
+        email: { type: string, format: email }
+        displayName: { type: string }
+        locale: { $ref: "#/components/schemas/Locale" }
+        origin:
+          type: string
+          enum: [registration, legacy-utility, legacy-telco]
+        createdAt: { type: string, format: date-time }
+    CustomerUpdate:
+      type: object
+      minProperties: 1
+      additionalProperties: false
+      properties:
+        displayName: { type: string, minLength: 1, maxLength: 100 }
+        locale: { $ref: "#/components/schemas/Locale" }
+    Notification:
+      type: object
+      required: [notificationId, kind, title, body, createdAt, read]
+      properties:
+        notificationId: { type: string }
+        kind: { type: string, enum: [welcome, info, warning] }
+        title: { type: string }
+        body: { type: string }
+        createdAt: { type: string, format: date-time }
+        read: { type: boolean }
+    Problem:
+      type: object
+      required: [title, status]
+      properties:
+        type: { type: string, format: uri }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }

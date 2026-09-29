@@ -1,0 +1,33 @@
+{
+  "name": "@kundenportal/api-contract",
+  "version": "0.1.0",
+  "private": true,
+  "description": "OpenAPI contract of the portal REST API and the typed client generated from it",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./openapi.yaml": "./openapi.yaml"
+  },
+  "files": [
+    "dist",
+    "openapi.yaml"
+  ],
+  "scripts": {
+    "generate": "openapi-typescript openapi.yaml -o src/generated/schema.ts",
+    "build": "pnpm generate && tsc -p tsconfig.build.json",
+    "typecheck": "pnpm generate && tsc --noEmit",
+    "lint": "eslint src --ignore-pattern src/generated",
+    "test": "pnpm generate && vitest run"
+  },
+  "dependencies": {
+    "openapi-fetch": "^0.17.0"
+  },
+  "devDependencies": {
+    "openapi-typescript": "^7.13.0",
+    "yaml": "^2.9.1"
+  }
+}
