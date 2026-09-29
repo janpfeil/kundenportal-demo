@@ -17,7 +17,9 @@ It is a portfolio project that demonstrates, in one coherent system:
   OIDC trust for CI, budgets, and later the Keycloak configuration)
 - **Delivery:** GitHub Actions with OIDC (no long-lived AWS keys)
 
-> Status: phase 1 (foundation and first end-to-end slice) is in progress.
+> Status: phase 1 (foundation and first end-to-end slice) is live at
+> https://kundenportal-demo.rypox.com — sign-in via Amazon Cognito, account page from the
+> REST API, and a welcome message delivered through EventBridge and SQS within seconds.
 
 ## Documentation
 
@@ -28,19 +30,19 @@ The concept, decisions and research are written in German:
 
 ## Repository layout
 
-| Path                    | Content                                                                            |
-| ----------------------- | ---------------------------------------------------------------------------------- |
-| `apps/shell`            | Next.js shell zone: start page, OIDC sign-in (BFF), account, demo mailbox          |
-| `packages/api-contract` | OpenAPI contract, typed client, routes and scopes for the gateway                  |
-| `packages/events`       | domain event envelope and schemas (zod)                                            |
-| `packages/service-kit`  | shared Lambda helpers: routing, problem details, caller from JWT                   |
-| `services/customer`     | `GET/PATCH /me`, publishes `CustomerRegistered`                                    |
-| `services/notification` | SQS consumer with DLQ, demo mailbox API, owner hints via SNS                       |
-| `services/identity`     | Cognito triggers (access token claims)                                             |
-| `infra/cdk`             | AWS CDK application (Cognito, HTTP API, Lambda, DynamoDB, EventBridge, CloudFront) |
-| `infra/terraform`       | foundation: OIDC trust for CI, budget, SSM (run by a private GitLab pipeline)      |
-| `tests/e2e`             | Playwright run of the first slice against the live portal                          |
-| `docs/`                 | wiki and reports                                                                   |
+| Path                    | Content                                                                       |
+| ----------------------- | ----------------------------------------------------------------------------- |
+| `apps/shell`            | Next.js shell zone: start page, OIDC sign-in (BFF), account, demo mailbox     |
+| `packages/api-contract` | OpenAPI contract, typed client, routes and scopes for the gateway             |
+| `packages/events`       | domain event envelope and schemas (zod)                                       |
+| `packages/service-kit`  | shared Lambda helpers: routing, problem details, caller from JWT              |
+| `services/customer`     | `GET/PATCH /me`, publishes `CustomerRegistered`                               |
+| `services/notification` | SQS consumer with DLQ, demo mailbox API, owner hints via SNS                  |
+| `services/identity`     | Cognito triggers (access token claims)                                        |
+| `infra/cdk`             | AWS CDK application in four stacks (certificate, base, app, edge)             |
+| `infra/terraform`       | foundation: OIDC trust for CI, budget, SSM (run by a private GitLab pipeline) |
+| `tests/e2e`             | Playwright run of the first slice against the live portal                     |
+| `docs/`                 | wiki and reports                                                              |
 
 ## Development
 
@@ -61,7 +63,19 @@ pnpm lint && pnpm typecheck && pnpm test && pnpm build   # build includes `cdk s
 | Teardown, DLQ probe, live E2E  | CDK, CLI  | GitHub Actions (manual workflows)  | same OIDC role               |
 | Foundation (`infra/terraform`) | Terraform | private GitLab pipeline (platform) | OIDC role of the GitLab CI   |
 
-There are no long-lived AWS access keys anywhere. The owner's manual steps are described in
+Deploy and teardown run unattended through `scripts/deploy.sh` and `scripts/teardown.sh`,
+from GitHub Actions or locally. The application is split into four stacks:
+
+| Stack                     | Content                                             | Lifetime                          |
+| ------------------------- | --------------------------------------------------- | --------------------------------- |
+| `KundenportalCertificate` | TLS certificate for CloudFront (us-east-1)          | long-lived                        |
+| `KundenportalBase`        | Cognito, DynamoDB, owner notification topic         | long-lived (users and data stay)  |
+| `KundenportalApp`         | services, Next.js shell, HTTP API, EventBridge, SQS | removed when the demo is paused   |
+| `KundenportalEdge`        | CloudFront and static files                         | long-lived (domain never changes) |
+
+The stacks exchange values through SSM parameters rather than CloudFormation exports, so the
+app stack can be removed and rebuilt at any time; the edge is then re-pointed at the new
+origins. There are no long-lived AWS access keys anywhere. The owner's manual steps are described in
 the (German) wiki: `docs/wiki/anleitung-kontoinhaber.md` and the pages linked there.
 
 ## Version policy
