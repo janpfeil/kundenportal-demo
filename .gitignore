@@ -1,0 +1,36 @@
+# Dependencies and build output
+node_modules/
+dist/
+.next/
+out/
+.turbo/
+coverage/
+storybook-static/
+playwright-report/
+test-results/
+
+# CDK
+cdk.out/
+cdk.context.json
+
+# Terraform (state lives in GitLab, never here)
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.example.tfvars
+crash.log
+
+# Secrets and local config
+.env
+.env.*
+!.env.example
+*.pem
+
+# Python bytecode (report generator)
+__pycache__/
+
+# Editors / OS
+.idea/
+.vscode/
+.DS_Store

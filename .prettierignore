@@ -1,0 +1,6 @@
+pnpm-lock.yaml
+docs/reports/
+cdk.out/
+.next/
+dist/
+coverage/
