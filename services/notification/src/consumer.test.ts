@@ -1,0 +1,119 @@
+import { ConditionalCheckFailedException, DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import { PublishCommand, SNSClient } from "@aws-sdk/client-sns";
+import { DynamoDBDocumentClient, PutCommand } from "@aws-sdk/lib-dynamodb";
+import type { SQSEvent, SQSRecord } from "aws-lambda";
+import { mockClient } from "aws-sdk-client-mock";
+import { beforeEach, describe, expect, it } from "vitest";
+import { createConsumer } from "./consumer.js";
+import { Mailbox, notificationId } from "./mailbox.js";
+import { OwnerHints } from "./owner-hints.js";
+
+const dbMock = mockClient(DynamoDBDocumentClient);
+const snsMock = mockClient(SNSClient);
+
+const consumer = createConsumer(
+  new Mailbox(DynamoDBDocumentClient.from(new DynamoDBClient({})), "table"),
+  new OwnerHints(new SNSClient({}), "arn:aws:sns:eu-central-1:123456789012:hints"),
+);
+
+const detail = {
+  eventId: "6f1c1f64-8a4c-4c55-9a39-5d8a4a0f2c11",
+  tenantId: "owner",
+  occurredAt: "2026-09-29T12:00:00.000Z",
+  correlationId: "req-1",
+  payload: {
+    customerId: "c-1",
+    subject: "sub-1",
+    email: "david@example.org",
+    displayName: "David",
+    locale: "en",
+    origin: "registration",
+  },
+};
+
+function record(messageId: string, body: unknown): SQSRecord {
+  return {
+    messageId,
+    receiptHandle: "rh",
+    body: typeof body === "string" ? body : JSON.stringify(body),
+    attributes: {
+      ApproximateReceiveCount: "1",
+      SentTimestamp: "0",
+      SenderId: "events",
+      ApproximateFirstReceiveTimestamp: "0",
+    },
+    messageAttributes: {},
+    md5OfBody: "",
+    eventSource: "aws:sqs",
+    eventSourceARN: "arn:aws:sqs:eu-central-1:123456789012:events",
+    awsRegion: "eu-central-1",
+  };
+}
+
+const event = (...records: SQSRecord[]): SQSEvent => ({ Records: records });
+const registered = (d: unknown = detail) => ({
+  source: "kundenportal.customer",
+  "detail-type": "CustomerRegistered",
+  detail: d,
+});
+
+beforeEach(() => {
+  dbMock.reset();
+  snsMock.reset();
+  dbMock.on(PutCommand).resolves({});
+  snsMock.on(PublishCommand).resolves({});
+});
+
+describe("notification consumer", () => {
+  it("links the mailbox, stores a welcome note in the customer's language and hints the owner", async () => {
+    const result = await consumer(event(record("m-1", registered())));
+
+    expect(result.batchItemFailures).toEqual([]);
+    const items = dbMock.commandCalls(PutCommand).map((call) => call.args[0].input.Item);
+    expect(items[0]).toEqual({ PK: "TENANT#owner#SUBJ#sub-1", SK: "MAILBOX", customerId: "c-1" });
+    expect(items[1]).toMatchObject({
+      PK: "TENANT#owner#CUST#c-1",
+      SK: `NOTE#${notificationId(detail.occurredAt, detail.eventId)}`,
+      kind: "welcome",
+      title: "Welcome to the customer portal",
+      read: false,
+    });
+    expect(snsMock.commandCalls(PublishCommand)).toHaveLength(1);
+    expect(snsMock.commandCalls(PublishCommand)[0]?.args[0].input.Message).not.toContain(
+      "david@example.org",
+    );
+  });
+
+  it("is idempotent: a redelivered event neither duplicates the note nor re-notifies the owner", async () => {
+    dbMock
+      .on(PutCommand, { Item: { SK: "MAILBOX" } }, false)
+      .resolves({})
+      .on(PutCommand, { ConditionExpression: "attribute_not_exists(PK)" }, false)
+      .rejects(new ConditionalCheckFailedException({ message: "exists", $metadata: {} }));
+
+    const result = await consumer(event(record("m-1", registered())));
+
+    expect(result.batchItemFailures).toEqual([]);
+    expect(snsMock.commandCalls(PublishCommand)).toHaveLength(0);
+  });
+
+  it.each([
+    ["non-JSON body", "{oops"],
+    ["no EventBridge envelope", { hello: "world" }],
+    [
+      "unknown event type",
+      { source: "kundenportal.customer", "detail-type": "Unknown", detail: {} },
+    ],
+    ["missing tenant", registered({ ...detail, tenantId: undefined })],
+    ["invalid e-mail", registered({ ...detail, payload: { ...detail.payload, email: "nope" } })],
+  ])("reports a message with %s as failed so it ends up in the DLQ", async (_case, body) => {
+    const result = await consumer(event(record("bad", body), record("good", registered())));
+    expect(result.batchItemFailures).toEqual([{ itemIdentifier: "bad" }]);
+  });
+
+  it("reports infrastructure errors as failed for a retry", async () => {
+    dbMock.on(PutCommand).rejects(new Error("throttled"));
+    const result = await consumer(event(record("m-1", registered())));
+    expect(result.batchItemFailures).toEqual([{ itemIdentifier: "m-1" }]);
+  });
+});
