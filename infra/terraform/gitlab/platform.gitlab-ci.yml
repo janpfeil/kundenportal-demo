@@ -1,0 +1,100 @@
+# Pipeline of the GitLab project saas/kundenportal-demo/platform (gitlab.rypox.org).
+# The source of truth is infra/terraform/gitlab/platform.gitlab-ci.yml in the GitHub
+# repository; the platform project holds only this copy as its .gitlab-ci.yml.
+#
+# It clones the GitHub repository at a pinned commit (no GitLab token in GitHub, no
+# GitHub token here: read-only deploy key while the repository is private, anonymous
+# HTTPS once it is public), plans automatically and applies only on a manual click.
+# AWS access: OIDC id_token → role kundenportal-gitlab-foundation (no access keys).
+# State: GitLab-managed Terraform state of this project.
+#
+# CI/CD variables of the project (Settings → CI/CD → Variables), see
+# docs/wiki/anleitung-kontoinhaber.md:
+#   AWS_ROLE_ARN        role ARN from the first local run (output gitlab_foundation_role_arn)
+#   TF_VAR_owner_email  owner's e-mail address (masked, protected)
+#   GITHUB_DEPLOY_KEY   type File, protected: private key of the read-only GitHub deploy key
+#                       (remove once the GitHub repository is public)
+
+stages:
+  - plan
+  - apply
+
+variables:
+  # Pin: commit (or tag) of github.com/janpfeil/kundenportal-demo to deploy.
+  SOURCE_REF: "CHANGE_ME"
+  SOURCE_SSH: "git@github.com:janpfeil/kundenportal-demo.git"
+  SOURCE_HTTPS: "https://github.com/janpfeil/kundenportal-demo.git"
+  TF_ROOT: "${CI_PROJECT_DIR}/source/infra/terraform"
+  TF_STATE_NAME: "foundation"
+  TF_IN_AUTOMATION: "true"
+  TF_INPUT: "false"
+  AWS_REGION: "eu-central-1"
+  AWS_WEB_IDENTITY_TOKEN_FILE: "${CI_PROJECT_DIR}/.aws-web-identity-token"
+
+default:
+  image:
+    name: hashicorp/terraform:1.16.4
+    entrypoint: [""]
+  tags: [docker]
+  interruptible: false
+  id_tokens:
+    AWS_ID_TOKEN:
+      aud: https://gitlab.rypox.org
+  before_script:
+    - apk add --no-cache git openssh-client >/dev/null
+    - |
+      set -eu
+      test "$SOURCE_REF" != "CHANGE_ME" || { echo "Set SOURCE_REF to a commit of the GitHub repository"; exit 1; }
+      if [ -n "${GITHUB_DEPLOY_KEY:-}" ]; then
+        mkdir -p ~/.ssh && chmod 700 ~/.ssh
+        cp "$GITHUB_DEPLOY_KEY" ~/.ssh/id_ed25519 && chmod 600 ~/.ssh/id_ed25519
+        # GitHub's published host key (https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/githubs-ssh-key-fingerprints)
+        echo "github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl" > ~/.ssh/known_hosts
+        SOURCE_URL="$SOURCE_SSH"
+      else
+        SOURCE_URL="$SOURCE_HTTPS"
+      fi
+      git init -q source
+      git -C source remote add origin "$SOURCE_URL"
+      git -C source fetch -q --depth 1 origin "$SOURCE_REF"
+      git -C source checkout -q FETCH_HEAD
+      echo "Source: $(git -C source rev-parse HEAD)"
+    - printf '%s' "$AWS_ID_TOKEN" > "$AWS_WEB_IDENTITY_TOKEN_FILE"
+    - export AWS_ROLE_SESSION_NAME="gitlab-${CI_PIPELINE_ID}"
+    - cd "$TF_ROOT"
+    - |
+      terraform init -input=false \
+        -backend-config="address=${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/terraform/state/${TF_STATE_NAME}" \
+        -backend-config="lock_address=${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/terraform/state/${TF_STATE_NAME}/lock" \
+        -backend-config="unlock_address=${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/terraform/state/${TF_STATE_NAME}/lock" \
+        -backend-config="username=gitlab-ci-token" \
+        -backend-config="password=${CI_JOB_TOKEN}" \
+        -backend-config="lock_method=POST" \
+        -backend-config="unlock_method=DELETE" \
+        -backend-config="retry_wait_min=5"
+
+workflow:
+  rules:
+    # The AWS role trusts only the protected main branch.
+    - if: $CI_COMMIT_BRANCH == "main"
+
+plan:
+  stage: plan
+  script:
+    - terraform fmt -check -recursive
+    - terraform validate
+    - terraform plan -out=plan.tfplan
+    - terraform show -no-color plan.tfplan > plan.txt
+  artifacts:
+    expire_in: 7 days
+    paths:
+      - source/infra/terraform/plan.tfplan
+      - source/infra/terraform/plan.txt
+
+apply:
+  stage: apply
+  needs: [plan]
+  when: manual
+  resource_group: foundation
+  script:
+    - terraform apply -input=false plan.tfplan
