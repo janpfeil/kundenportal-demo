@@ -1,4 +1,4 @@
-import { Duration, RemovalPolicy, Stack, type StackProps } from "aws-cdk-lib";
+import { CfnOutput, Duration, RemovalPolicy, Stack, type StackProps } from "aws-cdk-lib";
 import type { ICertificate } from "aws-cdk-lib/aws-certificatemanager";
 import { AttributeType, BillingMode, Table, TableEncryption } from "aws-cdk-lib/aws-dynamodb";
 import { SqsEventSource } from "aws-cdk-lib/aws-lambda-event-sources";
@@ -101,7 +101,7 @@ export class PortalStack extends Stack {
       audience: [identity.client.userPoolClientId],
     });
 
-    new Edge(this, "Edge", {
+    const edge = new Edge(this, "Edge", {
       domainName: config.domainName,
       ...(props.certificate ? { certificate: props.certificate } : {}),
       reservedConcurrency,
@@ -116,5 +116,16 @@ export class PortalStack extends Stack {
         COGNITO_USER_POOL_ID: identity.userPool.userPoolId,
       },
     });
+
+    new CfnOutput(this, "PortalUrl", { value: `https://${config.domainName}` });
+    new CfnOutput(this, "DistributionDomain", {
+      value: edge.distribution.distributionDomainName,
+      description: "Target of the CNAME record for the portal's domain",
+    });
+    new CfnOutput(this, "ApiUrl", { value: api.url });
+    new CfnOutput(this, "UserPoolId", { value: identity.userPool.userPoolId });
+    new CfnOutput(this, "ManagedLoginUrl", { value: identity.domain.baseUrl() });
+    new CfnOutput(this, "EventBusName", { value: events.bus.eventBusName });
+    new CfnOutput(this, "NotificationDlqUrl", { value: events.deadLetterQueue.queueUrl });
   }
 }

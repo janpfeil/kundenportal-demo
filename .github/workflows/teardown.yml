@@ -1,0 +1,59 @@
+name: Teardown
+
+# Removes the whole application from AWS (cdk destroy). What remains afterwards is only
+# the CDK bootstrap and the Terraform foundation. Log groups that Lambda creates outside
+# CloudFormation (custom resources) are deleted as well, so the account stays clean.
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type "destroy" to remove the application from AWS'
+        required: true
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: aws-production
+  cancel-in-progress: false
+
+jobs:
+  teardown:
+    name: CDK destroy
+    if: github.repository == 'janpfeil/kundenportal-demo' && inputs.confirm == 'destroy'
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # The CDK app needs the built shell and packages to synthesise.
+      - run: pnpm build
+      - uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          role-session-name: github-teardown-${{ github.run_id }}
+          aws-region: eu-central-1
+      - name: Destroy
+        working-directory: infra/cdk
+        run: |
+          start=$(date +%s)
+          pnpm exec cdk destroy --all --force
+          echo "Destroy took $(( $(date +%s) - start )) s" >> "$GITHUB_STEP_SUMMARY"
+      - name: Delete leftover Lambda log groups
+        run: |
+          for region in eu-central-1 us-east-1; do
+            for group in $(aws logs describe-log-groups --region "$region" \
+                --log-group-name-prefix /aws/lambda/Kundenportal \
+                --query 'logGroups[].logGroupName' --output text); do
+              echo "Deleting $group ($region)"
+              aws logs delete-log-group --region "$region" --log-group-name "$group"
+            done
+          done

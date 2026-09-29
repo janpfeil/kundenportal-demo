@@ -1,0 +1,33 @@
+name: DLQ probe
+
+# Sends a deliberately invalid CustomerRegistered event (no tenant) to the portal's own
+# event bus. The notification service rejects it, SQS moves it to the DLQ after three
+# attempts, and the DLQ alarm e-mails the owner (acceptance criterion 3).
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  probe:
+    name: Send invalid event
+    if: github.repository == 'janpfeil/kundenportal-demo'
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 10
+    steps:
+      - uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          role-session-name: github-dlq-probe-${{ github.run_id }}
+          aws-region: eu-central-1
+      - name: Put invalid event
+        run: |
+          detail=$(jq -cn --arg id "$(cat /proc/sys/kernel/random/uuid)" --arg now "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            '{eventId: $id, occurredAt: $now, correlationId: "dlq-probe", payload: {customerId: "probe"}}')
+          aws events put-events --entries "$(jq -cn --arg detail "$detail" \
+            '[{EventBusName: "kundenportal", Source: "kundenportal.customer", DetailType: "CustomerRegistered", Detail: $detail}]')"
+          echo "Invalid event sent at $(date -u +%H:%M:%S) UTC; expect the DLQ alarm e-mail within about 10 minutes." >> "$GITHUB_STEP_SUMMARY"

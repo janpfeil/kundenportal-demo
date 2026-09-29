@@ -1,0 +1,64 @@
+name: Deploy
+
+# Manual deployment of the application (CDK) to AWS. The job runs in the GitHub
+# environment "production", which requires the owner's approval, and gets AWS access
+# only through OIDC (role from Terraform, no access keys). Workflows triggered by pull
+# requests from forks never reach this environment.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: aws-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: CDK deploy
+    if: github.repository == 'janpfeil/kundenportal-demo'
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Build (services, shell, CDK synth)
+        run: |
+          start=$(date +%s)
+          pnpm build
+          echo "BUILD_SECONDS=$(( $(date +%s) - start ))" >> "$GITHUB_ENV"
+      - uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          role-session-name: github-deploy-${{ github.run_id }}
+          aws-region: eu-central-1
+      - name: Deploy
+        working-directory: infra/cdk
+        run: |
+          start=$(date +%s)
+          pnpm exec cdk deploy --all --require-approval never --outputs-file cdk-outputs.json
+          echo "DEPLOY_SECONDS=$(( $(date +%s) - start ))" >> "$GITHUB_ENV"
+      - name: Summary
+        working-directory: infra/cdk
+        run: |
+          {
+            echo "## Deployment"
+            echo "| Step | Seconds |"
+            echo "|---|---|"
+            echo "| Build incl. synth | $BUILD_SECONDS |"
+            echo "| cdk deploy | $DEPLOY_SECONDS |"
+            echo
+            echo "## Outputs"
+            echo '```json'
+            cat cdk-outputs.json
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

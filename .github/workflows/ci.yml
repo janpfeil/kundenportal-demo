@@ -30,3 +30,6 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build
+      # Already part of the build; listed separately so a broken CDK app is obvious.
+      - name: CDK synth
+        run: pnpm turbo run build --filter=@kundenportal/infra-cdk
