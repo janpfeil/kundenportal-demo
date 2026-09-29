@@ -66,9 +66,9 @@ data "aws_iam_policy_document" "github_deploy" {
   }
 
   statement {
-    sid       = "ReadStackOutputs"
-    actions   = ["cloudformation:DescribeStacks"]
-    resources = ["arn:aws:cloudformation:${var.region}:${local.account_id}:stack/Kundenportal/*"]
+    sid       = "ReadProjectStacks"
+    actions   = ["cloudformation:DescribeStacks", "cloudformation:ListStackResources"]
+    resources = ["arn:aws:cloudformation:*:${local.account_id}:stack/Kundenportal*/*"]
   }
 
   # End-to-end test: a throw-away user per run, only in the project's own user pool.
