@@ -28,14 +28,19 @@ The concept, decisions and research are written in German:
 
 ## Repository layout
 
-| Path              | Content                                                       |
-| ----------------- | ------------------------------------------------------------- |
-| `apps/*`          | Next.js zones (shell, contracts, consumption, cockpit, admin) |
-| `packages/*`      | component library, API contract (OpenAPI), event schemas      |
-| `services/*`      | Lambda services per domain                                    |
-| `infra/cdk`       | AWS CDK application                                           |
-| `infra/terraform` | platform layer (deployed from a private GitLab pipeline)      |
-| `docs/`           | wiki and reports                                              |
+| Path                    | Content                                                                            |
+| ----------------------- | ---------------------------------------------------------------------------------- |
+| `apps/shell`            | Next.js shell zone: start page, OIDC sign-in (BFF), account, demo mailbox          |
+| `packages/api-contract` | OpenAPI contract, typed client, routes and scopes for the gateway                  |
+| `packages/events`       | domain event envelope and schemas (zod)                                            |
+| `packages/service-kit`  | shared Lambda helpers: routing, problem details, caller from JWT                   |
+| `services/customer`     | `GET/PATCH /me`, publishes `CustomerRegistered`                                    |
+| `services/notification` | SQS consumer with DLQ, demo mailbox API, owner hints via SNS                       |
+| `services/identity`     | Cognito triggers (access token claims)                                             |
+| `infra/cdk`             | AWS CDK application (Cognito, HTTP API, Lambda, DynamoDB, EventBridge, CloudFront) |
+| `infra/terraform`       | foundation: OIDC trust for CI, budget, SSM (run by a private GitLab pipeline)      |
+| `tests/e2e`             | Playwright run of the first slice against the live portal                          |
+| `docs/`                 | wiki and reports                                                                   |
 
 ## Development
 
@@ -45,8 +50,19 @@ with Node.js). Lambda functions run on Node.js 24, the newest runtime AWS Lambda
 ```sh
 npm i -g corepack && corepack enable
 pnpm install
-pnpm lint && pnpm typecheck && pnpm test && pnpm build
+pnpm lint && pnpm typecheck && pnpm test && pnpm build   # build includes `cdk synth`
 ```
+
+## Delivery
+
+| What                           | Tool      | Runs in                            | AWS access                   |
+| ------------------------------ | --------- | ---------------------------------- | ---------------------------- |
+| Application (`infra/cdk`)      | CDK       | GitHub Actions (`deploy.yml`)      | OIDC role, environment gated |
+| Teardown, DLQ probe, live E2E  | CDK, CLI  | GitHub Actions (manual workflows)  | same OIDC role               |
+| Foundation (`infra/terraform`) | Terraform | private GitLab pipeline (platform) | OIDC role of the GitLab CI   |
+
+There are no long-lived AWS access keys anywhere. The owner's manual steps are described in
+the (German) wiki: `docs/wiki/anleitung-kontoinhaber.md` and the pages linked there.
 
 ## Version policy
 
