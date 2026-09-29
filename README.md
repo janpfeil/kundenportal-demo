@@ -8,12 +8,13 @@ It is a portfolio project that demonstrates, in one coherent system:
 
 - **Frontend:** React, Next.js (App Router, server-side rendering), micro-frontends
   (Next.js multi-zones), a shared component library, German/English UI
-- **Identity:** Auth0 / OAuth 2.0 — registration, onboarding, logged-in journey, lazy and
-  bulk migration of legacy accounts, account linking
+- **Identity:** OAuth 2.0 / OpenID Connect with Amazon Cognito (provider-agnostic code, so
+  Auth0 or any other OIDC provider can be swapped in) — registration, onboarding, logged-in
+  journey, lazy migration from a self-hosted Keycloak, bulk migration, account linking
 - **AWS serverless:** Lambda, DynamoDB, API Gateway (HTTP API), S3, CloudFront,
   EventBridge, SQS, SNS
-- **Infrastructure as code:** AWS CDK (application) and Terraform (platform: Auth0, OIDC
-  trust, budgets)
+- **Infrastructure as code:** AWS CDK (application incl. Cognito) and Terraform (foundation:
+  OIDC trust for CI, budgets, and later the Keycloak configuration)
 - **Delivery:** GitHub Actions with OIDC (no long-lived AWS keys)
 
 > Status: phase 1 (foundation and first end-to-end slice) is in progress.

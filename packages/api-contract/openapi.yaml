@@ -4,19 +4,22 @@ info:
   version: 0.1.0
   description: >-
     REST API of the customer portal. The tenant is always taken from the access token,
-    never from the URL. Errors follow RFC 9457 (problem details).
+    never from the URL. Errors follow RFC 9457 (problem details). Every operation lists
+    the OAuth 2.0 scopes it requires; the API gateway enforces them per route.
   license:
     name: MIT
     identifier: MIT
 servers:
   - url: /api
 security:
-  - auth0: []
+  - oidc: []
 paths:
   /me:
     get:
       operationId: getMe
       summary: Profile of the signed-in customer (created on first access)
+      security:
+        - oidc: [kundenportal/profile.read]
       responses:
         "200":
           description: Customer profile
@@ -27,6 +30,8 @@ paths:
     patch:
       operationId: updateMe
       summary: Change editable profile fields
+      security:
+        - oidc: [kundenportal/profile.write]
       requestBody:
         required: true
         content:
@@ -44,6 +49,8 @@ paths:
     get:
       operationId: listNotifications
       summary: Demo mailbox of the signed-in customer, newest first
+      security:
+        - oidc: [kundenportal/notifications.read]
       responses:
         "200":
           description: Notifications
@@ -61,6 +68,8 @@ paths:
     patch:
       operationId: markNotificationRead
       summary: Mark a notification as read
+      security:
+        - oidc: [kundenportal/notifications.write]
       parameters:
         - name: notificationId
           in: path
@@ -81,11 +90,14 @@ paths:
         "404": { $ref: "#/components/responses/Problem" }
 components:
   securitySchemes:
-    auth0:
+    oidc:
       type: http
       scheme: bearer
       bearerFormat: JWT
-      description: Access token issued by Auth0 for the portal API audience
+      description: >-
+        Access token (JWT) of any standard OpenID Connect provider trusted by the API
+        gateway; in the demo this is the Amazon Cognito user pool. The token must carry
+        the scopes listed on each operation (`scope` claim, space separated).
   responses:
     Problem:
       description: Error as problem details

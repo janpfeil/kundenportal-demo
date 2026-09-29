@@ -10,7 +10,11 @@
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
-    "./openapi.yaml": "./openapi.yaml"
+    "./openapi.yaml": "./openapi.yaml",
+    "./routes": {
+      "types": "./dist/routes.d.ts",
+      "default": "./dist/routes.js"
+    }
   },
   "files": [
     "dist",
@@ -24,10 +28,10 @@
     "test": "pnpm generate && vitest run"
   },
   "dependencies": {
-    "openapi-fetch": "^0.17.0"
+    "openapi-fetch": "^0.17.0",
+    "yaml": "^2.9.1"
   },
   "devDependencies": {
-    "openapi-typescript": "^7.13.0",
-    "yaml": "^2.9.1"
+    "openapi-typescript": "^7.13.0"
   }
 }
