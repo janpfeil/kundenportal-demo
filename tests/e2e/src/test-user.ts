@@ -14,7 +14,7 @@ const cognito = new CognitoIdentityProviderClient({ region });
 export async function userPoolId(): Promise<string> {
   if (process.env.USER_POOL_ID) return process.env.USER_POOL_ID;
   const { Stacks } = await new CloudFormationClient({ region }).send(
-    new DescribeStacksCommand({ StackName: "Kundenportal" }),
+    new DescribeStacksCommand({ StackName: "KundenportalBase" }),
   );
   const id = Stacks?.[0]?.Outputs?.find((output) => output.OutputKey === "UserPoolId")?.OutputValue;
   if (!id) throw new Error("Stack output UserPoolId not found");

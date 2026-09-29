@@ -14,6 +14,7 @@ test-results/
 # CDK
 cdk.out/
 cdk.context.json
+cdk-outputs.json
 
 # Terraform (state lives in GitLab, never here)
 .terraform/

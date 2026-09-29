@@ -31,38 +31,26 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Build (services, shell, CDK synth)
-        run: |
-          start=$(date +%s)
-          pnpm build
-          echo "BUILD_SECONDS=$(( $(date +%s) - start ))" >> "$GITHUB_ENV"
       - uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
           role-session-name: github-deploy-${{ github.run_id }}
           aws-region: eu-central-1
-      - name: Deploy
-        working-directory: infra/cdk
+      - name: Deploy (scripts/deploy.sh)
         env:
           # 0 while the account's Lambda concurrency limit is too low to reserve any.
           RESERVED_CONCURRENCY: ${{ vars.RESERVED_CONCURRENCY || '2' }}
-        run: |
-          start=$(date +%s)
-          pnpm exec cdk deploy --all --require-approval never --outputs-file cdk-outputs.json \
-            -c reservedConcurrency="$RESERVED_CONCURRENCY"
-          echo "DEPLOY_SECONDS=$(( $(date +%s) - start ))" >> "$GITHUB_ENV"
+        shell: bash # with pipefail, so a failure behind tee fails the step
+        run: ./scripts/deploy.sh | tee deploy.log
       - name: Summary
-        working-directory: infra/cdk
         run: |
           {
             echo "## Deployment"
-            echo "| Step | Seconds |"
-            echo "|---|---|"
-            echo "| Build incl. synth | $BUILD_SECONDS |"
-            echo "| cdk deploy | $DEPLOY_SECONDS |"
-            echo
+            echo '```'
+            grep -E '_SECONDS=' deploy.log
+            echo '```'
             echo "## Outputs"
             echo '```json'
-            cat cdk-outputs.json
+            cat infra/cdk/cdk-outputs.json
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
