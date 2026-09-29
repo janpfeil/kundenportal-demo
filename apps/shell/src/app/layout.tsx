@@ -28,11 +28,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
           </nav>
           <div className="actions">
             {/* Plain GET links: the shell accepts no POST requests (CloudFront OAC to Lambda). */}
-            <a
-              href={`/sprache?to=${otherLocale}`}
-              hrefLang={otherLocale}
-              aria-label={t.language.label}
-            >
+            <a href={`/sprache?to=${otherLocale}`} hrefLang={otherLocale} title={t.language.label}>
               {t.language.switchTo}
             </a>
             {session ? (

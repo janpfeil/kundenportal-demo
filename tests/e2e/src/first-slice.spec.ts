@@ -23,12 +23,16 @@ async function signIn(page: Page, email: string, password: string) {
   await page.getByRole("button", { name: /^(sign in|anmelden|continue|weiter)$/i }).click();
 }
 
-test("start page speaks German and English", async ({ page }) => {
-  await page.setExtraHTTPHeaders({ "accept-language": "de-DE" });
-  await page.goto("/");
-  await expect(page.getByRole("heading", { level: 1 })).toContainText("alles in einem Konto");
-  await page.getByRole("link", { name: "English" }).click();
-  await expect(page.getByRole("heading", { level: 1 })).toContainText("all in one account");
+test.describe("with a German browser", () => {
+  // The browser's own language setting; an extra Accept-Language header is overridden by Chromium.
+  test.use({ locale: "de-DE" });
+
+  test("start page speaks German and English", async ({ page }) => {
+    await page.goto("/");
+    await expect(page.getByRole("heading", { level: 1 })).toContainText("alles in einem Konto");
+    await page.getByRole("link", { name: "English" }).click();
+    await expect(page.getByRole("heading", { level: 1 })).toContainText("all in one account");
+  });
 });
 
 test("first sign-in shows the account and a welcome message within seconds", async ({ page }) => {
