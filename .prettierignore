@@ -6,3 +6,14 @@ dist/
 coverage/
 docs/
 scripts/
+
+# Agent tooling (not formatted by Prettier)
+.agents/
+.claude/
+.claude-flow/
+.mcp.json
+AGENTS.md
+CLAUDE.md
+ruflo-*.md
+ruflo-journal-archiv/
+**/src/generated/

@@ -34,3 +34,15 @@ __pycache__/
 .idea/
 .vscode/
 .DS_Store
+
+# Ruflo local secrets and runtime data
+.env.local
+.env.*.local
+.claude-flow/data/
+.claude-flow/logs/
+.claude-flow/sessions/
+
+# Ruflo runtime
+.ruflo/
+ruvector.db
+.swarm/
