@@ -1,0 +1,496 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kostenfreier Betrieb · kundenportal-demo</title>
+<link rel="stylesheet" href="assets/report.css">
+<script src="assets/report.js"></script>
+</head>
+<body>
+<header class="topbar"><a class="brand" href="index.html">kundenportal-demo · Konzept</a><nav class="topnav"><a href="index.html">Übersicht</a><a href="machbarkeit-kosten.html">Machbarkeit &amp; Kosten</a><a href="fachkonzept.html">Fachkonzept</a><a href="demo-pass.html">Demo-Pass</a><a href="kostenfrei.html" aria-current="page">Kostenfreier Betrieb</a><a href="anleitung-kontoinhaber.html">Anleitung Kontoinhaber</a><a href="anleitung-fundament.html">Anleitung Fundament</a><a href="anleitung-anwendung.html">Anleitung Anwendung</a><a href="nextjs-betrieb.html">Next.js-Betrieb</a><a href="architektur.html">Architektur Phase 1</a><a href="glossar.html">Glossar</a></nav>
+<button class="theme-toggle" type="button">Dunkel</button></header>
+<div class="layout"><nav class="toc" aria-label="Inhalt"><div class="toc-title">Inhalt</div><div>
+<ul>
+<li><a href="#1-vorgabe-und-ergebnis">1. Vorgabe und Ergebnis</a></li>
+<li><a href="#2-jeder-aws-baustein-im-freikontingent-check">2. Jeder AWS-Baustein im Freikontingent-Check</a></li>
+<li><a href="#3-was-auf-eigene-infrastruktur-wandert">3. Was auf eigene Infrastruktur wandert</a><ul>
+<li><a href="#31-zwei-getrennte-pipelines-keine-fremden-zugangsdaten">3.1 Zwei getrennte Pipelines, keine fremden Zugangsdaten</a></li>
+</ul>
+</li>
+<li><a href="#4-betriebsarten-und-wie-sie-sich-für-besucher-anfühlen">4. Betriebsarten und wie sie sich für Besucher anfühlen</a><ul>
+<li><a href="#41-drei-betriebsarten">4.1 Drei Betriebsarten</a></li>
+<li><a href="#42-erlebnis-des-besuchers">4.2 Erlebnis des Besuchers</a></li>
+<li><a href="#43-wie-lange-dauert-der-start">4.3 Wie lange dauert der Start?</a></li>
+</ul>
+</li>
+<li><a href="#5-empfehlung">5. Empfehlung</a></li>
+<li><a href="#6-grenzen-dieser-aussage">6. Grenzen dieser Aussage</a></li>
+<li><a href="#quellen">Quellen</a></li>
+</ul>
+</div>
+</nav><main><h1 id="kostenfreier-betrieb-aws-nur-im-freikontingent">Kostenfreier Betrieb — AWS nur im Freikontingent<a class="anchor" href="#kostenfreier-betrieb-aws-nur-im-freikontingent" title="Permanent link">#</a></h1>
+<p>Stand: 2026-09-29 · Kennzeichnung: <strong>[B]</strong> belegt (offizielle Quelle), <strong>[D]</strong> Drittquelle, <strong>[A]</strong> Annahme/Schätzung, <strong>[E]</strong> Einschätzung.</p>
+<p>Fachbegriffe sind in jedem Abschnitt beim ersten Vorkommen mit dem <a href="glossar.html">Glossar</a> verlinkt (Erklärung und Entsprechung außerhalb von <a class="term" href="glossar.html#aws" title="Cloud-Plattform von Amazon mit über 200 Diensten (Rechenleistung, Datenbanken, Netzwerk, Messaging …), abgerechnet nach Nutzung">AWS</a>).</p>
+<h2 id="1-vorgabe-und-ergebnis">1. Vorgabe und Ergebnis<a class="anchor" href="#1-vorgabe-und-ergebnis" title="Permanent link">#</a></h2>
+<p>Vorgabe des Nutzers (29.09.2026): <strong>Auf <a class="term" href="glossar.html#aws" title="Cloud-Plattform von Amazon mit über 200 Diensten (Rechenleistung, Datenbanken, Netzwerk, Messaging …), abgerechnet nach Nutzung">AWS</a> keine Kosten verursachen.</strong>
+Lieber einzelne Komponenten auf eigener Infrastruktur betreiben und auf AWS
+nur das, was kostenlos ist.</p>
+<p><strong>Ausgangslage (erledigt 29.09.2026):</strong> Das alte Konto von 2021 wird nicht
+weiter verfolgt; der Inhaber hat am 29.09.2026 ein <strong>neues Konto im <a class="term" href="glossar.html#free-plan" title="AWS-Kontoplan für Neukonten seit 15.07.2025: garantiert keine Kosten, aber nur ausgewählte Dienste und automatische Kontoschließung nach 6 Monaten oder aufgebrauchtem Guthaben">Free
+Plan</a></strong> angelegt (100 <a class="term" href="glossar.html#usd" title="Währung, in der AWS abrechnet">$</a> <a class="term" href="glossar.html#guthaben" title="Gutschrift in US-Dollar, die mit Rechnungsbeträgen verrechnet wird; bei Neukonten bis 200 $, verfällt nach 12 Monaten">Guthaben</a> bis 29.09.2027, <a class="term" href="glossar.html#root-benutzer" title="Anmeldung mit der E-Mail-Adresse, mit der das Konto angelegt wurde; hat alle Rechte und sollte nur für Konto- und Abrechnungsaufgaben genutzt werden">Root</a>-<a class="term" href="glossar.html#mfa" title="zweiter Faktor zusätzlich zum Passwort (App-Code, SMS, Passkey)">MFA</a> aktiv; der Free
+Plan endet spätestens ca. 29.03.2027 —
+<a href="anleitung-kontoinhaber.html">Anleitung Kontoinhaber</a> Kapitel 1–2). Damit gilt:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Phase</th>
+<th>Kostenlage</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Monat 1–6 im <strong><a class="term" href="glossar.html#free-plan" title="AWS-Kontoplan für Neukonten seit 15.07.2025: garantiert keine Kosten, aber nur ausgewählte Dienste und automatische Kontoschließung nach 6 Monaten oder aufgebrauchtem Guthaben">Free Plan</a></strong> (bis spätestens ca. 29.03.2027)</td>
+<td><strong>garantiert 0 $</strong>: AWS berechnet im Free Plan nichts; auch <a class="term" href="glossar.html#api-gateway" title="verwalteter Eingangspunkt für APIs: nimmt HTTP-Anfragen an, prüft Authentifizierung, drosselt, leitet an Lambda weiter">API Gateway</a>, <a class="term" href="glossar.html#eventbridge" title="Event-Bus: Dienste veröffentlichen Ereignisse, Regeln leiten sie anhand ihres Inhalts an Ziele (SQS, Lambda, SNS …) weiter">EventBridge</a> und <a class="term" href="glossar.html#s3" title="Objektspeicher für Dateien beliebiger Größe in „Buckets&quot;; Standard für statische Websites, Uploads, Build-Artefakte">S3</a> laufen über das Startguthaben [B]</td>
+</tr>
+<tr>
+<td>danach, falls das Demo weiterlaufen soll: <a class="term" href="glossar.html#paid-plan" title="regulärer AWS-Kontoplan: alle Dienste, Startguthaben wird zuerst verbraucht, danach Abrechnung nach Nutzung; Konto bleibt bestehen">Paid Plan</a></td>
+<td>Restguthaben (von 100 $, gültig bis 29.09.2027) deckt die <a class="term" href="glossar.html#cent-dienst" title="in diesem Wiki: AWS-Dienst ohne dauerhaftes Freikontingent, der bei Demo-Nutzung nur Bruchteile eines Cents kostet (API Gateway, EventBridge-Events, S3)">Cent-Dienste</a>; danach <a class="term" href="glossar.html#always-free" title="Freikontingente, die unbefristet jeden Monat gelten, z. B. 1 Mio. Lambda-Aufrufe">Always Free</a> + Deckel wie unten</td>
+</tr>
+<tr>
+<td>ohne <a class="term" href="glossar.html#aws-konto" title="Abrechnungs- und Sicherheitsgrenze bei AWS: alle Ressourcen, Rechnungen und Berechtigungen hängen an einem Konto">Neukunden-Angebote</a></td>
+<td>Always Free + Deckel wie unten (Abschnitte 2–5)</td>
+</tr>
+</tbody>
+</table></div>
+<p>Die folgenden Abschnitte beschreiben den Betrieb <strong>ohne</strong> Guthaben — den
+ungünstigsten Fall.</p>
+<p><strong>Ergebnis:</strong> machbar — mit einer Einschränkung. Alle eingesetzten
+AWS-Dienste bis auf drei sind dauerhaft kostenlos. Drei für die Architektur zentrale
+Dienste haben <strong>kein</strong> Always-Free-<a class="term" href="glossar.html#free-tier" title="Sammelbegriff für kostenlose Nutzungsmengen bei AWS">Kontingent</a> und kosten pro Nutzung:
+API Gateway, EventBridge (eigene <a class="term" href="glossar.html#event" title="Nachricht, dass etwas passiert ist (z. B. „Zählerstand erfasst&quot;); Empfänger reagieren darauf, ohne dass der Absender sie kennt">Events</a>) und S3. Bei <a class="term" href="glossar.html#traffic" title="Menge der Zugriffe/Datenübertragung">Demo-Traffic</a> sind das
+Bruchteile eines Cents; ob AWS solche Beträge auf 0,00 $ rundet, ist nicht
+belegt [A]. Garantiert 0,00 $ gibt es nur, wenn diese drei Dienste nicht
+dauerhaft laufen (Variante <a class="term" href="glossar.html#demo-modus" title="Betriebsart, bei der der AWS-Stack nur für eine Vorführung per GitHub-Workflow aufgebaut und danach wieder abgebaut wird; dazwischen 0 $">Z2</a> in Abschnitt 4).</p>
+<h2 id="2-jeder-aws-baustein-im-freikontingent-check">2. Jeder AWS-Baustein im Freikontingent-Check<a class="anchor" href="#2-jeder-aws-baustein-im-freikontingent-check" title="Permanent link">#</a></h2>
+<figure class="chart"><figcaption>AWS-Bausteine nach Kostenart</figcaption><div class="sub">Bestehendes Konto ohne Guthaben; Demo-Traffic (&lt; 10.000 Aufrufe/Monat)</div><div class="legend"><span style="--sw:var(--seq-4)">trifft zu</span><span style="--sw:var(--neutral)">—</span></div><svg viewBox="0 0 1000 400" role="img" aria-label="AWS-Bausteine nach Kostenart" preserveAspectRatio="xMinYMin meet"><text x="342.6" y="20.0" class="t-ink2" font-size="12" text-anchor="middle">kostenlos</text><text x="412.6" y="20.0" class="t-ink2" font-size="12" text-anchor="middle">Cent-Beträge</text><text x="482.6" y="20.0" class="t-ink2" font-size="12" text-anchor="middle">Fixkosten</text><text x="297.6" y="48.0" class="t-ink" font-size="14" text-anchor="end">CloudFront</text><rect tabindex="0" data-tip="CloudFront · kostenlos: trifft zu" class="f-seq4 ring" x="307.6" y="30" width="70.0" height="26" rx="4"/><rect tabindex="0" data-tip="CloudFront · Cent-Beträge: —" class="f-neutral ring" x="377.6" y="30" width="70.0" height="26" rx="4"/><rect tabindex="0" data-tip="CloudFront · Fixkosten: —" class="f-neutral ring" x="447.6" y="30" width="70.0" height="26" rx="4"/><text x="297.6" y="74.0" class="t-ink" font-size="14" text-anchor="end">Lambda (REST, SSR, Function URL)</text><rect tabindex="0" data-tip="Lambda (REST, SSR, Function URL) · kostenlos: trifft zu" class="f-seq4 ring" x="307.6" y="56" width="70.0" height="26" rx="4"/><rect tabindex="0" data-tip="Lambda (REST, SSR, Function URL) · Cent-Beträge: —" class="f-neutral ring" x="377.6" y="56" width="70.0" height="26" rx="4"/><rect tabindex="0" data-tip="Lambda (REST, SSR, Function URL) · Fixkosten: —" class="f-neutral ring" x="447.6" y="56" width="70.0" height="26" rx="4"/><text x="297.6" y="100.0" class="t-ink" font-size="14" text-anchor="end">DynamoDB (provisioned ≤ 25)</text><rect tabindex="0" data-tip="DynamoDB (provisioned ≤ 25) · kostenlos: trifft zu" class="f-seq4 ring" x="307.6" y="82" width="70.0" height="26" rx="4"/><rect tabindex="0" data-tip="DynamoDB (provisioned ≤ 25) · Cent-Beträge: —" class="f-neutral ring" x="377.6" y="82" width="70.0" height="26" rx="4"/><rect tabindex="0" data-tip="DynamoDB (provisioned ≤ 25) · Fixkosten: —" class="f-neutral ring" x="447.6" y="82" width="70.0" height="26" rx="4"/><text x="297.6" y="126.0" class="t-ink" font-size="14" text-anchor="end">SQS</text><rect tabindex="0" data-tip="SQS · kostenlos: trifft zu" class="f-seq4 ring" x="307.6" y="108" width="70.0" height="26" rx="4"/><rect tabindex="0" data-tip="SQS · Cent-Beträge: —" class="f-neutral ring" x="377.6" y="108" width="70.0" height="26" rx="4"/><rect tabindex="0" data-tip="SQS · Fixkosten: —" class="f-neutral ring" x="447.6" y="108" width="70.0" height="26" rx="4"/><text x="297.6" y="152.0" class="t-ink" font-size="14" text-anchor="end">SNS (inkl. E-Mail)</text><rect tabindex="0" data-tip="SNS (inkl. E-Mail) · kostenlos: trifft zu" class="f-seq4 ring" x="307.6" y="134" width="70.0" height="26" rx="4"/><rect tabindex="0" data-tip="SNS (inkl. E-Mail) · Cent-Beträge: —" class="f-neutral ring" x="377.6" y="134" width="70.0" height="26" rx="4"/><rect tabindex="0" data-tip="SNS (inkl. E-Mail) · Fixkosten: —" class="f-neutral ring" x="447.6" y="134" width="70.0" height="26" rx="4"/><text x="297.6" y="178.0" class="t-ink" font-size="14" text-anchor="end">EventBridge Scheduler</text><rect tabindex="0" data-tip="EventBridge Scheduler · kostenlos: trifft zu" class="f-seq4 ring" x="307.6" y="160" width="70.0" height="26" rx="4"/><rect tabindex="0" data-tip="EventBridge Scheduler · Cent-Beträge: —" class="f-neutral ring" x="377.6" y="160" width="70.0" height="26" rx="4"/><rect tabindex="0" data-tip="EventBridge Scheduler · Fixkosten: —" class="f-neutral ring" x="447.6" y="160" width="70.0" height="26" rx="4"/><text x="297.6" y="204.0" class="t-ink" font-size="14" text-anchor="end">CloudWatch (kurze Retention)</text><rect tabindex="0" data-tip="CloudWatch (kurze Retention) · kostenlos: trifft zu" class="f-seq4 ring" x="307.6" y="186" width="70.0" height="26" rx="4"/><rect tabindex="0" data-tip="CloudWatch (kurze Retention) · Cent-Beträge: —" class="f-neutral ring" x="377.6" y="186" width="70.0" height="26" rx="4"/><rect tabindex="0" data-tip="CloudWatch (kurze Retention) · Fixkosten: —" class="f-neutral ring" x="447.6" y="186" width="70.0" height="26" rx="4"/><text x="297.6" y="230.0" class="t-ink" font-size="14" text-anchor="end">IAM, ACM, Budgets, SSM, KMS</text><rect tabindex="0" data-tip="IAM, ACM, Budgets, SSM, KMS · kostenlos: trifft zu" class="f-seq4 ring" x="307.6" y="212" width="70.0" height="26" rx="4"/><rect tabindex="0" data-tip="IAM, ACM, Budgets, SSM, KMS · Cent-Beträge: —" class="f-neutral ring" x="377.6" y="212" width="70.0" height="26" rx="4"/><rect tabindex="0" data-tip="IAM, ACM, Budgets, SSM, KMS · Fixkosten: —" class="f-neutral ring" x="447.6" y="212" width="70.0" height="26" rx="4"/><text x="297.6" y="256.0" class="t-ink" font-size="14" text-anchor="end">Cognito (Essentials, ≤ 10.000 MAU)</text><rect tabindex="0" data-tip="Cognito (Essentials, ≤ 10.000 MAU) · kostenlos: trifft zu" class="f-seq4 ring" x="307.6" y="238" width="70.0" height="26" rx="4"/><rect tabindex="0" data-tip="Cognito (Essentials, ≤ 10.000 MAU) · Cent-Beträge: —" class="f-neutral ring" x="377.6" y="238" width="70.0" height="26" rx="4"/><rect tabindex="0" data-tip="Cognito (Essentials, ≤ 10.000 MAU) · Fixkosten: —" class="f-neutral ring" x="447.6" y="238" width="70.0" height="26" rx="4"/><text x="297.6" y="282.0" class="t-ink" font-size="14" text-anchor="end">CloudFormation (CDK)</text><rect tabindex="0" data-tip="CloudFormation (CDK) · kostenlos: trifft zu" class="f-seq4 ring" x="307.6" y="264" width="70.0" height="26" rx="4"/><rect tabindex="0" data-tip="CloudFormation (CDK) · Cent-Beträge: —" class="f-neutral ring" x="377.6" y="264" width="70.0" height="26" rx="4"/><rect tabindex="0" data-tip="CloudFormation (CDK) · Fixkosten: —" class="f-neutral ring" x="447.6" y="264" width="70.0" height="26" rx="4"/><text x="297.6" y="308.0" class="t-ink" font-size="14" text-anchor="end">API Gateway (HTTP API)</text><rect tabindex="0" data-tip="API Gateway (HTTP API) · kostenlos: —" class="f-neutral ring" x="307.6" y="290" width="70.0" height="26" rx="4"/><rect tabindex="0" data-tip="API Gateway (HTTP API) · Cent-Beträge: trifft zu" class="f-seq4 ring" x="377.6" y="290" width="70.0" height="26" rx="4"/><rect tabindex="0" data-tip="API Gateway (HTTP API) · Fixkosten: —" class="f-neutral ring" x="447.6" y="290" width="70.0" height="26" rx="4"/><text x="297.6" y="334.0" class="t-ink" font-size="14" text-anchor="end">EventBridge (eigene Events)</text><rect tabindex="0" data-tip="EventBridge (eigene Events) · kostenlos: —" class="f-neutral ring" x="307.6" y="316" width="70.0" height="26" rx="4"/><rect tabindex="0" data-tip="EventBridge (eigene Events) · Cent-Beträge: trifft zu" class="f-seq4 ring" x="377.6" y="316" width="70.0" height="26" rx="4"/><rect tabindex="0" data-tip="EventBridge (eigene Events) · Fixkosten: —" class="f-neutral ring" x="447.6" y="316" width="70.0" height="26" rx="4"/><text x="297.6" y="360.0" class="t-ink" font-size="14" text-anchor="end">S3 (Speicher + Anfragen)</text><rect tabindex="0" data-tip="S3 (Speicher + Anfragen) · kostenlos: —" class="f-neutral ring" x="307.6" y="342" width="70.0" height="26" rx="4"/><rect tabindex="0" data-tip="S3 (Speicher + Anfragen) · Cent-Beträge: trifft zu" class="f-seq4 ring" x="377.6" y="342" width="70.0" height="26" rx="4"/><rect tabindex="0" data-tip="S3 (Speicher + Anfragen) · Fixkosten: —" class="f-neutral ring" x="447.6" y="342" width="70.0" height="26" rx="4"/><text x="297.6" y="386.0" class="t-ink" font-size="14" text-anchor="end">Route 53, NAT, ALB, RDS, WAF</text><rect tabindex="0" data-tip="Route 53, NAT, ALB, RDS, WAF · kostenlos: —" class="f-neutral ring" x="307.6" y="368" width="70.0" height="26" rx="4"/><rect tabindex="0" data-tip="Route 53, NAT, ALB, RDS, WAF · Cent-Beträge: —" class="f-neutral ring" x="377.6" y="368" width="70.0" height="26" rx="4"/><rect tabindex="0" data-tip="Route 53, NAT, ALB, RDS, WAF · Fixkosten: trifft zu" class="f-seq4 ring" x="447.6" y="368" width="70.0" height="26" rx="4"/></svg><div class="foot">AWS-Preisseiten [B], teils Drittquellen [D]</div><details><summary>Daten als Tabelle</summary><div class="table-wrap"><div class="table-wrap"><table><thead><tr><th></th><th>kostenlos</th><th>Cent-Beträge</th><th>Fixkosten</th></tr></thead><tbody><tr><td><a class="term" href="glossar.html#cloudfront" title="Content Delivery Network (CDN): liefert Inhalte weltweit aus nahen Standorten aus, cacht sie und leitet Pfade an verschiedene Ziele (S3, API Gateway, Lambda) weiter">CloudFront</a></td><td>trifft zu</td><td>—</td><td>—</td></tr><tr><td><a class="term" href="glossar.html#lambda" title="führt eine einzelne Funktion (z. B. einen HTTP-Handler) bei Bedarf aus; Abrechnung pro Aufruf und Laufzeit, skaliert automatisch von 0 auf viele Instanzen">Lambda</a> (<a class="term" href="glossar.html#rest" title="Architekturstil für HTTP-APIs: Ressourcen unter URLs, Operationen über HTTP-Methoden (GET, POST …)">REST</a>, <a class="term" href="glossar.html#ssr" title="HTML wird pro Anfrage auf dem Server erzeugt">SSR</a>, <a class="term" href="glossar.html#function-url" title="eigene HTTPS-Adresse einer Lambda ohne API Gateway; unterstützt Response Streaming und kann hinter CloudFront (mit OAC) liegen">Function URL</a>)</td><td>trifft zu</td><td>—</td><td>—</td></tr><tr><td><a class="term" href="glossar.html#dynamodb" title="vollständig verwaltete NoSQL-Datenbank (Schlüssel-Wert/Dokument) mit Antwortzeiten im Millisekundenbereich, ohne Server und ohne Verbindungs-Pool">DynamoDB</a> (<a class="term" href="glossar.html#provisioned" title="DynamoDB-Modus mit fest eingestellter Kapazität (RCU/WCU); im Always Free bis 25 Einheiten; bei Überlast wird gedrosselt statt berechnet">provisioned</a> ≤ 25)</td><td>trifft zu</td><td>—</td><td>—</td></tr><tr><td><a class="term" href="glossar.html#sqs" title="Nachrichtenwarteschlange: Absender legt Nachrichten ab, Empfänger holt sie ab und bestätigt sie; entkoppelt Dienste und puffert Last">SQS</a></td><td>trifft zu</td><td>—</td><td>—</td></tr><tr><td><a class="term" href="glossar.html#sns" title="Publish/Subscribe-Dienst: eine Nachricht an ein Topic geht an alle Abonnenten (E-Mail, SQS, Lambda, HTTP, SMS)">SNS</a> (inkl. <a class="term" href="glossar.html#e-mail" title="elektronische Post; SNS verschickt bis 1.000 E-Mails im Monat kostenlos">E-Mail</a>)</td><td>trifft zu</td><td>—</td><td>—</td></tr><tr><td><a class="term" href="glossar.html#eventbridge-scheduler" title="zeitgesteuertes Auslösen von Zielen (einmalig oder wiederkehrend); 14 Mio. Aufrufe/Monat frei">EventBridge Scheduler</a></td><td>trifft zu</td><td>—</td><td>—</td></tr><tr><td><a class="term" href="glossar.html#cloudwatch" title="AWS-Dienst für Logs, Metriken und Alarme">CloudWatch</a> (kurze Retention)</td><td>trifft zu</td><td>—</td><td>—</td></tr><tr><td><a class="term" href="glossar.html#iam" title="Rechteverwaltung von AWS: Rollen und Richtlinien legen fest, wer (Mensch, Dienst, Lambda) was mit welcher Ressource darf">IAM</a>, <a class="term" href="glossar.html#acm" title="stellt kostenlose TLS-Zertifikate für AWS-Dienste aus und erneuert sie automatisch">ACM</a>, <a class="term" href="glossar.html#aws-budgets" title="kostenloser Dienst für Kostengrenzen mit E-Mail-/SNS-Alarm bei Überschreitung; kein harter Stopp, Daten kommen Stunden verzögert">Budgets</a>, <a class="term" href="glossar.html#ssm-parameter-store" title="Ablage für Konfigurationswerte und (verschlüsselt als SecureString) Geheimnisse; Standard-Stufe kostenlos. Im Demo auch Übergabestelle zwischen Terraform und CDK">SSM</a>, <a class="term" href="glossar.html#kms" title="verwaltet kryptografische Schlüssel; AWS-verwaltete Schlüssel sind kostenlos, eigene kosten 1 $/Monat">KMS</a></td><td>trifft zu</td><td>—</td><td>—</td></tr><tr><td><a class="term" href="glossar.html#amazon-cognito" title="AWS-Identitätsdienst für Registrierung, Login, MFA und Benutzerverwaltung; im Demo der Portal-Login (Entscheidung 29.09.2026), angelegt per CDK">Cognito</a> (<a class="term" href="glossar.html#essentials-plan" title="Cognito-Tarifstufe (Lite, Essentials, Plus) je User Pool; Essentials ist Standard für neue User Pools und enthält Managed Login; 10.000 aktive Nutzer im Monat frei, ohne Ablauf">Essentials</a>, ≤ 10.000 <a class="term" href="glossar.html#mau" title="Zahl der Nutzer, die sich in einem Monat mindestens einmal anmelden oder ihr Konto ändern; Preisgrundlage bei Cognito (Essentials: 10.000 frei) und Auth0">MAU</a>)</td><td>trifft zu</td><td>—</td><td>—</td></tr><tr><td><a class="term" href="glossar.html#cloudformation" title="AWS-eigener Dienst, der Ressourcen aus einer JSON/YAML-Vorlage anlegt, ändert und löscht; Grundlage von CDK und SAM">CloudFormation</a> (<a class="term" href="glossar.html#cdk" title="Infrastruktur als Programmcode (TypeScript, Java, Python …): man schreibt Klassen wie new Table(...), CDK erzeugt daraus CloudFormation-Vorlagen und legt die Ressourcen an">CDK</a>)</td><td>trifft zu</td><td>—</td><td>—</td></tr><tr><td><a class="term" href="glossar.html#api-gateway" title="verwalteter Eingangspunkt für APIs: nimmt HTTP-Anfragen an, prüft Authentifizierung, drosselt, leitet an Lambda weiter">API Gateway</a> (<a class="term" href="glossar.html#http-api" title="schlanke, günstige Variante des API Gateway (≈ 1 $/Mio. Aufrufe) mit eingebautem JWT-Authorizer; im Demo gewählt">HTTP API</a>)</td><td>—</td><td>trifft zu</td><td>—</td></tr><tr><td><a class="term" href="glossar.html#eventbridge" title="Event-Bus: Dienste veröffentlichen Ereignisse, Regeln leiten sie anhand ihres Inhalts an Ziele (SQS, Lambda, SNS …) weiter">EventBridge</a> (eigene <a class="term" href="glossar.html#event" title="Nachricht, dass etwas passiert ist (z. B. „Zählerstand erfasst&quot;); Empfänger reagieren darauf, ohne dass der Absender sie kennt">Events</a>)</td><td>—</td><td>trifft zu</td><td>—</td></tr><tr><td><a class="term" href="glossar.html#s3" title="Objektspeicher für Dateien beliebiger Größe in „Buckets&quot;; Standard für statische Websites, Uploads, Build-Artefakte">S3</a> (Speicher + <a class="term" href="glossar.html#request" title="einzelne Anfrage an einen Dienst; viele AWS-Dienste rechnen pro Million Requests ab">Anfragen</a>)</td><td>—</td><td>trifft zu</td><td>—</td></tr><tr><td><a class="term" href="glossar.html#route-53" title="DNS-Dienst von AWS; eine Hosted Zone kostet 0,50 $/Monat">Route 53</a>, <a class="term" href="glossar.html#nat-gateway" title="ermöglicht Ressourcen in privaten VPC-Subnetzen den Internetzugang; ≈ 32 $/Monat Fixkosten → im Demo vermieden">NAT</a>, <a class="term" href="glossar.html#alb" title="Lastverteiler für HTTP-Verkehr auf Container/Server; ≈ 16–20 $/Monat Fixkosten → im Demo vermieden">ALB</a>, <a class="term" href="glossar.html#rds" title="verwaltete relationale Datenbanken (PostgreSQL, MySQL …); läuft stundenweise → Fixkosten, im Demo vermieden">RDS</a>, <a class="term" href="glossar.html#waf" title="Web Application Firewall: filtert Anfragen nach Regeln (IP-Sperren, Rate Limits, bekannte Angriffe)">WAF</a></td><td>—</td><td>—</td><td>trifft zu</td></tr></tbody></table></div></div></details></figure>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Baustein</th>
+<th>Always Free</th>
+<th>Demo-Nutzung</th>
+<th>Kosten/Monat</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a class="term" href="glossar.html#cloudfront" title="Content Delivery Network (CDN): liefert Inhalte weltweit aus nahen Standorten aus, cacht sie und leitet Pfade an verschiedene Ziele (S3, API Gateway, Lambda) weiter">CloudFront</a></td>
+<td>1 <a class="term" href="glossar.html#gb" title="Gigabyte / Terabyte (1 TB = 1.000 GB)">TB</a> Übertragung, 10 Mio. <a class="term" href="glossar.html#request" title="einzelne Anfrage an einen Dienst; viele AWS-Dienste rechnen pro Million Requests ab">Anfragen</a>, 2 Mio. <a class="term" href="glossar.html#cloudfront-functions" title="sehr leichte JavaScript-Funktionen direkt am CDN-Rand (z. B. URL-Umschreiben, Header setzen); 2 Mio. Aufrufe frei">CloudFront Functions</a> [D]</td>
+<td>Auslieferung aller Seiten und <code>/api/*</code></td>
+<td>0 <a class="term" href="glossar.html#usd" title="Währung, in der AWS abrechnet">$</a></td>
+</tr>
+<tr>
+<td><a class="term" href="glossar.html#lambda" title="führt eine einzelne Funktion (z. B. einen HTTP-Handler) bei Bedarf aus; Abrechnung pro Aufruf und Laufzeit, skaliert automatisch von 0 auf viele Instanzen">Lambda</a></td>
+<td>1 Mio. Aufrufe + 400.000 <a class="term" href="glossar.html#gb-s" title="Abrechnungseinheit von Lambda: zugewiesener Speicher in GB × Laufzeit in Sekunden">GB-s</a> [D]</td>
+<td><a class="term" href="glossar.html#lambda-handler" title="die Einstiegsfunktion einer Lambda, die das Ereignis (HTTP-Request, Queue-Nachricht) erhält">REST-Handler</a>, <a class="term" href="glossar.html#konsument" title="Dienst, der Nachrichten oder Events empfängt und verarbeitet">Event-Konsumenten</a>, <a class="term" href="glossar.html#nextjs" title="React-Framework (von Vercel) mit Routing, Server-Rendering, API-Routen und Build-Optimierung">Next.js</a>-<a class="term" href="glossar.html#ssr" title="HTML wird pro Anfrage auf dem Server erzeugt">SSR</a></td>
+<td>0 $</td>
+</tr>
+<tr>
+<td><a class="term" href="glossar.html#dynamodb" title="vollständig verwaltete NoSQL-Datenbank (Schlüssel-Wert/Dokument) mit Antwortzeiten im Millisekundenbereich, ohne Server und ohne Verbindungs-Pool">DynamoDB</a></td>
+<td>25 GB, 25 <a class="term" href="glossar.html#rcu" title="Lese-Kapazitätseinheit von DynamoDB: 1 stark konsistenter Lesevorgang pro Sekunde bis 4 KB">RCU/WCU</a> <a class="term" href="glossar.html#provisioned" title="DynamoDB-Modus mit fest eingestellter Kapazität (RCU/WCU); im Always Free bis 25 Einheiten; bei Überlast wird gedrosselt statt berechnet">provisioned</a> [B]</td>
+<td><a class="term" href="glossar.html#single-table-design" title="DynamoDB-Modellierung, bei der alle Entitäten einer Anwendung in einer Tabelle liegen und über zusammengesetzte Schlüssel (Partition/Sort Key) nach Zugriffsmustern angeordnet werde">Single Table</a>, provisioned 5 RCU/5 <a class="term" href="glossar.html#wcu" title="Schreib-Kapazitätseinheit von DynamoDB: 1 Schreibvorgang pro Sekunde bis 1 KB">WCU</a> je Tabelle, zusammen ≤ 25</td>
+<td>0 $</td>
+</tr>
+<tr>
+<td><a class="term" href="glossar.html#amazon-cognito" title="AWS-Identitätsdienst für Registrierung, Login, MFA und Benutzerverwaltung; im Demo der Portal-Login (Entscheidung 29.09.2026), angelegt per CDK">Cognito</a> (<a class="term" href="glossar.html#essentials-plan" title="Cognito-Tarifstufe (Lite, Essentials, Plus) je User Pool; Essentials ist Standard für neue User Pools und enthält Managed Login; 10.000 aktive Nutzer im Monat frei, ohne Ablauf">Plan Essentials</a>)</td>
+<td>10.000 <a class="term" href="glossar.html#mau" title="Zahl der Nutzer, die sich in einem Monat mindestens einmal anmelden oder ihr Konto ändern; Preisgrundlage bei Cognito (Essentials: 10.000 frei) und Auth0">aktive Nutzer</a> (MAU) im Monat, läuft nicht ab [B: <a href="https://aws.amazon.com/cognito/pricing/">https://aws.amazon.com/cognito/pricing/</a>]</td>
+<td>Portal-<a class="term" href="glossar.html#login" title="Anmeldung eines Nutzers">Login</a>, <a class="term" href="glossar.html#managed-login" title="von Cognito gehostete Login-, Registrierungs- und Passwort-Seiten samt OAuth2-/OIDC-Endpunkten; erreichbar unter einer Präfix-Domain (&lt;präfix&gt;.auth.&lt;region&gt;.amazoncognito.com) oder">Managed Login</a>, <a class="term" href="glossar.html#lambda-trigger-cognito" title="Lambda-Funktion, die Cognito an festen Punkten aufruft (vor Registrierung, vor/nach Login, Token-Erzeugung, Migration); im Demo in services/identity">Lambda-Trigger</a></td>
+<td>0 $</td>
+</tr>
+<tr>
+<td><a class="term" href="glossar.html#sqs" title="Nachrichtenwarteschlange: Absender legt Nachrichten ab, Empfänger holt sie ab und bestätigt sie; entkoppelt Dienste und puffert Last">SQS</a></td>
+<td>1 Mio. Anfragen [D]</td>
+<td><a class="term" href="glossar.html#workflow" title="allgemein: automatisierter Ablauf mehrerer Schritte; bei GitHub: eine Pipeline-Datei">Workflows</a> mit <a class="term" href="glossar.html#dlq" title="Ablage für Nachrichten, die nach mehreren Versuchen nicht verarbeitet werden konnten, zur Analyse und Nachverarbeitung">DLQ</a></td>
+<td>0 $</td>
+</tr>
+<tr>
+<td><a class="term" href="glossar.html#sns" title="Publish/Subscribe-Dienst: eine Nachricht an ein Topic geht an alle Abonnenten (E-Mail, SQS, Lambda, HTTP, SMS)">SNS</a></td>
+<td>1 Mio. <a class="term" href="glossar.html#publishsubscribe" title="Absender veröffentlichen an ein Thema, ohne die Empfänger zu kennen">Publishes</a>, 1.000 <a class="term" href="glossar.html#e-mail" title="elektronische Post; SNS verschickt bis 1.000 E-Mails im Monat kostenlos">E-Mails</a> [D]</td>
+<td>Benachrichtigungen, <a class="term" href="glossar.html#kill-switch" title="im Demo geplante Automatik: Budget-Alarm → SNS → Lambda setzt Throttling/Concurrency auf 0 und legt die API still">Kill-Switch</a></td>
+<td>0 $</td>
+</tr>
+<tr>
+<td><a class="term" href="glossar.html#eventbridge-scheduler" title="zeitgesteuertes Auslösen von Zielen (einmalig oder wiederkehrend); 14 Mio. Aufrufe/Monat frei">EventBridge Scheduler</a></td>
+<td>14 Mio. Aufrufe [B]</td>
+<td>zeitgesteuerte Erinnerungen</td>
+<td>0 $</td>
+</tr>
+<tr>
+<td><a class="term" href="glossar.html#cloudwatch" title="AWS-Dienst für Logs, Metriken und Alarme">CloudWatch</a></td>
+<td>Logs ≈ 5 GB, 10 <a class="term" href="glossar.html#metriken" title="Messwerte über die Zeit (Aufrufe, Fehler, Dauer)">Metriken</a>, 10 <a class="term" href="glossar.html#alarm" title="Benachrichtigung, wenn eine Metrik einen Grenzwert überschreitet">Alarme</a> [D]</td>
+<td>Logs mit 3–7 Tagen Retention</td>
+<td>0 $</td>
+</tr>
+<tr>
+<td><a class="term" href="glossar.html#iam" title="Rechteverwaltung von AWS: Rollen und Richtlinien legen fest, wer (Mensch, Dienst, Lambda) was mit welcher Ressource darf">IAM</a>, <a class="term" href="glossar.html#acm" title="stellt kostenlose TLS-Zertifikate für AWS-Dienste aus und erneuert sie automatisch">ACM</a>, <a class="term" href="glossar.html#aws-budgets" title="kostenloser Dienst für Kostengrenzen mit E-Mail-/SNS-Alarm bei Überschreitung; kein harter Stopp, Daten kommen Stunden verzögert">AWS Budgets</a>, <a class="term" href="glossar.html#ssm-parameter-store" title="Ablage für Konfigurationswerte und (verschlüsselt als SecureString) Geheimnisse; Standard-Stufe kostenlos. Im Demo auch Übergabestelle zwischen Terraform und CDK">SSM Parameter Store</a> (Standard), <a class="term" href="glossar.html#kms" title="verwaltet kryptografische Schlüssel; AWS-verwaltete Schlüssel sind kostenlos, eigene kosten 1 $/Monat">KMS</a> mit <a class="term" href="glossar.html#aws" title="Cloud-Plattform von Amazon mit über 200 Diensten (Rechenleistung, Datenbanken, Netzwerk, Messaging …), abgerechnet nach Nutzung">AWS</a>-verwalteten Schlüsseln</td>
+<td>kostenlos [B/A]</td>
+<td>Rechte, Zertifikat, Kostenalarm, Konfiguration</td>
+<td>0 $</td>
+</tr>
+<tr>
+<td><a class="term" href="glossar.html#cloudformation" title="AWS-eigener Dienst, der Ressourcen aus einer JSON/YAML-Vorlage anlegt, ändert und löscht; Grundlage von CDK und SAM">CloudFormation</a></td>
+<td>für AWS-eigene Ressourcen kostenlos [A]</td>
+<td><a class="term" href="glossar.html#cdk" title="Infrastruktur als Programmcode (TypeScript, Java, Python …): man schreibt Klassen wie new Table(...), CDK erzeugt daraus CloudFormation-Vorlagen und legt die Ressourcen an">CDK</a>-<a class="term" href="glossar.html#deployment" title="Ausliefern einer neuen Version in eine Umgebung">Deployments</a></td>
+<td>0 $</td>
+</tr>
+<tr>
+<td><strong><a class="term" href="glossar.html#api-gateway" title="verwalteter Eingangspunkt für APIs: nimmt HTTP-Anfragen an, prüft Authentifizierung, drosselt, leitet an Lambda weiter">API Gateway</a> (<a class="term" href="glossar.html#http-api" title="schlanke, günstige Variante des API Gateway (≈ 1 $/Mio. Aufrufe) mit eingebautem JWT-Authorizer; im Demo gewählt">HTTP API</a>)</strong></td>
+<td>nur 12 Monate für <a class="term" href="glossar.html#aws-konto" title="Abrechnungs- und Sicherheitsgrenze bei AWS: alle Ressourcen, Rechnungen und Berechtigungen hängen an einem Konto">Neukonten</a> [B]</td>
+<td>alle <a class="term" href="glossar.html#rest" title="Architekturstil für HTTP-APIs: Ressourcen unter URLs, Operationen über HTTP-Methoden (GET, POST …)">REST</a>-Aufrufe</td>
+<td>≈ 1 $ pro Mio. → 0,01 $ je 10.000 Aufrufe [B]</td>
+</tr>
+<tr>
+<td><strong><a class="term" href="glossar.html#eventbridge" title="Event-Bus: Dienste veröffentlichen Ereignisse, Regeln leiten sie anhand ihres Inhalts an Ziele (SQS, Lambda, SNS …) weiter">EventBridge</a> (eigene <a class="term" href="glossar.html#event" title="Nachricht, dass etwas passiert ist (z. B. „Zählerstand erfasst&quot;); Empfänger reagieren darauf, ohne dass der Absender sie kennt">Events</a>)</strong></td>
+<td><strong>kein</strong> <a class="term" href="glossar.html#free-tier" title="Sammelbegriff für kostenlose Nutzungsmengen bei AWS">Freikontingent</a> [B]</td>
+<td><a class="term" href="glossar.html#domänen-event" title="fachliches Ereignis in der Vergangenheitsform, z. B. CustomerRegistered, AccountMigrated, MeterReadingSubmitted; andere Dienste reagieren darauf">Domänen-Events</a></td>
+<td>1 $ pro Mio. → 0,01 $ je 10.000 Events [B]</td>
+</tr>
+<tr>
+<td><strong><a class="term" href="glossar.html#s3" title="Objektspeicher für Dateien beliebiger Größe in „Buckets&quot;; Standard für statische Websites, Uploads, Build-Artefakte">S3</a></strong></td>
+<td>nur 12 Monate für Neukonten [B]</td>
+<td><a class="term" href="glossar.html#upload" title="Hochladen einer Datei vom Browser zum Server bzw. nach S3">Uploads</a>, CDK-<a class="term" href="glossar.html#build" title="Übersetzen und Paketieren des Quellcodes zu auslieferbaren Dateien (Artefakten)">Artefakte</a>, ggf. statische Dateien</td>
+<td>wenige MB Speicher + einige hundert Anfragen → &lt; 0,01 $ [A]</td>
+</tr>
+</tbody>
+</table></div>
+<p>Weggelassen bzw. ersetzt, weil nie kostenlos: <a class="term" href="glossar.html#route-53" title="DNS-Dienst von AWS; eine Hosted Zone kostet 0,50 $/Monat">Route 53</a> (<a class="term" href="glossar.html#dns" title="Telefonbuch des Internets: übersetzt Namen wie energie-demo.rypox.com in Adressen">DNS</a> bleibt auf den
+eigenen <a class="term" href="glossar.html#nameserver" title="Server, der die DNS-Einträge einer Domain verwaltet; bei rypox eigene (ns1.rypox.net)">Nameservern</a>), <a class="term" href="glossar.html#nat-gateway" title="ermöglicht Ressourcen in privaten VPC-Subnetzen den Internetzugang; ≈ 32 $/Monat Fixkosten → im Demo vermieden">NAT Gateway</a>, <a class="term" href="glossar.html#alb" title="Lastverteiler für HTTP-Verkehr auf Container/Server; ≈ 16–20 $/Monat Fixkosten → im Demo vermieden">ALB</a>, <a class="term" href="glossar.html#rds" title="verwaltete relationale Datenbanken (PostgreSQL, MySQL …); läuft stundenweise → Fixkosten, im Demo vermieden">RDS</a>, <a class="term" href="glossar.html#secrets-manager" title="AWS-Dienst für Geheimnisse mit automatischer Rotation; 0,40 $/Secret und Monat">Secrets Manager</a>, <a class="term" href="glossar.html#waf" title="Web Application Firewall: filtert Anfragen nach Regeln (IP-Sperren, Rate Limits, bekannte Angriffe)">WAF</a>
+(<a class="term" href="glossar.html#pay-as-you-go" title="Abrechnung nur nach tatsächlicher Nutzung (Aufrufe, GB, Sekunden) ohne Grundgebühr">Pay-as-you-go</a>), <a class="term" href="glossar.html#ipv4-adresse" title="Internetadresse; AWS berechnet öffentliche IPv4-Adressen stundenweise (ca. 3,60 $/Monat)">öffentliche IPv4-Adressen</a>.</p>
+<p><strong>Ergänzungen aus Phase 1 (Stand 29.09.2026)</strong> — was der gebaute Code
+zusätzlich verbraucht (<a href="architektur.html">Architektur Phase 1</a>):</p>
+<ul>
+<li><strong>SQS im Leerlauf [A]:</strong> Die Lambda-Ereignisquelle fragt die Queue auch
+  ohne Nachrichten dauerhaft ab (<a class="term" href="glossar.html#long-polling" title="Abruf, der bis zu 20 s auf Nachrichten wartet statt sofort leer zurückzukehren; spart Anfragen">Long Polling</a>, 20 s je Abfrage, mehrere
+  Abfrager parallel). Grob 0,5–0,7 Mio. SQS-Anfragen im Monat — innerhalb der
+  1 Mio. freien Anfragen, aber der größte Posten im Leerlauf.</li>
+<li><strong>Cognito [B]:</strong> Plan Essentials ist bis 10.000 monatlich aktive Nutzer
+  kostenlos (https://aws.amazon.com/cognito/pricing/); Bestätigungs-E-Mails
+  über den Cognito-Standardversand (höchstens 50 pro Tag) kosten nichts.</li>
+<li><strong>CloudWatch:</strong> ein Alarm (DLQ nicht leer) von 10 freien; Logs mit 3 Tagen
+  Aufbewahrung.</li>
+<li><strong>CDK-<a class="term" href="glossar.html#cdk-bootstrap" title="einmalig je Konto und Region angelegte CDK-Hilfsressourcen (S3-Bucket für Artefakte, ECR-Repository, Rollen)">Bootstrap</a>:</strong> ein S3-Staging-Bucket je <a class="term" href="glossar.html#region" title="geografischer Standort mit eigenen Rechenzentren; eu-central-1 = Frankfurt, us-east-1 = Nord-Virginia (dort müssen manche globalen Einstellungen, z. B. CloudFront-Zertifikate, lieg">Region</a> (Frankfurt und
+  Nord-Virginia) mit wenigen MB Lambda-Code und statischen Dateien; ohne
+  <a class="term" href="glossar.html#guthaben" title="Gutschrift in US-Dollar, die mit Rechnungsbeträgen verrechnet wird; bei Neukonten bis 200 $, verfällt nach 12 Monaten">Guthaben</a> Bruchteile eines Cents [A]. Ein leeres <a class="term" href="glossar.html#ecr" title="AWS-Registry für Docker-Images">ECR</a>-<a class="term" href="glossar.html#repository" title="von Git verwaltetes Projektverzeichnis, z. B. auf GitHub">Repository</a> kostet nichts.</li>
+</ul>
+<h2 id="3-was-auf-eigene-infrastruktur-wandert">3. Was auf eigene Infrastruktur wandert<a class="anchor" href="#3-was-auf-eigene-infrastruktur-wandert" title="Permanent link">#</a></h2>
+<p>Eigene, bereits vorhandene Infrastruktur: ein <strong>eigener <a class="term" href="glossar.html#server" title="Rechner oder Prozess, der Anfragen beantwortet">Server</a></strong> mit <a class="term" href="glossar.html#docker" title="Container-Technik; ein Image enthält eine Anwendung mit allen Abhängigkeiten">Docker</a>,
+<strong>gitlab.rypox.org</strong>, eigene <a class="term" href="glossar.html#nameserver" title="Server, der die DNS-Einträge einer Domain verwaltet; bei rypox eigene (ns1.rypox.net)">Nameserver</a>; dazu kostenlos <a class="term" href="glossar.html#github" title="Plattform für Git-Repositories, Pull Requests und CI">GitHub</a> (öffentliches
+<a class="term" href="glossar.html#repository" title="von Git verwaltetes Projektverzeichnis, z. B. auf GitHub">Repository</a>, Actions, Pages).</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Komponente</th>
+<th>bisher geplant</th>
+<th>neu</th>
+<th>Wirkung</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a class="term" href="glossar.html#terraform-state" title="Datei, in der Terraform den tatsächlichen Zustand der verwalteten Ressourcen festhält; liegt im Demo im GitLab-managed Terraform State (kein State-Bucket in S3)">Terraform-State</a></td>
+<td><a class="term" href="glossar.html#s3" title="Objektspeicher für Dateien beliebiger Größe in „Buckets&quot;; Standard für statische Websites, Uploads, Build-Artefakte">S3-Bucket</a></td>
+<td><strong><a class="term" href="glossar.html#gitlab-managed-terraform-state" title="Terraform-State, den GitLab über ein HTTP-Backend mit Sperre speichert">GitLab-managed Terraform State</a></strong> auf gitlab.rypox.org (<a class="term" href="glossar.html#https" title="verschlüsseltes Web-Protokoll; HTTP ohne Verschlüsselung">HTTP</a>-<a class="term" href="glossar.html#backend" title="der serverseitige Teil einer Anwendung (Fachlogik, Datenhaltung, APIs)">Backend</a> mit <a class="term" href="glossar.html#state-locking" title="Sperre, damit nicht zwei Terraform-Läufe gleichzeitig den State ändern; seit Terraform 1.10 direkt in S3 möglich (früher DynamoDB)">Locking</a>) [B: <a href="https://docs.gitlab.com/user/infrastructure/iac/terraform_state/">https://docs.gitlab.com/user/infrastructure/iac/terraform_state/</a>]; <a class="term" href="glossar.html#terraform" title="verbreitetes IaC-Werkzeug von HashiCorp: Infrastruktur deklarativ in HCL beschreiben, für viele Anbieter (AWS, Azure, Keycloak, GitHub …) über Provider">Terraform</a> läuft <strong>nur in <a class="term" href="glossar.html#gitlab-ci" title="CI/CD in GitLab; hier auf gitlab.rypox.org für Plattform (Terraform) und Altsysteme">GitLab CI</a></strong> (siehe 3.1)</td>
+<td>kein State-Bucket in S3; State (ab Phase 3 mit <a class="term" href="glossar.html#keycloak" title="Open-Source-Identitätsdienst (OIDC, SAML), selbst betrieben; im Demo unter id.rypox.net die Anmeldung des Telko-Altsystems und ab Phase 3 Gegenstelle des Migrate-User-Triggers">Keycloak</a>-Zugangsdaten) bleibt privat</td>
+</tr>
+<tr>
+<td><a class="term" href="glossar.html#legacy-system" title="bestehendes Altsystem mit Kundendaten, das abgelöst werden soll; im Demo simuliert">Altsysteme</a> (Energie-Kundensystem, Kundensystem des übernommenen <a class="term" href="glossar.html#glasfaser" title="Internetanschlüsse; im Demo die Sparten des übernommenen Anbieters">Telekommunikationsanbieters</a>)</td>
+<td>simuliert, teils als <a class="term" href="glossar.html#lambda" title="führt eine einzelne Funktion (z. B. einen HTTP-Handler) bei Bedarf aus; Abrechnung pro Aufruf und Laufzeit, skaliert automatisch von 0 auf viele Instanzen">Lambda</a></td>
+<td><strong>Docker-Container auf dem eigenen Server</strong>, eigenes <a class="term" href="glossar.html#deployment" title="Ausliefern einer neuen Version in eine Umgebung">Deployment</a> über GitLab CI auf gitlab.rypox.org</td>
+<td>echte <a class="term" href="glossar.html#hybrid-architektur" title="Teile eines Systems laufen in der Cloud, andere im eigenen Rechenzentrum bzw. auf eigenen Servern; im Demo: Altsysteme auf eigenem Server, Portal auf AWS">Hybrid-Architektur</a> „Altsystem im eigenen Rechenzentrum, neues Portal in der <a class="term" href="glossar.html#cloud" title="über das Internet gemietete Rechenleistung, Speicher und Dienste, abgerechnet nach Nutzung">Cloud</a>"; ab Phase 3 ruft der <a class="term" href="glossar.html#amazon-cognito" title="AWS-Identitätsdienst für Registrierung, Login, MFA und Benutzerverwaltung; im Demo der Portal-Login (Entscheidung 29.09.2026), angelegt per CDK">Cognito</a>-<a class="term" href="glossar.html#migrate-user-trigger" title="Cognito-Trigger für die Lazy Migration: meldet sich ein unbekannter Nutzer mit Passwort an, prüft die Lambda die Daten beim Altsystem; bei Erfolg legt Cognito den Nutzer mit demsel">Migrate-User-Trigger</a> (Lambda) das Altsystem per HTTPS für die <a class="term" href="glossar.html#lazy-migration" title="Konto wird erst beim ersten Login ins neue System übernommen: im Demo ruft Cognito den Migrate-User-Trigger, der das Passwort einmalig beim Altsystem prüft; danach speichert Cognit">Lazy Migration</a> auf [E]</td>
+</tr>
+<tr>
+<td>Anmeldung des Telko-<a class="term" href="glossar.html#legacy-system" title="bestehendes Altsystem mit Kundendaten, das abgelöst werden soll; im Demo simuliert">Altsystems</a></td>
+<td>—</td>
+<td><strong>eigener Keycloak</strong> unter <code>id.rypox.net</code> (self-hosted); Konfiguration ab Phase 3 per Terraform</td>
+<td>Gegenstelle des Migrate-User-Triggers für Telko-Kunden; 0 <a class="term" href="glossar.html#usd" title="Währung, in der AWS abrechnet">$</a> auf <a class="term" href="glossar.html#aws" title="Cloud-Plattform von Amazon mit über 200 Diensten (Rechenleistung, Datenbanken, Netzwerk, Messaging …), abgerechnet nach Nutzung">AWS</a> [E]</td>
+</tr>
+<tr>
+<td><a class="term" href="glossar.html#storybook" title="Werkzeug, das jede Komponente der Component Library isoliert darstellt und dokumentiert; als statische Seite veröffentlicht">Storybook</a> (<a class="term" href="glossar.html#component-library" title="gemeinsames Paket wiederverwendbarer UI-Bausteine (Buttons, Formulare, Layouts), das alle Micro-Frontends nutzen und so ein einheitliches Aussehen sichern">Component Library</a>) und diese Berichte</td>
+<td>S3 + <a class="term" href="glossar.html#cloudfront" title="Content Delivery Network (CDN): liefert Inhalte weltweit aus nahen Standorten aus, cacht sie und leitet Pfade an verschiedene Ziele (S3, API Gateway, Lambda) weiter">CloudFront</a></td>
+<td><strong><a class="term" href="glossar.html#github-pages" title="kostenloses Hosting statischer Websites direkt aus einem GitHub-Repository; im Demo für Storybook und Berichte">GitHub Pages</a></strong></td>
+<td>kostenlos für öffentliche Repositories, entlastet S3 und CloudFront-<a class="term" href="glossar.html#cache-behavior" title="Regel in CloudFront: welcher Pfad (/api/, /mfe/) an welchen Origin geht und wie gecacht wird">Behaviors</a> [E]</td>
+</tr>
+<tr>
+<td><a class="term" href="glossar.html#dns" title="Telefonbuch des Internets: übersetzt Namen wie energie-demo.rypox.com in Adressen">DNS</a></td>
+<td><a class="term" href="glossar.html#route-53" title="DNS-Dienst von AWS; eine Hosted Zone kostet 0,50 $/Monat">Route 53</a> optional</td>
+<td>eigene Nameserver, <a class="term" href="glossar.html#cname" title="DNS-Eintrag, der einen Namen auf einen anderen verweist, z. B. energie-demo.rypox.com → CloudFront-Adresse; auch für die Zertifikatsprüfung von ACM genutzt">CNAME</a> auf CloudFront</td>
+<td>0 $</td>
+</tr>
+<tr>
+<td><a class="term" href="glossar.html#ci" title="automatisches Bauen und Testen bei jeder Änderung">CI</a>/<a class="term" href="glossar.html#cd" title="automatisches Ausliefern geprüfter Änderungen">CD</a></td>
+<td><a class="term" href="glossar.html#github-actions" title="CI/CD-Dienst von GitHub: Workflows in YAML laufen bei Push, Pull Request oder manuell">GitHub Actions</a></td>
+<td>GitHub Actions für die Anwendung auf AWS; GitLab CI für Plattform und Altsysteme (siehe 3.1)</td>
+<td>0 $ [B]; kein <a class="term" href="glossar.html#gitlab" title="Git-Plattform mit CI, auch selbst betreibbar; bei rypox intern auf gitlab.rypox.org im Einsatz">GitLab</a>-Zugang in GitHub</td>
+</tr>
+</tbody>
+</table></div>
+<p>Bewusst <strong>nicht</strong> verlagert: <a class="term" href="glossar.html#nextjs" title="React-Framework (von Vercel) mit Routing, Server-Rendering, API-Routen und Build-Optimierung">Next.js</a>-<a class="term" href="glossar.html#ssr" title="HTML wird pro Anfrage auf dem Server erzeugt">SSR</a>, <a class="term" href="glossar.html#rest" title="Architekturstil für HTTP-APIs: Ressourcen unter URLs, Operationen über HTTP-Methoden (GET, POST …)">REST</a>-Lambdas, <a class="term" href="glossar.html#dynamodb" title="vollständig verwaltete NoSQL-Datenbank (Schlüssel-Wert/Dokument) mit Antwortzeiten im Millisekundenbereich, ohne Server und ohne Verbindungs-Pool">DynamoDB</a>, <a class="term" href="glossar.html#sqs" title="Nachrichtenwarteschlange: Absender legt Nachrichten ab, Empfänger holt sie ab und bestätigt sie; entkoppelt Dienste und puffert Last">SQS</a>, <a class="term" href="glossar.html#sns" title="Publish/Subscribe-Dienst: eine Nachricht an ein Topic geht an alle Abonnenten (E-Mail, SQS, Lambda, HTTP, SMS)">SNS</a> —
+sie sind kostenlos und gehören zum Kern dessen, was das Demo zeigen soll.
+Statische Next.js-Dateien könnten ebenfalls vom eigenen Server kommen (CloudFront mit
+Custom <a class="term" href="glossar.html#origin" title="Ziel, von dem CloudFront Inhalte holt (S3-Bucket, API Gateway, Lambda-URL)">Origin</a>); das spart nur Bruchteile eines Cents und schwächt die
+S3-Geschichte, daher nicht empfohlen [E].</p>
+<h3 id="31-zwei-getrennte-pipelines-keine-fremden-zugangsdaten">3.1 Zwei getrennte Pipelines, keine fremden Zugangsdaten<a class="anchor" href="#31-zwei-getrennte-pipelines-keine-fremden-zugangsdaten" title="Permanent link">#</a></h3>
+<p>Vorgabe des Nutzers: <strong>Kein <a class="term" href="glossar.html#token" title="digitaler Ausweis, den ein Identitätsdienst ausstellt und den eine App bei jedem API-Aufruf mitschickt">Zugangstoken</a> für gitlab.rypox.org in GitHub</strong> —
+in einem öffentlichen Repository wäre jede Fehlkonfiguration öffentlich.
+Deshalb zwei getrennte Vertrauensbereiche [E]:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th>GitHub (öffentlich)</th>
+<th>GitLab (gitlab.rypox.org, privat)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Quellcode</td>
+<td>öffentliches Repository: Portal, Services, <a class="term" href="glossar.html#cdk" title="Infrastruktur als Programmcode (TypeScript, Java, Python …): man schreibt Klassen wie new Table(...), CDK erzeugt daraus CloudFormation-Vorlagen und legt die Ressourcen an">CDK</a>, <strong>Terraform-Code</strong>, <a class="term" href="glossar.html#openapi" title="maschinenlesbare Beschreibung einer REST-API (YAML/JSON); daraus lassen sich Clients und Dokumentation erzeugen">OpenAPI</a>-Vertrag der Altsysteme</td>
+<td><strong>privates GitLab-Repository für die Altsysteme</strong> (Entscheidung 29.09.2026); die Plattform-<a class="term" href="glossar.html#pipeline" title="automatisierte Abfolge von Schritten (bauen, testen, ausliefern)">Pipeline</a> klont das öffentliche GitHub-Repository bei jedem Lauf per <code>git clone</code> auf einen festen <a class="term" href="glossar.html#commit" title="Commit = gespeicherter Änderungsstand in Git; Git-Tag = Name für einen bestimmten Commit, z. B. eine Version v1.2.0 (nicht zu verwechseln mit AWS-Tags)">Tag/Commit</a> — öffentlich lesbar, also <strong>ohne Token</strong></td>
+</tr>
+<tr>
+<td><a class="term" href="glossar.html#pipeline" title="automatisierte Abfolge von Schritten (bauen, testen, ausliefern)">Pipeline</a></td>
+<td>GitHub Actions</td>
+<td>GitLab CI</td>
+</tr>
+<tr>
+<td>Baut und <a class="term" href="glossar.html#deployment" title="Ausliefern einer neuen Version in eine Umgebung">deployt</a></td>
+<td><strong>Anwendungsschicht</strong> per CDK: Next.js-<a class="term" href="glossar.html#multi-zones" title="Next.js-Ansatz, mehrere Next.js-Apps unter einer Domain zu betreiben, aufgeteilt nach Pfaden">Zonen</a>, Lambdas, <a class="term" href="glossar.html#api-gateway" title="verwalteter Eingangspunkt für APIs: nimmt HTTP-Anfragen an, prüft Authentifizierung, drosselt, leitet an Lambda weiter">API Gateway</a>, DynamoDB, <a class="term" href="glossar.html#eventbridge" title="Event-Bus: Dienste veröffentlichen Ereignisse, Regeln leiten sie anhand ihres Inhalts an Ziele (SQS, Lambda, SNS …) weiter">EventBridge</a>, SQS, SNS, <strong>Cognito <a class="term" href="glossar.html#user-pool" title="Nutzerverzeichnis in Cognito mit eigenen Nutzern, Gruppen, App-Clients und Triggern; zugleich OIDC-Aussteller">User Pool</a></strong> mit Triggern</td>
+<td><strong><a class="term" href="glossar.html#plattform-schicht" title="im Demo: per Terraform aus GitLab CI verwaltete Grundlagen (OIDC-Vertrauensstellungen, Budget + SNS-Grundlage des Kill-Switch, SSM-Grundwerte, ab Phase 3 Keycloak-Konfiguration), a">Fundament</a></strong> per Terraform: <a class="term" href="glossar.html#openid-connect" title="Identitätsschicht auf OAuth2: liefert zusätzlich ein ID-Token mit Nutzerangaben; auch für die Anmeldung von GitHub Actions bei AWS genutzt">OIDC</a>-<a class="term" href="glossar.html#trust-policy" title="Teil einer IAM-Rolle: wer diese Rolle übernehmen darf (z. B. nur GitHub Actions aus einem bestimmten Repo)">Vertrauensstellungen</a>, <a class="term" href="glossar.html#aws-budgets" title="kostenloser Dienst für Kostengrenzen mit E-Mail-/SNS-Alarm bei Überschreitung; kein harter Stopp, Daten kommen Stunden verzögert">Budget</a> + SNS-Grundlage des <a class="term" href="glossar.html#kill-switch" title="im Demo geplante Automatik: Budget-Alarm → SNS → Lambda setzt Throttling/Concurrency auf 0 und legt die API still">Kill-Switch</a>, <a class="term" href="glossar.html#ssm-parameter-store" title="Ablage für Konfigurationswerte und (verschlüsselt als SecureString) Geheimnisse; Standard-Stufe kostenlos. Im Demo auch Übergabestelle zwischen Terraform und CDK">SSM</a>-Grundwerte, ab Phase 3 Keycloak-Konfiguration; <strong>Altsysteme</strong> als Docker-Container auf dem eigenen Server</td>
+</tr>
+<tr>
+<td>Zugang zu <a class="term" href="glossar.html#aws" title="Cloud-Plattform von Amazon mit über 200 Diensten (Rechenleistung, Datenbanken, Netzwerk, Messaging …), abgerechnet nach Nutzung">AWS</a></td>
+<td><a class="term" href="glossar.html#oidc-rolle" title="IAM-Rolle, die GitHub Actions per kurzlebigem OIDC-Token übernimmt – es werden keine dauerhaften AWS-Zugangsschlüssel gespeichert">OIDC-Rolle</a> nur für das GitHub-Repository <code>janpfeil/…</code></td>
+<td>eigene OIDC-Rolle für gitlab.rypox.org (GitLab als Identitätsanbieter; <code>id_tokens</code> in der Pipeline); die <a class="term" href="glossar.html#oidc-discovery" title="öffentliche Adresse, unter der ein Identitätsanbieter seine Signaturschlüssel veröffentlicht; id_tokens erzeugt in GitLab CI ein signiertes OIDC-Token für AWS">OIDC-Discovery</a> unter <code>&lt;https://gitlab.rypox.org/.well-known/openid-configuration</code>&gt; ist öffentlich erreichbar (geprüft 29.09.2026), AWS kann die Signatur also prüfen</td>
+</tr>
+<tr>
+<td>Geheimnisse</td>
+<td>keine</td>
+<td>z. B. Keycloak-Verwaltungszugang (ab Phase 3), Schlüssel der Altsystem-<a class="term" href="glossar.html#api" title="Programmierschnittstelle, über die Programme miteinander sprechen">Schnittstelle</a>, Terraform-State — nur in GitLab-CI-Variablen und im GitLab-State; was die Anwendung zur Laufzeit braucht (z. B. Zugang des Migrate-User-Triggers zum Altsystem), legt GitLab als SSM-SecureString ab</td>
+</tr>
+<tr>
+<td>Übergabe</td>
+<td>liest Werte aus dem SSM Parameter Store (z. B. Adresse des Keycloak, Altsystem-<a class="term" href="glossar.html#endpunkt" title="einzelne Adresse einer API, z. B. POST /api/meter-readings">Endpunkte</a>, Budget-Topic)</td>
+<td>schreibt diese Werte in den SSM Parameter Store</td>
+</tr>
+</tbody>
+</table></div>
+<p>Damit hat GitHub <strong>keinerlei</strong> Zugang zu GitLab oder den eigenen Server, und GitLab
+braucht keinen Zugang zu GitHub (ein öffentliches Repository lässt sich
+ohne Token klonen). Beide erhalten AWS-Rechte nur als
+kurzlebige OIDC-Berechtigung, eingeschränkt auf ihren Teil.</p>
+<p><strong>Code auf GitHub, Deployment über GitLab — geht das?</strong> Ja [E]:</p>
+<ul>
+<li>GitLabs eingebauter <strong><a class="term" href="glossar.html#pull-mirror" title="GitLab holt regelmäßig den Stand eines anderen Repositories; erst ab GitLab Premium">Pull-Mirror</a></strong> wäre der bequeme Weg, ist aber erst
+  ab <a class="term" href="glossar.html#gitlab-community-edition" title="kostenlose, selbst betreibbare GitLab-Ausgabe; Premium ist die kostenpflichtige Stufe mit Zusatzfunktionen wie Pull-Mirror">GitLab Premium</a> verfügbar [B: <a href="https://docs.gitlab.com/user/project/repository/mirror/pull/">https://docs.gitlab.com/user/project/repository/mirror/pull/</a>].
+  gitlab.rypox.org ist eine selbst betriebene <strong>Community Edition</strong> (geprüft
+  29.09.2026) — der Pull-Mirror steht dort also nicht zur Verfügung.</li>
+<li>Ohne Premium: Ein kleines GitLab-Projekt enthält nur die Pipeline
+  (<code>.gitlab-ci.yml</code>); sie klont das <strong>öffentliche</strong> GitHub-Repository auf
+  einen festen Tag oder Commit (kein Token nötig), baut und deployt. Start
+  manuell, zeitgesteuert oder per Knopf in GitLab.</li>
+<li>Die Versionsnummer (Tag) wird in GitLab gesetzt — GitHub kann GitLab nicht
+  anstoßen, und das ist gewollt.</li>
+</ul>
+<p><strong>Entscheidung (29.09.2026):</strong></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Teil</th>
+<th>Code liegt</th>
+<th>Deployment</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Portal, Services, <a class="term" href="glossar.html#cdk" title="Infrastruktur als Programmcode (TypeScript, Java, Python …): man schreibt Klassen wie new Table(...), CDK erzeugt daraus CloudFormation-Vorlagen und legt die Ressourcen an">CDK</a></td>
+<td>GitHub (öffentlich)</td>
+<td>GitHub Actions</td>
+</tr>
+<tr>
+<td><a class="term" href="glossar.html#terraform" title="verbreitetes IaC-Werkzeug von HashiCorp: Infrastruktur deklarativ in HCL beschreiben, für viele Anbieter (AWS, Azure, Keycloak, GitHub …) über Provider">Terraform</a> (Plattform)</td>
+<td>GitHub (öffentlich — zeigt Terraform-Kenntnisse)</td>
+<td>GitLab CI, klont GitHub ohne Token</td>
+</tr>
+<tr>
+<td><a class="term" href="glossar.html#legacy-system" title="bestehendes Altsystem mit Kundendaten, das abgelöst werden soll; im Demo simuliert">Altsysteme</a></td>
+<td>GitLab (privat)</td>
+<td>GitLab CI → eigener Server</td>
+</tr>
+<tr>
+<td><a class="term" href="glossar.html#api" title="Programmierschnittstelle, über die Programme miteinander sprechen">Schnittstelle</a> der <a class="term" href="glossar.html#legacy-system" title="bestehendes Altsystem mit Kundendaten, das abgelöst werden soll; im Demo simuliert">Altsysteme</a> (<a class="term" href="glossar.html#openapi" title="maschinenlesbare Beschreibung einer REST-API (YAML/JSON); daraus lassen sich Clients und Dokumentation erzeugen">OpenAPI</a>)</td>
+<td>GitHub (öffentlich, als Vertrag)</td>
+<td>—</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="4-betriebsarten-und-wie-sie-sich-für-besucher-anfühlen">4. Betriebsarten und wie sie sich für Besucher anfühlen<a class="anchor" href="#4-betriebsarten-und-wie-sie-sich-für-besucher-anfühlen" title="Permanent link">#</a></h2>
+<p>Kostenlose Bausteine (<a class="term" href="glossar.html#cloudfront" title="Content Delivery Network (CDN): liefert Inhalte weltweit aus nahen Standorten aus, cacht sie und leitet Pfade an verschiedene Ziele (S3, API Gateway, Lambda) weiter">CloudFront</a>, <a class="term" href="glossar.html#nextjs" title="React-Framework (von Vercel) mit Routing, Server-Rendering, API-Routen und Build-Optimierung">Next.js</a>-<a class="term" href="glossar.html#ssr" title="HTML wird pro Anfrage auf dem Server erzeugt">SSR</a>-Lambda, <a class="term" href="glossar.html#rest" title="Architekturstil für HTTP-APIs: Ressourcen unter URLs, Operationen über HTTP-Methoden (GET, POST …)">REST</a>-<a class="term" href="glossar.html#lambda" title="führt eine einzelne Funktion (z. B. einen HTTP-Handler) bei Bedarf aus; Abrechnung pro Aufruf und Laufzeit, skaliert automatisch von 0 auf viele Instanzen">Lambdas</a>,
+<a class="term" href="glossar.html#dynamodb" title="vollständig verwaltete NoSQL-Datenbank (Schlüssel-Wert/Dokument) mit Antwortzeiten im Millisekundenbereich, ohne Server und ohne Verbindungs-Pool">DynamoDB</a>, <a class="term" href="glossar.html#sqs" title="Nachrichtenwarteschlange: Absender legt Nachrichten ab, Empfänger holt sie ab und bestätigt sie; entkoppelt Dienste und puffert Last">SQS</a>, <a class="term" href="glossar.html#sns" title="Publish/Subscribe-Dienst: eine Nachricht an ein Topic geht an alle Abonnenten (E-Mail, SQS, Lambda, HTTP, SMS)">SNS</a>, <a class="term" href="glossar.html#amazon-cognito" title="AWS-Identitätsdienst für Registrierung, Login, MFA und Benutzerverwaltung; im Demo der Portal-Login (Entscheidung 29.09.2026), angelegt per CDK">Cognito</a>) dürfen <strong>immer</strong> laufen. Die Frage betrifft nur
+die drei <a class="term" href="glossar.html#cent-dienst" title="in diesem Wiki: AWS-Dienst ohne dauerhaftes Freikontingent, der bei Demo-Nutzung nur Bruchteile eines Cents kostet (API Gateway, EventBridge-Events, S3)">Cent-Dienste</a> <a class="term" href="glossar.html#api-gateway" title="verwalteter Eingangspunkt für APIs: nimmt HTTP-Anfragen an, prüft Authentifizierung, drosselt, leitet an Lambda weiter">API Gateway</a>, <a class="term" href="glossar.html#eventbridge" title="Event-Bus: Dienste veröffentlichen Ereignisse, Regeln leiten sie anhand ihres Inhalts an Ziele (SQS, Lambda, SNS …) weiter">EventBridge</a> und <a class="term" href="glossar.html#s3" title="Objektspeicher für Dateien beliebiger Größe in „Buckets&quot;; Standard für statische Websites, Uploads, Build-Artefakte">S3</a>.</p>
+<h3 id="41-drei-betriebsarten">4.1 Drei Betriebsarten<a class="anchor" href="#41-drei-betriebsarten" title="Permanent link">#</a></h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th><strong>Z1 – dauerhaft mit Deckel</strong></th>
+<th><strong>Z2 – Demo auf Abruf (Inhaber startet)</strong></th>
+<th><strong>Z3 – Schlafmodus (Besucher weckt)</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Idee</td>
+<td>alles läuft dauerhaft; <a class="term" href="glossar.html#throttling" title="Begrenzung der Anfragen pro Sekunde; zu viele Anfragen erhalten HTTP 429">Throttling</a>, <a class="term" href="glossar.html#aws-budgets" title="kostenloser Dienst für Kostengrenzen mit E-Mail-/SNS-Alarm bei Überschreitung; kein harter Stopp, Daten kommen Stunden verzögert">Budget-Alarm</a> und <a class="term" href="glossar.html#kill-switch" title="im Demo geplante Automatik: Budget-Alarm → SNS → Lambda setzt Throttling/Concurrency auf 0 und legt die API still">Kill-Switch</a> begrenzen Kosten</td>
+<td>der gesamte <a class="term" href="glossar.html#aws" title="Cloud-Plattform von Amazon mit über 200 Diensten (Rechenleistung, Datenbanken, Netzwerk, Messaging …), abgerechnet nach Nutzung">AWS</a>-Teil wird vor einer Vorführung per <a class="term" href="glossar.html#workflow" title="allgemein: automatisierter Ablauf mehrerer Schritte; bei GitHub: eine Pipeline-Datei">Workflow</a> aufgebaut und danach abgebaut</td>
+<td>kostenlose Teile laufen immer; die drei Cent-Dienste werden nach Inaktivität automatisch entfernt und beim nächsten Besuch automatisch neu angelegt</td>
+</tr>
+<tr>
+<td>Kosten</td>
+<td>0,00–0,05 <a class="term" href="glossar.html#usd" title="Währung, in der AWS abrechnet">$</a>/Monat [A]</td>
+<td>0,00 $ zwischen Vorführungen [A]</td>
+<td>0,00 $ im Schlaf; Bruchteile eines Cents je Wachphase [A]</td>
+</tr>
+<tr>
+<td>Link aus Profil oder Präsentation</td>
+<td>funktioniert jederzeit</td>
+<td>funktioniert nur im vereinbarten Zeitfenster</td>
+<td>funktioniert jederzeit, mit Wartezeit beim ersten Aufruf</td>
+</tr>
+<tr>
+<td>Aufwand</td>
+<td>gering (Deckel ohnehin geplant)</td>
+<td>mittel (zuverlässiger <a class="term" href="glossar.html#demo-modus" title="Betriebsart, bei der der AWS-Stack nur für eine Vorführung per GitHub-Workflow aufgebaut und danach wieder abgebaut wird; dazwischen 0 $">Auf-/Abbau</a>, Demo-Daten)</td>
+<td>hoch (<a class="term" href="glossar.html#schlafmodus" title="Betriebsart, in der die kostenpflichtigen Teile nach Inaktivität automatisch entfernt und beim nächsten Besuch automatisch neu angelegt werden; der Besucher wartet dann 1–3 Minuten">Aufweck-Mechanik</a>, Statusseite, Zeitschaltung)</td>
+</tr>
+<tr>
+<td>Zeigt zusätzlich</td>
+<td>Kostenschutz im Betrieb</td>
+<td>reproduzierbare <a class="term" href="glossar.html#iac" title="Infrastruktur (Server, Datenbanken, Rechte) wird in Dateien beschrieben, versioniert und automatisch angelegt statt per Klick">Infrastruktur als Code</a></td>
+<td>„Scale to zero" bis auf Infrastrukturebene — ein starkes, seltenes Demo-Merkmal</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="42-erlebnis-des-besuchers">4.2 Erlebnis des Besuchers<a class="anchor" href="#42-erlebnis-des-besuchers" title="Permanent link">#</a></h3>
+<p><strong><a class="term" href="glossar.html#dauerbetrieb-mit-deckel" title="Betriebsart, bei der alles dauerhaft läuft und Throttling, Budget-Alarm und Kill-Switch Kosten auf Cent-Bruchteile begrenzen">Z1</a>:</strong> Link öffnen → Startseite in unter einer Sekunde (aus dem <a class="term" href="glossar.html#cdn" title="Netz verteilter Server, das Inhalte nah beim Nutzer zwischenspeichert">CDN</a>) →
+<a class="term" href="glossar.html#login" title="Anmeldung eines Nutzers">Login</a> → Portal. Nach längerer Ruhe dauert der erste Seitenaufbau hinter
+dem Login 1–2 s länger (<a class="term" href="glossar.html#kaltstart" title="Verzögerung, wenn eine Lambda-Instanz erst gestartet werden muss (bei Node.js meist &lt; 1 s)">Kaltstart</a> der SSR-Lambda) [A].</p>
+<p><strong>Z2:</strong> Außerhalb einer Vorführung zeigt der Link eine Hinweisseite (auf
+<a class="term" href="glossar.html#github-pages" title="kostenloses Hosting statischer Websites direkt aus einem GitHub-Repository; im Demo für Storybook und Berichte">GitHub Pages</a>): kurze Beschreibung, Architekturbild, <strong>Video/GIF der
+5-Minuten-Demo</strong>, Link zum Code und die Bitte, eine Live-Vorführung
+anzufragen. Innerhalb des Zeitfensters verhält sich alles wie Z1. Wer den
+Link spontan aus einem Profil oder einer Präsentation öffnet, sieht also <strong>kein</strong> lebendes
+System — nur das Video.</p>
+<p><strong>Z3:</strong> Link öffnen → Startseite und Login sofort (laufen immer). Nach dem
+Login erscheint, falls das Portal schläft, eine Statusseite: „Das
+Demo-<a class="term" href="glossar.html#backend" title="der serverseitige Teil einer Anwendung (Fachlogik, Datenhaltung, APIs)">Backend</a> wird gestartet – ca. 1–3 Minuten", mit Fortschrittsanzeige
+(„<a class="term" href="glossar.html#api" title="Programmierschnittstelle, über die Programme miteinander sprechen">API</a> wird angelegt … Ereignisbus … fertig"). Danach geht es automatisch
+weiter. Nach z. B. 60 Minuten ohne Aufruf legt sich das Portal wieder
+schlafen. Mechanik [E]: Eine kostenlose Lambda erzeugt die kleine
+<a class="term" href="glossar.html#cloudformation" title="AWS-eigener Dienst, der Ressourcen aus einer JSON/YAML-Vorlage anlegt, ändert und löscht; Grundlage von CDK und SAM">CloudFormation</a>-Vorlage der drei Cent-Dienste direkt (ohne <a class="term" href="glossar.html#github" title="Plattform für Git-Repositories, Pull Requests und CI">GitHub</a>-Umweg);
+der <a class="term" href="glossar.html#eventbridge-scheduler" title="zeitgesteuertes Auslösen von Zielen (einmalig oder wiederkehrend); 14 Mio. Aufrufe/Monat frei">EventBridge Scheduler</a> (kostenlos) löst das Einschlafen aus.</p>
+<h3 id="43-wie-lange-dauert-der-start">4.3 Wie lange dauert der Start?<a class="anchor" href="#43-wie-lange-dauert-der-start" title="Permanent link">#</a></h3>
+<p>Gemessen beim ersten <a class="term" href="glossar.html#durchstich" title="erste, schmale Umsetzung durch alle Schichten (UI → API → DB → Event), um die Architektur früh zu beweisen">Durchstich</a> am 29.09.2026 [B: Zusammenfassungen der
+GitHub-Actions-Läufe „<a class="term" href="glossar.html#deployment" title="Ausliefern einer neuen Version in eine Umgebung">Deploy</a>", CloudFormation-<a class="term" href="glossar.html#event" title="Nachricht, dass etwas passiert ist (z. B. „Zählerstand erfasst&quot;); Empfänger reagieren darauf, ohne dass der Absender sie kennt">Ereignisse</a>,
+<a href="architektur.html">Architektur</a> §9]; Z3 ist weiterhin eine Schätzung [A], weil
+die Aufweck-Mechanik nicht gebaut ist.</p>
+<figure class="chart"><figcaption>Startzeit bis zum nutzbaren Portal</figcaption><div class="sub">Minuten; gemessen 29.09.2026, Z3 geschätzt; hervorgehoben: Wartezeit, die ein Besucher erlebt</div><svg viewBox="0 0 1000 152" role="img" aria-label="Startzeit bis zum nutzbaren Portal" preserveAspectRatio="xMinYMin meet"><line class="grid" x1="364.4" y1="18" x2="364.4" y2="144"/><text x="364.4" y="14.0" class="t-muted" font-size="12" text-anchor="middle">0 min</text><line class="grid" x1="495.8" y1="18" x2="495.8" y2="144"/><text x="495.8" y="14.0" class="t-muted" font-size="12" text-anchor="middle">2,5 min</text><line class="grid" x1="627.2" y1="18" x2="627.2" y2="144"/><text x="627.2" y="14.0" class="t-muted" font-size="12" text-anchor="middle">5 min</text><line class="grid" x1="758.6" y1="18" x2="758.6" y2="144"/><text x="758.6" y="14.0" class="t-muted" font-size="12" text-anchor="middle">7,5 min</text><line class="grid" x1="890.0" y1="18" x2="890.0" y2="144"/><text x="890.0" y="14.0" class="t-muted" font-size="12" text-anchor="middle">10 min</text><g tabindex="0" data-tip="Z1 (läuft immer): 0,0 min – Kaltstart der Shell-Lambda 1,6 s, danach 0,05–0,07 s"><rect class="hit" x="0" y="24" width="1000" height="30"/><text x="356.4" y="44.0" class="t-ink" font-size="14" text-anchor="end">Z1 (läuft immer)</text><path class="f-s1" d="M364.4,30.0h0.8a0.7884,0.7884 0 0 1 0.7884,0.7884v16.4a0.7884,0.7884 0 0 1 -0.7884,0.7884h-0.8z"/><text x="372.0" y="44.0" class="t-ink2" font-size="13" text-anchor="start">0,0 min</text></g><g tabindex="0" data-tip="Z3 Aufwecken (Besucher wartet, geschätzt): 2 min – API Gateway, EventBridge-Regeln, Upload-Bucket"><rect class="hit" x="0" y="54" width="1000" height="30"/><text x="356.4" y="74.0" class="t-ink" font-size="14" text-anchor="end">Z3 Aufwecken (Besucher wartet, geschätzt)</text><path class="f-s2" d="M364.4,60.0h101.1a4,4 0 0 1 4,4v10.0a4,4 0 0 1 -4,4h-101.1z"/><text x="475.5" y="74.0" class="t-ink2" font-size="13" text-anchor="start">2 min</text></g><g tabindex="0" data-tip="Z2 Teilaufbau (CloudFront bleibt stehen): 5,5 min – Neuaufbau nach Pause: Build 0,5 + Kern 3,2 + Edge 1,8 min; keine DNS-Änderung"><rect class="hit" x="0" y="84" width="1000" height="30"/><text x="356.4" y="104.0" class="t-ink" font-size="14" text-anchor="end">Z2 Teilaufbau (CloudFront bleibt stehen)</text><path class="f-s1" d="M364.4,90.0h285.1a4,4 0 0 1 4,4v10.0a4,4 0 0 1 -4,4h-285.1z"/><text x="659.5" y="104.0" class="t-ink2" font-size="13" text-anchor="start">5,5 min</text></g><g tabindex="0" data-tip="Z2 Vollaufbau (inkl. CloudFront): 6,3 min – Build 0,5 min + Anwendungs-Stack 5,7 min, davon CloudFront 3,7 min"><rect class="hit" x="0" y="114" width="1000" height="30"/><text x="356.4" y="134.0" class="t-ink" font-size="14" text-anchor="end">Z2 Vollaufbau (inkl. CloudFront)</text><path class="f-s1" d="M364.4,120.0h327.1a4,4 0 0 1 4,4v10.0a4,4 0 0 1 -4,4h-327.1z"/><text x="701.5" y="134.0" class="t-ink2" font-size="13" text-anchor="start">6,3 min</text></g><line class="axis" x1="364.4" y1="18" x2="364.4" y2="144"/></svg><div class="foot">GitHub Actions / CloudFormation [B], Z3 [A]</div><details><summary>Daten als Tabelle</summary><div class="table-wrap"><div class="table-wrap"><table><thead><tr><th>Kategorie</th><th>Wert</th><th>Anmerkung</th></tr></thead><tbody><tr><td><a class="term" href="glossar.html#dauerbetrieb-mit-deckel" title="Betriebsart, bei der alles dauerhaft läuft und Throttling, Budget-Alarm und Kill-Switch Kosten auf Cent-Bruchteile begrenzen">Z1</a> (läuft immer)</td><td>0,0 min</td><td>Kaltstart der Shell-Lambda 1,6 s, danach 0,05–0,07 s</td></tr><tr><td><a class="term" href="glossar.html#schlafmodus" title="Betriebsart, in der die kostenpflichtigen Teile nach Inaktivität automatisch entfernt und beim nächsten Besuch automatisch neu angelegt werden; der Besucher wartet dann 1–3 Minuten">Z3</a> Aufwecken (Besucher wartet, geschätzt)</td><td>2 min</td><td>API Gateway, EventBridge-Regeln, Upload-Bucket</td></tr><tr><td><a class="term" href="glossar.html#demo-modus" title="Betriebsart, bei der der AWS-Stack nur für eine Vorführung per GitHub-Workflow aufgebaut und danach wieder abgebaut wird; dazwischen 0 $">Z2</a> Teilaufbau (<a class="term" href="glossar.html#cloudfront" title="Content Delivery Network (CDN): liefert Inhalte weltweit aus nahen Standorten aus, cacht sie und leitet Pfade an verschiedene Ziele (S3, API Gateway, Lambda) weiter">CloudFront</a> bleibt stehen)</td><td>5,5 min</td><td>Neuaufbau nach Pause: Build 0,5 + Kern 3,2 + Edge 1,8 min; keine DNS-Änderung</td></tr><tr><td><a class="term" href="glossar.html#demo-modus" title="Betriebsart, bei der der AWS-Stack nur für eine Vorführung per GitHub-Workflow aufgebaut und danach wieder abgebaut wird; dazwischen 0 $">Z2</a> Vollaufbau (inkl. <a class="term" href="glossar.html#cloudfront" title="Content Delivery Network (CDN): liefert Inhalte weltweit aus nahen Standorten aus, cacht sie und leitet Pfade an verschiedene Ziele (S3, API Gateway, Lambda) weiter">CloudFront</a>)</td><td>6,3 min</td><td>Build 0,5 min + Anwendungs-Stack 5,7 min, davon CloudFront 3,7 min</td></tr></tbody></table></div></div></details></figure>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Schritt</th>
+<th>Z2 Vollaufbau (gemessen)</th>
+<th>Z2 Teilaufbau (gemessen)</th>
+<th>Z3 Aufwecken [A]</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a class="term" href="glossar.html#runner" title="Maschine, auf der ein GitHub-Actions-Job läuft; Standard-Runner sind für öffentliche Repos kostenlos">Runner</a>-Start, Installation, <a class="term" href="glossar.html#build" title="Übersetzen und Paketieren des Quellcodes zu auslieferbaren Dateien (Artefakten)">Build</a> inkl. Synth</td>
+<td>32 s</td>
+<td>32 s</td>
+<td>entfällt</td>
+</tr>
+<tr>
+<td><a class="term" href="glossar.html#cloudfront" title="Content Delivery Network (CDN): liefert Inhalte weltweit aus nahen Standorten aus, cacht sie und leitet Pfade an verschiedene Ziele (S3, API Gateway, Lambda) weiter">CloudFront-Distribution</a> anlegen</td>
+<td>222 s</td>
+<td>entfällt (bleibt stehen)</td>
+<td>entfällt</td>
+</tr>
+<tr>
+<td>übrige Ressourcen (<a class="term" href="glossar.html#amazon-cognito" title="AWS-Identitätsdienst für Registrierung, Login, MFA und Benutzerverwaltung; im Demo der Portal-Login (Entscheidung 29.09.2026), angelegt per CDK">Cognito</a>, <a class="term" href="glossar.html#lambda" title="führt eine einzelne Funktion (z. B. einen HTTP-Handler) bei Bedarf aus; Abrechnung pro Aufruf und Laufzeit, skaliert automatisch von 0 auf viele Instanzen">Lambdas</a>, <a class="term" href="glossar.html#dynamodb" title="vollständig verwaltete NoSQL-Datenbank (Schlüssel-Wert/Dokument) mit Antwortzeiten im Millisekundenbereich, ohne Server und ohne Verbindungs-Pool">DynamoDB</a>, <a class="term" href="glossar.html#sqs" title="Nachrichtenwarteschlange: Absender legt Nachrichten ab, Empfänger holt sie ab und bestätigt sie; entkoppelt Dienste und puffert Last">SQS</a>, <a class="term" href="glossar.html#sns" title="Publish/Subscribe-Dienst: eine Nachricht an ein Topic geht an alle Abonnenten (E-Mail, SQS, Lambda, HTTP, SMS)">SNS</a>, <a class="term" href="glossar.html#api" title="Programmierschnittstelle, über die Programme miteinander sprechen">API</a>, <a class="term" href="glossar.html#eventbridge" title="Event-Bus: Dienste veröffentlichen Ereignisse, Regeln leiten sie anhand ihres Inhalts an Ziele (SQS, Lambda, SNS …) weiter">EventBridge</a>, <a class="term" href="glossar.html#s3" title="Objektspeicher für Dateien beliebiger Größe in „Buckets&quot;; Standard für statische Websites, Uploads, Build-Artefakte">S3</a>)</td>
+<td>≈ 121 s</td>
+<td>im Update-Deploy enthalten</td>
+<td>1–2 min</td>
+</tr>
+<tr>
+<td>Anwendungs-<a class="term" href="glossar.html#stack" title="Einheit in CloudFormation/CDK: eine Gruppe von Ressourcen, die gemeinsam angelegt und gelöscht wird">Stack</a> gesamt</td>
+<td>343 s</td>
+<td>191 s + 105 s <a class="term" href="glossar.html#edge-stack" title="CDK-Stack für alles am Rand des Systems: CloudFront, Zertifikat, CloudFront Functions">Edge</a>-Umstellung (Neuaufbau nach Pause); 72–83 s bei reinem Code-Update</td>
+<td>—</td>
+</tr>
+<tr>
+<td><strong>Summe bis nutzbar</strong></td>
+<td><strong>ca. 6 min</strong></td>
+<td><strong>ca. 5,5 min</strong> nach Pause, <strong>ca. 2 min</strong> bei Code-Update</td>
+<td><strong>ca. 1–3 min</strong></td>
+</tr>
+</tbody>
+</table></div>
+<p>Nur beim allerersten Aufbau kommt die Zertifikatsprüfung hinzu (Stack in
+<a class="term" href="glossar.html#region" title="geografischer Standort mit eigenen Rechenzentren; eu-central-1 = Frankfurt, us-east-1 = Nord-Virginia (dort müssen manche globalen Einstellungen, z. B. CloudFront-Zertifikate, lieg">us-east-1</a>: 1.144 s, fast vollständig Warten auf den <a class="term" href="glossar.html#dns" title="Telefonbuch des Internets: übersetzt Namen wie energie-demo.rypox.com in Adressen">DNS</a>-Eintrag). Der
+Validierungs-<a class="term" href="glossar.html#cname" title="DNS-Eintrag, der einen Namen auf einen anderen verweist, z. B. energie-demo.rypox.com → CloudFront-Adresse; auch für die Zertifikatsprüfung von ACM genutzt">CNAME</a> bleibt dauerhaft stehen; jeder weitere Aufbau bestätigt
+das Zertifikat ohne Wartezeit. Gegenüber der Schätzung (10–15 min) ist der
+Vollaufbau damit gut doppelt so schnell; Demo-Daten gibt es in Phase 1 noch
+nicht.</p>
+<h2 id="5-empfehlung">5. Empfehlung<a class="anchor" href="#5-empfehlung" title="Permanent link">#</a></h2>
+<ul>
+<li><strong><a class="term" href="glossar.html#dauerbetrieb-mit-deckel" title="Betriebsart, bei der alles dauerhaft läuft und Throttling, Budget-Alarm und Kill-Switch Kosten auf Cent-Bruchteile begrenzen">Z1</a></strong>, wenn der Link jederzeit ohne Wartezeit funktionieren soll und
+  Cent-Bruchteile mit hartem Deckel akzeptabel sind.</li>
+<li><strong><a class="term" href="glossar.html#schlafmodus" title="Betriebsart, in der die kostenpflichtigen Teile nach Inaktivität automatisch entfernt und beim nächsten Besuch automatisch neu angelegt werden; der Besucher wartet dann 1–3 Minuten">Z3</a></strong>, wenn garantiert nichts laufen soll, das kostet, und der Link
+  trotzdem jederzeit funktionieren soll — mit 1–3 Minuten Wartezeit nach
+  längerer Ruhe und deutlich mehr Bauaufwand.</li>
+<li><strong><a class="term" href="glossar.html#demo-modus" title="Betriebsart, bei der der AWS-Stack nur für eine Vorführung per GitHub-Workflow aufgebaut und danach wieder abgebaut wird; dazwischen 0 $">Z2</a></strong> nur, wenn Live-Vorführungen ohnehin verabredet werden; für
+  spontane Besucher ist ein Video schwächer als ein
+  lebendes System [E].</li>
+</ul>
+<p>Vorgehen [E]: mit <strong>Z1 und Deckel</strong> starten (für den <a class="term" href="glossar.html#durchstich" title="erste, schmale Umsetzung durch alle Schichten (UI → API → DB → Event), um die Architektur früh zu beweisen">Durchstich</a> ohnehin
+nötig), Startzeiten messen und dann über Z3 entscheiden. Der Auf-/Abbau-
+<a class="term" href="glossar.html#workflow" title="allgemein: automatisierter Ablauf mehrerer Schritte; bei GitHub: eine Pipeline-Datei">Workflow</a> aus Z2 entsteht als <a class="term" href="glossar.html#teardown" title="vollständiges Entfernen aller Demo-Ressourcen per cdk destroy und terraform destroy">Teardown</a> sowieso.</p>
+<h2 id="6-grenzen-dieser-aussage">6. Grenzen dieser Aussage<a class="anchor" href="#6-grenzen-dieser-aussage" title="Permanent link">#</a></h2>
+<ul>
+<li>Die <a class="term" href="glossar.html#always-free" title="Freikontingente, die unbefristet jeden Monat gelten, z. B. 1 Mio. Lambda-Aufrufe">Always-Free</a>-Werte für <a class="term" href="glossar.html#lambda" title="führt eine einzelne Funktion (z. B. einen HTTP-Handler) bei Bedarf aus; Abrechnung pro Aufruf und Laufzeit, skaliert automatisch von 0 auf viele Instanzen">Lambda</a>, <a class="term" href="glossar.html#sqs" title="Nachrichtenwarteschlange: Absender legt Nachrichten ab, Empfänger holt sie ab und bestätigt sie; entkoppelt Dienste und puffert Last">SQS</a>, <a class="term" href="glossar.html#sns" title="Publish/Subscribe-Dienst: eine Nachricht an ein Topic geht an alle Abonnenten (E-Mail, SQS, Lambda, HTTP, SMS)">SNS</a>, <a class="term" href="glossar.html#cloudwatch" title="AWS-Dienst für Logs, Metriken und Alarme">CloudWatch</a> und <a class="term" href="glossar.html#kms" title="verwaltet kryptografische Schlüssel; AWS-verwaltete Schlüssel sind kostenlos, eigene kosten 1 $/Monat">KMS</a> stammen
+  aus Drittquellen [D]; die Preise für <a class="term" href="glossar.html#api-gateway" title="verwalteter Eingangspunkt für APIs: nimmt HTTP-Anfragen an, prüft Authentifizierung, drosselt, leitet an Lambda weiter">API Gateway</a>, <a class="term" href="glossar.html#eventbridge" title="Event-Bus: Dienste veröffentlichen Ereignisse, Regeln leiten sie anhand ihres Inhalts an Ziele (SQS, Lambda, SNS …) weiter">EventBridge</a> und <a class="term" href="glossar.html#dynamodb" title="vollständig verwaltete NoSQL-Datenbank (Schlüssel-Wert/Dokument) mit Antwortzeiten im Millisekundenbereich, ohne Server und ohne Verbindungs-Pool">DynamoDB</a>
+  aus <a class="term" href="glossar.html#aws" title="Cloud-Plattform von Amazon mit über 200 Diensten (Rechenleistung, Datenbanken, Netzwerk, Messaging …), abgerechnet nach Nutzung">AWS</a>-Preisseiten [B].</li>
+<li>Nicht belegt: ob AWS Rechnungsbeträge unter 0,01 <a class="term" href="glossar.html#usd" title="Währung, in der AWS abrechnet">$</a> auf 0 rundet [A].</li>
+<li>Die <a class="term" href="glossar.html#cloudfront" title="Content Delivery Network (CDN): liefert Inhalte weltweit aus nahen Standorten aus, cacht sie und leitet Pfade an verschiedene Ziele (S3, API Gateway, Lambda) weiter">CloudFront</a>-<a class="term" href="glossar.html#flat-rate-plan" title="seit 11/2025 angebotene CloudFront-Pauschalpakete inkl. WAF, Route 53 und Zertifikat; die Stufe „Free&quot; kostet 0 $ und drosselt bei Überschreitung statt zu berechnen">Flat-Rate</a>-Stufe „Free" (inkl. 5 <a class="term" href="glossar.html#gb" title="Gigabyte / Terabyte (1 TB = 1.000 GB)">GB</a> <a class="term" href="glossar.html#s3" title="Objektspeicher für Dateien beliebiger Größe in „Buckets&quot;; Standard für statische Websites, Uploads, Build-Artefakte">S3</a>-Speichergutschrift)
+  schließt Konten aus, die „AWS <a class="term" href="glossar.html#free-tier" title="Sammelbegriff für kostenlose Nutzungsmengen bei AWS">Free Tier</a> nutzen" [B]; ob das auf ein
+  <a class="term" href="glossar.html#altkonto" title="Kundenkonto im Altsystem des Versorgers oder der Telko, das ins neue Portal übernommen wird (nicht zu verwechseln mit einem alten AWS-Konto)">Altkonto</a> mit abgelaufenem 12-Monats-Angebot zutrifft, ist unklar [A].
+  Die S3-Gutschrift deckt nur Speicher, nicht <a class="term" href="glossar.html#request" title="einzelne Anfrage an einen Dienst; viele AWS-Dienste rechnen pro Million Requests ab">Anfragen</a> [B].</li>
+</ul>
+<h2 id="quellen">Quellen<a class="anchor" href="#quellen" title="Permanent link">#</a></h2>
+<ul class="sources">
+<li>EventBridge-Preise (kein Freikontingent für eigene Events, Scheduler 14 Mio.): <a href="https://aws.amazon.com/eventbridge/pricing/">https://aws.amazon.com/eventbridge/pricing/</a></li>
+<li>API-Gateway-Preise: <a href="https://aws.amazon.com/api-gateway/pricing/">https://aws.amazon.com/api-gateway/pricing/</a></li>
+<li>DynamoDB-Preise: <a href="https://aws.amazon.com/dynamodb/pricing/">https://aws.amazon.com/dynamodb/pricing/</a></li>
+<li>Cognito-Preise (Essentials/Lite: 10.000 MAU frei, ohne Ablauf; abgerufen 29.09.2026): <a href="https://aws.amazon.com/cognito/pricing/">https://aws.amazon.com/cognito/pricing/</a></li>
+<li>S3-Preise: <a href="https://aws.amazon.com/s3/pricing/">https://aws.amazon.com/s3/pricing/</a></li>
+<li>AWS Budgets (kostenlos): <a href="https://aws.amazon.com/aws-cost-management/aws-budgets/pricing/">https://aws.amazon.com/aws-cost-management/aws-budgets/pricing/</a></li>
+<li>CloudFront-Flat-Rate (Berechtigung, S3-Gutschrift): <a href="https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/flat-rate-pricing-plan.html">https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/flat-rate-pricing-plan.html</a></li>
+<li>GitHub Actions (kostenlos für öffentliche Repositories): <a href="https://docs.github.com/en/billing/concepts/product-billing/github-actions">https://docs.github.com/en/billing/concepts/product-billing/github-actions</a></li>
+<li>GitLab-managed Terraform State: <a href="https://docs.gitlab.com/user/infrastructure/iac/terraform_state/">https://docs.gitlab.com/user/infrastructure/iac/terraform_state/</a></li>
+<li>Drittquelle Always Free [D]: <a href="https://infratally.com/articles/aws-free-tier-2026.html">https://infratally.com/articles/aws-free-tier-2026.html</a></li>
+</ul></main></div>
+<footer class="site"><a href="../wiki/kostenfrei.md">Markdown-Quelle</a> · Generiert 2026-09-30 07:10 aus <code>docs/wiki</code> mit <code>scripts/build_reports.py</code></footer>
+</body>
+</html>

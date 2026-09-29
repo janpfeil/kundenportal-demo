@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Next.js-Betrieb · kundenportal-demo</title>
+<link rel="stylesheet" href="assets/report.css">
+<script src="assets/report.js"></script>
+</head>
+<body>
+<header class="topbar"><a class="brand" href="index.html">kundenportal-demo · Konzept</a><nav class="topnav"><a href="index.html">Übersicht</a><a href="machbarkeit-kosten.html">Machbarkeit &amp; Kosten</a><a href="fachkonzept.html">Fachkonzept</a><a href="demo-pass.html">Demo-Pass</a><a href="kostenfrei.html">Kostenfreier Betrieb</a><a href="anleitung-kontoinhaber.html">Anleitung Kontoinhaber</a><a href="anleitung-fundament.html">Anleitung Fundament</a><a href="anleitung-anwendung.html">Anleitung Anwendung</a><a href="nextjs-betrieb.html" aria-current="page">Next.js-Betrieb</a><a href="architektur.html">Architektur Phase 1</a><a href="glossar.html">Glossar</a></nav>
+<button class="theme-toggle" type="button">Dunkel</button></header>
+<div class="layout"><nav class="toc" aria-label="Inhalt"><div class="toc-title">Inhalt</div><div>
+<ul>
+<li><a href="#1-worum-es-geht">1. Worum es geht</a></li>
+<li><a href="#2-auswirkungen-im-vergleich">2. Auswirkungen im Vergleich</a></li>
+<li><a href="#3-folge-für-die-micro-frontends">3. Folge für die Micro-Frontends</a></li>
+<li><a href="#4-server-rendering-mit-und-ohne-opennext">4. Server-Rendering mit und ohne OpenNext</a></li>
+<li><a href="#5-empfehlung">5. Empfehlung</a></li>
+<li><a href="#quellen">Quellen</a></li>
+</ul>
+</div>
+</nav><main><h1 id="nextjs-betrieb-entscheidungsvorlage">Next.js-Betrieb — Entscheidungsvorlage<a class="anchor" href="#nextjs-betrieb-entscheidungsvorlage" title="Permanent link">#</a></h1>
+<p>Stand: 2026-09-29 · Kennzeichnung: <strong>[B]</strong> belegt (mit Quelle), <strong>[E]</strong> Einschätzung.</p>
+<p>Fachbegriffe sind in jedem Abschnitt beim ersten Vorkommen mit dem <a href="glossar.html">Glossar</a> verlinkt (Erklärung und Entsprechung außerhalb von <a class="term" href="glossar.html#aws" title="Cloud-Plattform von Amazon mit über 200 Diensten (Rechenleistung, Datenbanken, Netzwerk, Messaging …), abgerechnet nach Nutzung">AWS</a>).</p>
+<h2 id="1-worum-es-geht">1. Worum es geht<a class="anchor" href="#1-worum-es-geht" title="Permanent link">#</a></h2>
+<p><a class="term" href="glossar.html#nextjs" title="React-Framework (von Vercel) mit Routing, Server-Rendering, API-Routen und Build-Optimierung">Next.js</a> kann auf zwei grundverschiedene Arten ausgeliefert werden. Die Wahl
+bestimmt, <strong>wo der <a class="term" href="glossar.html#login" title="Anmeldung eines Nutzers">Login</a>-Zustand liegt</strong>, <strong>wie viel Next.js das Demo
+zeigt</strong> und <strong>wie viel <a class="term" href="glossar.html#aws" title="Cloud-Plattform von Amazon mit über 200 Diensten (Rechenleistung, Datenbanken, Netzwerk, Messaging …), abgerechnet nach Nutzung">AWS</a>-Infrastruktur</strong> zu bauen ist. Die Kosten sind in
+beiden Fällen bei <a class="term" href="glossar.html#traffic" title="Menge der Zugriffe/Datenübertragung">Demo-Traffic</a> ≈ 0 <a class="term" href="glossar.html#usd" title="Währung, in der AWS abrechnet">$</a> (siehe <a href="machbarkeit-kosten.html">Machbarkeit &amp; Kosten</a>).</p>
+<ul>
+<li><strong>Variante A – <a class="term" href="glossar.html#static-export" title="Next.js baut die App zu reinen HTML/JS-Dateien, die ohne Server (z. B. aus S3) ausgeliefert werden; kein SSR, keine Middleware">Static Export</a>:</strong> Next.js erzeugt beim <a class="term" href="glossar.html#build" title="Übersetzen und Paketieren des Quellcodes zu auslieferbaren Dateien (Artefakten)">Build</a> fertige
+  <a class="term" href="glossar.html#html" title="Auszeichnungssprache für Webseiten; JS = JavaScript">HTML/JS-Dateien</a>. Diese liegen in <a class="term" href="glossar.html#s3" title="Objektspeicher für Dateien beliebiger Größe in „Buckets&quot;; Standard für statische Websites, Uploads, Build-Artefakte">S3</a> und werden über <a class="term" href="glossar.html#cloudfront" title="Content Delivery Network (CDN): liefert Inhalte weltweit aus nahen Standorten aus, cacht sie und leitet Pfade an verschiedene Ziele (S3, API Gateway, Lambda) weiter">CloudFront</a>
+  ausgeliefert. Zur Laufzeit gibt es <strong>keinen Next.js-<a class="term" href="glossar.html#server" title="Rechner oder Prozess, der Anfragen beantwortet">Server</a></strong>; die App
+  verhält sich im <a class="term" href="glossar.html#browser" title="Programm zum Anzeigen von Webseiten; „Browser-App&quot; = Anwendung, die im Browser läuft">Browser</a> wie eine <a class="term" href="glossar.html#spa" title="Web-App, die einmal geladen wird und danach im Browser navigiert">SPA</a> und ruft nur die <a class="term" href="glossar.html#rest" title="Architekturstil für HTTP-APIs: Ressourcen unter URLs, Operationen über HTTP-Methoden (GET, POST …)">REST</a>-<a class="term" href="glossar.html#api" title="Programmierschnittstelle, über die Programme miteinander sprechen">API</a>
+  (<a class="term" href="glossar.html#api-gateway" title="verwalteter Eingangspunkt für APIs: nimmt HTTP-Anfragen an, prüft Authentifizierung, drosselt, leitet an Lambda weiter">API Gateway</a> + <a class="term" href="glossar.html#lambda" title="führt eine einzelne Funktion (z. B. einen HTTP-Handler) bei Bedarf aus; Abrechnung pro Aufruf und Laufzeit, skaliert automatisch von 0 auf viele Instanzen">Lambda</a>) auf.
+  Java-Vergleich: ein Angular/<a class="term" href="glossar.html#react" title="JavaScript-Bibliothek für Benutzeroberflächen aus Komponenten">React</a>-<a class="term" href="glossar.html#frontend" title="der Teil einer Anwendung, der im Browser läuft und die Oberfläche zeigt">Frontend</a>, das als statische Dateien
+  in <code>src/main/resources/static</code> liegt und nur mit dem REST-<a class="term" href="glossar.html#backend" title="der serverseitige Teil einer Anwendung (Fachlogik, Datenhaltung, APIs)">Backend</a> spricht.</li>
+<li><strong>Variante B – <a class="term" href="glossar.html#ssr" title="HTML wird pro Anfrage auf dem Server erzeugt">Server-Rendering</a> (SSR) in Lambda:</strong> Der Next.js-Server
+  läuft in einer Lambda (wie genau – mit oder ohne <a class="term" href="glossar.html#opennext" title="Open-Source-Adapter, der einen Next.js-Build auf AWS-Bausteine abbildet (Server-Lambda, S3, CloudFront, SQS, DynamoDB)">OpenNext</a> – klärt
+  Abschnitt 4). Seiten werden pro Anfrage oder zwischengespeichert
+  auf dem Server erzeugt; der Server hält die Login-<a class="term" href="glossar.html#session" title="Anmeldezustand, den der Server (hier die Next.js-Shell) im Cookie verschlüsselt hält">Session</a> im
+  verschlüsselten <a class="term" href="glossar.html#cookie" title="kleine Datei, die der Browser bei jeder Anfrage mitschickt; httpOnly heißt: für JavaScript unsichtbar und damit vor XSS geschützt">Cookie</a> und ruft die REST-API <a class="term" href="glossar.html#serverseitig" title="läuft auf dem Server statt im Browser">serverseitig</a> auf.
+  Java-Vergleich: eine <a class="term" href="glossar.html#spring-mvc" title="Web-Framework von Spring für Java-Webanwendungen">Spring-MVC-Anwendung</a> mit Thymeleaf und
+  Spring-Security-Session, die nur bei Bedarf gestartet wird.</li>
+</ul>
+<h2 id="2-auswirkungen-im-vergleich">2. Auswirkungen im Vergleich<a class="anchor" href="#2-auswirkungen-im-vergleich" title="Permanent link">#</a></h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Kriterium</th>
+<th>A – Static Export</th>
+<th>B – SSR in Lambda</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Laufende <a class="term" href="glossar.html#aws" title="Cloud-Plattform von Amazon mit über 200 Diensten (Rechenleistung, Datenbanken, Netzwerk, Messaging …), abgerechnet nach Nutzung">AWS</a>-Bausteine für <a class="term" href="glossar.html#nextjs" title="React-Framework (von Vercel) mit Routing, Server-Rendering, API-Routen und Build-Optimierung">Next.js</a></td>
+<td><a class="term" href="glossar.html#s3" title="Objektspeicher für Dateien beliebiger Größe in „Buckets&quot;; Standard für statische Websites, Uploads, Build-Artefakte">S3</a> + <a class="term" href="glossar.html#cloudfront" title="Content Delivery Network (CDN): liefert Inhalte weltweit aus nahen Standorten aus, cacht sie und leitet Pfade an verschiedene Ziele (S3, API Gateway, Lambda) weiter">CloudFront</a></td>
+<td>S3 + CloudFront + <a class="term" href="glossar.html#opennext" title="Open-Source-Adapter, der einen Next.js-Build auf AWS-Bausteine abbildet (Server-Lambda, S3, CloudFront, SQS, DynamoDB)">Server-Lambda</a>; mit OpenNext zusätzlich Bild-Lambda, <a class="term" href="glossar.html#sqs" title="Nachrichtenwarteschlange: Absender legt Nachrichten ab, Empfänger holt sie ab und bestätigt sie; entkoppelt Dienste und puffert Last">SQS-Queue</a> und <a class="term" href="glossar.html#dynamodb" title="vollständig verwaltete NoSQL-Datenbank (Schlüssel-Wert/Dokument) mit Antwortzeiten im Millisekundenbereich, ohne Server und ohne Verbindungs-Pool">DynamoDB</a>-Tabelle für <a class="term" href="glossar.html#isr" title="Next.js erzeugt statische Seiten und aktualisiert sie im Hintergrund nach Zeit oder Ereignis">ISR</a> [B: <a href="https://opennext.js.org/aws">https://opennext.js.org/aws</a>]</td>
+</tr>
+<tr>
+<td>Kosten bei <a class="term" href="glossar.html#traffic" title="Menge der Zugriffe/Datenübertragung">Demo-Traffic</a></td>
+<td>≈ 0 <a class="term" href="glossar.html#usd" title="Währung, in der AWS abrechnet">$</a></td>
+<td>≈ 0 $ (alle Teile im <a class="term" href="glossar.html#always-free" title="Freikontingente, die unbefristet jeden Monat gelten, z. B. 1 Mio. Lambda-Aufrufe">Always-Free</a>-Bereich) [E]</td>
+</tr>
+<tr>
+<td><a class="term" href="glossar.html#login" title="Anmeldung eines Nutzers">Login</a> (<a class="term" href="glossar.html#amazon-cognito" title="AWS-Identitätsdienst für Registrierung, Login, MFA und Benutzerverwaltung; im Demo der Portal-Login (Entscheidung 29.09.2026), angelegt per CDK">Cognito</a> per <a class="term" href="glossar.html#openid-connect" title="Identitätsschicht auf OAuth2: liefert zusätzlich ein ID-Token mit Nutzerangaben; auch für die Anmeldung von GitHub Actions bei AWS genutzt">OIDC</a>)</td>
+<td>im <a class="term" href="glossar.html#browser" title="Programm zum Anzeigen von Webseiten; „Browser-App&quot; = Anwendung, die im Browser läuft">Browser</a> mit einer OIDC-Client-Bibliothek (<a class="term" href="glossar.html#authorization-code-pkce" title="empfohlener OAuth2-Ablauf für Browser-, Server- und Mobil-Apps: Einmal-Code gegen Token tauschen, abgesichert durch einen zufälligen Prüfwert; im Demo tauscht die Shell den Code se">Authorization Code + PKCE</a>); Access <a class="term" href="glossar.html#token" title="digitaler Ausweis, den ein Identitätsdienst ausstellt und den eine App bei jedem API-Aufruf mitschickt">Token</a> liegt im <a class="term" href="glossar.html#browser-speicher" title="Speicher im Browser für Web-Apps; für JavaScript lesbar">Browser-Speicher</a></td>
+<td><a class="term" href="glossar.html#serverseitig" title="läuft auf dem Server statt im Browser">serverseitig</a> mit <code>openid-client</code> (Authorization Code + PKCE als <a class="term" href="glossar.html#app-client" title="Eintrag einer Anwendung im User Pool mit Client-ID, erlaubten Rückkehr-Adressen und Abläufen; ein vertraulicher Client (hier die Next.js-Shell) hat zusätzlich ein Geheimnis, das nu">vertraulicher Client</a>); Tokens bleiben auf dem <a class="term" href="glossar.html#server" title="Rechner oder Prozess, der Anfragen beantwortet">Server</a>, Browser hat nur ein verschlüsseltes <a class="term" href="glossar.html#cookie" title="kleine Datei, die der Browser bei jeder Anfrage mitschickt; httpOnly heißt: für JavaScript unsichtbar und damit vor XSS geschützt">httpOnly-Cookie</a> (<a class="term" href="glossar.html#bff" title="Muster, bei dem ein Server-Teil der Web-App die Tokens verwaltet, statt sie im Browser zu speichern; im Demo die Next.js-Shell mit verschlüsseltem httpOnly-Cookie">BFF-Muster</a>). <a class="term" href="glossar.html#authjs" title="Login-Bibliothek für Next.js; Version 5 ist noch Beta und wird im Demo daher nicht verwendet">Auth.js</a> 5 ist noch Beta [B: <a href="https://www.npmjs.com/package/next-auth">https://www.npmjs.com/package/next-auth</a>] und wird daher nicht verwendet</td>
+</tr>
+<tr>
+<td>Sicherheit</td>
+<td>Token im Browser → bei <a class="term" href="glossar.html#xss" title="Angriff, bei dem fremdes JavaScript in eine Seite gelangt und dort z. B. Tokens aus dem Browser-Speicher ausliest">XSS</a> abgreifbar; <a class="term" href="glossar.html#refresh-token" title="langlebiges Token, mit dem eine App neue Access Tokens holt; bei Rotation wird es nach jeder Nutzung ersetzt">Refresh Tokens</a> mit Rotation nötig [E]</td>
+<td>Token nie im Browser; das von der <a class="term" href="glossar.html#ietf" title="Internet Engineering Task Force; standardisiert Internetprotokolle wie OAuth2">IETF</a> für Browser-Apps empfohlene BFF-Muster [B: <a href="https://datatracker.ietf.org/doc/draft-ietf-oauth-browser-based-apps/">https://datatracker.ietf.org/doc/draft-ietf-oauth-browser-based-apps/</a>]</td>
+</tr>
+<tr>
+<td>Geschützte Seiten</td>
+<td>Prüfung erst im Browser (Seite lädt, dann Weiterleitung)</td>
+<td>Prüfung vor dem Ausliefern in <code>proxy.ts</code> (Next.js 16, früher <code>middleware.ts</code>)</td>
+</tr>
+<tr>
+<td>Gezeigte <a class="term" href="glossar.html#nextjs" title="React-Framework (von Vercel) mit Routing, Server-Rendering, API-Routen und Build-Optimierung">Next.js</a>-Kompetenz</td>
+<td><a class="term" href="glossar.html#app-router" title="aktuelles Routing-Modell von Next.js mit React Server Components">App Router</a>, Routing, Komponenten; <strong>keine</strong> <a class="term" href="glossar.html#server-components" title="React-Komponenten, die nur auf dem Server laufen und fertiges HTML/Daten liefern">Server Components</a> mit Datenabruf, keine <a class="term" href="glossar.html#server-actions" title="Next.js-Funktionen, die ein Formular direkt auf dem Server verarbeiten, ohne eigene API">Server Actions</a>, kein ISR</td>
+<td>vollständig: Server Components, Server Actions, <a class="term" href="glossar.html#streaming" title="Server schickt eine Seite in Teilen, sobald sie fertig sind, statt auf alles zu warten">Streaming</a>, ISR, <code>proxy.ts</code></td>
+</tr>
+<tr>
+<td>Erster Seitenaufruf</td>
+<td>sofort (statische Datei aus dem <a class="term" href="glossar.html#cdn" title="Netz verteilter Server, das Inhalte nah beim Nutzer zwischenspeichert">CDN</a>)</td>
+<td>nach Leerlauf <a class="term" href="glossar.html#kaltstart" title="Verzögerung, wenn eine Lambda-Instanz erst gestartet werden muss (bei Node.js meist &lt; 1 s)">Kaltstart</a> der Server-Lambda, typ. 0,5–2 s [E]</td>
+</tr>
+<tr>
+<td>Aufwand Infrastruktur (<a class="term" href="glossar.html#cdk" title="Infrastruktur als Programmcode (TypeScript, Java, Python …): man schreibt Klassen wie new Table(...), CDK erzeugt daraus CloudFormation-Vorlagen und legt die Ressourcen an">CDK</a>)</td>
+<td>gering: Bucket + <a class="term" href="glossar.html#distribution" title="eine CloudFront-Konfiguration mit eigener Domain, Ursprüngen und Regeln">Distribution</a></td>
+<td>mittel (siehe Abschnitt 4) [E]</td>
+</tr>
+<tr>
+<td>Risiko</td>
+<td>gering</td>
+<td>abhängig vom gewählten Weg (siehe Abschnitt 4) [E]</td>
+</tr>
+<tr>
+<td>Praxisnähe für <a class="term" href="glossar.html#kundenportal" title="Web-Anwendung, in der Endkunden ihre Verträge, Rechnungen und Daten selbst verwalten (Self-Service)">Kundenportale</a></td>
+<td>mittel</td>
+<td>hoch — <a class="term" href="glossar.html#session" title="Anmeldezustand, den der Server (hier die Next.js-Shell) im Cookie verschlüsselt hält">serverseitige Session</a> ist das für Next.js übliche Muster, unabhängig vom Identitätsanbieter (Cognito, <a class="term" href="glossar.html#auth0" title="verbreiteter Identitätsdienst (SaaS, von Okta) für Registrierung, Login, Social Login, MFA und Benutzerverwaltung; im Demo nicht verwendet (ersetzt durch Amazon Cognito), bleibt üb">Auth0</a>, <a class="term" href="glossar.html#keycloak" title="Open-Source-Identitätsdienst (OIDC, SAML), selbst betrieben; im Demo unter id.rypox.net die Anmeldung des Telko-Altsystems und ab Phase 3 Gegenstelle des Migrate-User-Triggers">Keycloak</a> …); Portal mit <a class="term" href="glossar.html#customer-journey" title="Weg eines Kunden durch das Portal: Registrierung → Onboarding → angemeldeter Bereich">LoggedIn-Journey</a> ist klassisches <a class="term" href="glossar.html#ssr" title="HTML wird pro Anfrage auf dem Server erzeugt">SSR</a>-Terrain [E]</td>
+</tr>
+<tr>
+<td>Wechsel später</td>
+<td>A → B möglich, aber Login-Umbau nötig</td>
+<td>B → A kaum sinnvoll</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="3-folge-für-die-micro-frontends">3. Folge für die Micro-Frontends<a class="anchor" href="#3-folge-für-die-micro-frontends" title="Permanent link">#</a></h2>
+<p>Wichtige Rechercheerkenntnis: Das <a class="term" href="glossar.html#nextjs" title="React-Framework (von Vercel) mit Routing, Server-Rendering, API-Routen und Build-Optimierung">Next.js</a>-Plugin für <a class="term" href="glossar.html#module-federation" title="Mechanismus (Webpack/Rspack), mit dem ein Bundle zur Laufzeit Module aus einem anderen, separat deployten Build lädt">Module Federation</a>
+(<code>@module-federation/nextjs-mf</code>) hat den <strong><a class="term" href="glossar.html#app-router" title="aktuelles Routing-Modell von Next.js mit React Server Components">App Router</a> nie unterstützt</strong>,
+ist im Wartungsmodus und soll um Ende 2026 eingestellt werden
+[B: <a href="https://github.com/module-federation/core/issues/3153">https://github.com/module-federation/core/issues/3153</a>]. Die
+ursprünglich angedachte Einbindung per Module Federation in eine
+<a class="term" href="glossar.html#shell" title="Rahmenanwendung, die Navigation, Login und Layout stellt und die Micro-Frontends einbindet">Next.js-Shell</a> ist damit keine gute Referenz mehr.</p>
+<p>Tragfähige Wege, unabhängig von Variante A oder B:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Weg</th>
+<th>Wie</th>
+<th>Bewertung [E]</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong><a class="term" href="glossar.html#multi-zones" title="Next.js-Ansatz, mehrere Next.js-Apps unter einer Domain zu betreiben, aufgeteilt nach Pfaden">Multi-Zones</a></strong></td>
+<td>jedes <a class="term" href="glossar.html#micro-frontend" title="eigenständig entwickelter und deployter Teil einer Weboberfläche (z. B. „Rechnungen&quot;), den die Shell zur Laufzeit einbindet; überträgt die Microservice-Idee aufs Frontend">Micro-Frontend</a> ist eine eigene Next.js-App unter einem Pfad (<code>/vertraege</code>, <code>/zaehlerstaende</code>, <code>/cockpit</code>); <a class="term" href="glossar.html#cloudfront" title="Content Delivery Network (CDN): liefert Inhalte weltweit aus nahen Standorten aus, cacht sie und leitet Pfade an verschiedene Ziele (S3, API Gateway, Lambda) weiter">CloudFront</a> verteilt nach Pfad; gemeinsame <a class="term" href="glossar.html#component-library" title="gemeinsames Paket wiederverwendbarer UI-Bausteine (Buttons, Formulare, Layouts), das alle Micro-Frontends nutzen und so ein einheitliches Aussehen sichern">Component Library</a></td>
+<td>offizieller Next.js-Weg, App-Router-fähig, unabhängig <a class="term" href="glossar.html#deployment" title="Ausliefern einer neuen Version in eine Umgebung">deploybar</a>; Wechsel zwischen Zonen ist ein voller Seitenwechsel</td>
+</tr>
+<tr>
+<td>Client-<a class="term" href="glossar.html#widget" title="kleiner, eingebetteter Oberflächenbaustein">Widgets</a> per Module-Federation-Runtime</td>
+<td>eigenständige <a class="term" href="glossar.html#react" title="JavaScript-Bibliothek für Benutzeroberflächen aus Komponenten">React</a>-<a class="term" href="glossar.html#bundle" title="vom Build erzeugte, zusammengefasste JavaScript-/CSS-Dateien">Bundles</a> (z. B. mit <a class="term" href="glossar.html#vite" title="schnelles Build-Werkzeug für Frontends">Vite</a> gebaut), die die Shell im <a class="term" href="glossar.html#browser" title="Programm zum Anzeigen von Webseiten; „Browser-App&quot; = Anwendung, die im Browser läuft">Browser</a> zur Laufzeit lädt</td>
+<td>echte <a class="term" href="glossar.html#laufzeit-integration" title="Einbinden eines Bausteins erst im laufenden Browser statt beim Build">Laufzeit-Integration</a> in eine Seite; nur als <a class="term" href="glossar.html#client-komponente" title="React-Komponente, die im Browser läuft (Gegenstück zu Server Components)">Client-Komponenten</a>, eigener Proof of Concept nötig</td>
+</tr>
+<tr>
+<td><code>@vercel/microfrontends</code></td>
+<td><a class="term" href="glossar.html#vercel" title="Hosting-Anbieter und Hersteller von Next.js">Vercel</a>-Paket für Micro-Frontends mit App Router [B: <a href="https://github.com/vercel/next.js/discussions/77862">https://github.com/vercel/next.js/discussions/77862</a>]</td>
+<td>an Vercel-Plattform ausgerichtet → passt nicht zu <a class="term" href="glossar.html#aws" title="Cloud-Plattform von Amazon mit über 200 Diensten (Rechenleistung, Datenbanken, Netzwerk, Messaging …), abgerechnet nach Nutzung">AWS</a></td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Empfehlung:</strong> Multi-Zones als Grundarchitektur (Shell/<a class="term" href="glossar.html#onboarding" title="erste Schritte nach der Registrierung (Daten ergänzen, Vertrag verknüpfen)">Onboarding</a>,
+Verträge &amp; Rechnungen, Zählerstände, <a class="term" href="glossar.html#migrations-cockpit" title="im Demo geplantes Micro-Frontend, das den Fortschritt der Kontenübernahme, Ereignisse und DLQ-Fälle live zeigt">Migrations-Cockpit</a>) und <strong>ein</strong>
+Laufzeit-Widget (z. B. Benachrichtigungs-Glocke), um beide Integrationsarten
+zu zeigen. Die Component Library wird von allen Zonen als Paket genutzt.</p>
+<h2 id="4-server-rendering-mit-und-ohne-opennext">4. Server-Rendering mit und ohne OpenNext<a class="anchor" href="#4-server-rendering-mit-und-ohne-opennext" title="Permanent link">#</a></h2>
+<p>Ausgangslage [B: <a href="https://nextjs.org/blog/nextjs-across-platforms">https://nextjs.org/blog/nextjs-across-platforms</a>]:</p>
+<ul>
+<li><a class="term" href="glossar.html#nextjs" title="React-Framework (von Vercel) mit Routing, Server-Rendering, API-Routen und Build-Optimierung">Next.js</a> läuft ohne Einschränkung als <strong>ein</strong> Node.js-<a class="term" href="glossar.html#server" title="Rechner oder Prozess, der Anfragen beantwortet">Server</a> (<code>next start</code>).
+  Schwierig wird es erst bei <strong>vielen gleichzeitigen Instanzen</strong> — genau das
+  ist <a class="term" href="glossar.html#lambda" title="führt eine einzelne Funktion (z. B. einen HTTP-Handler) bei Bedarf aus; Abrechnung pro Aufruf und Laufzeit, skaliert automatisch von 0 auf viele Instanzen">Lambda</a>: <a class="term" href="glossar.html#data-cache" title="Next.js-Zwischenspeicher für Datenabrufe und gerenderte Seiten; bei vielen Lambda-Instanzen nur geteilt, wenn ein Adapter (z. B. OpenNext) ihn auslagert">Zwischenspeicher</a> (<a class="term" href="glossar.html#isr" title="Next.js erzeugt statische Seiten und aktualisiert sie im Hintergrund nach Zeit oder Ereignis">ISR</a>, Data Cache) müssen dann zwischen den
+  Instanzen abgeglichen werden, Revalidierung muss alle erreichen, <a class="term" href="glossar.html#streaming" title="Server schickt eine Seite in Teilen, sobald sie fertig sind, statt auf alles zu warten">Streaming</a>
+  muss funktionieren.</li>
+<li>Seit <strong>Next.js 16.2 (März 2026)</strong> gibt es dafür eine stabile, offizielle
+  <strong><a class="term" href="glossar.html#adapter-api" title="seit Next.js 16.2 (März 2026) stabile Schnittstelle, über die Hosting-Anbieter den Build auf ihre Infrastruktur abbilden; „verifiziert&quot; = Open Source und besteht die Next.js-Testsu">Adapter API</a></strong>. Ein offizieller, „verifizierter" <a class="term" href="glossar.html#aws" title="Cloud-Plattform von Amazon mit über 200 Diensten (Rechenleistung, Datenbanken, Netzwerk, Messaging …), abgerechnet nach Nutzung">AWS</a>-Adapter entsteht
+  über <a class="term" href="glossar.html#opennext" title="Open-Source-Adapter, der einen Next.js-Build auf AWS-Bausteine abbildet (Server-Lambda, S3, CloudFront, SQS, DynamoDB)">OpenNext</a> und soll <strong>später in 2026</strong> erscheinen.</li>
+</ul>
+<p>Damit gibt es vier Wege für Variante B:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Weg</th>
+<th>Wie</th>
+<th>Zusätzliche Abhängigkeit</th>
+<th>Was fehlt / Risiko</th>
+<th>Kosten Demo</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>B1 <a class="term" href="glossar.html#opennext" title="Open-Source-Adapter, der einen Next.js-Build auf AWS-Bausteine abbildet (Server-Lambda, S3, CloudFront, SQS, DynamoDB)">OpenNext</a></strong></td>
+<td>OpenNext übersetzt den <a class="term" href="glossar.html#build" title="Übersetzen und Paketieren des Quellcodes zu auslieferbaren Dateien (Artefakten)">Build</a> in Server-Lambda, Bild-Lambda, ISR-<a class="term" href="glossar.html#sqs" title="Nachrichtenwarteschlange: Absender legt Nachrichten ab, Empfänger holt sie ab und bestätigt sie; entkoppelt Dienste und puffert Last">Queue</a> (SQS) und Tag-Cache (<a class="term" href="glossar.html#dynamodb" title="vollständig verwaltete NoSQL-Datenbank (Schlüssel-Wert/Dokument) mit Antwortzeiten im Millisekundenbereich, ohne Server und ohne Verbindungs-Pool">DynamoDB</a>)</td>
+<td>OpenNext (Community-Projekt) + <a class="term" href="glossar.html#cdk" title="Infrastruktur als Programmcode (TypeScript, Java, Python …): man schreibt Klassen wie new Table(...), CDK erzeugt daraus CloudFormation-Vorlagen und legt die Ressourcen an">CDK</a>-Einbindung (<a class="term" href="glossar.html#community-projekt" title="Open-Source-Projekt, das nicht vom Hersteller selbst, sondern von Freiwilligen oder Firmen gepflegt wird">Community-Construct</a> oder eigene)</td>
+<td>volle Funktion inkl. ISR; Versions-Nachlauf bei neuen Next.js-Releases; Fehlersuche in fremder Abstraktion</td>
+<td>≈ 0 <a class="term" href="glossar.html#usd" title="Währung, in der AWS abrechnet">$</a></td>
+</tr>
+<tr>
+<td><strong>B2 Standalone + <a class="term" href="glossar.html#lambda-web-adapter" title="Werkzeug, mit dem normale Web-Server-Apps (Express, Spring Boot, Next.js) unverändert in Lambda laufen">Lambda Web Adapter</a></strong></td>
+<td>Next.js baut mit <code>output: "standalone"</code> einen eigenständigen Node-Server; der <strong>Lambda Web Adapter</strong> (von AWS gepflegt) startet ihn in einer Lambda; Aufruf über <a class="term" href="glossar.html#function-url" title="eigene HTTPS-Adresse einer Lambda ohne API Gateway; unterstützt Response Streaming und kann hinter CloudFront (mit OAC) liegen">Function URL</a> mit <a class="term" href="glossar.html#response-streaming" title="Lambda schickt die Antwort in Teilen statt am Stück – nötig für Next.js-Streaming">Response Streaming</a>; statische Dateien (<code>/_next/static</code>) aus <a class="term" href="glossar.html#s3" title="Objektspeicher für Dateien beliebiger Größe in „Buckets&quot;; Standard für statische Websites, Uploads, Build-Artefakte">S3</a> [B: <a href="https://github.com/aws-samples/lwa-nextjs-response-streaming-example">https://github.com/aws-samples/lwa-nextjs-response-streaming-example</a>]</td>
+<td>nur der Lambda Web Adapter – ein generisches AWS-Werkzeug, das jede <a class="term" href="glossar.html#web-app" title="Anwendung, die im Browser bedient wird">Web-App</a> (auch <a class="term" href="glossar.html#spring-mvc" title="Web-Framework von Spring für Java-Webanwendungen">Spring Boot</a>) in Lambda betreibt</td>
+<td>ISR/Data Cache nur je Instanz (nicht geteilt) → Seiten dynamisch rendern statt ISR; Bildoptimierung abschalten oder <code>sharp</code> mitliefern; CDK-Code selbst schreiben (überschaubar) [E]</td>
+<td>≈ 0 $</td>
+</tr>
+<tr>
+<td>B3 eigener <a class="term" href="glossar.html#adapter-api" title="seit Next.js 16.2 (März 2026) stabile Schnittstelle, über die Hosting-Anbieter den Build auf ihre Infrastruktur abbilden; „verifiziert&quot; = Open Source und besteht die Next.js-Testsu">Adapter</a></td>
+<td>eigenes Paket gegen die Adapter API</td>
+<td>keine fremde, aber viel eigener Code</td>
+<td>hoher Aufwand, lohnt nur als Selbstzweck [E]</td>
+<td>≈ 0 $</td>
+</tr>
+<tr>
+<td>B4 Container (<code>next start</code>)</td>
+<td><a class="term" href="glossar.html#fargate" title="Container ausführen, ohne Server/Knoten zu verwalten; abgerechnet pro laufender Sekunde">Fargate</a>/<a class="term" href="glossar.html#lightsail" title="vereinfachte AWS-Server/Container zum Festpreis pro Monat">Lightsail</a> mit dauerhaft laufendem Container</td>
+<td>keine</td>
+<td><strong><a class="term" href="glossar.html#fixkosten" title="Kosten, die auch ohne einen einzigen Nutzer anfallen, weil eine Ressource stundenweise abgerechnet wird (z. B. NAT Gateway, ALB, RDS)">Fixkosten</a></strong> (Container läuft 24/7, dazu Load Balancer oder <a class="term" href="glossar.html#ipv4-adresse" title="Internetadresse; AWS berechnet öffentliche IPv4-Adressen stundenweise (ca. 3,60 $/Monat)">öffentliche IPv4-Adresse</a>) und kein <a class="term" href="glossar.html#serverless" title="Betriebsmodell, bei dem man keine Server verwaltet und nur für tatsächliche Nutzung zahlt; ohne Last kostet es (fast) nichts">Serverless</a> mehr [E]</td>
+<td>ca. 10–30 $/Monat [A]</td>
+</tr>
+<tr>
+<td>(<a class="term" href="glossar.html#amplify" title="AWS-Dienst für bequemes Hosting von Web-Apps mit Build-Pipeline">Amplify Hosting</a>)</td>
+<td>AWS-verwalteter Next.js-Betrieb</td>
+<td>AWS Amplify</td>
+<td>versteckt die Infrastruktur → zeigt kaum CDK/<a class="term" href="glossar.html#cloudfront" title="Content Delivery Network (CDN): liefert Inhalte weltweit aus nahen Standorten aus, cacht sie und leitet Pfade an verschiedene Ziele (S3, API Gateway, Lambda) weiter">CloudFront</a>/Lambda; <a class="term" href="glossar.html#multi-zones" title="Next.js-Ansatz, mehrere Next.js-Apps unter einer Domain zu betreiben, aufgeteilt nach Pfaden">Multi-Zones</a> umständlich [E]</td>
+<td>Build-Minuten und <a class="term" href="glossar.html#ssr" title="HTML wird pro Anfrage auf dem Server erzeugt">SSR</a>-Aufrufe kostenpflichtig nach <a class="term" href="glossar.html#free-tier" title="Sammelbegriff für kostenlose Nutzungsmengen bei AWS">Freikontingent</a></td>
+</tr>
+</tbody>
+</table></div>
+<p>Java-Vergleich: B2 entspricht einer Spring-Boot-Anwendung, die unverändert
+per Lambda Web Adapter in Lambda läuft; B1 entspricht einem Framework, das
+die Anwendung in viele spezialisierte Lambdas zerlegt.</p>
+<p><strong>Was fehlt bei B2 konkret?</strong> Für ein <a class="term" href="glossar.html#kundenportal" title="Web-Anwendung, in der Endkunden ihre Verträge, Rechnungen und Daten selbst verwalten (Self-Service)">Kundenportal</a> mit <a class="term" href="glossar.html#login" title="Anmeldung eines Nutzers">Login</a> wenig [E]:
+Seiten hinter dem Login sind ohnehin personalisiert und werden pro Anfrage
+gerendert; ISR und geteilter <a class="term" href="glossar.html#cache" title="Zwischenspeicher, der wiederholte Anfragen schneller und billiger beantwortet">Cache</a> sind vor allem für öffentliche, häufig
+aufgerufene Inhaltsseiten wichtig. Streaming, <a class="term" href="glossar.html#server-components" title="React-Komponenten, die nur auf dem Server laufen und fertiges HTML/Daten liefern">Server Components</a>, <a class="term" href="glossar.html#server-actions" title="Next.js-Funktionen, die ein Formular direkt auf dem Server verarbeiten, ohne eigene API">Server
+Actions</a> und <code>proxy.ts</code> funktionieren im <a class="term" href="glossar.html#standalone-build" title="Next.js-Build-Modus, der einen schlanken, eigenständigen Node.js-Server mit allen benötigten Dateien erzeugt">Standalone-Server</a>.</p>
+<h2 id="5-empfehlung">5. Empfehlung<a class="anchor" href="#5-empfehlung" title="Permanent link">#</a></h2>
+<p><strong>Variante B mit Weg B2 (Standalone + <a class="term" href="glossar.html#lambda-web-adapter" title="Werkzeug, mit dem normale Web-Server-Apps (Express, Spring Boot, Next.js) unverändert in Lambda laufen">Lambda Web Adapter</a>)</strong> für die <a class="term" href="glossar.html#multi-zones" title="Next.js-Ansatz, mehrere Next.js-Apps unter einer Domain zu betreiben, aufgeteilt nach Pfaden">Zonen</a>
+mit <a class="term" href="glossar.html#login" title="Anmeldung eines Nutzers">Login</a>, <strong>Variante A (<a class="term" href="glossar.html#static-export" title="Next.js baut die App zu reinen HTML/JS-Dateien, die ohne Server (z. B. aus S3) ausgeliefert werden; kein SSR, keine Middleware">Static Export</a>)</strong> für Zonen ohne Login (<a class="term" href="glossar.html#storybook" title="Werkzeug, das jede Komponente der Component Library isoliert darstellt und dokumentiert; als statische Seite veröffentlicht">Storybook</a>,
+öffentliche Startseite).</p>
+<p>Begründung [E]:</p>
+<ol>
+<li><strong>Weniger Fremdabhängigkeit:</strong> nur der offizielle <a class="term" href="glossar.html#nextjs" title="React-Framework (von Vercel) mit Routing, Server-Rendering, API-Routen und Build-Optimierung">Next.js</a>-<a class="term" href="glossar.html#build" title="Übersetzen und Paketieren des Quellcodes zu auslieferbaren Dateien (Artefakten)">Build</a> und ein
+   generisches <a class="term" href="glossar.html#aws" title="Cloud-Plattform von Amazon mit über 200 Diensten (Rechenleistung, Datenbanken, Netzwerk, Messaging …), abgerechnet nach Nutzung">AWS</a>-Werkzeug; keine Übersetzungsschicht, die neuen
+   Next.js-Versionen hinterherlaufen muss.</li>
+<li><strong>Transparenz:</strong> Die gesamte Infrastruktur steht als eigener, lesbarer
+   <a class="term" href="glossar.html#cdk" title="Infrastruktur als Programmcode (TypeScript, Java, Python …): man schreibt Klassen wie new Table(...), CDK erzeugt daraus CloudFormation-Vorlagen und legt die Ressourcen an">CDK</a>-Code im <a class="term" href="glossar.html#repository" title="von Git verwaltetes Projektverzeichnis, z. B. auf GitHub">Repository</a> — für eine Referenz besser als eine
+   Blackbox.</li>
+<li><strong>Ausreichender Funktionsumfang</strong> für die <a class="term" href="glossar.html#customer-journey" title="Weg eines Kunden durch das Portal: Registrierung → Onboarding → angemeldeter Bereich">LoggedIn-Journey</a> (siehe oben);
+   die bewusste Entscheidung gegen <a class="term" href="glossar.html#isr" title="Next.js erzeugt statische Seiten und aktualisiert sie im Hintergrund nach Zeit oder Ereignis">ISR</a> ist im Gespräch ein gutes
+   Architekturargument.</li>
+<li><strong>Ausstiegspfad:</strong> Erscheint der verifizierte AWS-<a class="term" href="glossar.html#adapter-api" title="seit Next.js 16.2 (März 2026) stabile Schnittstelle, über die Hosting-Anbieter den Build auf ihre Infrastruktur abbilden; „verifiziert&quot; = Open Source und besteht die Next.js-Testsu">Adapter</a> (Ende 2026),
+   kann das Demo darauf umziehen; das ist eine Build-Einstellung, kein
+   Umbau der Anwendung.</li>
+</ol>
+<p>Risiko: Kaltstart des <a class="term" href="glossar.html#standalone-build" title="Next.js-Build-Modus, der einen schlanken, eigenständigen Node.js-Server mit allen benötigten Dateien erzeugt">Standalone-Servers</a> in <a class="term" href="glossar.html#lambda" title="führt eine einzelne Funktion (z. B. einen HTTP-Handler) bei Bedarf aus; Abrechnung pro Aufruf und Laufzeit, skaliert automatisch von 0 auf viele Instanzen">Lambda</a> (typ. 1–2 s nach
+Leerlauf) [E]. Absicherung: <a class="term" href="glossar.html#durchstich" title="erste, schmale Umsetzung durch alle Schichten (UI → API → DB → Event), um die Architektur früh zu beweisen">Durchstich</a> misst die Startzeit; bei Bedarf
+kleinere <a class="term" href="glossar.html#bundle" title="vom Build erzeugte, zusammengefasste JavaScript-/CSS-Dateien">Bundles</a> oder ein zeitgesteuerter <a class="term" href="glossar.html#kaltstart" title="Verzögerung, wenn eine Lambda-Instanz erst gestartet werden muss (bei Node.js meist &lt; 1 s)">Aufwärm-Aufruf</a> (<a class="term" href="glossar.html#eventbridge-scheduler" title="zeitgesteuertes Auslösen von Zielen (einmalig oder wiederkehrend); 14 Mio. Aufrufe/Monat frei">EventBridge
+Scheduler</a>, im <a class="term" href="glossar.html#free-tier" title="Sammelbegriff für kostenlose Nutzungsmengen bei AWS">Freikontingent</a>).</p>
+<h2 id="quellen">Quellen<a class="anchor" href="#quellen" title="Permanent link">#</a></h2>
+<ul class="sources">
+<li>Next.js Adapter API und Selbst-Hosting (25.03.2026): <a href="https://nextjs.org/blog/nextjs-across-platforms">https://nextjs.org/blog/nextjs-across-platforms</a></li>
+<li>Lambda Web Adapter + Next.js-Streaming-Beispiel: <a href="https://github.com/aws-samples/lwa-nextjs-response-streaming-example">https://github.com/aws-samples/lwa-nextjs-response-streaming-example</a></li>
+<li>Lambda Web Adapter: <a href="https://github.com/awslabs/aws-lambda-web-adapter">https://github.com/awslabs/aws-lambda-web-adapter</a></li>
+<li>OpenNext 3 Jahre / Stand 2026: <a href="https://opennext.js.org/news/2026-03-25-3-years-of-opennext">https://opennext.js.org/news/2026-03-25-3-years-of-opennext</a></li>
+<li>OpenNext für AWS: <a href="https://opennext.js.org/aws">https://opennext.js.org/aws</a></li>
+<li>Module Federation – Next.js-Unterstützung im Wartungsmodus: <a href="https://github.com/module-federation/core/issues/3153">https://github.com/module-federation/core/issues/3153</a></li>
+<li>Diskussion Module Federation und App Router: <a href="https://github.com/vercel/next.js/discussions/77862">https://github.com/vercel/next.js/discussions/77862</a></li>
+<li>IETF OAuth 2.0 for Browser-Based Applications (BFF): <a href="https://datatracker.ietf.org/doc/draft-ietf-oauth-browser-based-apps/">https://datatracker.ietf.org/doc/draft-ietf-oauth-browser-based-apps/</a></li>
+<li>openid-client (serverseitiger OIDC-Client, Version 6.8.8 am 29.09.2026): <a href="https://github.com/panva/openid-client">https://github.com/panva/openid-client</a></li>
+<li>Auth.js / next-auth (Version 5 nur als Beta, latest 4.24.15 am 29.09.2026): <a href="https://www.npmjs.com/package/next-auth">https://www.npmjs.com/package/next-auth</a></li>
+<li>Next.js <code>proxy.ts</code> (ehemals Middleware): <a href="https://nextjs.org/docs/messages/middleware-to-proxy">https://nextjs.org/docs/messages/middleware-to-proxy</a></li>
+</ul></main></div>
+<footer class="site"><a href="../wiki/nextjs-betrieb.md">Markdown-Quelle</a> · Generiert 2026-09-30 07:10 aus <code>docs/wiki</code> mit <code>scripts/build_reports.py</code></footer>
+</body>
+</html>

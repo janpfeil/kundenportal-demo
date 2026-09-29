@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Demo-Pass · kundenportal-demo</title>
+<link rel="stylesheet" href="assets/report.css">
+<script src="assets/report.js"></script>
+</head>
+<body>
+<header class="topbar"><a class="brand" href="index.html">kundenportal-demo · Konzept</a><nav class="topnav"><a href="index.html">Übersicht</a><a href="machbarkeit-kosten.html">Machbarkeit &amp; Kosten</a><a href="fachkonzept.html">Fachkonzept</a><a href="demo-pass.html" aria-current="page">Demo-Pass</a><a href="kostenfrei.html">Kostenfreier Betrieb</a><a href="anleitung-kontoinhaber.html">Anleitung Kontoinhaber</a><a href="anleitung-fundament.html">Anleitung Fundament</a><a href="anleitung-anwendung.html">Anleitung Anwendung</a><a href="nextjs-betrieb.html">Next.js-Betrieb</a><a href="architektur.html">Architektur Phase 1</a><a href="glossar.html">Glossar</a></nav>
+<button class="theme-toggle" type="button">Dunkel</button></header>
+<div class="layout"><nav class="toc" aria-label="Inhalt"><div class="toc-title">Inhalt</div><div>
+<ul>
+<li><a href="#1-anforderungen-29092026">1. Anforderungen (29.09.2026)</a></li>
+<li><a href="#2-ergebnis">2. Ergebnis</a></li>
+<li><a href="#3-zwei-wege-zum-demo-pass">3. Zwei Wege zum Demo-Pass</a></li>
+<li><a href="#4-ablauf-für-besucher">4. Ablauf für Besucher</a></li>
+<li><a href="#5-eigene-instanz-je-besucher">5. Eigene Instanz je Besucher</a></li>
+<li><a href="#6-spam-und-missbrauchsschutz">6. Spam- und Missbrauchsschutz</a></li>
+<li><a href="#7-stufenplan-e">7. Stufenplan [E]</a></li>
+<li><a href="#8-auswirkungen-auf-bisherige-entscheidungen">8. Auswirkungen auf bisherige Entscheidungen</a></li>
+<li><a href="#quellen">Quellen</a></li>
+</ul>
+</div>
+</nav><main><h1 id="demo-pass-eigene-instanz-je-besucher">Demo-Pass — eigene Instanz je Besucher<a class="anchor" href="#demo-pass-eigene-instanz-je-besucher" title="Permanent link">#</a></h1>
+<p>Stand: 2026-09-29 · Kennzeichnung: <strong>[B]</strong> belegt (offizielle Quelle), <strong>[A]</strong> Annahme/Schätzung, <strong>[E]</strong> Einschätzung.</p>
+<p><strong>Entscheidung (29.09.2026): Stufe 1 — <a class="term" href="glossar.html#inhaber-zugang" title="Anmeldung des Projektinhabers mit Sonderrechten: Instanzen starten, Einladungslinks erzeugen">Inhaber-Zugang</a> und <a class="term" href="glossar.html#einladungslink" title="persönlicher, einmal verwendbarer Link, der einen Demo-Pass ausstellt">Einladungslinks</a>.</strong> Ein bezahlter Zugang ist optional für später denkbar, aber nicht geplant.</p>
+<p>Fachbegriffe sind in jedem Abschnitt beim ersten Vorkommen mit dem <a href="glossar.html">Glossar</a> verlinkt (Erklärung und Entsprechung außerhalb von <a class="term" href="glossar.html#aws" title="Cloud-Plattform von Amazon mit über 200 Diensten (Rechenleistung, Datenbanken, Netzwerk, Messaging …), abgerechnet nach Nutzung">AWS</a>).</p>
+<h2 id="1-anforderungen-29092026">1. Anforderungen (29.09.2026)<a class="anchor" href="#1-anforderungen-29092026" title="Permanent link">#</a></h2>
+<ol>
+<li>Der Inhaber kann die Demo <strong>für sich selbst jederzeit</strong> starten.</li>
+<li>Die <strong>öffentliche Demoseite</strong> ist für alle zugänglich.</li>
+<li>Ein <a class="term" href="glossar.html#demo-pass" title="im Demo: zeitlich begrenzte Berechtigung (7 Tage, Kontingent) für eine eigene Instanz; ausgestellt per Einladungslink oder für den Inhaber">Demo-Pass</a> ist <strong>7 Tage</strong> nutzbar, auch mehrfach, solange das
+   <a class="term" href="glossar.html#free-tier" title="Sammelbegriff für kostenlose Nutzungsmengen bei AWS">Kontingent</a> reicht; danach werden Instanz und Daten gelöscht.</li>
+<li><strong>Jeder Besucher bekommt eine eigene Instanz</strong> — Besucher stören sich
+   gegenseitig nicht.</li>
+<li><strong><a class="term" href="glossar.html#spam" title="unerwünschte Massen-Nachrichten; hier: Missbrauch der Demo zum Versand an Dritte">Spam</a>- und Missbrauchsabwehr</strong> ist Pflicht.</li>
+</ol>
+<h2 id="2-ergebnis">2. Ergebnis<a class="anchor" href="#2-ergebnis" title="Permanent link">#</a></h2>
+<p><strong>Machbar</strong> [E]. Alle Teile — Freischaltung, eigene Instanz, <a class="term" href="glossar.html#free-tier" title="Sammelbegriff für kostenlose Nutzungsmengen bei AWS">Kontingent</a>,
+Ablauf nach 7 Tagen — lassen sich mit den ohnehin geplanten, kostenlosen
+<a class="term" href="glossar.html#aws" title="Cloud-Plattform von Amazon mit über 200 Diensten (Rechenleistung, Datenbanken, Netzwerk, Messaging …), abgerechnet nach Nutzung">AWS</a>-Bausteinen (<a class="term" href="glossar.html#lambda" title="führt eine einzelne Funktion (z. B. einen HTTP-Handler) bei Bedarf aus; Abrechnung pro Aufruf und Laufzeit, skaliert automatisch von 0 auf viele Instanzen">Lambda</a>, <a class="term" href="glossar.html#dynamodb" title="vollständig verwaltete NoSQL-Datenbank (Schlüssel-Wert/Dokument) mit Antwortzeiten im Millisekundenbereich, ohne Server und ohne Verbindungs-Pool">DynamoDB</a>, <a class="term" href="glossar.html#eventbridge-scheduler" title="zeitgesteuertes Auslösen von Zielen (einmalig oder wiederkehrend); 14 Mio. Aufrufe/Monat frei">EventBridge Scheduler</a>, <a class="term" href="glossar.html#sns" title="Publish/Subscribe-Dienst: eine Nachricht an ein Topic geht an alle Abonnenten (E-Mail, SQS, Lambda, HTTP, SMS)">SNS</a>) bauen. Der
+<a class="term" href="glossar.html#demo-pass" title="im Demo: zeitlich begrenzte Berechtigung (7 Tage, Kontingent) für eine eigene Instanz; ausgestellt per Einladungslink oder für den Inhaber">Demo-Pass</a> wird dabei selbst zu einem vorzeigbaren Stück <a class="term" href="glossar.html#saas" title="Software als gemieteter Online-Dienst">SaaS</a>-Architektur:
+<a class="term" href="glossar.html#mandant" title="abgeschotteter Bereich eines Kunden in einer gemeinsam betriebenen Anwendung; im Demo je Demo-Pass ein Mandant">Mandantenfähigkeit</a>, <a class="term" href="glossar.html#infrastruktur-automatisierung" title="Anlegen vollständiger Umgebungen per Programm statt per Hand">Bereitstellung auf Knopfdruck</a>, automatischer <a class="term" href="glossar.html#teardown" title="vollständiges Entfernen aller Demo-Ressourcen per cdk destroy und terraform destroy">Rückbau</a>.</p>
+<p>Eine Instanz kostet bei Demo-Nutzung Bruchteile eines Cents [A]. Den
+Zugang steuern deshalb <strong><a class="term" href="glossar.html#einladungslink" title="persönlicher, einmal verwendbarer Link, der einen Demo-Pass ausstellt">Einladungslinks</a></strong> statt einer offenen
+Selbstbedienung: Sie halten Bots fern, ohne Besucher warten zu lassen.</p>
+<h2 id="3-zwei-wege-zum-demo-pass">3. Zwei Wege zum Demo-Pass<a class="anchor" href="#3-zwei-wege-zum-demo-pass" title="Permanent link">#</a></h2>
+<p>Beide erzeugen dasselbe: einen <strong><a class="term" href="glossar.html#demo-pass" title="im Demo: zeitlich begrenzte Berechtigung (7 Tage, Kontingent) für eine eigene Instanz; ausgestellt per Einladungslink oder für den Inhaber">Demo-Pass</a></strong> (7 Tage, <a class="term" href="glossar.html#free-tier" title="Sammelbegriff für kostenlose Nutzungsmengen bei AWS">Kontingent</a>, eigene
+Instanz). Sie unterscheiden sich nur darin, wer ihn ausstellt.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Weg</th>
+<th>Für wen</th>
+<th>Wie</th>
+<th>Kosten trägt</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong><a class="term" href="glossar.html#inhaber-zugang" title="Anmeldung des Projektinhabers mit Sonderrechten: Instanzen starten, Einladungslinks erzeugen">Inhaber-Zugang</a></strong></td>
+<td>den Inhaber selbst</td>
+<td>Anmeldung mit Inhaber-Rolle (<a class="term" href="glossar.html#amazon-cognito" title="AWS-Identitätsdienst für Registrierung, Login, MFA und Benutzerverwaltung; im Demo der Portal-Login (Entscheidung 29.09.2026), angelegt per CDK">Cognito</a>-Gruppe); Instanz starten/stoppen im Verwaltungsbereich</td>
+<td>Inhaber (Cent-Bruchteile)</td>
+</tr>
+<tr>
+<td><strong><a class="term" href="glossar.html#einladungslink" title="persönlicher, einmal verwendbarer Link, der einen Demo-Pass ausstellt">Einladungslink</a></strong></td>
+<td>eingeladene Besucher</td>
+<td>Inhaber erzeugt im Verwaltungsbereich einen persönlichen Link (einmalig verwendbar, 14 Tage gültig) und schickt ihn per <a class="term" href="glossar.html#e-mail" title="elektronische Post; SNS verschickt bis 1.000 E-Mails im Monat kostenlos">E-Mail</a>; der Link stellt den Pass aus</td>
+<td>Inhaber (Cent-Bruchteile)</td>
+</tr>
+</tbody>
+</table></div>
+<p>Optional später: bezahlter Zugang für die Öffentlichkeit (nicht geplant) —
+technisch nur ein weiterer Aussteller desselben Demo-Passes.</p>
+<p>Einladungslinks sind personenbezogen; ihre Nutzung gehört in die
+<a class="term" href="glossar.html#impressum" title="gesetzlich vorgeschriebene Anbieterkennzeichnung bzw. Information über die Verarbeitung personenbezogener Daten">Datenschutzerklärung</a>.</p>
+<h2 id="4-ablauf-für-besucher">4. Ablauf für Besucher<a class="anchor" href="#4-ablauf-für-besucher" title="Permanent link">#</a></h2>
+<figure class="chart"><figcaption>Vom Einladungslink zur eigenen Instanz</figcaption><svg viewBox="0 0 1000 260" role="img" aria-label="Vom Einladungslink zur eigenen Instanz" preserveAspectRatio="xMinYMin meet"><line class="axis" x1="162" y1="10" x2="162" y2="250"/><g tabindex="0" data-tip="Schritt 1: Öffentliche Demoseite: Beschreibung, Architekturbild, Video — alles kostenlos, ohne Anmeldung"><text x="144.0" y="26.0" class="t-ink2" font-size="13" text-anchor="end" font-weight="600">Schritt 1</text><circle class="f-s1 ring" cx="162" cy="21" r="6"/><text x="180.0" y="26.0" class="t-ink" font-size="14" text-anchor="start">Öffentliche Demoseite: Beschreibung, Architekturbild, Video — alles kostenlos, ohne Anmeldung</text></g><g tabindex="0" data-tip="Schritt 2: Einladungslink öffnen: Bot-Prüfung (CAPTCHA), der Link ist einmalig verwendbar"><text x="144.0" y="60.0" class="t-ink2" font-size="13" text-anchor="end" font-weight="600">Schritt 2</text><circle class="f-s1 ring" cx="162" cy="55" r="6"/><text x="180.0" y="60.0" class="t-ink" font-size="14" text-anchor="start">Einladungslink öffnen: Bot-Prüfung (CAPTCHA), der Link ist einmalig verwendbar</text></g><g tabindex="0" data-tip="Schritt 3: Lambda stellt den Pass aus (7 Tage, Kontingent) und startet die eigene Instanz"><text x="144.0" y="94.0" class="t-ink2" font-size="13" text-anchor="end" font-weight="600">Schritt 3</text><circle class="f-s1 ring" cx="162" cy="89" r="6"/><text x="180.0" y="94.0" class="t-ink" font-size="14" text-anchor="start">Lambda stellt den Pass aus (7 Tage, Kontingent) und startet die eigene Instanz</text></g><g tabindex="0" data-tip="Schritt 4: Statusseite „Ihre Instanz wird eingerichtet&quot; (Ziel: unter 1 Minute), dann Login in das eigene Portal mit Demo-Personen"><text x="144.0" y="128.0" class="t-ink2" font-size="13" text-anchor="end" font-weight="600">Schritt 4</text><circle class="f-s1 ring" cx="162" cy="123" r="6"/><text x="180.0" y="128.0" class="t-ink" font-size="14" text-anchor="start">Statusseite „Ihre Instanz wird eingerichtet&quot; (Ziel: unter 1 Minute), dann Login in das eigene</text><text x="180.0" y="148.0" class="t-ink" font-size="14" text-anchor="start">Portal mit Demo-Personen</text></g><g tabindex="0" data-tip="Tag 1–7: Beliebig oft nutzen; Anzeige „Kontingent: 83 % übrig · gültig bis …&quot;; Instanz schläft bei Nichtnutzung und wacht beim nächsten Besuch auf"><text x="144.0" y="182.0" class="t-ink2" font-size="13" text-anchor="end" font-weight="600">Tag 1–7</text><circle class="f-s1 ring" cx="162" cy="177" r="6"/><text x="180.0" y="182.0" class="t-ink" font-size="14" text-anchor="start">Beliebig oft nutzen; Anzeige „Kontingent: 83 % übrig · gültig bis …&quot;; Instanz schläft bei</text><text x="180.0" y="202.0" class="t-ink" font-size="14" text-anchor="start">Nichtnutzung und wacht beim nächsten Besuch auf</text></g><g tabindex="0" data-tip="Tag 7: Pass läuft ab; Instanz und alle Daten werden automatisch gelöscht; Bestätigung per E-Mail"><text x="144.0" y="236.0" class="t-ink2" font-size="13" text-anchor="end" font-weight="600">Tag 7</text><circle class="f-s1 ring" cx="162" cy="231" r="6"/><text x="180.0" y="236.0" class="t-ink" font-size="14" text-anchor="start">Pass läuft ab; Instanz und alle Daten werden automatisch gelöscht; Bestätigung per E-Mail</text></g></svg><details><summary>Daten als Tabelle</summary><div class="table-wrap"><div class="table-wrap"><table><thead><tr><th>Datum</th><th>Ereignis</th></tr></thead><tbody><tr><td>Schritt 1</td><td>Öffentliche Demoseite: Beschreibung, Architekturbild, Video — alles kostenlos, ohne Anmeldung</td></tr><tr><td>Schritt 2</td><td>Einladungslink öffnen: Bot-Prüfung (CAPTCHA), der Link ist einmalig verwendbar</td></tr><tr><td>Schritt 3</td><td>Lambda stellt den Pass aus (7 Tage, Kontingent) und startet die eigene Instanz</td></tr><tr><td>Schritt 4</td><td>Statusseite „Ihre Instanz wird eingerichtet&quot; (Ziel: unter 1 Minute), dann Login in das eigene Portal mit Demo-Personen</td></tr><tr><td>Tag 1–7</td><td>Beliebig oft nutzen; Anzeige „Kontingent: 83 % übrig · gültig bis …&quot;; Instanz schläft bei Nichtnutzung und wacht beim nächsten Besuch auf</td></tr><tr><td>Tag 7</td><td>Pass läuft ab; Instanz und alle Daten werden automatisch gelöscht; Bestätigung per E-Mail</td></tr></tbody></table></div></div></details></figure>
+<p>Technisch: Die Ausstellung legt den <a class="term" href="glossar.html#demo-pass" title="im Demo: zeitlich begrenzte Berechtigung (7 Tage, Kontingent) für eine eigene Instanz; ausgestellt per Einladungslink oder für den Inhaber">Pass</a> in <a class="term" href="glossar.html#dynamodb" title="vollständig verwaltete NoSQL-Datenbank (Schlüssel-Wert/Dokument) mit Antwortzeiten im Millisekundenbereich, ohne Server und ohne Verbindungs-Pool">DynamoDB</a> an und veröffentlicht
+das <a class="term" href="glossar.html#domänen-event" title="fachliches Ereignis in der Vergangenheitsform, z. B. CustomerRegistered, AccountMigrated, MeterReadingSubmitted; andere Dienste reagieren darauf">Domänen-Event</a> <code>DemoPassIssued</code>; daraufhin wird der <a class="term" href="glossar.html#mandant" title="abgeschotteter Bereich eines Kunden in einer gemeinsam betriebenen Anwendung; im Demo je Demo-Pass ein Mandant">Mandant</a>
+eingerichtet, und <a class="term" href="glossar.html#eventbridge-scheduler" title="zeitgesteuertes Auslösen von Zielen (einmalig oder wiederkehrend); 14 Mio. Aufrufe/Monat frei">EventBridge Scheduler</a> plant den Ablauf in 7 Tagen.</p>
+<h2 id="5-eigene-instanz-je-besucher">5. Eigene Instanz je Besucher<a class="anchor" href="#5-eigene-instanz-je-besucher" title="Permanent link">#</a></h2>
+<p>„Eigene Instanz" lässt sich unterschiedlich tief umsetzen — in der
+<a class="term" href="glossar.html#saas" title="Software als gemieteter Online-Dienst">SaaS</a>-Architektur heißen die Modelle <strong><a class="term" href="glossar.html#silo-modell" title="Mandantenmodell: jeder Mandant bekommt eigene, vollständige Infrastruktur">Silo</a></strong>, <strong><a class="term" href="glossar.html#bridge-modell" title="Mandantenmodell: Rechenleistung geteilt, Daten und Ereignisse je Mandant getrennt">Bridge</a></strong> und <strong><a class="term" href="glossar.html#pool-modell" title="Mandantenmodell: alles geteilt, Trennung nur über die Mandanten-Kennung in jedem Datensatz">Pool</a></strong> [E]:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th><strong>Silo</strong> – eigener Stack je Besucher</th>
+<th><strong>Bridge</strong> – geteilte Rechenleistung, eigene Daten und Ereignisse</th>
+<th><strong>Pool</strong> – alles geteilt, Trennung nur per Mandanten-Kennung</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Was ist eigen</td>
+<td><a class="term" href="glossar.html#api-gateway" title="verwalteter Eingangspunkt für APIs: nimmt HTTP-Anfragen an, prüft Authentifizierung, drosselt, leitet an Lambda weiter">API Gateway</a>, <a class="term" href="glossar.html#lambda" title="führt eine einzelne Funktion (z. B. einen HTTP-Handler) bei Bedarf aus; Abrechnung pro Aufruf und Laufzeit, skaliert automatisch von 0 auf viele Instanzen">Lambdas</a>, <a class="term" href="glossar.html#dynamodb" title="vollständig verwaltete NoSQL-Datenbank (Schlüssel-Wert/Dokument) mit Antwortzeiten im Millisekundenbereich, ohne Server und ohne Verbindungs-Pool">DynamoDB</a>-Tabelle, <a class="term" href="glossar.html#eventbridge" title="Event-Bus: Dienste veröffentlichen Ereignisse, Regeln leiten sie anhand ihres Inhalts an Ziele (SQS, Lambda, SNS …) weiter">EventBridge</a>-Bus, <a class="term" href="glossar.html#sqs" title="Nachrichtenwarteschlange: Absender legt Nachrichten ab, Empfänger holt sie ab und bestätigt sie; entkoppelt Dienste und puffert Last">SQS</a>, <a class="term" href="glossar.html#sns" title="Publish/Subscribe-Dienst: eine Nachricht an ein Topic geht an alle Abonnenten (E-Mail, SQS, Lambda, HTTP, SMS)">SNS</a></td>
+<td>eigener Datenbereich (eigene DynamoDB-Tabelle), eigene <a class="term" href="glossar.html#event" title="Nachricht, dass etwas passiert ist (z. B. „Zählerstand erfasst&quot;); Empfänger reagieren darauf, ohne dass der Absender sie kennt">Ereignis</a>-Regeln/Queues, eigener Datenstand der <a class="term" href="glossar.html#legacy-system" title="bestehendes Altsystem mit Kundendaten, das abgelöst werden soll; im Demo simuliert">Altsysteme</a></td>
+<td>nur die Datensätze (Schlüssel enthält <a class="term" href="glossar.html#mandant" title="abgeschotteter Bereich eines Kunden in einer gemeinsam betriebenen Anwendung; im Demo je Demo-Pass ein Mandant">Mandanten-Kennung</a>)</td>
+</tr>
+<tr>
+<td>Stören sich Besucher?</td>
+<td>nein</td>
+<td>nein (<a class="term" href="glossar.html#throttling" title="Begrenzung der Anfragen pro Sekunde; zu viele Anfragen erhalten HTTP 429">Drosselung</a> je Mandant verhindert, dass einer die geteilten Lambdas auslastet)</td>
+<td>theoretisch ja (Last), fachlich nein</td>
+</tr>
+<tr>
+<td>Startzeit [A]</td>
+<td>2–5 min (<a class="term" href="glossar.html#cloudformation" title="AWS-eigener Dienst, der Ressourcen aus einer JSON/YAML-Vorlage anlegt, ändert und löscht; Grundlage von CDK und SAM">CloudFormation</a>-<a class="term" href="glossar.html#stack" title="Einheit in CloudFormation/CDK: eine Gruppe von Ressourcen, die gemeinsam angelegt und gelöscht wird">Stack</a>)</td>
+<td>5–30 s (Tabelle + Regeln + Demo-Daten)</td>
+<td>&lt; 5 s (Demo-Daten schreiben)</td>
+</tr>
+<tr>
+<td>Grenzen [B]</td>
+<td>EventBridge: 100 Busse je Konto und <a class="term" href="glossar.html#region" title="geografischer Standort mit eigenen Rechenzentren; eu-central-1 = Frankfurt, us-east-1 = Nord-Virginia (dort müssen manche globalen Einstellungen, z. B. CloudFront-Zertifikate, lieg">Region</a> (erhöhbar); CloudFormation-Stacks, Lambda-Speicher</td>
+<td>DynamoDB: 2.500 Tabellen je Region</td>
+<td>keine praktischen</td>
+</tr>
+<tr>
+<td>Kosten im Leerlauf</td>
+<td>0 <a class="term" href="glossar.html#usd" title="Währung, in der AWS abrechnet">$</a> (alles <a class="term" href="glossar.html#pay-as-you-go" title="Abrechnung nur nach tatsächlicher Nutzung (Aufrufe, GB, Sekunden) ohne Grundgebühr">nutzungsbasiert</a>, Tabellen <a class="term" href="glossar.html#provisioned" title="DynamoDB-Modus mit fest eingestellter Kapazität (RCU/WCU); im Always Free bis 25 Einheiten; bei Überlast wird gedrosselt statt berechnet">provisioned</a> 5 <a class="term" href="glossar.html#rcu" title="Lese-Kapazitätseinheit von DynamoDB: 1 stark konsistenter Lesevorgang pro Sekunde bis 4 KB">RCU</a>/5 <a class="term" href="glossar.html#wcu" title="Schreib-Kapazitätseinheit von DynamoDB: 1 Schreibvorgang pro Sekunde bis 1 KB">WCU</a> im <a class="term" href="glossar.html#always-free" title="Freikontingente, die unbefristet jeden Monat gelten, z. B. 1 Mio. Lambda-Aufrufe">Always Free</a>)</td>
+<td>0 $</td>
+<td>0 $</td>
+</tr>
+<tr>
+<td>Zeigt</td>
+<td><a class="term" href="glossar.html#infrastruktur-automatisierung" title="Anlegen vollständiger Umgebungen per Programm statt per Hand">Infrastruktur-Automatisierung</a></td>
+<td><strong>typische SaaS-Architektur</strong> mit Mandantentrennung — genau das, was ein <a class="term" href="glossar.html#kundenportal" title="Web-Anwendung, in der Endkunden ihre Verträge, Rechnungen und Daten selbst verwalten (Self-Service)">Consumer-Portal</a> mit Kundenkonten braucht</td>
+<td>Datenmodellierung</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Empfehlung: Bridge</strong> [E] — <strong>entschieden am 29.09.2026</strong>. Jeder Besucher bekommt einen eigenen Mandanten
+mit eigener DynamoDB-Tabelle (<strong>provisioned 5 RCU/5 WCU</strong>, Entscheidung
+29.09.2026 — nur provisionierte Kapazität fällt unter Always Free; die 25
+kostenlosen Einheiten je Konto und Region teilen sich alle Tabellen
+einschließlich <a class="term" href="glossar.html#plattform-tabelle" title="mandantenübergreifende DynamoDB-Tabelle für Einladungen, Pässe, Mandanten und Kontingent-Zähler">Plattform-Tabelle</a>, ein <a class="term" href="glossar.html#single-table-design" title="DynamoDB-Modellierung, bei der alle Entitäten einer Anwendung in einer Tabelle liegen und über zusammengesetzte Schlüssel (Partition/Sort Key) nach Zugriffsmustern angeordnet werde">GSI</a> belegt eigene Kapazität [E];
+darüber hinaus trägt bis 29.09.2027 das <a class="term" href="glossar.html#guthaben" title="Gutschrift in US-Dollar, die mit Rechnungsbeträgen verrechnet wird; bei Neukonten bis 200 $, verfällt nach 12 Monaten">Startguthaben</a>), eigenem Datenstand beider Altsysteme auf
+dem eigenen <a class="term" href="glossar.html#server" title="Rechner oder Prozess, der Anfragen beantwortet">Server</a> (je Mandant ein eigenes Datenbankschema aus einer Vorlage) und eigenen
+Ereignis-Regeln auf dem gemeinsamen Bus. Die Lambdas werden geteilt, aber
+je Mandant gedrosselt; <a class="term" href="glossar.html#iam" title="Rechteverwaltung von AWS: Rollen und Richtlinien legen fest, wer (Mensch, Dienst, Lambda) was mit welcher Ressource darf">IAM</a>-Bedingungen verhindern, dass eine Lambda auf die
+Tabelle eines anderen Mandanten zugreift. Start in Sekunden statt Minuten —
+wichtig, weil Besucher sonst wieder warten.</p>
+<p>Silo bleibt als Option für den <strong><a class="term" href="glossar.html#inhaber-zugang" title="Anmeldung des Projektinhabers mit Sonderrechten: Instanzen starten, Einladungslinks erzeugen">Inhaber-Zugang</a></strong> (eigener vollständiger
+Stack auf Knopfdruck zeigt „<a class="term" href="glossar.html#iac" title="Infrastruktur (Server, Datenbanken, Rechte) wird in Dateien beschrieben, versioniert und automatisch angelegt statt per Klick">Infrastruktur als Code</a>" am deutlichsten).</p>
+<p><a class="term" href="glossar.html#free-tier" title="Sammelbegriff für kostenlose Nutzungsmengen bei AWS">Kontingent</a> je <a class="term" href="glossar.html#demo-pass" title="im Demo: zeitlich begrenzte Berechtigung (7 Tage, Kontingent) für eine eigene Instanz; ausgestellt per Einladungslink oder für den Inhaber">Pass</a> [A], als Vorschlag:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Größe</th>
+<th>Grenze</th>
+<th>Begründung</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Laufzeit</td>
+<td>7 Tage ab Ausstellung</td>
+<td>Anforderung</td>
+</tr>
+<tr>
+<td><a class="term" href="glossar.html#api" title="Programmierschnittstelle, über die Programme miteinander sprechen">API</a>-Aufrufe</td>
+<td class="num">5.000</td>
+<td>reicht für viele Durchläufe der 5-Minuten-Demo</td>
+</tr>
+<tr>
+<td><a class="term" href="glossar.html#domänen-event" title="fachliches Ereignis in der Vergangenheitsform, z. B. CustomerRegistered, AccountMigrated, MeterReadingSubmitted; andere Dienste reagieren darauf">Domänen-Events</a></td>
+<td class="num">1.000</td>
+<td>jede Aktion erzeugt 1–3 Events</td>
+</tr>
+<tr>
+<td><a class="term" href="glossar.html#upload" title="Hochladen einer Datei vom Browser zum Server bzw. nach S3">Uploads</a></td>
+<td>20 Dateien, je max. 5 <a class="term" href="glossar.html#gb" title="Gigabyte / Terabyte (1 TB = 1.000 GB)">MB</a>, nur Bilder/<a class="term" href="glossar.html#pdf" title="Dokumentformat, hier für Rechnungen">PDF</a></td>
+<td>Zählerfotos, Dokumente</td>
+</tr>
+<tr>
+<td>Gleichzeitige Instanzen</td>
+<td>1 je Pass</td>
+<td>Missbrauchsschutz</td>
+</tr>
+<tr>
+<td><a class="term" href="glossar.html#e-mail" title="elektronische Post; SNS verschickt bis 1.000 E-Mails im Monat kostenlos">E-Mails</a></td>
+<td>nur an die bestätigte Adresse des Pass-Inhabers, max. 20</td>
+<td>verhindert, dass die Demo als <a class="term" href="glossar.html#spam" title="unerwünschte Massen-Nachrichten; hier: Missbrauch der Demo zum Versand an Dritte">Spam-Schleuder</a> dient</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="6-spam-und-missbrauchsschutz">6. Spam- und Missbrauchsschutz<a class="anchor" href="#6-spam-und-missbrauchsschutz" title="Permanent link">#</a></h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Risiko</th>
+<th>Maßnahme</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Bots rufen die öffentliche Seite massenhaft auf</td>
+<td>Seite ist statisch und im <a class="term" href="glossar.html#cdn" title="Netz verteilter Server, das Inhalte nah beim Nutzer zwischenspeichert">CDN</a> zwischengespeichert — Aufrufe kosten nichts; <a class="term" href="glossar.html#cloudfront-functions" title="sehr leichte JavaScript-Funktionen direkt am CDN-Rand (z. B. URL-Umschreiben, Header setzen); 2 Mio. Aufrufe frei">CloudFront Functions</a> begrenzen auffällige Muster</td>
+</tr>
+<tr>
+<td>Bots lösen <a class="term" href="glossar.html#einladungslink" title="persönlicher, einmal verwendbarer Link, der einen Demo-Pass ausstellt">Einladungslinks</a> ein oder erraten sie</td>
+<td>CAPTCHA vor der Ausstellung (z. B. <a class="term" href="glossar.html#captcha" title="Prüfung, ob ein Mensch oder ein Programm eine Seite bedient">Cloudflare Turnstile</a> oder hCaptcha, kostenlos), Links einmalig verwendbar und befristet, Begrenzung je <a class="term" href="glossar.html#ip-adresse" title="Internetadresse eines Geräts; dient zur Begrenzung von Anfragen je Absender">IP</a></td>
+</tr>
+<tr>
+<td>Missbrauch der Demo als <a class="term" href="glossar.html#e-mail" title="elektronische Post; SNS verschickt bis 1.000 E-Mails im Monat kostenlos">E-Mail</a>-Versender</td>
+<td>E-Mails nur an die bestätigte <a class="term" href="glossar.html#demo-pass" title="im Demo: zeitlich begrenzte Berechtigung (7 Tage, Kontingent) für eine eigene Instanz; ausgestellt per Einladungslink oder für den Inhaber">Pass-Adresse</a>; alle anderen Benachrichtigungen im <a class="term" href="glossar.html#in-app-feed" title="Benachrichtigungsliste innerhalb der Anwendung (statt E-Mail)">In-App</a>-Postfach der Instanz</td>
+</tr>
+<tr>
+<td>Hochladen fremder oder schädlicher Inhalte</td>
+<td>nur über <a class="term" href="glossar.html#presigned-url" title="zeitlich begrenzter, signierter Link, mit dem der Browser direkt in S3 hoch- oder herunterlädt, ohne AWS-Zugangsdaten">Presigned URL</a> mit Größen- und Typbeschränkung; Dateien nur für den eigenen <a class="term" href="glossar.html#mandant" title="abgeschotteter Bereich eines Kunden in einer gemeinsam betriebenen Anwendung; im Demo je Demo-Pass ein Mandant">Mandanten</a> sichtbar; Löschung mit Pass-Ablauf</td>
+</tr>
+<tr>
+<td>Ein Besucher lastet das System aus</td>
+<td><a class="term" href="glossar.html#free-tier" title="Sammelbegriff für kostenlose Nutzungsmengen bei AWS">Kontingent</a> je Pass (Abschnitt 5), <a class="term" href="glossar.html#throttling" title="Begrenzung der Anfragen pro Sekunde; zu viele Anfragen erhalten HTTP 429">Drosselung</a> je Mandant, <a class="term" href="glossar.html#reserved-concurrency" title="feste Obergrenze gleichzeitiger Ausführungen einer Lambda; wirkt im Demo als harte Kostenbremse (0 = Funktion abgeschaltet). Reservieren lässt sich höchstens das Kontolimit minus 1">Reserved Concurrency</a> je <a class="term" href="glossar.html#lambda" title="führt eine einzelne Funktion (z. B. einen HTTP-Handler) bei Bedarf aus; Abrechnung pro Aufruf und Laufzeit, skaliert automatisch von 0 auf viele Instanzen">Lambda</a></td>
+</tr>
+<tr>
+<td>Weitergabe eines <a class="term" href="glossar.html#demo-pass" title="im Demo: zeitlich begrenzte Berechtigung (7 Tage, Kontingent) für eine eigene Instanz; ausgestellt per Einladungslink oder für den Inhaber">Passes</a></td>
+<td>Pass an <a class="term" href="glossar.html#login" title="Anmeldung eines Nutzers">Login</a> gebunden; eine aktive Sitzung zur Zeit; Einladungslinks einmalig verwendbar</td>
+</tr>
+<tr>
+<td>Kosten laufen trotzdem davon</td>
+<td>globaler <a class="term" href="glossar.html#kill-switch" title="im Demo geplante Automatik: Budget-Alarm → SNS → Lambda setzt Throttling/Concurrency auf 0 und legt die API still">Kill-Switch</a> per <a class="term" href="glossar.html#aws-budgets" title="kostenloser Dienst für Kostengrenzen mit E-Mail-/SNS-Alarm bei Überschreitung; kein harter Stopp, Daten kommen Stunden verzögert">Budget-Alarm</a> (siehe <a href="kostenfrei.html">Kostenfreier Betrieb</a>), Obergrenze gleichzeitiger Instanzen (z. B. 20)</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="7-stufenplan-e">7. Stufenplan [E]<a class="anchor" href="#7-stufenplan-e" title="Permanent link">#</a></h2>
+<ol>
+<li><strong>Stufe 1 – <a class="term" href="glossar.html#inhaber-zugang" title="Anmeldung des Projektinhabers mit Sonderrechten: Instanzen starten, Einladungslinks erzeugen">Inhaber-Zugang</a> und <a class="term" href="glossar.html#einladungslink" title="persönlicher, einmal verwendbarer Link, der einen Demo-Pass ausstellt">Einladungslinks</a>.</strong> Die Kosten
+   (Cent-Bruchteile je <a class="term" href="glossar.html#mandant" title="abgeschotteter Bereich eines Kunden in einer gemeinsam betriebenen Anwendung; im Demo je Demo-Pass ein Mandant">Mandant</a>) trägt der Inhaber.</li>
+<li>Die öffentliche Seite zeigt von Anfang an Video, Architektur und Code
+   — kostenlos, ohne Instanz.</li>
+</ol>
+<h2 id="8-auswirkungen-auf-bisherige-entscheidungen">8. Auswirkungen auf bisherige Entscheidungen<a class="anchor" href="#8-auswirkungen-auf-bisherige-entscheidungen" title="Permanent link">#</a></h2>
+<ul>
+<li>Die Betriebsarten <a class="term" href="glossar.html#dauerbetrieb-mit-deckel" title="Betriebsart, bei der alles dauerhaft läuft und Throttling, Budget-Alarm und Kill-Switch Kosten auf Cent-Bruchteile begrenzen">Z1</a>–<a class="term" href="glossar.html#schlafmodus" title="Betriebsart, in der die kostenpflichtigen Teile nach Inaktivität automatisch entfernt und beim nächsten Besuch automatisch neu angelegt werden; der Besucher wartet dann 1–3 Minuten">Z3</a> (<a href="kostenfrei.html">Kostenfreier Betrieb</a>) werden
+  durch den <a class="term" href="glossar.html#demo-pass" title="im Demo: zeitlich begrenzte Berechtigung (7 Tage, Kontingent) für eine eigene Instanz; ausgestellt per Einladungslink oder für den Inhaber">Demo-Pass</a> ersetzt: Die <strong>gemeinsame Grundlage</strong> (Seite, <a class="term" href="glossar.html#login" title="Anmeldung eines Nutzers">Login</a>,
+  <a class="term" href="glossar.html#ssr" title="HTML wird pro Anfrage auf dem Server erzeugt">SSR</a>-Lambda, geteilte <a class="term" href="glossar.html#lambda" title="führt eine einzelne Funktion (z. B. einen HTTP-Handler) bei Bedarf aus; Abrechnung pro Aufruf und Laufzeit, skaliert automatisch von 0 auf viele Instanzen">Lambdas</a>, <a class="term" href="glossar.html#amazon-cognito" title="AWS-Identitätsdienst für Registrierung, Login, MFA und Benutzerverwaltung; im Demo der Portal-Login (Entscheidung 29.09.2026), angelegt per CDK">Cognito</a>) läuft dauerhaft und kostenlos;
+  <strong><a class="term" href="glossar.html#mandant" title="abgeschotteter Bereich eines Kunden in einer gemeinsam betriebenen Anwendung; im Demo je Demo-Pass ein Mandant">Mandanten</a></strong> entstehen nur mit einem Pass und verschwinden nach 7 Tagen.
+  Das ist die Z3-Idee („kostet nur, wenn jemand es nutzt"), sauber an einen
+  Einladenden gebunden.</li>
+<li>Kosten der <strong>gemeinsamen</strong> <a class="term" href="glossar.html#cent-dienst" title="in diesem Wiki: AWS-Dienst ohne dauerhaftes Freikontingent, der bei Demo-Nutzung nur Bruchteile eines Cents kostet (API Gateway, EventBridge-Events, S3)">Cent-Dienste</a> (<a class="term" href="glossar.html#api-gateway" title="verwalteter Eingangspunkt für APIs: nimmt HTTP-Anfragen an, prüft Authentifizierung, drosselt, leitet an Lambda weiter">API Gateway</a>, <a class="term" href="glossar.html#eventbridge" title="Event-Bus: Dienste veröffentlichen Ereignisse, Regeln leiten sie anhand ihres Inhalts an Ziele (SQS, Lambda, SNS …) weiter">EventBridge</a>, <a class="term" href="glossar.html#s3" title="Objektspeicher für Dateien beliebiger Größe in „Buckets&quot;; Standard für statische Websites, Uploads, Build-Artefakte">S3</a>)
+  entstehen nur durch Mandanten, also durch Pass-Inhaber.</li>
+<li>Neu im Umfang: Pass-Verwaltung, <a class="term" href="glossar.html#einladungslink" title="persönlicher, einmal verwendbarer Link, der einen Demo-Pass ausstellt">Einladungslinks</a>, <a class="term" href="glossar.html#inhaber-zugang" title="Anmeldung des Projektinhabers mit Sonderrechten: Instanzen starten, Einladungslinks erzeugen">Verwaltungsbereich</a> für
+  den Inhaber.</li>
+</ul>
+<h2 id="quellen">Quellen<a class="anchor" href="#quellen" title="Permanent link">#</a></h2>
+<ul class="sources">
+<li>EventBridge-Quoten: <a href="https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-quota.html">https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-quota.html</a> · DynamoDB-Quoten: <a href="https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/ServiceQuotas.html">https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/ServiceQuotas.html</a></li>
+</ul></main></div>
+<footer class="site"><a href="../wiki/demo-pass.md">Markdown-Quelle</a> · Generiert 2026-09-30 07:10 aus <code>docs/wiki</code> mit <code>scripts/build_reports.py</code></footer>
+</body>
+</html>

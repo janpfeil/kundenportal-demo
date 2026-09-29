@@ -1,0 +1,564 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Anleitung Fundament · kundenportal-demo</title>
+<link rel="stylesheet" href="assets/report.css">
+<script src="assets/report.js"></script>
+</head>
+<body>
+<header class="topbar"><a class="brand" href="index.html">kundenportal-demo · Konzept</a><nav class="topnav"><a href="index.html">Übersicht</a><a href="machbarkeit-kosten.html">Machbarkeit &amp; Kosten</a><a href="fachkonzept.html">Fachkonzept</a><a href="demo-pass.html">Demo-Pass</a><a href="kostenfrei.html">Kostenfreier Betrieb</a><a href="anleitung-kontoinhaber.html">Anleitung Kontoinhaber</a><a href="anleitung-fundament.html" aria-current="page">Anleitung Fundament</a><a href="anleitung-anwendung.html">Anleitung Anwendung</a><a href="nextjs-betrieb.html">Next.js-Betrieb</a><a href="architektur.html">Architektur Phase 1</a><a href="glossar.html">Glossar</a></nav>
+<button class="theme-toggle" type="button">Dunkel</button></header>
+<div class="layout"><nav class="toc" aria-label="Inhalt"><div class="toc-title">Inhalt</div><div>
+<ul>
+<li><a href="#4-alltagszugang-einrichten">4. Alltagszugang einrichten</a><ul>
+<li><a href="#40-reihenfolge-aller-inhaber-handlungen">4.0 Reihenfolge aller Inhaber-Handlungen</a></li>
+<li><a href="#41-warum-ein-iam-benutzer-und-nicht-iam-identity-center">4.1 Warum ein IAM-Benutzer und nicht IAM Identity Center 👁</a></li>
+<li><a href="#42-iam-benutzer-anlegen">4.2 IAM-Benutzer anlegen ✎</a></li>
+<li><a href="#43-mfa-für-den-iam-benutzer">4.3 MFA für den IAM-Benutzer ✎</a></li>
+<li><a href="#44-aws-login-auf-dem-eigenen-rechner">4.4 aws login auf dem eigenen Rechner ✎</a></li>
+<li><a href="#45-lambda-kontolimit-prüfen-und-ggf-erhöhen">4.5 Lambda-Kontolimit prüfen 👁 und ggf. erhöhen ✎</a></li>
+<li><a href="#46-protokoll">4.6 Protokoll</a></li>
+</ul>
+</li>
+<li><a href="#5-terraform-fundament-erstlauf">5. Terraform-Fundament: Erstlauf</a><ul>
+<li><a href="#51-vorbereiten">5.1 Vorbereiten 👁</a></li>
+<li><a href="#52-gitlab-zugangstoken-bereitlegen">5.2 GitLab-Zugangstoken bereitlegen ✎</a></li>
+<li><a href="#53-terraform-initialisieren">5.3 Terraform initialisieren ✎</a></li>
+<li><a href="#54-plan-und-apply">5.4 Plan und Apply ✎</a></li>
+<li><a href="#55-e-mail-abonnement-bestätigen">5.5 E-Mail-Abonnement bestätigen ✎</a></li>
+<li><a href="#56-budget-und-rollen-ansehen">5.6 Budget und Rollen ansehen 👁</a></li>
+<li><a href="#57-protokoll">5.7 Protokoll</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</nav><main><h1 id="anleitung-fundament-kapitel-45">Anleitung Fundament (Kapitel 4–5)<a class="anchor" href="#anleitung-fundament-kapitel-45" title="Permanent link">#</a></h1>
+<p>Stand: 2026-09-29 · Fortsetzung der <a href="anleitung-kontoinhaber.html">Anleitung Kontoinhaber</a> (Kapitel 0–3, Grundsätze). Weiter geht es in der <a href="anleitung-anwendung.html">Anleitung Anwendung</a> (Kapitel 6–10).</p>
+<p>Fachbegriffe sind in jedem Abschnitt beim ersten Vorkommen mit dem <a href="glossar.html">Glossar</a> verlinkt (Erklärung und Entsprechung außerhalb von <a class="term" href="glossar.html#aws" title="Cloud-Plattform von Amazon mit über 200 Diensten (Rechenleistung, Datenbanken, Netzwerk, Messaging …), abgerechnet nach Nutzung">AWS</a>).</p>
+<p>Es gelten die Grundsätze aus <a href="anleitung-kontoinhaber.html#0-grundsätze">Kapitel 0</a>:
+jeder Schritt nennt Ziel, Ort, Ergebnis und Notiz; 👁 = nur lesend,
+✎ = verändernd (mit Rückweg); keine Geheimnisse ins Protokoll. Klickpfade,
+die nicht anhand der Hersteller-Dokumentation geprüft werden konnten, sind mit
+„(Stand 09/2026, nicht selbst geprüft)" markiert.</p>
+<h2 id="4-alltagszugang-einrichten">4. Alltagszugang einrichten<a class="anchor" href="#4-alltagszugang-einrichten" title="Permanent link">#</a></h2>
+<h3 id="40-reihenfolge-aller-inhaber-handlungen">4.0 Reihenfolge aller Inhaber-Handlungen<a class="anchor" href="#40-reihenfolge-aller-inhaber-handlungen" title="Permanent link">#</a></h3>
+<p>Die Kapitel 4–10 bauen aufeinander auf. Überblick:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Nr.</th>
+<th>Handlung</th>
+<th>Kapitel (Seite)</th>
+<th>Art</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="num">1</td>
+<td><a class="term" href="glossar.html#iam-benutzer" title="Benutzer innerhalb eines AWS-Kontos mit eigenem Passwort und eigener MFA; im Demo der Alltagszugang des Inhabers (jan-admin), ohne Access Keys">IAM-Benutzer</a> <code>jan-admin</code> mit <a class="term" href="glossar.html#mfa" title="zweiter Faktor zusätzlich zum Passwort (App-Code, SMS, Passkey)">MFA</a> anlegen, <code>aws login</code> einrichten</td>
+<td>4.1–4.4</td>
+<td>✎</td>
+</tr>
+<tr>
+<td class="num">2</td>
+<td><a class="term" href="glossar.html#lambda" title="führt eine einzelne Funktion (z. B. einen HTTP-Handler) bei Bedarf aus; Abrechnung pro Aufruf und Laufzeit, skaliert automatisch von 0 auf viele Instanzen">Lambda</a>-<a class="term" href="glossar.html#service-quotas" title="AWS-Dienst, der die Obergrenzen eines Kontos je Dienst und Region anzeigt (z. B. Lambda „Concurrent executions“) und Erhöhungen per Antrag ermöglicht; der Antrag ist kostenlos">Kontolimit</a> prüfen, ggf. Erhöhung beantragen</td>
+<td class="num">4.5</td>
+<td>👁 / ✎</td>
+</tr>
+<tr>
+<td class="num">3</td>
+<td><a class="term" href="glossar.html#terraform" title="verbreitetes IaC-Werkzeug von HashiCorp: Infrastruktur deklarativ in HCL beschreiben, für viele Anbieter (AWS, Azure, Keycloak, GitHub …) über Provider">Terraform</a>-Erstlauf lokal: <a class="term" href="glossar.html#gitlab" title="Git-Plattform mit CI, auch selbst betreibbar; bei rypox intern auf gitlab.rypox.org im Einsatz">GitLab</a>-<a class="term" href="glossar.html#token" title="digitaler Ausweis, den ein Identitätsdienst ausstellt und den eine App bei jedem API-Aufruf mitschickt">Token</a>, <code>init</code>, <code>apply</code></td>
+<td>5.1–5.4</td>
+<td>✎</td>
+</tr>
+<tr>
+<td class="num">4</td>
+<td><a class="term" href="glossar.html#sns" title="Publish/Subscribe-Dienst: eine Nachricht an ein Topic geht an alle Abonnenten (E-Mail, SQS, Lambda, HTTP, SMS)">SNS</a>-Abo bestätigen, <a class="term" href="glossar.html#aws-budgets" title="kostenloser Dienst für Kostengrenzen mit E-Mail-/SNS-Alarm bei Überschreitung; kein harter Stopp, Daten kommen Stunden verzögert">Budget</a> und Rollen ansehen</td>
+<td>5.5–5.6</td>
+<td>✎ / 👁</td>
+</tr>
+<tr>
+<td class="num">5</td>
+<td>GitLab: Branch-Schutz prüfen, <a class="term" href="glossar.html#deploy-key" title="SSH-Schlüssel, der nur einem GitHub-Repository zugeordnet ist und – ohne „Allow write access“ – nur Lesen erlaubt; im Demo klont die GitLab-Pipeline damit das private Repository">Deploy-Key</a>, <a class="term" href="glossar.html#ci" title="automatisches Bauen und Testen bei jeder Änderung">CI</a>/<a class="term" href="glossar.html#cd" title="automatisches Ausliefern geprüfter Änderungen">CD</a>-Variablen</td>
+<td>6.1–6.3 (<a href="anleitung-anwendung.html">Anwendung</a>)</td>
+<td>✎</td>
+</tr>
+<tr>
+<td class="num">6</td>
+<td>(Agent legt <code>.gitlab-ci.yml</code> im Plattform-Projekt an)</td>
+<td>6.4 (erledigt 29.09.2026)</td>
+<td>—</td>
+</tr>
+<tr>
+<td class="num">7</td>
+<td>Plan-Job ansehen (grün); <code>apply</code> nur, wenn der Plan Änderungen zeigt</td>
+<td>6.5 (<a href="anleitung-anwendung.html">Anwendung</a>)</td>
+<td>👁 / ✎</td>
+</tr>
+<tr>
+<td class="num">8</td>
+<td><a class="term" href="glossar.html#cdk" title="Infrastruktur als Programmcode (TypeScript, Java, Python …): man schreibt Klassen wie new Table(...), CDK erzeugt daraus CloudFormation-Vorlagen und legt die Ressourcen an">CDK</a>-<a class="term" href="glossar.html#cdk-bootstrap" title="einmalig je Konto und Region angelegte CDK-Hilfsressourcen (S3-Bucket für Artefakte, ECR-Repository, Rollen)">Bootstrap</a> lokal, <a class="term" href="glossar.html#github" title="Plattform für Git-Repositories, Pull Requests und CI">GitHub</a>-<a class="term" href="glossar.html#environment" title="GitHub-Umgebung (z. B. „production&quot;) mit Schutzregeln, etwa Freigabe durch eine Person vor dem Deploy">Environment</a> <code>production</code></td>
+<td>7 (<a href="anleitung-anwendung.html">Anwendung</a>)</td>
+<td>✎</td>
+</tr>
+<tr>
+<td class="num">9</td>
+<td>Erster <a class="term" href="glossar.html#deployment" title="Ausliefern einer neuen Version in eine Umgebung">Deploy</a> mit <a class="term" href="glossar.html#dns" title="Telefonbuch des Internets: übersetzt Namen wie energie-demo.rypox.com in Adressen">DNS</a>-Validierung, <a class="term" href="glossar.html#cname" title="DNS-Eintrag, der einen Namen auf einen anderen verweist, z. B. energie-demo.rypox.com → CloudFront-Adresse; auch für die Zertifikatsprüfung von ACM genutzt">CNAME</a>, Test, <a class="term" href="glossar.html#dlq" title="Ablage für Nachrichten, die nach mehreren Versuchen nicht verarbeitet werden konnten, zur Analyse und Nachverarbeitung">DLQ</a>-Probe, <a class="term" href="glossar.html#teardown" title="vollständiges Entfernen aller Demo-Ressourcen per cdk destroy und terraform destroy">Teardown</a>-Probe</td>
+<td>8 (<a href="anleitung-anwendung.html">Anwendung</a>)</td>
+<td>✎</td>
+</tr>
+<tr>
+<td class="num">10</td>
+<td><a class="term" href="glossar.html#repository" title="von Git verwaltetes Projektverzeichnis, z. B. auf GitHub">Repository</a> öffentlich schalten</td>
+<td>10 (<a href="anleitung-anwendung.html">Anwendung</a>)</td>
+<td>✎</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="41-warum-ein-iam-benutzer-und-nicht-iam-identity-center">4.1 Warum ein IAM-Benutzer und nicht IAM Identity Center 👁<a class="anchor" href="#41-warum-ein-iam-benutzer-und-nicht-iam-identity-center" title="Permanent link">#</a></h3>
+<p><a class="term" href="glossar.html#aws" title="Cloud-Plattform von Amazon mit über 200 Diensten (Rechenleistung, Datenbanken, Netzwerk, Messaging …), abgerechnet nach Nutzung">AWS</a> empfiehlt für Menschen eigentlich <a href="glossar.html#iam-identity-center">IAM Identity Center</a>.
+Das setzt aber <a href="glossar.html#aws-organizations">AWS Organizations</a> voraus, und
+der Beitritt zu <a class="term" href="glossar.html#aws-organizations" title="Verbund mehrerer AWS-Konten unter gemeinsamer Abrechnung und Richtlinien">AWS Organizations</a> wechselt ein Konto automatisch vom
+<a href="glossar.html#free-plan">Free Plan</a> in den <a class="term" href="glossar.html#paid-plan" title="regulärer AWS-Kontoplan: alle Dienste, Startguthaben wird zuerst verbraucht, danach Abrechnung nach Nutzung; Konto bleibt bestehen">Paid Plan</a>
+[B: <a href="https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/free-tier-plans.html">https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/free-tier-plans.html</a>].
+Deshalb wird der Alltagszugang ein <a href="glossar.html#iam-benutzer">IAM-Benutzer</a>
+mit Konsolen-Passwort und MFA — <strong>ohne</strong> <a href="glossar.html#access-keys">Access Keys</a>.
+Für die Kommandozeile holt <code>aws login</code> kurzlebige Anmeldedaten über die
+Konsolenanmeldung (4.4).</p>
+<h3 id="42-iam-benutzer-anlegen">4.2 IAM-Benutzer anlegen ✎<a class="anchor" href="#42-iam-benutzer-anlegen" title="Permanent link">#</a></h3>
+<p>Ziel: ein persönlicher Zugang mit vollen Rechten im Konto, damit der
+<a class="term" href="glossar.html#root-benutzer" title="Anmeldung mit der E-Mail-Adresse, mit der das Konto angelegt wurde; hat alle Rechte und sollte nur für Konto- und Abrechnungsaufgaben genutzt werden">Root-Benutzer</a> nur noch für Konto- und Abrechnungsfragen nötig ist.
+Grundlage: <a href="https://docs.aws.amazon.com/IAM/latest/UserGuide/id_users_create.html">https://docs.aws.amazon.com/IAM/latest/UserGuide/id_users_create.html</a></p>
+<ol>
+<li>Als Root anmelden (Kapitel 3.1), in die Suchleiste <strong><a class="term" href="glossar.html#iam" title="Rechteverwaltung von AWS: Rollen und Richtlinien legen fest, wer (Mensch, Dienst, Lambda) was mit welcher Ressource darf">IAM</a></strong> eingeben, den
+   Dienst öffnen.</li>
+<li>Links <strong>Users</strong>, dann <strong>Create user</strong>.</li>
+<li><strong>User name</strong>: <code>jan-admin</code>.</li>
+<li><strong>Provide user access to the <a class="term" href="glossar.html#aws-management-console" title="Weboberfläche von AWS; der Bereich Billing zeigt Rechnungen, Guthaben (Credits) und Freikontingent-Verbrauch">AWS Management Console</a></strong> anhaken. Bei der
+   Frage, wie der Zugang eingerichtet werden soll, <strong>I want to create an IAM
+   user</strong> wählen (nicht die Identity-Center-Empfehlung) (Stand 09/2026, nicht
+   selbst geprüft).</li>
+<li><strong>Console password</strong>: <strong>Custom password</strong>, ein langes Zufallspasswort aus
+   dem Passwortmanager.</li>
+<li><strong>Users must create a new password at next sign-in</strong> <strong>abhaken</strong> (der
+   Benutzer ist man selbst). <strong>Next</strong>.</li>
+<li><strong>Permissions options</strong>: <strong>Attach policies directly</strong>, in der Liste
+   <code>AdministratorAccess</code> suchen und anhaken. <strong>Next</strong>.</li>
+<li>Zusammenfassung prüfen, <strong>Create user</strong>.</li>
+<li>Ergebnis: Seite „Retrieve password" mit der <strong>Console sign-in <a class="term" href="glossar.html#url" title="Internetadresse einer Seite oder eines API-Endpunkts">URL</a></strong>
+   (Form <code>https://&lt;Kontonummer&gt;.signin.aws.amazon.com/console</code>). Die URL als
+   Lesezeichen speichern. <strong>Download .csv file</strong> ist nicht nötig (enthält das
+   Passwort im Klartext).</li>
+</ol>
+<p>Notieren: Benutzername, Datum (Passwort nur im Passwortmanager).</p>
+<p>Rückweg: IAM → <strong>Users</strong> → <code>jan-admin</code> → <strong>Delete</strong>. Kosten: keine.</p>
+<p>Optional ✎: Unter <strong>IAM</strong> → <strong>Dashboard</strong> → <strong>AWS Account</strong> →
+<strong>Account <a class="term" href="glossar.html#konto-alias" title="optionaler, weltweit eindeutiger Name für die Anmelde-Adresse eines AWS-Kontos; nach Kontoschließung nicht wiederverwendbar">Alias</a></strong> → <strong>Create</strong> einen Alias wie <code>rypox-kundenportal</code>
+vergeben; die Anmelde-URL wird dann <code>&lt;https://rypox-kundenportal.signin.aws.amazon.com/console</code>&gt;.
+Aliase sind weltweit eindeutig; Rückweg: <strong>Delete</strong> am selben Ort.</p>
+<h3 id="43-mfa-für-den-iam-benutzer">4.3 MFA für den IAM-Benutzer ✎<a class="anchor" href="#43-mfa-für-den-iam-benutzer" title="Permanent link">#</a></h3>
+<p>Ziel: auch der Alltagszugang braucht einen zweiten Faktor. Sobald ein
+MFA-Gerät zugeordnet ist, verlangt die Konsole bei jeder Anmeldung dieses
+Benutzers den Code — damit auch <code>aws login</code>, das über die Konsolenanmeldung
+läuft. Grundlage: <a href="https://docs.aws.amazon.com/IAM/latest/UserGuide/enable-virt-mfa-for-iam-user.html">https://docs.aws.amazon.com/IAM/latest/UserGuide/enable-virt-mfa-for-iam-user.html</a></p>
+<ol>
+<li>Als Root abmelden. Die Console sign-in URL aus 4.2 öffnen, als
+   <code>jan-admin</code> mit dem neuen Passwort anmelden.</li>
+<li>Oben rechts auf den Benutzernamen klicken, <strong>Security credentials</strong>.</li>
+<li>Abschnitt <strong>Multi-factor authentication (MFA)</strong> → <strong>Assign MFA device</strong>.</li>
+<li>Gerätename <code>jan-admin-handy</code>, <strong>Authenticator app</strong>, <strong>Next</strong>.</li>
+<li><strong>Show <a class="term" href="glossar.html#qr-code" title="quadratischer Strichcode, den eine App mit der Kamera einliest – hier zum Einrichten der Authentifizierungs-App">QR</a> code</strong> scannen, zwei aufeinanderfolgende Codes eintragen,
+   <strong>Add MFA</strong>.</li>
+<li>Abmelden, neu anmelden: Nach dem Passwort wird der Code verlangt.</li>
+</ol>
+<p>Ab jetzt: <strong>alle weiteren Konsolenschritte als <code>jan-admin</code></strong>, nicht als Root.</p>
+<p>Notieren: MFA für <code>jan-admin</code> aktiv (ja/nein).</p>
+<p>Rückweg: am selben Ort <strong>Remove</strong> (nicht empfohlen).</p>
+<h3 id="44-aws-login-auf-dem-eigenen-rechner">4.4 <code>aws login</code> auf dem eigenen Rechner ✎<a class="anchor" href="#44-aws-login-auf-dem-eigenen-rechner" title="Permanent link">#</a></h3>
+<p>Ziel: Terraform, CDK und die AWS CLI lokal nutzen, ohne dauerhafte
+Schlüssel auf der Platte. <a href="glossar.html#aws-login"><code>aws login</code></a> öffnet den
+<a class="term" href="glossar.html#browser" title="Programm zum Anzeigen von Webseiten; „Browser-App&quot; = Anwendung, die im Browser läuft">Browser</a>, man meldet sich wie in 4.3 an, und die CLI erhält kurzlebige
+Anmeldedaten, die sie selbst erneuert
+[B: <code>aws login help</code>, AWS CLI 2.36]. Verändert wird nur die lokale
+Konfiguration, nichts im <a class="term" href="glossar.html#aws-konto" title="Abrechnungs- und Sicherheitsgrenze bei AWS: alle Ressourcen, Rechnungen und Berechtigungen hängen an einem Konto">AWS-Konto</a>.</p>
+<ol>
+<li>Version prüfen: <code>aws --version</code> → mindestens <code>aws-cli/2.32</code> (lokal 2.36
+   installiert).</li>
+<li><a class="term" href="glossar.html#region" title="geografischer Standort mit eigenen Rechenzentren; eu-central-1 = Frankfurt, us-east-1 = Nord-Virginia (dort müssen manche globalen Einstellungen, z. B. CloudFront-Zertifikate, lieg">Region</a> für das Profil festlegen:
+   <code>aws configure set region eu-central-1 --profile kundenportal</code></li>
+<li>Anmelden: <code>aws login --profile kundenportal</code>. Der Browser öffnet sich;
+   mit der Console sign-in URL aus 4.2 als <code>jan-admin</code> anmelden (Passwort und
+   MFA-Code). Ohne Browser auf dem Rechner (SSH): <code>--remote</code> anhängen und den
+   angezeigten Code zurückkopieren.</li>
+<li>Prüfen 👁: <code>aws sts get-caller-identity --profile kundenportal</code>.
+   Ergebnis: JSON mit <code>"Arn": "arn:aws:iam::&lt;Kontonummer&gt;:user/jan-admin"</code>.</li>
+<li>Für Werkzeuge, die das <a class="term" href="glossar.html#aws-login" title="Befehl der AWS CLI (ab 2.32), der über die Konsolenanmeldung im Browser kurzlebige Anmeldedaten für die Kommandozeile holt und selbst erneuert; ersetzt dauerhafte Access Keys auf d">Login-Verfahren</a> nicht kennen, die Anmeldedaten
+   ins aktuelle Terminal exportieren (gilt nur dort):</li>
+</ol>
+<p><code>eval "$(aws configure export-credentials --profile kundenportal --format env)"</code></p>
+<p>Die exportierten Werte laufen nach kurzer Zeit ab; dann Schritt 3 und 5
+   wiederholen. Terraform und CDK werden in dieser Anleitung immer so
+   gestartet.</p>
+<p><strong>Nie</strong> <a class="term" href="glossar.html#access-keys" title="dauerhafte AWS-Zugangsdaten (Key-ID + Secret); Sicherheitsrisiko, wenn sie in CI oder Repos liegen">Access Keys</a> anlegen (IAM → Users → Security credentials →
+„Create access key" bleibt unbenutzt).</p>
+<p>Rückweg: <code>aws logout --profile kundenportal</code> löscht die zwischengespeicherten
+Anmeldedaten [B: <code>aws logout help</code>]; danach das Profil <code>kundenportal</code> aus
+<code>~/.aws/config</code> entfernen.</p>
+<h3 id="45-lambda-kontolimit-prüfen-und-ggf-erhöhen">4.5 Lambda-Kontolimit prüfen 👁 und ggf. erhöhen ✎<a class="anchor" href="#45-lambda-kontolimit-prüfen-und-ggf-erhöhen" title="Permanent link">#</a></h3>
+<p>Ziel: Die Anwendung setzt je Lambda-Funktion eine
+<a href="glossar.html#reserved-concurrency">Reserved Concurrency</a> von 2 (fünf Funktionen
+= 10) als harte Kostenbremse. AWS lässt aber höchstens „nicht reservierte
+Kontokapazität <strong>minus 100</strong>" reservieren; 100 bleiben immer für Funktionen
+ohne Reservierung frei
+[B: <a href="https://docs.aws.amazon.com/lambda/latest/dg/configuration-concurrency.html">https://docs.aws.amazon.com/lambda/latest/dg/configuration-concurrency.html</a>].
+Standard sind 1.000 <a class="term" href="glossar.html#concurrency" title="Zahl der gleichzeitig laufenden Instanzen einer Lambda">gleichzeitige Ausführungen</a> je Region, <strong>neue Konten
+haben reduzierte Werte</strong>, die AWS mit der Nutzung automatisch anhebt
+[B: <a href="https://docs.aws.amazon.com/lambda/latest/dg/gettingstarted-limits.html">https://docs.aws.amazon.com/lambda/latest/dg/gettingstarted-limits.html</a>].
+Bei einem Limit von 10 ist also gar keine Reservierung möglich, und der
+erste Deploy würde scheitern.</p>
+<p>Prüfen 👁 (Konsole):</p>
+<ol>
+<li>Region oben rechts auf <strong>Europe (Frankfurt)</strong> stellen (Quoten gelten je
+   Region).</li>
+<li>In die Suchleiste <strong>Service Quotas</strong> eingeben, öffnen.</li>
+<li>Links <strong>AWS services</strong>, in der Liste <strong>AWS Lambda</strong> suchen und öffnen.</li>
+<li>Zeile <strong>Concurrent executions</strong>: Spalte <strong>Applied account-level quota
+   value</strong> ablesen.</li>
+</ol>
+<p>Prüfen 👁 (Kommandozeile, nach 4.4):
+<code>aws lambda get-account-settings --region eu-central-1 --profile kundenportal</code>
+→ <code>AccountLimit.ConcurrentExecutions</code> (Limit) und
+<code>UnreservedConcurrentExecutions</code>.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Angezeigtes Limit</th>
+<th>Folge</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>≥ 110</td>
+<td>nichts zu tun; Standard <code>reservedConcurrency=2</code> passt (10 reserviert, ≥ 100 frei)</td>
+</tr>
+<tr>
+<td>&lt; 110 (typisch 10)</td>
+<td>Weg A oder B</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Weg A — Erhöhung beantragen ✎ (empfohlen):</strong></p>
+<ol>
+<li>In der Zeile <strong>Concurrent executions</strong> auf den Namen klicken,
+   <strong><a class="term" href="glossar.html#request" title="einzelne Anfrage an einen Dienst; viele AWS-Dienste rechnen pro Million Requests ab">Request</a> increase at account level</strong>.</li>
+<li><strong>Increase quota value</strong>: <code>1000</code>, <strong>Request</strong>.</li>
+<li>Ergebnis: Unter <strong>Quota request history</strong> ein Eintrag mit Status
+   „Pending", später „Case opened"/„Approved". Das dauert Stunden bis
+   Tage; AWS antwortet per <a class="term" href="glossar.html#e-mail" title="elektronische Post; SNS verschickt bis 1.000 E-Mails im Monat kostenlos">E-Mail</a>. Grundlage:
+   <a href="https://docs.aws.amazon.com/servicequotas/latest/userguide/request-quota-increase.html">https://docs.aws.amazon.com/servicequotas/latest/userguide/request-quota-increase.html</a></li>
+</ol>
+<p>Der Antrag ist kostenlos; ein höheres Limit verursacht selbst keine Kosten
+(bezahlt wird nur tatsächliche Ausführung). Rückweg: nicht nötig.</p>
+<p><strong>Weg B — ohne Reservierung deployen ✎:</strong> Der CDK-Kontextwert
+<code>reservedConcurrency=0</code> lässt die Reservierung weg. Dann begrenzen nur noch
+<a class="term" href="glossar.html#throttling" title="Begrenzung der Anfragen pro Sekunde; zu viele Anfragen erhalten HTTP 429">API-Throttling</a> (10/20 Anfragen/s) und das Kontolimit selbst die Last; bei
+einem Limit von 10 ist das ohnehin eine harte Grenze. Der Deploy-<a class="term" href="glossar.html#workflow" title="allgemein: automatisierter Ablauf mehrerer Schritte; bei GitHub: eine Pipeline-Datei">Workflow</a>
+liest den Wert aus der GitHub-Variable <code>RESERVED_CONCURRENCY</code> (Standard 2):
+GitHub → Repository → <strong>Settings</strong> → <strong>Secrets and variables</strong> → <strong>Actions</strong>
+→ Reiter <strong>Variables</strong> → <strong>New repository variable</strong>, Name
+<code>RESERVED_CONCURRENCY</code>, Wert <code>0</code>. Rückweg: Variable löschen, sobald das Limit
+erhöht ist; der nächste Deploy reserviert dann wieder 2 je Funktion.</p>
+<p>Notieren: angezeigtes Limit, gewählter Weg, Datum des Antrags und der
+Genehmigung.</p>
+<h3 id="46-protokoll">4.6 Protokoll<a class="anchor" href="#46-protokoll" title="Permanent link">#</a></h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Datum</th>
+<th>Schritt</th>
+<th>Ergebnis</th>
+<th>Wer</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td></td>
+<td>4.2 IAM-Benutzer <code>jan-admin</code> angelegt (Alias, falls vergeben)</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td>4.3 MFA für <code>jan-admin</code> aktiv</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td>4.4 <code>aws login</code> funktioniert (<code>get-caller-identity</code> zeigt <code>user/jan-admin</code>)</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td>4.5 Lambda-Limit Frankfurt / gewählter Weg / Antrag genehmigt am</td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="5-terraform-fundament-erstlauf">5. Terraform-Fundament: Erstlauf<a class="anchor" href="#5-terraform-fundament-erstlauf" title="Permanent link">#</a></h2>
+<p>Ziel: die dauerhaften Grundlagen anlegen, die nicht zur Anwendung gehören
+(Code: <code>infra/terraform</code>):</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Ressource</th>
+<th>Zweck</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a class="term" href="glossar.html#openid-connect" title="Identitätsschicht auf OAuth2: liefert zusätzlich ein ID-Token mit Nutzerangaben; auch für die Anmeldung von GitHub Actions bei AWS genutzt">OIDC</a>-Anbieter <a class="term" href="glossar.html#github" title="Plattform für Git-Repositories, Pull Requests und CI">GitHub</a> + Rolle <code>kundenportal-github-deploy</code></td>
+<td><a class="term" href="glossar.html#github-actions" title="CI/CD-Dienst von GitHub: Workflows in YAML laufen bei Push, Pull Request oder manuell">GitHub Actions</a> <a class="term" href="glossar.html#deployment" title="Ausliefern einer neuen Version in eine Umgebung">deployt</a> ohne Schlüssel; nur <a class="term" href="glossar.html#environment" title="GitHub-Umgebung (z. B. „production&quot;) mit Schutzregeln, etwa Freigabe durch eine Person vor dem Deploy">Environment</a> <code>production</code> von <code>janpfeil/kundenportal-demo</code>; darf nur die <a class="term" href="glossar.html#cdk" title="Infrastruktur als Programmcode (TypeScript, Java, Python …): man schreibt Klassen wie new Table(...), CDK erzeugt daraus CloudFormation-Vorlagen und legt die Ressourcen an">CDK</a>-<a class="term" href="glossar.html#cdk-bootstrap" title="einmalig je Konto und Region angelegte CDK-Hilfsressourcen (S3-Bucket für Artefakte, ECR-Repository, Rollen)">Bootstrap</a>-Rollen annehmen, Test-<a class="term" href="glossar.html#event" title="Nachricht, dass etwas passiert ist (z. B. „Zählerstand erfasst&quot;); Empfänger reagieren darauf, ohne dass der Absender sie kennt">Ereignisse</a> auf den Bus <code>kundenportal</code> senden und <a class="term" href="glossar.html#cloudwatch" title="AWS-Dienst für Logs, Metriken und Alarme">Log-Gruppen</a> <code>/aws/lambda/Kundenportal*</code> löschen</td>
+</tr>
+<tr>
+<td><a class="term" href="glossar.html#openid-connect" title="Identitätsschicht auf OAuth2: liefert zusätzlich ein ID-Token mit Nutzerangaben; auch für die Anmeldung von GitHub Actions bei AWS genutzt">OIDC</a>-Anbieter <code>gitlab.rypox.org</code> + Rolle <code>kundenportal-gitlab-foundation</code></td>
+<td><a class="term" href="glossar.html#gitlab-ci" title="CI/CD in GitLab; hier auf gitlab.rypox.org für Plattform (Terraform) und Altsysteme">GitLab CI</a> pflegt dieses <a class="term" href="glossar.html#plattform-schicht" title="im Demo: per Terraform aus GitLab CI verwaltete Grundlagen (OIDC-Vertrauensstellungen, Budget + SNS-Grundlage des Kill-Switch, SSM-Grundwerte, ab Phase 3 Keycloak-Konfiguration), a">Fundament</a>; nur Projekt <code>saas/kundenportal-demo/platform</code>, Branch <code>main</code></td>
+</tr>
+<tr>
+<td>Richtlinie <code>kundenportal-ci-boundary</code></td>
+<td><a href="glossar.html#permissions-boundary">Permissions Boundary</a> beider Rollen; die <a class="term" href="glossar.html#gitlab" title="Git-Plattform mit CI, auch selbst betreibbar; bei rypox intern auf gitlab.rypox.org im Einsatz">GitLab</a>-Rolle kann sie nie ändern → Änderungen an der <a class="term" href="glossar.html#permissions-boundary" title="an eine IAM-Rolle gehängte Obergrenze: die Rolle darf höchstens, was Boundary und eigene Richtlinie gemeinsam erlauben; verhindert, dass eine CI-Rolle sich selbst mehr Rechte gibt">Boundary</a> nur lokal durch den Inhaber</td>
+</tr>
+<tr>
+<td><a class="term" href="glossar.html#aws-budgets" title="kostenloser Dienst für Kostengrenzen mit E-Mail-/SNS-Alarm bei Überschreitung; kein harter Stopp, Daten kommen Stunden verzögert">Budget</a> <code>kundenportal-monthly</code></td>
+<td>1 <a class="term" href="glossar.html#usd" title="Währung, in der AWS abrechnet">$</a>/Monat; <a class="term" href="glossar.html#alarm" title="Benachrichtigung, wenn eine Metrik einen Grenzwert überschreitet">Alarm</a> bei tatsächlichen Kosten &gt; 0,01 $ und bei Prognose &gt; 100 %; per <a class="term" href="glossar.html#e-mail" title="elektronische Post; SNS verschickt bis 1.000 E-Mails im Monat kostenlos">E-Mail</a> und an das <a class="term" href="glossar.html#sns" title="Publish/Subscribe-Dienst: eine Nachricht an ein Topic geht an alle Abonnenten (E-Mail, SQS, Lambda, HTTP, SMS)">SNS-Topic</a> <code>kundenportal-budget-alerts</code></td>
+</tr>
+<tr>
+<td><a class="term" href="glossar.html#ssm-parameter-store" title="Ablage für Konfigurationswerte und (verschlüsselt als SecureString) Geheimnisse; Standard-Stufe kostenlos. Im Demo auch Übergabestelle zwischen Terraform und CDK">SSM-Parameter</a> <code>/kundenportal/owner-email</code>, <code>/kundenportal/budget-alerts-topic-arn</code></td>
+<td>Übergabe an die CDK-App</td>
+</tr>
+</tbody>
+</table></div>
+<p>Der <strong>erste</strong> Lauf geschieht lokal durch den Inhaber, weil die Rolle, mit der
+GitLab später arbeitet, erst durch diesen Lauf entsteht. Der
+<a href="glossar.html#terraform-state">Terraform-State</a> liegt als
+<a href="glossar.html#gitlab-managed-terraform-state">GitLab-managed Terraform State</a>
+im Projekt <code>saas/kundenportal-demo/platform</code> (Projekt-ID 726, <a class="term" href="glossar.html#terraform-state" title="Datei, in der Terraform den tatsächlichen Zustand der verwalteten Ressourcen festhält; liegt im Demo im GitLab-managed Terraform State (kein State-Bucket in S3)">State</a>-Name
+<code>foundation</code>); lokal und in der <a class="term" href="glossar.html#pipeline" title="automatisierte Abfolge von Schritten (bauen, testen, ausliefern)">Pipeline</a> wird derselbe State benutzt.</p>
+<p>Kosten: keine. Die ersten zwei Budgets eines Kontos sind kostenlos, <a class="term" href="glossar.html#iam" title="Rechteverwaltung von AWS: Rollen und Richtlinien legen fest, wer (Mensch, Dienst, Lambda) was mit welcher Ressource darf">IAM</a>, SSM
+(Standard) und SNS-E-Mails im Rahmen sind kostenlos
+(<a href="kostenfrei.html">Kostenfreier Betrieb</a> §2).</p>
+<h3 id="51-vorbereiten">5.1 Vorbereiten 👁<a class="anchor" href="#51-vorbereiten" title="Permanent link">#</a></h3>
+<ol>
+<li><a class="term" href="glossar.html#terraform" title="verbreitetes IaC-Werkzeug von HashiCorp: Infrastruktur deklarativ in HCL beschreiben, für viele Anbieter (AWS, Azure, Keycloak, GitHub …) über Provider">Terraform</a> installiert: <code>terraform version</code> → mindestens <code>1.16</code>.</li>
+<li>Das GitHub-<a class="term" href="glossar.html#repository" title="von Git verwaltetes Projektverzeichnis, z. B. auf GitHub">Repository</a> lokal ausgecheckt, auf dem Stand, der auch in
+   GitLab gepinnt wird (der Agent nennt den <a class="term" href="glossar.html#commit" title="Commit = gespeicherter Änderungsstand in Git; Git-Tag = Name für einen bestimmten Commit, z. B. eine Version v1.2.0 (nicht zu verwechseln mit AWS-Tags)">Commit</a>).</li>
+<li><code>aws login --profile kundenportal</code> und Export aus 4.4, Schritt 5, im
+   selben Terminal.</li>
+<li>Mindestens die Rolle <strong>Maintainer</strong> im GitLab-Projekt
+   <code>saas/kundenportal-demo/platform</code> (nötig, um den State zu schreiben)
+   (Stand 09/2026, nicht selbst geprüft).</li>
+</ol>
+<h3 id="52-gitlab-zugangstoken-bereitlegen">5.2 GitLab-Zugangstoken bereitlegen ✎<a class="anchor" href="#52-gitlab-zugangstoken-bereitlegen" title="Permanent link">#</a></h3>
+<p>Ziel: Terraform liest und schreibt den State in GitLab. Dafür braucht es
+<strong>einmalig</strong> ein persönliches GitLab-<a class="term" href="glossar.html#token" title="digitaler Ausweis, den ein Identitätsdienst ausstellt und den eine App bei jedem API-Aufruf mitschickt">Zugangstoken</a> (Personal Access Token).
+Grundlage: <a href="https://docs.gitlab.com/user/profile/personal_access_tokens/">https://docs.gitlab.com/user/profile/personal_access_tokens/</a></p>
+<p><strong>Fall A — das Token liegt schon in einer Datei</strong> (z. B.
+<code>&lt;pfad-zur-token-datei&gt;</code>): nur prüfen, dass es den <a class="term" href="glossar.html#resource-server" title="in Cognito die Beschreibung einer API mit eigenen Scopes (Berechtigungen wie kundenportal/profile.read); das Access Token trägt die gewährten Scopes, der JWT-Authorizer verlangt si">Scope</a> <strong>api</strong>
+hat und noch gültig ist (GitLab → Avatar → <strong>Edit profile</strong> → <strong>Access
+tokens</strong> → Liste) und dass die Datei nur für einen selbst lesbar ist:</p>
+<p><code>chmod 600 &lt;pfad-zur-token-datei&gt;</code></p>
+<p>Weiter mit 5.3, Fall A.</p>
+<p><strong>Fall B — neues Token anlegen:</strong></p>
+<ol>
+<li><a href="https://gitlab.rypox.org">https://gitlab.rypox.org</a> öffnen → eigenes <strong>Avatar</strong> → <strong>Edit profile</strong> →
+   links <strong>Access tokens</strong> (Stand 09/2026, nicht selbst geprüft).</li>
+<li><strong>Add new token</strong>: Name <code>kundenportal-terraform-erstlauf</code>, <strong>Expiration
+   date</strong> in 7 Tagen, Scope <strong>api</strong> anhaken, <strong>Create personal access token</strong>.</li>
+<li>Das Token wird <strong>einmal</strong> angezeigt → mit dem Kopier-Symbol kopieren und
+   gleich in 5.3, Fall B, einfügen. Nicht in Dateien, Chats oder Notizen
+   ablegen.</li>
+</ol>
+<p>Notieren: Name und Ablaufdatum des Tokens (nicht den Wert).</p>
+<p>Rückweg: GitLab → <strong>Access tokens</strong> → <strong>Revoke</strong> (bei Fall B spätestens nach
+5.4).</p>
+<h3 id="53-terraform-initialisieren">5.3 Terraform initialisieren ✎<a class="anchor" href="#53-terraform-initialisieren" title="Permanent link">#</a></h3>
+<p>Alle Befehle <strong>in einem einzigen Terminalfenster</strong> nacheinander ausführen —
+die Umgebungsvariablen gelten nur in diesem Fenster. Platzhalter in <code>&lt;…&gt;</code>
+ersetzen.</p>
+<p><strong>Schritt 1 — ins Verzeichnis wechseln und <a class="term" href="glossar.html#aws" title="Cloud-Plattform von Amazon mit über 200 Diensten (Rechenleistung, Datenbanken, Netzwerk, Messaging …), abgerechnet nach Nutzung">AWS</a>-Anmeldung übernehmen:</strong></p>
+<p><code>cd &lt;pfad-zum-repository&gt;/kundenportal-demo/infra/terraform
+aws login --profile kundenportal     # nur nötig, wenn die Anmeldung aus 4.4 abgelaufen ist
+eval "$(aws configure export-credentials --profile kundenportal --format env)"
+aws sts get-caller-identity --query Arn --output text</code></p>
+<p>Ergebnis der letzten Zeile: <code>arn:aws:iam::&lt;Kontonummer&gt;:user/jan-admin</code>.
+Steht dort <code>…:root</code> oder eine Fehlermeldung: Kapitel 4.4 wiederholen.</p>
+<p><strong>Schritt 2 — GitLab-Zugang und E-Mail-Adresse setzen:</strong></p>
+<p>Fall A (Token in Datei):</p>
+<p><code>export TF_HTTP_USERNAME="janpfeil"
+export TF_HTTP_PASSWORD="$(cat &lt;pfad-zur-token-datei&gt;)"
+export TF_VAR_owner_email="&lt;e-mail-adresse-für-kostenalarme&gt;"</code></p>
+<p>Fall B (Token frisch kopiert):</p>
+<p><code>export TF_HTTP_USERNAME="janpfeil"
+read -rs TF_HTTP_PASSWORD &amp;&amp; export TF_HTTP_PASSWORD
+export TF_VAR_owner_email="&lt;e-mail-adresse-für-kostenalarme&gt;"</code></p>
+<p>Bei <code>read -rs …</code> wartet das Terminal still auf eine Eingabe: das Token mit
+<strong>Strg+Umschalt+V</strong> einfügen und <strong>Enter</strong> drücken. Es erscheint dabei
+<strong>nichts</strong> auf dem Bildschirm — das ist gewollt (kein Echo, kein Eintrag in
+der Befehlshistorie).</p>
+<p><code>janpfeil</code> ist der GitLab-Benutzername. Die E-Mail-Adresse erhält die
+Budget-Alarme und Betriebshinweise; sie landet nur im <a class="term" href="glossar.html#aws-konto" title="Abrechnungs- und Sicherheitsgrenze bei AWS: alle Ressourcen, Rechnungen und Berechtigungen hängen an einem Konto">AWS-Konto</a> und im
+privaten State, nicht im Repository.</p>
+<p><strong>Schritt 3 — prüfen, dass alles gesetzt ist (zeigt keine Werte an):</strong></p>
+<p><code>for v in AWS_ACCESS_KEY_ID TF_HTTP_USERNAME TF_HTTP_PASSWORD TF_VAR_owner_email; do
+  [ -n "${!v}" ] &amp;&amp; echo "$v gesetzt" || echo "$v FEHLT"
+done</code></p>
+<p>Alle vier Zeilen müssen „gesetzt" lauten.</p>
+<p><strong>Schritt 4 — Terraform mit dem <a class="term" href="glossar.html#gitlab-managed-terraform-state" title="Terraform-State, den GitLab über ein HTTP-Backend mit Sperre speichert">GitLab-State</a> verbinden:</strong></p>
+<p><code>terraform init \
+  -backend-config="address=https://gitlab.rypox.org/api/v4/projects/726/terraform/state/foundation" \
+  -backend-config="lock_address=https://gitlab.rypox.org/api/v4/projects/726/terraform/state/foundation/lock" \
+  -backend-config="unlock_address=https://gitlab.rypox.org/api/v4/projects/726/terraform/state/foundation/lock" \
+  -backend-config="lock_method=POST" -backend-config="unlock_method=DELETE" -backend-config="retry_wait_min=5"</code></p>
+<p>Ergebnis: „Terraform has been successfully initialized!". Verändert wird nur
+das lokale Verzeichnis <code>.terraform/</code>; der State in GitLab entsteht beim
+ersten <code>apply</code>.</p>
+<p>Warum Umgebungsvariablen statt <code>-backend-config</code> für Benutzer und Token:
+Terraform speichert alle <code>-backend-config</code>-Werte in
+<code>.terraform/terraform.tfstate</code> auf der Platte; <code>TF_HTTP_USERNAME</code> und
+<code>TF_HTTP_PASSWORD</code> werden dagegen nicht gespeichert
+[B: <a href="https://developer.hashicorp.com/terraform/language/backend/http">https://developer.hashicorp.com/terraform/language/backend/http</a>].</p>
+<p>Typische Fehler:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Meldung</th>
+<th>Ursache</th>
+<th>Abhilfe</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>401 Unauthorized</code> beim <code>init</code></td>
+<td>Token falsch, abgelaufen oder ohne Scope <strong>api</strong></td>
+<td>Token prüfen (5.2), Schritt 2 wiederholen</td>
+</tr>
+<tr>
+<td><code>403 Forbidden</code></td>
+<td>GitLab-Rolle im Projekt <code>platform</code> unter Maintainer</td>
+<td>Rolle erhöhen lassen (5.1, Punkt 4)</td>
+</tr>
+<tr>
+<td><code>No valid credential sources found</code> / <code>ExpiredToken</code> beim <code>plan</code></td>
+<td>AWS-Anmeldung abgelaufen</td>
+<td>Schritt 1 wiederholen</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="54-plan-und-apply">5.4 Plan und Apply ✎<a class="anchor" href="#54-plan-und-apply" title="Permanent link">#</a></h3>
+<p>Im selben Terminal:</p>
+<p><code>terraform plan -out=plan.tfplan</code></p>
+<p>Ergebnis prüfen — die letzte Zeile muss lauten: <strong>Plan: 14 to add, 0 to
+change, 0 to destroy.</strong> (zwei OIDC-Anbieter, zwei Rollen, drei
+Rollenrichtlinien, die Boundary, SNS-Topic mit Richtlinie und Abo, Budget,
+zwei Parameter). Steht dort etwas bei „to change" oder „to destroy":
+<strong>abbrechen</strong> und den Agenten fragen.</p>
+<p><code>terraform apply plan.tfplan
+terraform output</code></p>
+<p><code>apply</code> legt genau das Geplante an (unter einer Minute) und endet mit
+„Apply complete! Resources: 14 added". <code>terraform output</code> zeigt drei Werte:
+<code>github_deploy_role_arn</code>, <code>gitlab_foundation_role_arn</code>,
+<code>budget_alerts_topic_arn</code>. Sie sind keine Geheimnisse, enthalten aber die
+<a class="term" href="glossar.html#account-id" title="zwölfstellige Nummer eines AWS-Kontos; kein Geheimnis, aber nicht öffentlich zu machen">Kontonummer</a> → nur ins private Protokoll.</p>
+<p>Aufräumen (im selben Terminal):</p>
+<p><code>rm -f plan.tfplan        # enthält u. a. die E-Mail-Adresse
+unset TF_HTTP_PASSWORD TF_HTTP_USERNAME TF_VAR_owner_email AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN AWS_CREDENTIAL_EXPIRATION</code></p>
+<p>Bei Fall B danach das Token in GitLab widerrufen (<strong>Revoke</strong>). Bei Fall A
+bleibt die Datei, wie sie ist; ein Token mit langem Ablaufdatum trotzdem
+regelmäßig erneuern.</p>
+<p>Prüfen 👁: GitLab → Projekt <code>platform</code> → <strong>Operate</strong> → <strong>Terraform states</strong>
+zeigt einen State <code>foundation</code> (Stand 09/2026, nicht selbst geprüft).</p>
+<p>Rückweg (vollständig): <strong>erst</strong> die Anwendung abbauen (Kapitel 8.7) und den
+CDK-Bootstrap entfernen (Kapitel 7.1), dann in einem neuen Terminal Schritte
+1–4 aus 5.3 und <code>terraform destroy</code>. Nicht über GitLab — die GitLab-Rolle
+würde sich dabei selbst löschen.</p>
+<h3 id="55-e-mail-abonnement-bestätigen">5.5 E-Mail-Abonnement bestätigen ✎<a class="anchor" href="#55-e-mail-abonnement-bestätigen" title="Permanent link">#</a></h3>
+<p>Ziel: Budget-Alarme erreichen den Inhaber nur, wenn er das E-Mail-Abo
+bestätigt hat.</p>
+<ol>
+<li>Posteingang der Adresse aus <code>TF_VAR_owner_email</code>: E-Mail von
+   „AWS Notifications" mit Betreff <strong>AWS Notification - Subscription
+   Confirmation</strong>, Topic „<a class="term" href="glossar.html#kundenportal" title="Web-Anwendung, in der Endkunden ihre Verträge, Rechnungen und Daten selbst verwalten (Self-Service)">Kundenportal</a> Budget" (<a class="term" href="glossar.html#spam" title="unerwünschte Massen-Nachrichten; hier: Missbrauch der Demo zum Versand an Dritte">Spam</a>-Ordner prüfen).</li>
+<li>Link <strong>Confirm subscription</strong> anklicken. Ergebnis: Seite „Subscription
+   confirmed!".</li>
+<li>Prüfen 👁: <a class="term" href="glossar.html#aws-management-console" title="Weboberfläche von AWS; der Bereich Billing zeigt Rechnungen, Guthaben (Credits) und Freikontingent-Verbrauch">Konsole</a> (Frankfurt) → <strong>Simple Notification Service</strong> →
+   <strong>Topics</strong> → <code>kundenportal-budget-alerts</code> → Reiter <strong>Subscriptions</strong>:
+   Protokoll <code>EMAIL</code>, Status <strong>Confirmed</strong>.</li>
+</ol>
+<p>Eine zweite Bestätigungs-E-Mail (Topic „Kundenportal", Hinweise der
+Anwendung) kommt erst beim ersten Deploy (Kapitel 8).</p>
+<p>Rückweg: Link <strong>unsubscribe</strong> in jeder SNS-E-Mail oder in der Konsole
+<strong>Delete</strong> am Abo (dann gehen Alarme nur noch direkt vom Budget per E-Mail).</p>
+<h3 id="56-budget-und-rollen-ansehen">5.6 Budget und Rollen ansehen 👁<a class="anchor" href="#56-budget-und-rollen-ansehen" title="Permanent link">#</a></h3>
+<ol>
+<li><strong>Billing and Cost Management</strong> → links <strong>Budgets</strong> → <code>kundenportal-monthly</code>.
+   Ergebnis: Betrag 1,00 $, monatlich; unter <strong>Alerts</strong> zwei Schwellen
+   (tatsächlich &gt; 0,01 $ absolut; Prognose &gt; 100 %). Die Werte „Current" und
+   „Forecasted" erscheinen erst nach bis zu 24 Stunden.</li>
+<li><strong>IAM</strong> → <strong>Roles</strong> → Suchfeld <code>kundenportal</code>: zwei Rollen
+   <code>kundenportal-github-deploy</code> und <code>kundenportal-gitlab-foundation</code>. Bei jeder
+   Rolle unter <strong>Permissions</strong> den Eintrag <strong>Permissions boundary</strong>:
+   <code>kundenportal-ci-boundary</code>.</li>
+<li><strong>IAM</strong> → <strong>Identity providers</strong>: <code>token.actions.githubusercontent.com</code>
+   und <code>gitlab.rypox.org</code>.</li>
+</ol>
+<p>Notieren: Budget sichtbar, zwei Rollen mit Boundary, zwei Anbieter.</p>
+<h3 id="57-protokoll">5.7 Protokoll<a class="anchor" href="#57-protokoll" title="Permanent link">#</a></h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Datum</th>
+<th>Schritt</th>
+<th>Ergebnis</th>
+<th>Wer</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td></td>
+<td>5.2 GitLab-Token angelegt (Name, Ablauf)</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td>5.4 <code>apply</code> (Anzahl angelegt) und Outputs notiert</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td>5.4 Token widerrufen, <code>plan.tfplan</code> gelöscht</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td>5.5 Budget-Abo bestätigt</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td>5.6 Budget, Rollen, Boundary, Anbieter geprüft</td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table></div></main></div>
+<footer class="site"><a href="../wiki/anleitung-fundament.md">Markdown-Quelle</a> · Generiert 2026-09-30 07:10 aus <code>docs/wiki</code> mit <code>scripts/build_reports.py</code></footer>
+</body>
+</html>

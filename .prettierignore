@@ -4,3 +4,5 @@ cdk.out/
 .next/
 dist/
 coverage/
+docs/
+scripts/

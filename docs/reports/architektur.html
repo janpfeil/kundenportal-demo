@@ -1,0 +1,521 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Architektur Phase 1 · kundenportal-demo</title>
+<link rel="stylesheet" href="assets/report.css">
+<script src="assets/report.js"></script>
+</head>
+<body>
+<header class="topbar"><a class="brand" href="index.html">kundenportal-demo · Konzept</a><nav class="topnav"><a href="index.html">Übersicht</a><a href="machbarkeit-kosten.html">Machbarkeit &amp; Kosten</a><a href="fachkonzept.html">Fachkonzept</a><a href="demo-pass.html">Demo-Pass</a><a href="kostenfrei.html">Kostenfreier Betrieb</a><a href="anleitung-kontoinhaber.html">Anleitung Kontoinhaber</a><a href="anleitung-fundament.html">Anleitung Fundament</a><a href="anleitung-anwendung.html">Anleitung Anwendung</a><a href="nextjs-betrieb.html">Next.js-Betrieb</a><a href="architektur.html" aria-current="page">Architektur Phase 1</a><a href="glossar.html">Glossar</a></nav>
+<button class="theme-toggle" type="button">Dunkel</button></header>
+<div class="layout"><nav class="toc" aria-label="Inhalt"><div class="toc-title">Inhalt</div><div>
+<ul>
+<li><a href="#1-überblick">1. Überblick</a></li>
+<li><a href="#2-anmeldung">2. Anmeldung</a></li>
+<li><a href="#3-mandant-im-token">3. Mandant im Token</a></li>
+<li><a href="#4-scopes-aus-dem-api-vertrag">4. Scopes aus dem API-Vertrag</a></li>
+<li><a href="#5-daten">5. Daten</a></li>
+<li><a href="#6-ereignisse">6. Ereignisse</a></li>
+<li><a href="#7-leitplanken">7. Leitplanken</a></li>
+<li><a href="#7a-stacks-und-lebensdauer">7a. Stacks und Lebensdauer</a></li>
+<li><a href="#8-pipelines">8. Pipelines</a></li>
+<li><a href="#9-messwerte">9. Messwerte</a></li>
+<li><a href="#quellen">Quellen</a></li>
+</ul>
+</div>
+</nav><main><h1 id="architektur-phase-1-der-durchstich">Architektur Phase 1 — der Durchstich<a class="anchor" href="#architektur-phase-1-der-durchstich" title="Permanent link">#</a></h1>
+<p>Stand: 2026-09-29 · Beschreibt den <strong>Ist-Stand</strong> des Codes (Branch <code>feature/cicd</code>), nicht die Zielarchitektur. Kennzeichnung: <strong>[B]</strong> belegt (offizielle Quelle), <strong>[A]</strong> Annahme, <strong>[E]</strong> Einschätzung.</p>
+<p>Fachbegriffe sind in jedem Abschnitt beim ersten Vorkommen mit dem <a href="glossar.html">Glossar</a> verlinkt (Erklärung und Entsprechung außerhalb von <a class="term" href="glossar.html#aws" title="Cloud-Plattform von Amazon mit über 200 Diensten (Rechenleistung, Datenbanken, Netzwerk, Messaging …), abgerechnet nach Nutzung">AWS</a>).</p>
+<p>Die Zielarchitektur steht in <a href="machbarkeit-kosten.html">Machbarkeit &amp; Kosten</a>;
+diese Seite zeigt, was Phase 1 davon tatsächlich baut: Registrierung und
+Anmeldung, ein geschütztes Profil, ein Domänen-<a class="term" href="glossar.html#event" title="Nachricht, dass etwas passiert ist (z. B. „Zählerstand erfasst&quot;); Empfänger reagieren darauf, ohne dass der Absender sie kennt">Ereignis</a> und eine
+Willkommensnachricht im Postfach. Wie der Kontoinhaber das Ganze aufbaut,
+steht in der <a href="anleitung-fundament.html">Anleitung Fundament</a> und der
+<a href="anleitung-anwendung.html">Anleitung Anwendung</a>.</p>
+<h2 id="1-überblick">1. Überblick<a class="anchor" href="#1-überblick" title="Permanent link">#</a></h2>
+<figure class="chart"><figcaption>Phase 1: Anfrage- und Ereignisfluss</figcaption><svg viewBox="0 0 1000 315" role="img" aria-label="Phase 1: Anfrage- und Ereignisfluss" preserveAspectRatio="xMinYMin meet"><defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="edge-head" d="M0,0L10,5L0,10z"/></marker></defs><text x="77.5" y="18.0" class="t-muted" font-size="12" text-anchor="middle" font-weight="600">Nutzer</text><rect class="box" x="10.0" y="32" width="135.0" height="69" rx="6"/><text x="20.0" y="53.0" class="t-ink" font-size="13" text-anchor="start" font-weight="600">Browser</text><text x="20.0" y="72.0" class="t-ink2" font-size="12" text-anchor="start">nur Cookies,</text><text x="20.0" y="89.0" class="t-ink2" font-size="12" text-anchor="start">keine Tokens</text><text x="246.5" y="18.0" class="t-muted" font-size="12" text-anchor="middle" font-weight="600">Rand</text><rect class="box-accent" x="179.0" y="32" width="135.0" height="86" rx="6"/><text x="189.0" y="53.0" class="t-ink" font-size="13" text-anchor="start" font-weight="600">CloudFront</text><text x="189.0" y="72.0" class="t-ink2" font-size="12" text-anchor="start">eine Domain,</text><text x="189.0" y="89.0" class="t-ink2" font-size="12" text-anchor="start">TLS-Zertifikat</text><text x="189.0" y="106.0" class="t-ink2" font-size="12" text-anchor="start">aus us-east-1</text><text x="415.5" y="18.0" class="t-muted" font-size="12" text-anchor="middle" font-weight="600">Einstieg</text><rect class="box" x="348.0" y="32" width="135.0" height="103" rx="6"/><text x="358.0" y="53.0" class="t-ink" font-size="13" text-anchor="start" font-weight="600">Shell-Lambda</text><text x="358.0" y="72.0" class="t-ink2" font-size="12" text-anchor="start">Next.js</text><text x="358.0" y="89.0" class="t-ink2" font-size="12" text-anchor="start">standalone,</text><text x="358.0" y="106.0" class="t-ink2" font-size="12" text-anchor="start">Function URL</text><text x="358.0" y="123.0" class="t-ink2" font-size="12" text-anchor="start">mit OAC</text><rect class="box" x="348.0" y="147" width="135.0" height="52" rx="6"/><text x="358.0" y="168.0" class="t-ink" font-size="13" text-anchor="start" font-weight="600">S3</text><text x="358.0" y="187.0" class="t-ink2" font-size="12" text-anchor="start">/_next/static/*</text><rect class="box" x="348.0" y="211" width="135.0" height="86" rx="6"/><text x="358.0" y="232.0" class="t-ink" font-size="13" text-anchor="start" font-weight="600">API Gateway</text><text x="358.0" y="251.0" class="t-ink2" font-size="12" text-anchor="start">HTTP API</text><text x="358.0" y="268.0" class="t-ink2" font-size="12" text-anchor="start">/api/*, JWT,</text><text x="358.0" y="285.0" class="t-ink2" font-size="12" text-anchor="start">Scopes, 10/20</text><text x="584.5" y="18.0" class="t-muted" font-size="12" text-anchor="middle" font-weight="600">Dienste</text><rect class="box-accent" x="517.0" y="32" width="135.0" height="69" rx="6"/><text x="527.0" y="53.0" class="t-ink" font-size="13" text-anchor="start" font-weight="600">Cognito</text><text x="527.0" y="72.0" class="t-ink2" font-size="12" text-anchor="start">Managed Login,</text><text x="527.0" y="89.0" class="t-ink2" font-size="12" text-anchor="start">Pre-Token-Lambda</text><rect class="box-accent" x="517.0" y="113" width="135.0" height="52" rx="6"/><text x="527.0" y="134.0" class="t-ink" font-size="13" text-anchor="start" font-weight="600">customer</text><text x="527.0" y="153.0" class="t-ink2" font-size="12" text-anchor="start">GET/PATCH /me</text><rect class="box-accent" x="517.0" y="177" width="135.0" height="69" rx="6"/><text x="527.0" y="198.0" class="t-ink" font-size="13" text-anchor="start" font-weight="600">notification-API</text><text x="527.0" y="217.0" class="t-ink2" font-size="12" text-anchor="start">GET/PATCH</text><text x="527.0" y="234.0" class="t-ink2" font-size="12" text-anchor="start">/notifications</text><text x="753.5" y="18.0" class="t-muted" font-size="12" text-anchor="middle" font-weight="600">Ereignisse</text><rect class="box" x="686.0" y="32" width="135.0" height="122" rx="6"/><text x="696.0" y="53.0" class="t-ink" font-size="13" text-anchor="start" font-weight="600">EventBridge →</text><text x="696.0" y="72.0" class="t-ink" font-size="13" text-anchor="start" font-weight="600">SQS</text><text x="696.0" y="91.0" class="t-ink2" font-size="12" text-anchor="start">Bus</text><text x="696.0" y="108.0" class="t-ink2" font-size="12" text-anchor="start">kundenportal,</text><text x="696.0" y="125.0" class="t-ink2" font-size="12" text-anchor="start">Regel, Queue +</text><text x="696.0" y="142.0" class="t-ink2" font-size="12" text-anchor="start">DLQ, Alarm</text><text x="922.5" y="18.0" class="t-muted" font-size="12" text-anchor="middle" font-weight="600">Wirkung</text><rect class="box-accent" x="855.0" y="32" width="135.0" height="86" rx="6"/><text x="865.0" y="53.0" class="t-ink" font-size="13" text-anchor="start" font-weight="600">notification-Konsument</text><text x="865.0" y="72.0" class="t-ink2" font-size="12" text-anchor="start">Postfach-Eintrag,</text><text x="865.0" y="89.0" class="t-ink2" font-size="12" text-anchor="start">Hinweis an den</text><text x="865.0" y="106.0" class="t-ink2" font-size="12" text-anchor="start">Inhaber</text><rect class="box-accent" x="855.0" y="130" width="135.0" height="69" rx="6"/><text x="865.0" y="151.0" class="t-ink" font-size="13" text-anchor="start" font-weight="600">DynamoDB</text><text x="865.0" y="170.0" class="t-ink2" font-size="12" text-anchor="start">eine Tabelle,</text><text x="865.0" y="187.0" class="t-ink2" font-size="12" text-anchor="start">provisioned 5/5</text><rect class="box-accent" x="855.0" y="211" width="135.0" height="88" rx="6"/><text x="865.0" y="232.0" class="t-ink" font-size="13" text-anchor="start" font-weight="600">SNS</text><text x="865.0" y="251.0" class="t-ink" font-size="13" text-anchor="start" font-weight="600">„Kundenportal“</text><text x="865.0" y="270.0" class="t-ink2" font-size="12" text-anchor="start">E-Mail an den</text><text x="865.0" y="287.0" class="t-ink2" font-size="12" text-anchor="start">Inhaber</text><path class="edge" marker-end="url(#ah)" d="M145.0,66.5 C162.0,66.5 162.0,75.0 177.0,75.0"/><path class="edge" marker-end="url(#ah)" d="M145.0,66.5 C331.0,66.5 331.0,66.5 515.0,66.5"/><path class="edge" marker-end="url(#ah)" d="M314.0,75.0 C331.0,75.0 331.0,83.5 346.0,83.5"/><path class="edge" marker-end="url(#ah)" d="M314.0,75.0 C331.0,75.0 331.0,173.0 346.0,173.0"/><path class="edge" marker-end="url(#ah)" d="M314.0,75.0 C331.0,75.0 331.0,254.0 346.0,254.0"/><path class="edge" marker-end="url(#ah)" d="M483.0,83.5 C500.0,83.5 500.0,66.5 515.0,66.5"/><path class="edge" marker-end="url(#ah)" d="M483.0,83.5 C415.5,83.5 415.5,254.0 346.0,254.0"/><path class="edge" marker-end="url(#ah)" d="M483.0,254.0 C500.0,254.0 500.0,139.0 515.0,139.0"/><path class="edge" marker-end="url(#ah)" d="M483.0,254.0 C500.0,254.0 500.0,211.5 515.0,211.5"/><path class="edge" marker-end="url(#ah)" d="M652.0,139.0 C669.0,139.0 669.0,93.0 684.0,93.0"/><path class="edge" marker-end="url(#ah)" d="M652.0,139.0 C753.5,139.0 753.5,164.5 853.0,164.5"/><path class="edge" marker-end="url(#ah)" d="M652.0,211.5 C753.5,211.5 753.5,164.5 853.0,164.5"/><path class="edge" marker-end="url(#ah)" d="M821.0,93.0 C838.0,93.0 838.0,75.0 853.0,75.0"/></svg><details><summary>Daten als Tabelle</summary><div class="table-wrap"><div class="table-wrap"><table><thead><tr><th>Schicht</th><th>Komponente</th></tr></thead><tbody><tr><td>Nutzer</td><td>Browser (nur Cookies, keine Tokens)</td></tr><tr><td>Rand</td><td>CloudFront (eine Domain, TLS-Zertifikat aus us-east-1)</td></tr><tr><td>Einstieg</td><td>Shell-Lambda (Next.js standalone, Function URL mit OAC)</td></tr><tr><td>Einstieg</td><td>S3 (/_next/static/*)</td></tr><tr><td>Einstieg</td><td>API Gateway (HTTP API /api/*, JWT, Scopes, 10/20)</td></tr><tr><td>Dienste</td><td>Cognito (Managed Login, Pre-Token-Lambda)</td></tr><tr><td>Dienste</td><td>customer (GET/PATCH /me)</td></tr><tr><td>Dienste</td><td>notification-API (GET/PATCH /notifications)</td></tr><tr><td><a class="term" href="glossar.html#event" title="Nachricht, dass etwas passiert ist (z. B. „Zählerstand erfasst&quot;); Empfänger reagieren darauf, ohne dass der Absender sie kennt">Ereignisse</a></td><td>EventBridge → SQS (Bus kundenportal, Regel, Queue + DLQ, Alarm)</td></tr><tr><td>Wirkung</td><td>notification-Konsument (Postfach-Eintrag, Hinweis an den Inhaber)</td></tr><tr><td>Wirkung</td><td>DynamoDB (eine Tabelle, provisioned 5/5)</td></tr><tr><td>Wirkung</td><td>SNS „Kundenportal“ (E-Mail an den Inhaber)</td></tr></tbody></table></div></div></details></figure>
+<p>Ablauf in Worten: Der <a class="term" href="glossar.html#browser" title="Programm zum Anzeigen von Webseiten; „Browser-App&quot; = Anwendung, die im Browser läuft">Browser</a> spricht nur mit <strong><a class="term" href="glossar.html#cloudfront" title="Content Delivery Network (CDN): liefert Inhalte weltweit aus nahen Standorten aus, cacht sie und leitet Pfade an verschiedene Ziele (S3, API Gateway, Lambda) weiter">CloudFront</a></strong> unter
+<code>kundenportal-demo.rypox.com</code>. CloudFront verteilt nach Pfad: <code>/_next/static/*</code>
+aus einem privaten <strong><a class="term" href="glossar.html#s3" title="Objektspeicher für Dateien beliebiger Größe in „Buckets&quot;; Standard für statische Websites, Uploads, Build-Artefakte">S3</a></strong>-Bucket, <code>/api/*</code> an das <strong><a class="term" href="glossar.html#api-gateway" title="verwalteter Eingangspunkt für APIs: nimmt HTTP-Anfragen an, prüft Authentifizierung, drosselt, leitet an Lambda weiter">API Gateway</a></strong>, alles
+andere an die <strong><a class="term" href="glossar.html#shell" title="Rahmenanwendung, die Navigation, Login und Layout stellt und die Micro-Frontends einbindet">Shell</a></strong> — den <a class="term" href="glossar.html#nextjs" title="React-Framework (von Vercel) mit Routing, Server-Rendering, API-Routen und Build-Optimierung">Next.js</a>-<a class="term" href="glossar.html#server" title="Rechner oder Prozess, der Anfragen beantwortet">Server</a> in einer <a class="term" href="glossar.html#lambda" title="führt eine einzelne Funktion (z. B. einen HTTP-Handler) bei Bedarf aus; Abrechnung pro Aufruf und Laufzeit, skaliert automatisch von 0 auf viele Instanzen">Lambda</a> mit dem
+<a href="glossar.html#lambda-web-adapter">Lambda Web Adapter</a> und <a class="term" href="glossar.html#response-streaming" title="Lambda schickt die Antwort in Teilen statt am Stück – nötig für Next.js-Streaming">Response Streaming</a>.
+Die Shell leitet zur Anmeldung an <strong><a class="term" href="glossar.html#amazon-cognito" title="AWS-Identitätsdienst für Registrierung, Login, MFA und Benutzerverwaltung; im Demo der Portal-Login (Entscheidung 29.09.2026), angelegt per CDK">Cognito</a></strong> (<a class="term" href="glossar.html#managed-login" title="von Cognito gehostete Login-, Registrierungs- und Passwort-Seiten samt OAuth2-/OIDC-Endpunkten; erreichbar unter einer Präfix-Domain (&lt;präfix&gt;.auth.&lt;region&gt;.amazoncognito.com) oder">Managed Login</a>) weiter und ruft
+die <a class="term" href="glossar.html#api" title="Programmierschnittstelle, über die Programme miteinander sprechen">API</a> <a class="term" href="glossar.html#serverseitig" title="läuft auf dem Server statt im Browser">serverseitig</a> mit dem Access <a class="term" href="glossar.html#token" title="digitaler Ausweis, den ein Identitätsdienst ausstellt und den eine App bei jedem API-Aufruf mitschickt">Token</a> auf. Der Dienst <strong>customer</strong> legt
+beim ersten Aufruf von <code>GET /me</code> das Profil an und veröffentlicht
+<code>CustomerRegistered</code> auf dem eigenen <a class="term" href="glossar.html#eventbridge" title="Event-Bus: Dienste veröffentlichen Ereignisse, Regeln leiten sie anhand ihres Inhalts an Ziele (SQS, Lambda, SNS …) weiter">EventBridge</a>-Bus. Eine Regel legt das
+<a class="term" href="glossar.html#event" title="Nachricht, dass etwas passiert ist (z. B. „Zählerstand erfasst&quot;); Empfänger reagieren darauf, ohne dass der Absender sie kennt">Ereignis</a> in eine <a class="term" href="glossar.html#sqs" title="Nachrichtenwarteschlange: Absender legt Nachrichten ab, Empfänger holt sie ab und bestätigt sie; entkoppelt Dienste und puffert Last">SQS-Queue</a>; der <strong>notification-<a class="term" href="glossar.html#konsument" title="Dienst, der Nachrichten oder Events empfängt und verarbeitet">Konsument</a></strong> schreibt daraus eine
+Willkommensnachricht ins Postfach (<a class="term" href="glossar.html#dynamodb" title="vollständig verwaltete NoSQL-Datenbank (Schlüssel-Wert/Dokument) mit Antwortzeiten im Millisekundenbereich, ohne Server und ohne Verbindungs-Pool">DynamoDB</a>) und schickt dem Inhaber einen
+Hinweis per <a class="term" href="glossar.html#sns" title="Publish/Subscribe-Dienst: eine Nachricht an ein Topic geht an alle Abonnenten (E-Mail, SQS, Lambda, HTTP, SMS)">SNS</a>-<a class="term" href="glossar.html#e-mail" title="elektronische Post; SNS verschickt bis 1.000 E-Mails im Monat kostenlos">E-Mail</a>.</p>
+<p>Zwei <a href="glossar.html#cloudformation">CloudFormation</a>-<a class="term" href="glossar.html#stack" title="Einheit in CloudFormation/CDK: eine Gruppe von Ressourcen, die gemeinsam angelegt und gelöscht wird">Stacks</a>, beide mit Tag
+<code>project=kundenportal-demo</code>:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Stack</th>
+<th>Region</th>
+<th>Inhalt</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>KundenportalCertificate</code></td>
+<td><a class="term" href="glossar.html#region" title="geografischer Standort mit eigenen Rechenzentren; eu-central-1 = Frankfurt, us-east-1 = Nord-Virginia (dort müssen manche globalen Einstellungen, z. B. CloudFront-Zertifikate, lieg">us-east-1</a></td>
+<td><a class="term" href="glossar.html#acm" title="stellt kostenlose TLS-Zertifikate für AWS-Dienste aus und erneuert sie automatisch">ACM-Zertifikat</a> für CloudFront (<a class="term" href="glossar.html#dns" title="Telefonbuch des Internets: übersetzt Namen wie energie-demo.rypox.com in Adressen">DNS</a>-Validierung beim eigenen <a class="term" href="glossar.html#nameserver" title="Server, der die DNS-Einträge einer Domain verwaltet; bei rypox eigene (ns1.rypox.net)">Nameserver</a>)</td>
+</tr>
+<tr>
+<td><code>Kundenportal</code></td>
+<td>eu-central-1</td>
+<td>alles andere: Cognito, Tabelle, Bus, Queues, <a class="term" href="glossar.html#alarm" title="Benachrichtigung, wenn eine Metrik einen Grenzwert überschreitet">Alarm</a>, fünf Lambdas, <a class="term" href="glossar.html#http-api" title="schlanke, günstige Variante des API Gateway (≈ 1 $/Mio. Aufrufe) mit eingebautem JWT-Authorizer; im Demo gewählt">HTTP API</a>, CloudFront, S3</td>
+</tr>
+</tbody>
+</table></div>
+<p>Outputs des Stacks <code>Kundenportal</code>: <code>PortalUrl</code>, <code>DistributionDomain</code> (Ziel des
+<a class="term" href="glossar.html#cname" title="DNS-Eintrag, der einen Namen auf einen anderen verweist, z. B. energie-demo.rypox.com → CloudFront-Adresse; auch für die Zertifikatsprüfung von ACM genutzt">CNAME</a>), <code>ApiUrl</code>, <code>UserPoolId</code>, <code>ManagedLoginUrl</code>, <code>EventBusName</code>,
+<code>NotificationDlqUrl</code>.</p>
+<h2 id="2-anmeldung">2. Anmeldung<a class="anchor" href="#2-anmeldung" title="Permanent link">#</a></h2>
+<p>Die <a class="term" href="glossar.html#shell" title="Rahmenanwendung, die Navigation, Login und Layout stellt und die Micro-Frontends einbindet">Shell</a> ist ein <a href="glossar.html#bff">BFF</a>: <a class="term" href="glossar.html#token" title="digitaler Ausweis, den ein Identitätsdienst ausstellt und den eine App bei jedem API-Aufruf mitschickt">Tokens</a> verlassen den <a class="term" href="glossar.html#server" title="Rechner oder Prozess, der Anfragen beantwortet">Server</a> nie.</p>
+<ul>
+<li><strong>Bibliothek und Ablauf:</strong> <code>openid-client</code> mit
+  <a href="glossar.html#authorization-code-pkce">Authorization Code + PKCE</a>, <code>state</code>
+  und <code>nonce</code>. Die Shell ist ein <strong><a class="term" href="glossar.html#app-client" title="Eintrag einer Anwendung im User Pool mit Client-ID, erlaubten Rückkehr-Adressen und Abläufen; ein vertraulicher Client (hier die Next.js-Shell) hat zusätzlich ein Geheimnis, das nu">vertraulicher Client</a></strong> (mit Client-Secret);
+  Anbieterdaten kommen aus der Standard-Discovery
+  (<code>.well-known/openid-configuration</code>).</li>
+<li><strong>Client-Secret:</strong> steht weder im Template noch in Umgebungsvariablen. Die
+  Shell liest es einmal je <a class="term" href="glossar.html#lambda" title="führt eine einzelne Funktion (z. B. einen HTTP-Handler) bei Bedarf aus; Abrechnung pro Aufruf und Laufzeit, skaliert automatisch von 0 auf viele Instanzen">Lambda</a>-Instanz per <code>DescribeUserPoolClient</code> aus dem
+  <a class="term" href="glossar.html#user-pool" title="Nutzerverzeichnis in Cognito mit eigenen Nutzern, Gruppen, App-Clients und Triggern; zugleich OIDC-Aussteller">User Pool</a> (die Lambda-Rolle darf genau das). Für andere Anbieter oder lokal
+  genügt <code>OIDC_CLIENT_SECRET</code>.</li>
+<li><strong>Sitzung:</strong> ein <code>httpOnly</code>-<a class="term" href="glossar.html#cookie" title="kleine Datei, die der Browser bei jeder Anfrage mitschickt; httpOnly heißt: für JavaScript unsichtbar und damit vor XSS geschützt">Cookie</a> <code>kp_session</code> mit einem
+  <a href="glossar.html#jwe">JWE</a> (<code>dir</code> + <code>A256GCM</code>, Bibliothek <code>jose</code>). Der Schlüssel
+  wird per <a href="glossar.html#hkdf">HKDF</a>-SHA256 aus dem Client-Secret abgeleitet
+  (eigener Zweck je Cookie: <code>session</code>, <code>login</code>). Folge: ein neues
+  Client-Secret macht alle Sitzungen ungültig; ein zweites Geheimnis ist
+  nicht nötig. Der Anmeldevorgang selbst (state, nonce, verifier) liegt zehn
+  Minuten im Cookie <code>kp_login</code> und wird nach einmaligem Lesen gelöscht.</li>
+<li><strong>Kein Refresh-Token:</strong> Es passt zusammen mit dem Access Token nicht in ein
+  Cookie (Grenze etwa 4 KB). Nach einer Stunde läuft das Access Token ab; die
+  Shell schickt den Nutzer erneut zu <a class="term" href="glossar.html#amazon-cognito" title="AWS-Identitätsdienst für Registrierung, Login, MFA und Benutzerverwaltung; im Demo der Portal-Login (Entscheidung 29.09.2026), angelegt per CDK">Cognito</a>. Innerhalb einer Stunde nach der
+  letzten interaktiven Anmeldung meldet die Cognito-Sitzung ihn ohne Passwort
+  wieder an; danach ist eine neue Anmeldung nötig
+  [B: <a href="https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-pools-managed-login.html">https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-pools-managed-login.html</a>].</li>
+<li><strong>Nur <a class="term" href="glossar.html#http-methoden" title="Arten von REST-Aufrufen: lesen (GET), anlegen (POST), teilweise ändern (PATCH), ersetzen (PUT), löschen (DELETE)">GET</a> an die Shell:</strong> <a class="term" href="glossar.html#cloudfront" title="Content Delivery Network (CDN): liefert Inhalte weltweit aus nahen Standorten aus, cacht sie und leitet Pfade an verschiedene Ziele (S3, API Gateway, Lambda) weiter">CloudFront</a> erreicht die
+  <a href="glossar.html#function-url">Function URL</a> der Shell über
+  <a href="glossar.html#oac">OAC</a>; dabei werden Anfrage-Inhalte nicht mitsigniert.
+  Deshalb erlaubt das Verhalten der Shell nur <code>GET</code>, <code>HEAD</code>, <code>OPTIONS</code>;
+  die Shell kommt in Phase 1 mit GET-Routen aus (z. B. <code>/sprache</code> für den
+  Sprachwechsel). Die schreibenden <a class="term" href="glossar.html#api" title="Programmierschnittstelle, über die Programme miteinander sprechen">API</a>-Operationen (<code>PATCH</code>) stehen im
+  Vertrag, werden von der Shell aber noch nicht aufgerufen.</li>
+<li><strong>Abmelden:</strong> Cookie löschen, dann Cognitos <code>/logout</code> mit <code>client_id</code> und
+  <code>logout_uri</code> (Cognito hat keinen Standard-<code>end_session_endpoint</code>).</li>
+</ul>
+<p><strong>Sprache der Anmeldeseiten:</strong> Die Shell übergibt an <code>/oauth2/authorize</code>
+<code>lang</code> (Cognito) und <code>ui_locales</code> (<a class="term" href="glossar.html#openid-connect" title="Identitätsschicht auf OAuth2: liefert zusätzlich ein ID-Token mit Nutzerangaben; auch für die Anmeldung von GitHub Actions bei AWS genutzt">OIDC</a>-Standard) mit <code>de</code> oder <code>en</code>. Laut
+<a class="term" href="glossar.html#aws" title="Cloud-Plattform von Amazon mit über 200 Diensten (Rechenleistung, Datenbanken, Netzwerk, Messaging …), abgerechnet nach Nutzung">AWS</a>-Dokumentation gilt [B, ebenda]:</p>
+<ul>
+<li><a class="term" href="glossar.html#managed-login" title="von Cognito gehostete Login-, Registrierungs- und Passwort-Seiten samt OAuth2-/OIDC-Endpunkten; erreichbar unter einer Präfix-Domain (&lt;präfix&gt;.auth.&lt;region&gt;.amazoncognito.com) oder">Managed Login</a> ist standardmäßig englisch; der Parameter <strong><code>lang</code></strong> im
+  Anmeldelink wählt die Sprache. Verfügbar sind u. a. <code>de</code> und <code>en</code> (außerdem
+  es, fr, id, nl, it, ja, ko, pt-BR, zh-CN, zh-TW).</li>
+<li>Cognito merkt sich die Wahl in einem Cookie <code>lang</code>; sie gilt, bis der
+  Nutzer Cookies löscht oder ein neuer <code>lang</code>-Wert kommt.</li>
+<li>Lokalisierung gibt es <strong>nur für Managed Login</strong> (nicht für die klassische
+  Hosted UI) und nur mit <a class="term" href="glossar.html#essentials-plan" title="Cognito-Tarifstufe (Lite, Essentials, Plus) je User Pool; Essentials ist Standard für neue User Pools und enthält Managed Login; 10.000 aktive Nutzer im Monat frei, ohne Ablauf">Feature-Plan</a> <strong>Essentials</strong> oder <strong>Plus</strong> und einem
+  Managed-<a class="term" href="glossar.html#login" title="Anmeldung eines Nutzers">Login</a>-Branding. Beides ist gesetzt (<code>FeaturePlan.ESSENTIALS</code>,
+  <code>NEWER_MANAGED_LOGIN</code>, <code>CfnManagedLoginBranding</code>).</li>
+<li><code>ui_locales</code> erwähnt die Cognito-Dokumentation nicht; es schadet nicht und
+  hilft bei einem späteren Anbieterwechsel [A].</li>
+<li>Die Bestätigungs-<a class="term" href="glossar.html#e-mail" title="elektronische Post; SNS verschickt bis 1.000 E-Mails im Monat kostenlos">E-Mails</a> von Cognito sind davon <strong>nicht</strong> betroffen; sie
+  kommen im Standardtext vom Absender <code>no-reply@verificationemail.com</code>.</li>
+</ul>
+<h2 id="3-mandant-im-token">3. Mandant im Token<a class="anchor" href="#3-mandant-im-token" title="Permanent link">#</a></h2>
+<p>Ein <a href="glossar.html#pre-token-generation-trigger">Pre-Token-Generation-Trigger</a>
+(Ereignisversion 2) ergänzt das <strong>Access <a class="term" href="glossar.html#token" title="digitaler Ausweis, den ein Identitätsdienst ausstellt und den eine App bei jedem API-Aufruf mitschickt">Token</a></strong> um:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Claim</th>
+<th>Quelle</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>tenant_id</code></td>
+<td>Attribut <code>custom:tenant_id</code> (unveränderlich, nur die Plattform setzt es); fehlt es, gilt in Phase 1 der <a class="term" href="glossar.html#mandant" title="abgeschotteter Bereich eines Kunden in einer gemeinsam betriebenen Anwendung; im Demo je Demo-Pass ein Mandant">Mandant</a> <code>owner</code></td>
+</tr>
+<tr>
+<td><code>email</code></td>
+<td>nur wenn <code>email_verified = true</code></td>
+</tr>
+<tr>
+<td><code>locale</code></td>
+<td>Attribut <code>locale</code>, falls gesetzt</td>
+</tr>
+<tr>
+<td><code>name</code></td>
+<td>Attribut <code>name</code>, falls gesetzt</td>
+</tr>
+</tbody>
+</table></div>
+<p>Die Dienste lesen nur diese <a class="term" href="glossar.html#claims" title="einzelne Angaben in einem JWT (z. B. sub, email, eigene Rollen)">Claims</a> und <code>sub</code> aus dem vom <a class="term" href="glossar.html#api-gateway" title="verwalteter Eingangspunkt für APIs: nimmt HTTP-Anfragen an, prüft Authentifizierung, drosselt, leitet an Lambda weiter">API Gateway</a> bereits
+geprüften Token (<code>packages/service-kit</code>). Sie kennen <a class="term" href="glossar.html#amazon-cognito" title="AWS-Identitätsdienst für Registrierung, Login, MFA und Benutzerverwaltung; im Demo der Portal-Login (Entscheidung 29.09.2026), angelegt per CDK">Cognito</a> nicht; ein
+anderer <a class="term" href="glossar.html#openid-connect" title="Identitätsschicht auf OAuth2: liefert zusätzlich ein ID-Token mit Nutzerangaben; auch für die Anmeldung von GitHub Actions bei AWS genutzt">OIDC</a>-Anbieter (z. B. <a class="term" href="glossar.html#auth0" title="verbreiteter Identitätsdienst (SaaS, von Okta) für Registrierung, Login, Social Login, MFA und Benutzerverwaltung; im Demo nicht verwendet (ersetzt durch Amazon Cognito), bleibt üb">Auth0</a> mit einer Action) muss nur dieselben Claims
+ausstellen. Der Mandant kommt <strong>nie</strong> aus der <a class="term" href="glossar.html#url" title="Internetadresse einer Seite oder eines API-Endpunkts">URL</a>.</p>
+<h2 id="4-scopes-aus-dem-api-vertrag">4. Scopes aus dem API-Vertrag<a class="anchor" href="#4-scopes-aus-dem-api-vertrag" title="Permanent link">#</a></h2>
+<p>Der <a class="term" href="glossar.html#openapi" title="maschinenlesbare Beschreibung einer REST-API (YAML/JSON); daraus lassen sich Clients und Dokumentation erzeugen">OpenAPI</a>-Vertrag (<code>packages/api-contract/openapi.yaml</code>) nennt je Operation
+den nötigen <a class="term" href="glossar.html#resource-server" title="in Cognito die Beschreibung einer API mit eigenen Scopes (Berechtigungen wie kundenportal/profile.read); das Access Token trägt die gewährten Scopes, der JWT-Authorizer verlangt si">Scope</a>. Die <a class="term" href="glossar.html#cdk" title="Infrastruktur als Programmcode (TypeScript, Java, Python …): man schreibt Klassen wie new Table(...), CDK erzeugt daraus CloudFormation-Vorlagen und legt die Ressourcen an">CDK</a>-App liest ihn und erzeugt daraus</p>
+<ul>
+<li>den <a href="glossar.html#resource-server">Resource Server</a> <code>kundenportal</code> mit vier
+  Scopes: <code>profile.read</code>, <code>profile.write</code>, <code>notifications.read</code>,
+  <code>notifications.write</code>;</li>
+<li>je Route einen Eintrag im <a class="term" href="glossar.html#http-api" title="schlanke, günstige Variante des API Gateway (≈ 1 $/Mio. Aufrufe) mit eingebautem JWT-Authorizer; im Demo gewählt">HTTP API</a> mit
+  <a href="glossar.html#jwt-authorizer">JWT-Authorizer</a> (Aussteller = <a class="term" href="glossar.html#user-pool" title="Nutzerverzeichnis in Cognito mit eigenen Nutzern, Gruppen, App-Clients und Triggern; zugleich OIDC-Aussteller">User Pool</a>,
+  Zielgruppe = <a class="term" href="glossar.html#client-id" title="öffentliche Kennung einer Anwendung bei einem Identitätsdienst wie Cognito oder Keycloak (nicht geheim, im Gegensatz zum Client Secret)">Client-ID</a>) und den verlangten Scopes.</li>
+</ul>
+<p>Fehlt ein Scope, antwortet das <a class="term" href="glossar.html#api-gateway" title="verwalteter Eingangspunkt für APIs: nimmt HTTP-Anfragen an, prüft Authentifizierung, drosselt, leitet an Lambda weiter">API Gateway</a> mit 403, bevor eine <a class="term" href="glossar.html#lambda" title="führt eine einzelne Funktion (z. B. einen HTTP-Handler) bei Bedarf aus; Abrechnung pro Aufruf und Laufzeit, skaliert automatisch von 0 auf viele Instanzen">Lambda</a> läuft.
+Die <a class="term" href="glossar.html#shell" title="Rahmenanwendung, die Navigation, Login und Layout stellt und die Micro-Frontends einbindet">Shell</a> fordert <code>openid email profile</code> und alle vier <a class="term" href="glossar.html#api" title="Programmierschnittstelle, über die Programme miteinander sprechen">API</a>-Scopes an.</p>
+<h2 id="5-daten">5. Daten<a class="anchor" href="#5-daten" title="Permanent link">#</a></h2>
+<p>Eine <a class="term" href="glossar.html#dynamodb" title="vollständig verwaltete NoSQL-Datenbank (Schlüssel-Wert/Dokument) mit Antwortzeiten im Millisekundenbereich, ohne Server und ohne Verbindungs-Pool">DynamoDB</a>-Tabelle (Schlüssel <code>PK</code>/<code>SK</code>, <strong><a class="term" href="glossar.html#provisioned" title="DynamoDB-Modus mit fest eingestellter Kapazität (RCU/WCU); im Always Free bis 25 Einheiten; bei Überlast wird gedrosselt statt berechnet">provisioned</a> 5/5</strong>,
+<a class="term" href="glossar.html#aws" title="Cloud-Plattform von Amazon mit über 200 Diensten (Rechenleistung, Datenbanken, Netzwerk, Messaging …), abgerechnet nach Nutzung">AWS</a>-verwalteter Schlüssel). Jeder Schlüssel beginnt mit dem <a class="term" href="glossar.html#mandant" title="abgeschotteter Bereich eines Kunden in einer gemeinsam betriebenen Anwendung; im Demo je Demo-Pass ein Mandant">Mandanten</a>:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>PK</th>
+<th>SK</th>
+<th>Besitzer</th>
+<th>Inhalt</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>TENANT#&lt;t&gt;#CUST#&lt;customerId&gt;</code></td>
+<td><code>PROFILE</code></td>
+<td>customer</td>
+<td>Profil (<a class="term" href="glossar.html#e-mail" title="elektronische Post; SNS verschickt bis 1.000 E-Mails im Monat kostenlos">E-Mail</a>, Anzeigename, Sprache, Herkunft)</td>
+</tr>
+<tr>
+<td><code>TENANT#&lt;t&gt;#SUBJ#&lt;sub&gt;</code></td>
+<td><code>CUSTOMER</code></td>
+<td>customer</td>
+<td>welche Kundennummer zu einer Anmelde-Identität gehört</td>
+</tr>
+<tr>
+<td><code>TENANT#&lt;t&gt;#SUBJ#&lt;sub&gt;</code></td>
+<td><code>MAILBOX</code></td>
+<td>notification</td>
+<td>eigene Projektion aus dem <a class="term" href="glossar.html#event" title="Nachricht, dass etwas passiert ist (z. B. „Zählerstand erfasst&quot;); Empfänger reagieren darauf, ohne dass der Absender sie kennt">Ereignis</a>: wessen Postfach eine Identität öffnet</td>
+</tr>
+<tr>
+<td><code>TENANT#&lt;t&gt;#CUST#&lt;customerId&gt;</code></td>
+<td><code>NOTE#&lt;id&gt;</code></td>
+<td>notification</td>
+<td>Postfach-Einträge; <code>&lt;id&gt;</code> = Zeitstempel + eventId</td>
+</tr>
+</tbody>
+</table></div>
+<p>Profil und Verknüpfung entstehen in <strong>einer</strong> Transaktion mit Bedingung; bei
+zwei gleichzeitigen Erstaufrufen gewinnt einer, der andere liest dessen
+Ergebnis. notification liest nie die Einträge von customer.</p>
+<h2 id="6-ereignisse">6. Ereignisse<a class="anchor" href="#6-ereignisse" title="Permanent link">#</a></h2>
+<ul>
+<li><code>customer</code> veröffentlicht <code>CustomerRegistered</code> (Quelle
+  <code>kundenportal.customer</code>) auf dem Bus <code>kundenportal</code>; der Inhalt wird vorher
+  gegen das <a class="term" href="glossar.html#schema" title="formale Beschreibung einer Datenstruktur, z. B. JSON Schema">Schema</a> aus <code>packages/events</code> geprüft.</li>
+<li>Eine Regel leitet es an die <a class="term" href="glossar.html#sqs" title="Nachrichtenwarteschlange: Absender legt Nachrichten ab, Empfänger holt sie ab und bestätigt sie; entkoppelt Dienste und puffert Last">Queue</a> des notification-Dienstes (Sichtbarkeit
+  60 s = 6 × <a class="term" href="glossar.html#lambda" title="führt eine einzelne Funktion (z. B. einen HTTP-Handler) bei Bedarf aus; Abrechnung pro Aufruf und Laufzeit, skaliert automatisch von 0 auf viele Instanzen">Lambda</a>-Timeout, 4 Tage Aufbewahrung). Was <a class="term" href="glossar.html#eventbridge" title="Event-Bus: Dienste veröffentlichen Ereignisse, Regeln leiten sie anhand ihres Inhalts an Ziele (SQS, Lambda, SNS …) weiter">EventBridge</a> selbst
+  nicht zustellen kann, landet nach 8 Versuchen in derselben <a class="term" href="glossar.html#dlq" title="Ablage für Nachrichten, die nach mehreren Versuchen nicht verarbeitet werden konnten, zur Analyse und Nachverarbeitung">DLQ</a>.</li>
+<li><strong>Idempotenz:</strong> Die Postfach-ID enthält die <code>eventId</code>; ein zweites Mal
+  zugestellte <a class="term" href="glossar.html#event" title="Nachricht, dass etwas passiert ist (z. B. „Zählerstand erfasst&quot;); Empfänger reagieren darauf, ohne dass der Absender sie kennt">Ereignisse</a> treffen auf denselben Eintrag (bedingtes Schreiben)
+  und lösen keinen zweiten Inhaber-Hinweis aus.</li>
+<li><strong><a href="glossar.html#partial-batch-response">Partial Batch Response</a>:</strong> Stapel bis
+  10 Nachrichten; nur fehlgeschlagene werden zurückgemeldet und erneut
+  zugestellt.</li>
+<li>Nach <strong>3</strong> Zustellversuchen (<code>maxReceiveCount</code>) wandert eine Nachricht in
+  die DLQ (14 Tage Aufbewahrung). Ein <a class="term" href="glossar.html#cloudwatch" title="AWS-Dienst für Logs, Metriken und Alarme">CloudWatch</a>-<a class="term" href="glossar.html#alarm" title="Benachrichtigung, wenn eine Metrik einen Grenzwert überschreitet">Alarm</a> <code>DlqNotEmpty</code>
+  (5-Minuten-Fenster, Schwelle &gt; 0) meldet das per <a class="term" href="glossar.html#sns" title="Publish/Subscribe-Dienst: eine Nachricht an ein Topic geht an alle Abonnenten (E-Mail, SQS, Lambda, HTTP, SMS)">SNS</a> an den Inhaber. Der
+  <a class="term" href="glossar.html#workflow" title="allgemein: automatisierter Ablauf mehrerer Schritte; bei GitHub: eine Pipeline-Datei">Workflow</a> „DLQ probe" prüft genau diesen Weg (Anleitung Kapitel 8).</li>
+</ul>
+<h2 id="7-leitplanken">7. Leitplanken<a class="anchor" href="#7-leitplanken" title="Permanent link">#</a></h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Leitplanke</th>
+<th>Umsetzung</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Laufzeit</td>
+<td>Node.js 24, arm64, 256 <a class="term" href="glossar.html#gb" title="Gigabyte / Terabyte (1 TB = 1.000 GB)">MB</a> (<a class="term" href="glossar.html#shell" title="Rahmenanwendung, die Navigation, Login und Layout stellt und die Micro-Frontends einbindet">Shell</a> 1024 MB)</td>
+</tr>
+<tr>
+<td>Kostendeckel <a class="term" href="glossar.html#lambda" title="führt eine einzelne Funktion (z. B. einen HTTP-Handler) bei Bedarf aus; Abrechnung pro Aufruf und Laufzeit, skaliert automatisch von 0 auf viele Instanzen">Lambda</a></td>
+<td><a href="glossar.html#reserved-concurrency">Reserved Concurrency</a> je Funktion aus <a class="term" href="glossar.html#cdk" title="Infrastruktur als Programmcode (TypeScript, Java, Python …): man schreibt Klassen wie new Table(...), CDK erzeugt daraus CloudFormation-Vorlagen und legt die Ressourcen an">CDK</a>-Kontext <code>reservedConcurrency</code> (Standard 2, <code>0</code> = nicht setzen); fünf Funktionen × 2 = 10</td>
+</tr>
+<tr>
+<td>Kostendeckel <a class="term" href="glossar.html#api" title="Programmierschnittstelle, über die Programme miteinander sprechen">API</a></td>
+<td><a class="term" href="glossar.html#throttling" title="Begrenzung der Anfragen pro Sekunde; zu viele Anfragen erhalten HTTP 429">Throttling</a> der <a class="term" href="glossar.html#stage" title="eine Umgebung/Ausbaustufe (z. B. dev, demo, prod), oft als eigener Satz Ressourcen">Stage</a>: 10 <a class="term" href="glossar.html#request" title="einzelne Anfrage an einen Dienst; viele AWS-Dienste rechnen pro Million Requests ab">Anfragen</a>/s, Spitze 20</td>
+</tr>
+<tr>
+<td>Kostendeckel <a class="term" href="glossar.html#datenbank" title="geordnete Datenablage">Datenbank</a></td>
+<td><a class="term" href="glossar.html#provisioned" title="DynamoDB-Modus mit fest eingestellter Kapazität (RCU/WCU); im Always Free bis 25 Einheiten; bei Überlast wird gedrosselt statt berechnet">provisioned</a> 5/5 statt <a class="term" href="glossar.html#on-demand" title="DynamoDB-Modus ohne Kapazitätsplanung, Abrechnung pro Lese-/Schreibvorgang; nicht im Always Free">On-Demand</a></td>
+</tr>
+<tr>
+<td><a class="term" href="glossar.html#cloudwatch" title="AWS-Dienst für Logs, Metriken und Alarme">Logs</a></td>
+<td>eigene Log-Gruppen mit 3 Tagen Aufbewahrung; Reste löscht der <a class="term" href="glossar.html#teardown" title="vollständiges Entfernen aller Demo-Ressourcen per cdk destroy und terraform destroy">Teardown</a></td>
+</tr>
+<tr>
+<td>Abbau</td>
+<td><code>RemovalPolicy.DESTROY</code> für Tabelle, <a class="term" href="glossar.html#user-pool" title="Nutzerverzeichnis in Cognito mit eigenen Nutzern, Gruppen, App-Clients und Triggern; zugleich OIDC-Aussteller">User Pool</a>, <a class="term" href="glossar.html#s3" title="Objektspeicher für Dateien beliebiger Größe in „Buckets&quot;; Standard für statische Websites, Uploads, Build-Artefakte">Bucket</a>, Logs; <code>cdk destroy</code> hinterlässt nichts außer dem <a class="term" href="glossar.html#cdk-bootstrap" title="einmalig je Konto und Region angelegte CDK-Hilfsressourcen (S3-Bucket für Artefakte, ECR-Repository, Rollen)">Bootstrap</a></td>
+</tr>
+<tr>
+<td>Kennzeichnung</td>
+<td>Tag <code>project=kundenportal-demo</code> auf allem (CDK und <a class="term" href="glossar.html#terraform" title="verbreitetes IaC-Werkzeug von HashiCorp: Infrastruktur deklarativ in HCL beschreiben, für viele Anbieter (AWS, Azure, Keycloak, GitHub …) über Provider">Terraform</a>)</td>
+</tr>
+<tr>
+<td>Bewusst weggelassen</td>
+<td>kein <a class="term" href="glossar.html#vpc" title="privates, isoliertes Netzwerk im AWS-Konto; Lambdas brauchen es nur für Zugriff auf private Ressourcen (z. B. RDS)">VPC</a>, kein <a class="term" href="glossar.html#nat-gateway" title="ermöglicht Ressourcen in privaten VPC-Subnetzen den Internetzugang; ≈ 32 $/Monat Fixkosten → im Demo vermieden">NAT Gateway</a>, kein <a class="term" href="glossar.html#alb" title="Lastverteiler für HTTP-Verkehr auf Container/Server; ≈ 16–20 $/Monat Fixkosten → im Demo vermieden">ALB</a>, kein <a class="term" href="glossar.html#rds" title="verwaltete relationale Datenbanken (PostgreSQL, MySQL …); läuft stundenweise → Fixkosten, im Demo vermieden">RDS</a>, keine <a class="term" href="glossar.html#waf" title="Web Application Firewall: filtert Anfragen nach Regeln (IP-Sperren, Rate Limits, bekannte Angriffe)">WAF</a>, kein <a class="term" href="glossar.html#route-53" title="DNS-Dienst von AWS; eine Hosted Zone kostet 0,50 $/Monat">Route 53</a>, kein <a class="term" href="glossar.html#secrets-manager" title="AWS-Dienst für Geheimnisse mit automatischer Rotation; 0,40 $/Secret und Monat">Secrets Manager</a></td>
+</tr>
+</tbody>
+</table></div>
+<p>Hinweis zur <a class="term" href="glossar.html#reserved-concurrency" title="feste Obergrenze gleichzeitiger Ausführungen einer Lambda; wirkt im Demo als harte Kostenbremse (0 = Funktion abgeschaltet). Reservieren lässt sich höchstens das Kontolimit minus 1">Reserved Concurrency</a>: <a class="term" href="glossar.html#aws" title="Cloud-Plattform von Amazon mit über 200 Diensten (Rechenleistung, Datenbanken, Netzwerk, Messaging …), abgerechnet nach Nutzung">AWS</a> lässt höchstens „nicht reservierte
+Kontokapazität minus 100" reservieren
+[B: <a href="https://docs.aws.amazon.com/lambda/latest/dg/configuration-concurrency.html">https://docs.aws.amazon.com/lambda/latest/dg/configuration-concurrency.html</a>].
+Neue Konten haben oft ein Limit von 10
+[B: <a href="https://docs.aws.amazon.com/lambda/latest/dg/gettingstarted-limits.html">https://docs.aws.amazon.com/lambda/latest/dg/gettingstarted-limits.html</a>];
+dann ist gar keine Reservierung möglich. Weg: Quotenerhöhung oder
+<code>reservedConcurrency=0</code> (Anleitung Kapitel 4.5).</p>
+<p>Zusätzlich legt CDK Hilfs-Lambdas an (Kopieren der statischen Dateien nach S3,
+Leeren des Buckets beim Löschen, regionsübergreifende Werte zwischen den zwei
+<a class="term" href="glossar.html#stack" title="Einheit in CloudFormation/CDK: eine Gruppe von Ressourcen, die gemeinsam angelegt und gelöscht wird">Stacks</a>). Sie laufen nur beim <a class="term" href="glossar.html#deployment" title="Ausliefern einer neuen Version in eine Umgebung">Deploy</a> bzw. Abbau und haben keine Reserved
+Concurrency [E].</p>
+<h2 id="7a-stacks-und-lebensdauer">7a. Stacks und Lebensdauer<a class="anchor" href="#7a-stacks-und-lebensdauer" title="Permanent link">#</a></h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Stack</th>
+<th>Region</th>
+<th>Inhalt</th>
+<th>Lebensdauer</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>KundenportalCertificate</code></td>
+<td><a class="term" href="glossar.html#region" title="geografischer Standort mit eigenen Rechenzentren; eu-central-1 = Frankfurt, us-east-1 = Nord-Virginia (dort müssen manche globalen Einstellungen, z. B. CloudFront-Zertifikate, lieg">us-east-1</a></td>
+<td><a class="term" href="glossar.html#https" title="verschlüsseltes Web-Protokoll; HTTP ohne Verschlüsselung">TLS</a>-Zertifikat für <a class="term" href="glossar.html#cloudfront" title="Content Delivery Network (CDN): liefert Inhalte weltweit aus nahen Standorten aus, cacht sie und leitet Pfade an verschiedene Ziele (S3, API Gateway, Lambda) weiter">CloudFront</a></td>
+<td>dauerhaft</td>
+</tr>
+<tr>
+<td><code>KundenportalBase</code></td>
+<td>eu-central-1</td>
+<td><a class="term" href="glossar.html#amazon-cognito" title="AWS-Identitätsdienst für Registrierung, Login, MFA und Benutzerverwaltung; im Demo der Portal-Login (Entscheidung 29.09.2026), angelegt per CDK">Cognito</a> (<a class="term" href="glossar.html#user-pool" title="Nutzerverzeichnis in Cognito mit eigenen Nutzern, Gruppen, App-Clients und Triggern; zugleich OIDC-Aussteller">User Pool</a>, Client, Trigger), <a class="term" href="glossar.html#dynamodb" title="vollständig verwaltete NoSQL-Datenbank (Schlüssel-Wert/Dokument) mit Antwortzeiten im Millisekundenbereich, ohne Server und ohne Verbindungs-Pool">DynamoDB</a>, Hinweis-<a class="term" href="glossar.html#sns" title="Publish/Subscribe-Dienst: eine Nachricht an ein Topic geht an alle Abonnenten (E-Mail, SQS, Lambda, HTTP, SMS)">Topic</a></td>
+<td>dauerhaft — Nutzer, Daten und bestätigtes Abo bleiben</td>
+</tr>
+<tr>
+<td><code>KundenportalApp</code></td>
+<td>eu-central-1</td>
+<td>Services, <a class="term" href="glossar.html#shell" title="Rahmenanwendung, die Navigation, Login und Layout stellt und die Micro-Frontends einbindet">Shell</a>-<a class="term" href="glossar.html#lambda" title="führt eine einzelne Funktion (z. B. einen HTTP-Handler) bei Bedarf aus; Abrechnung pro Aufruf und Laufzeit, skaliert automatisch von 0 auf viele Instanzen">Lambda</a>, <a class="term" href="glossar.html#http-api" title="schlanke, günstige Variante des API Gateway (≈ 1 $/Mio. Aufrufe) mit eingebautem JWT-Authorizer; im Demo gewählt">HTTP API</a>, <a class="term" href="glossar.html#eventbridge" title="Event-Bus: Dienste veröffentlichen Ereignisse, Regeln leiten sie anhand ihres Inhalts an Ziele (SQS, Lambda, SNS …) weiter">EventBridge</a>, <a class="term" href="glossar.html#sqs" title="Nachrichtenwarteschlange: Absender legt Nachrichten ab, Empfänger holt sie ab und bestätigt sie; entkoppelt Dienste und puffert Last">SQS</a>, <a class="term" href="glossar.html#dlq" title="Ablage für Nachrichten, die nach mehreren Versuchen nicht verarbeitet werden konnten, zur Analyse und Nachverarbeitung">DLQ</a>-<a class="term" href="glossar.html#alarm" title="Benachrichtigung, wenn eine Metrik einen Grenzwert überschreitet">Alarm</a></td>
+<td>wird bei einer Pause abgebaut</td>
+</tr>
+<tr>
+<td><code>KundenportalEdge</code></td>
+<td>eu-central-1</td>
+<td>CloudFront, statische Dateien, Aufrufrechte für die Shell</td>
+<td>dauerhaft — <a class="term" href="glossar.html#domain" title="Internet-Adresse wie beispiel.de; wird bei einem Registrar für ca. 10–15 €/Jahr registriert">Domain</a> und <a class="term" href="glossar.html#dns" title="Telefonbuch des Internets: übersetzt Namen wie energie-demo.rypox.com in Adressen">DNS</a>-Eintrag ändern sich nie</td>
+</tr>
+</tbody>
+</table></div>
+<p>Die <a class="term" href="glossar.html#stack" title="Einheit in CloudFormation/CDK: eine Gruppe von Ressourcen, die gemeinsam angelegt und gelöscht wird">Stacks</a> tauschen Werte über <a class="term" href="glossar.html#ssm-parameter-store" title="Ablage für Konfigurationswerte und (verschlüsselt als SecureString) Geheimnisse; Standard-Stufe kostenlos. Im Demo auch Übergabestelle zwischen Terraform und CDK">SSM-Parameter</a> (<code>/kundenportal/base/…</code>,
+<code>/kundenportal/app/…</code>) statt über <a class="term" href="glossar.html#cloudformation" title="AWS-eigener Dienst, der Ressourcen aus einer JSON/YAML-Vorlage anlegt, ändert und löscht; Grundlage von CDK und SAM">CloudFormation</a>-Exports aus; dadurch lässt
+sich <code>KundenportalApp</code> jederzeit abbauen und neu anlegen. <code>deploy.sh</code>
+aktualisiert <code>KundenportalEdge</code> nach jedem App-<a class="term" href="glossar.html#deployment" title="Ausliefern einer neuen Version in eine Umgebung">Deploy</a> mit <code>--force</code>, damit
+dieselbe <a class="term" href="glossar.html#distribution" title="eine CloudFront-Konfiguration mit eigener Domain, Ursprüngen und Regeln">Distribution</a> auf die neuen Ursprünge zeigt. Nur ein Vollabbau
+entfernt auch <a class="term" href="glossar.html#edge-stack" title="CDK-Stack für alles am Rand des Systems: CloudFront, Zertifikat, CloudFront Functions">Edge</a>, Base und Zertifikat — danach ist ein neuer
+DNS-Eintrag nötig.</p>
+<h2 id="8-pipelines">8. Pipelines<a class="anchor" href="#8-pipelines" title="Permanent link">#</a></h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Was</th>
+<th>Werkzeug</th>
+<th>Wer löst aus</th>
+<th>AWS-Zugang</th>
+<th>Freigabe</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Prüfen (Format, Lint, Typen, Tests, <a class="term" href="glossar.html#build" title="Übersetzen und Paketieren des Quellcodes zu auslieferbaren Dateien (Artefakten)">Build</a>, Synth)</td>
+<td><a class="term" href="glossar.html#github-actions" title="CI/CD-Dienst von GitHub: Workflows in YAML laufen bei Push, Pull Request oder manuell">GitHub Actions</a> <code>CI</code></td>
+<td>jeder Push und <a class="term" href="glossar.html#pull-request" title="Änderungsvorschlag auf GitHub mit Review und automatischen Prüfungen">Pull Request</a></td>
+<td>keiner</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Anwendung aufbauen</td>
+<td>GitHub Actions <code>Deploy</code> → <code>scripts/deploy.sh</code> (unbeaufsichtigt)</td>
+<td>Inhaber, manuell</td>
+<td><a href="glossar.html#oidc-rolle">OIDC-Rolle</a> <code>kundenportal-github-deploy</code> → <a class="term" href="glossar.html#cdk" title="Infrastruktur als Programmcode (TypeScript, Java, Python …): man schreibt Klassen wie new Table(...), CDK erzeugt daraus CloudFormation-Vorlagen und legt die Ressourcen an">CDK</a>-<a class="term" href="glossar.html#cdk-bootstrap" title="einmalig je Konto und Region angelegte CDK-Hilfsressourcen (S3-Bucket für Artefakte, ECR-Repository, Rollen)">Bootstrap</a>-Rollen</td>
+<td><a class="term" href="glossar.html#environment" title="GitHub-Umgebung (z. B. „production&quot;) mit Schutzregeln, etwa Freigabe durch eine Person vor dem Deploy">Environment</a> <code>production</code></td>
+</tr>
+<tr>
+<td>Anwendung abbauen</td>
+<td>GitHub Actions <code>Teardown</code> → <code>scripts/teardown.sh</code> (Pause: nur App; Ende: alle <a class="term" href="glossar.html#stack" title="Einheit in CloudFormation/CDK: eine Gruppe von Ressourcen, die gemeinsam angelegt und gelöscht wird">Stacks</a>, Log-Reste)</td>
+<td>Inhaber, Eingabe <code>destroy</code></td>
+<td>dieselbe Rolle</td>
+<td>Environment <code>production</code></td>
+</tr>
+<tr>
+<td><a class="term" href="glossar.html#dlq" title="Ablage für Nachrichten, die nach mehreren Versuchen nicht verarbeitet werden konnten, zur Analyse und Nachverarbeitung">DLQ</a>-Weg prüfen</td>
+<td>GitHub Actions <code>DLQ probe</code> (ungültiges <a class="term" href="glossar.html#event" title="Nachricht, dass etwas passiert ist (z. B. „Zählerstand erfasst&quot;); Empfänger reagieren darauf, ohne dass der Absender sie kennt">Ereignis</a>)</td>
+<td>Inhaber, manuell</td>
+<td>dieselbe Rolle (<code>events:PutEvents</code> nur auf den eigenen Bus)</td>
+<td>Environment <code>production</code></td>
+</tr>
+<tr>
+<td><a class="term" href="glossar.html#plattform-schicht" title="im Demo: per Terraform aus GitLab CI verwaltete Grundlagen (OIDC-Vertrauensstellungen, Budget + SNS-Grundlage des Kill-Switch, SSM-Grundwerte, ab Phase 3 Keycloak-Konfiguration), a">Fundament</a> (<a class="term" href="glossar.html#openid-connect" title="Identitätsschicht auf OAuth2: liefert zusätzlich ein ID-Token mit Nutzerangaben; auch für die Anmeldung von GitHub Actions bei AWS genutzt">OIDC</a>, Rollen, <a class="term" href="glossar.html#aws-budgets" title="kostenloser Dienst für Kostengrenzen mit E-Mail-/SNS-Alarm bei Überschreitung; kein harter Stopp, Daten kommen Stunden verzögert">Budget</a>, <a class="term" href="glossar.html#ssm-parameter-store" title="Ablage für Konfigurationswerte und (verschlüsselt als SecureString) Geheimnisse; Standard-Stufe kostenlos. Im Demo auch Übergabestelle zwischen Terraform und CDK">SSM</a>)</td>
+<td><a class="term" href="glossar.html#gitlab-ci" title="CI/CD in GitLab; hier auf gitlab.rypox.org für Plattform (Terraform) und Altsysteme">GitLab CI</a> im Projekt <code>saas/kundenportal-demo/platform</code></td>
+<td>Push auf <code>main</code> → <code>plan</code>; <code>apply</code> per Klick</td>
+<td><a class="term" href="glossar.html#oidc-rolle" title="IAM-Rolle, die GitHub Actions per kurzlebigem OIDC-Token übernimmt – es werden keine dauerhaften AWS-Zugangsschlüssel gespeichert">OIDC-Rolle</a> <code>kundenportal-gitlab-foundation</code></td>
+<td>manueller Job</td>
+</tr>
+<tr>
+<td><a class="term" href="glossar.html#plattform-schicht" title="im Demo: per Terraform aus GitLab CI verwaltete Grundlagen (OIDC-Vertrauensstellungen, Budget + SNS-Grundlage des Kill-Switch, SSM-Grundwerte, ab Phase 3 Keycloak-Konfiguration), a">Fundament</a> Erstlauf und Abbau</td>
+<td><a class="term" href="glossar.html#terraform" title="verbreitetes IaC-Werkzeug von HashiCorp: Infrastruktur deklarativ in HCL beschreiben, für viele Anbieter (AWS, Azure, Keycloak, GitHub …) über Provider">Terraform</a> lokal</td>
+<td>Inhaber</td>
+<td><code>aws login</code></td>
+<td>—</td>
+</tr>
+<tr>
+<td><a class="term" href="glossar.html#cdk" title="Infrastruktur als Programmcode (TypeScript, Java, Python …): man schreibt Klassen wie new Table(...), CDK erzeugt daraus CloudFormation-Vorlagen und legt die Ressourcen an">CDK</a>-<a class="term" href="glossar.html#cdk-bootstrap" title="einmalig je Konto und Region angelegte CDK-Hilfsressourcen (S3-Bucket für Artefakte, ECR-Repository, Rollen)">Bootstrap</a></td>
+<td><code>cdk bootstrap</code> lokal</td>
+<td>Inhaber, einmalig</td>
+<td><code>aws login</code></td>
+<td>—</td>
+</tr>
+</tbody>
+</table></div>
+<p>Beide <a class="term" href="glossar.html#ci" title="automatisches Bauen und Testen bei jeder Änderung">CI</a>-Rollen tragen die <a href="glossar.html#permissions-boundary">Permissions Boundary</a>
+<code>kundenportal-ci-boundary</code>. Die <a class="term" href="glossar.html#gitlab" title="Git-Plattform mit CI, auch selbst betreibbar; bei rypox intern auf gitlab.rypox.org im Einsatz">GitLab</a>-Rolle darf Rollen nur <strong>mit</strong> dieser
+<a class="term" href="glossar.html#permissions-boundary" title="an eine IAM-Rolle gehängte Obergrenze: die Rolle darf höchstens, was Boundary und eigene Richtlinie gemeinsam erlauben; verhindert, dass eine CI-Rolle sich selbst mehr Rechte gibt">Boundary</a> anlegen oder ändern und die Boundary selbst nie anfassen;
+Änderungen daran macht nur der Inhaber lokal. Die <a class="term" href="glossar.html#github" title="Plattform für Git-Repositories, Pull Requests und CI">GitHub</a>-Rolle vertraut nur
+dem unveränderlichen Subject
+<code>repo:janpfeil@5345175/kundenportal-demo@1395090655:environment:production</code>
+(Besitzer- und <a class="term" href="glossar.html#repository" title="von Git verwaltetes Projektverzeichnis, z. B. auf GitHub">Repository</a>-ID statt Name, damit ein umbenanntes oder neu
+angelegtes Repository gleichen Namens die Rolle nicht übernehmen kann), die GitLab-Rolle nur
+<code>project_path:saas/kundenportal-demo/platform:ref_type:branch:ref:main</code>.</p>
+<h2 id="9-messwerte">9. Messwerte<a class="anchor" href="#9-messwerte" title="Permanent link">#</a></h2>
+<p>Gemessen beim ersten <a class="term" href="glossar.html#durchstich" title="erste, schmale Umsetzung durch alle Schichten (UI → API → DB → Event), um die Architektur früh zu beweisen">Durchstich</a> am 29./30.09.2026 (Quelle: Zusammenfassungen
+der <a class="term" href="glossar.html#github" title="Plattform für Git-Repositories, Pull Requests und CI">GitHub</a>-Actions-Läufe, <a class="term" href="glossar.html#cloudformation" title="AWS-eigener Dienst, der Ressourcen aus einer JSON/YAML-Vorlage anlegt, ändert und löscht; Grundlage von CDK und SAM">CloudFormation</a>-<a class="term" href="glossar.html#event" title="Nachricht, dass etwas passiert ist (z. B. „Zählerstand erfasst&quot;); Empfänger reagieren darauf, ohne dass der Absender sie kennt">Ereignisse</a>, <code>curl</code> und der
+Playwright-Lauf gegen die Live-Umgebung).</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Messgröße</th>
+<th>Wert</th>
+<th>Gemessen am</th>
+<th>Anmerkung</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a class="term" href="glossar.html#build" title="Übersetzen und Paketieren des Quellcodes zu auslieferbaren Dateien (Artefakten)">Build</a> inkl. Synth (<a class="term" href="glossar.html#github-actions" title="CI/CD-Dienst von GitHub: Workflows in YAML laufen bei Push, Pull Request oder manuell">GitHub Actions</a>)</td>
+<td>32 s</td>
+<td class="num">29.09.2026</td>
+<td><code>BUILD_SECONDS</code></td>
+</tr>
+<tr>
+<td>Zertifikats-<a class="term" href="glossar.html#stack" title="Einheit in CloudFormation/CDK: eine Gruppe von Ressourcen, die gemeinsam angelegt und gelöscht wird">Stack</a> (<a class="term" href="glossar.html#region" title="geografischer Standort mit eigenen Rechenzentren; eu-central-1 = Frankfurt, us-east-1 = Nord-Virginia (dort müssen manche globalen Einstellungen, z. B. CloudFront-Zertifikate, lieg">us-east-1</a>), erster Aufbau</td>
+<td>1.144 s</td>
+<td class="num">29.09.2026</td>
+<td>fast nur Warten auf den <a class="term" href="glossar.html#dns" title="Telefonbuch des Internets: übersetzt Namen wie energie-demo.rypox.com in Adressen">DNS</a>-Eintrag des Inhabers</td>
+</tr>
+<tr>
+<td>Anwendungs-<a class="term" href="glossar.html#stack" title="Einheit in CloudFormation/CDK: eine Gruppe von Ressourcen, die gemeinsam angelegt und gelöscht wird">Stack</a>, erster Aufbau</td>
+<td>343 s</td>
+<td class="num">29.09.2026</td>
+<td><code>cdk deploy</code>, ohne DNS-Wartezeit</td>
+</tr>
+<tr>
+<td>davon <a class="term" href="glossar.html#cloudfront" title="Content Delivery Network (CDN): liefert Inhalte weltweit aus nahen Standorten aus, cacht sie und leitet Pfade an verschiedene Ziele (S3, API Gateway, Lambda) weiter">CloudFront</a>-Anlage</td>
+<td>222 s</td>
+<td class="num">29.09.2026</td>
+<td>CloudFormation-Ereignisse</td>
+</tr>
+<tr>
+<td>Update-<a class="term" href="glossar.html#deployment" title="Ausliefern einer neuen Version in eine Umgebung">Deploy</a> (neuer <a class="term" href="glossar.html#shell" title="Rahmenanwendung, die Navigation, Login und Layout stellt und die Micro-Frontends einbindet">Shell</a>-Code)</td>
+<td>72–83 s</td>
+<td>29./30.09.2026</td>
+<td>Stack 46 s</td>
+</tr>
+<tr>
+<td><a class="term" href="glossar.html#kaltstart" title="Verzögerung, wenn eine Lambda-Instanz erst gestartet werden muss (bei Node.js meist &lt; 1 s)">Kaltstart</a> Shell (erster Seitenaufruf)</td>
+<td>1,6 s</td>
+<td class="num">29.09.2026</td>
+<td><code>curl</code> direkt nach dem Deploy, inkl. CloudFront-Miss</td>
+</tr>
+<tr>
+<td>Seitenaufruf warm</td>
+<td>0,05–0,07 s</td>
+<td class="num">30.09.2026</td>
+<td><code>curl</code>, Startseite</td>
+</tr>
+<tr>
+<td>Erstanmeldung → Willkommensnachricht</td>
+<td>1,9 s / 3,3 s</td>
+<td class="num">30.09.2026</td>
+<td>Playwright, ab Anzeige von „Mein Konto" (zwei Läufe)</td>
+</tr>
+<tr>
+<td>ungültiges Ereignis → <a class="term" href="glossar.html#dlq" title="Ablage für Nachrichten, die nach mehreren Versuchen nicht verarbeitet werden konnten, zur Analyse und Nachverarbeitung">DLQ</a></td>
+<td>201 s</td>
+<td class="num">30.09.2026</td>
+<td>drei Zustellversuche à 60 s Sichtbarkeit</td>
+</tr>
+<tr>
+<td>Pause (<code>teardown.sh</code>, nur App)</td>
+<td>143 s</td>
+<td class="num">30.09.2026</td>
+<td>GitHub Actions; <a class="term" href="glossar.html#domain" title="Internet-Adresse wie beispiel.de; wird bei einem Registrar für ca. 10–15 €/Jahr registriert">Domain</a> liefert währenddessen 403</td>
+</tr>
+<tr>
+<td>Neuaufbau nach Pause</td>
+<td>328 s</td>
+<td class="num">30.09.2026</td>
+<td>Build 32 s, Kern 191 s, <a class="term" href="glossar.html#edge-stack" title="CDK-Stack für alles am Rand des Systems: CloudFront, Zertifikat, CloudFront Functions">Edge</a> 105 s; keine DNS-Änderung</td>
+</tr>
+<tr>
+<td>Vollabbau (<code>teardown.sh --all</code>)</td>
+<td>437 s</td>
+<td class="num">30.09.2026</td>
+<td>App, Edge, Base, Zertifikat</td>
+</tr>
+<tr>
+<td>Neuaufbau nach Vollabbau</td>
+<td>610 s</td>
+<td class="num">30.09.2026</td>
+<td>Build 33 s, Kern 322 s, Edge 255 s; danach neuer Portal-<a class="term" href="glossar.html#cname" title="DNS-Eintrag, der einen Namen auf einen anderen verweist, z. B. energie-demo.rypox.com → CloudFront-Adresse; auch für die Zertifikatsprüfung von ACM genutzt">CNAME</a> (30 s bis sichtbar)</td>
+</tr>
+<tr>
+<td>erster <code>cdk destroy</code> (ein <a class="term" href="glossar.html#stack" title="Einheit in CloudFormation/CDK: eine Gruppe von Ressourcen, die gemeinsam angelegt und gelöscht wird">Stack</a>, alte Aufteilung)</td>
+<td>243 s</td>
+<td class="num">29.09.2026</td>
+<td>vor der Aufteilung in vier Stacks</td>
+</tr>
+</tbody>
+</table></div>
+<p>Befunde beim ersten Deploy, jetzt im Code berücksichtigt: GitHub signiert
+<a class="term" href="glossar.html#openid-connect" title="Identitätsschicht auf OAuth2: liefert zusätzlich ein ID-Token mit Nutzerangaben; auch für die Anmeldung von GitHub Actions bei AWS genutzt">OIDC</a>-<a class="term" href="glossar.html#token" title="digitaler Ausweis, den ein Identitätsdienst ausstellt und den eine App bei jedem API-Aufruf mitschickt">Tokens</a> mit unveränderlichen IDs (<code>repo:owner@id/name@id</code>), die
+<a class="term" href="glossar.html#trust-policy" title="Teil einer IAM-Rolle: wer diese Rolle übernehmen darf (z. B. nur GitHub Actions aus einem bestimmten Repo)">Vertrauensstellung</a> prüft dieses Format; <a class="term" href="glossar.html#function-url" title="eigene HTTPS-Adresse einer Lambda ohne API Gateway; unterstützt Response Streaming und kann hinter CloudFront (mit OAC) liegen">Function URLs</a> brauchen seit
+10/2025 zusätzlich <code>lambda:InvokeFunction</code>; das <a class="term" href="glossar.html#lambda" title="führt eine einzelne Funktion (z. B. einen HTTP-Handler) bei Bedarf aus; Abrechnung pro Aufruf und Laufzeit, skaliert automatisch von 0 auf viele Instanzen">Lambda</a>-Paket der Shell muss
+die pnpm-Symlinks behalten (eigenes Zip statt <a class="term" href="glossar.html#cdk" title="Infrastruktur als Programmcode (TypeScript, Java, Python …): man schreibt Klassen wie new Table(...), CDK erzeugt daraus CloudFormation-Vorlagen und legt die Ressourcen an">CDK</a>-Kopie).</p>
+<h2 id="quellen">Quellen<a class="anchor" href="#quellen" title="Permanent link">#</a></h2>
+<ul class="sources">
+<li>Lambda Reserved Concurrency (höchstens Kontokapazität minus 100): <a href="https://docs.aws.amazon.com/lambda/latest/dg/configuration-concurrency.html">https://docs.aws.amazon.com/lambda/latest/dg/configuration-concurrency.html</a></li>
+<li>Lambda-Quoten (Standard 1.000, Neukonten reduziert): <a href="https://docs.aws.amazon.com/lambda/latest/dg/gettingstarted-limits.html">https://docs.aws.amazon.com/lambda/latest/dg/gettingstarted-limits.html</a></li>
+<li>Cognito Managed Login, Lokalisierung und Sitzungs-Cookie: <a href="https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-pools-managed-login.html">https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-pools-managed-login.html</a></li>
+<li>Cognito <code>/oauth2/authorize</code> (Parameter <code>lang</code>): <a href="https://docs.aws.amazon.com/cognito/latest/developerguide/authorization-endpoint.html">https://docs.aws.amazon.com/cognito/latest/developerguide/authorization-endpoint.html</a></li>
+</ul></main></div>
+<footer class="site"><a href="../wiki/architektur.md">Markdown-Quelle</a> · Generiert 2026-09-30 07:10 aus <code>docs/wiki</code> mit <code>scripts/build_reports.py</code></footer>
+</body>
+</html>

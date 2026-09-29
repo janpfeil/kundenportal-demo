@@ -1,0 +1,601 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fachkonzept · kundenportal-demo</title>
+<link rel="stylesheet" href="assets/report.css">
+<script src="assets/report.js"></script>
+</head>
+<body>
+<header class="topbar"><a class="brand" href="index.html">kundenportal-demo · Konzept</a><nav class="topnav"><a href="index.html">Übersicht</a><a href="machbarkeit-kosten.html">Machbarkeit &amp; Kosten</a><a href="fachkonzept.html" aria-current="page">Fachkonzept</a><a href="demo-pass.html">Demo-Pass</a><a href="kostenfrei.html">Kostenfreier Betrieb</a><a href="anleitung-kontoinhaber.html">Anleitung Kontoinhaber</a><a href="anleitung-fundament.html">Anleitung Fundament</a><a href="anleitung-anwendung.html">Anleitung Anwendung</a><a href="nextjs-betrieb.html">Next.js-Betrieb</a><a href="architektur.html">Architektur Phase 1</a><a href="glossar.html">Glossar</a></nav>
+<button class="theme-toggle" type="button">Dunkel</button></header>
+<div class="layout"><nav class="toc" aria-label="Inhalt"><div class="toc-title">Inhalt</div><div>
+<ul>
+<li><a href="#1-zweck-und-rahmen">1. Zweck und Rahmen</a></li>
+<li><a href="#2-die-geschichte-in-drei-sätzen">2. Die Geschichte in drei Sätzen</a></li>
+<li><a href="#3-demo-personen-je-mandant">3. Demo-Personen (je Mandant)</a></li>
+<li><a href="#4-journeys">4. Journeys</a></li>
+<li><a href="#5-fachliche-bereiche">5. Fachliche Bereiche</a></li>
+<li><a href="#6-ereigniskatalog">6. Ereigniskatalog</a></li>
+<li><a href="#7-datenmodell">7. Datenmodell</a><ul>
+<li><a href="#71-mandanten-tabelle-eine-dynamodb-tabelle-je-mandant-provisioned-5-rcu5-wcu">7.1 Mandanten-Tabelle (eine DynamoDB-Tabelle je Mandant, provisioned 5 RCU/5 WCU)</a></li>
+<li><a href="#72-plattform-tabelle-eine-mandantenübergreifend">7.2 Plattform-Tabelle (eine, mandantenübergreifend)</a></li>
+<li><a href="#73-altsysteme-eigener-server-je-mandant-ein-datenbankschema">7.3 Altsysteme (eigener Server, je Mandant ein Datenbankschema)</a></li>
+</ul>
+</li>
+<li><a href="#8-rest-schnittstelle-überblick">8. REST-Schnittstelle (Überblick)</a></li>
+<li><a href="#9-repository-struktur">9. Repository-Struktur</a></li>
+<li><a href="#10-entscheidungen-29092026">10. Entscheidungen (29.09.2026)</a></li>
+</ul>
+</div>
+</nav><main><h1 id="fachkonzept-multi-sparten-kundenportal">Fachkonzept — Multi-Sparten-Kundenportal<a class="anchor" href="#fachkonzept-multi-sparten-kundenportal" title="Permanent link">#</a></h1>
+<p>Stand: 2026-09-29 (Identität: <a class="term" href="glossar.html#amazon-cognito" title="AWS-Identitätsdienst für Registrierung, Login, MFA und Benutzerverwaltung; im Demo der Portal-Login (Entscheidung 29.09.2026), angelegt per CDK">Cognito</a>/<a class="term" href="glossar.html#keycloak" title="Open-Source-Identitätsdienst (OIDC, SAML), selbst betrieben; im Demo unter id.rypox.net die Anmeldung des Telko-Altsystems und ab Phase 3 Gegenstelle des Migrate-User-Triggers">Keycloak</a> eingearbeitet) · Status: <strong>abgestimmt</strong> (29.09.2026) · Kennzeichnung: <strong>[E]</strong> Einschätzung/Festlegung im Entwurf.</p>
+<p>Fachbegriffe sind in jedem Abschnitt beim ersten Vorkommen mit dem <a href="glossar.html">Glossar</a> verlinkt (Erklärung und Entsprechung außerhalb von <a class="term" href="glossar.html#aws" title="Cloud-Plattform von Amazon mit über 200 Diensten (Rechenleistung, Datenbanken, Netzwerk, Messaging …), abgerechnet nach Nutzung">AWS</a>).</p>
+<h2 id="1-zweck-und-rahmen">1. Zweck und Rahmen<a class="anchor" href="#1-zweck-und-rahmen" title="Permanent link">#</a></h2>
+<p>Das Demo zeigt die <strong>Modernisierung eines <a class="term" href="glossar.html#kundenportal" title="Web-Anwendung, in der Endkunden ihre Verträge, Rechnungen und Daten selbst verwalten (Self-Service)">Kundenportals</a></strong> mit Übernahme
+bestehender Kundenkonten — ein typisches Kernthema solcher Modernisierungen.
+Rahmen aus den bisherigen Entscheidungen (<a href="index.html">Übersicht</a>):</p>
+<ul>
+<li>fiktiver <strong><a class="term" href="glossar.html#multi-sparten-versorger" title="Unternehmen, das mehrere Versorgungs- und Kommunikationsprodukte anbietet (Strom, Gas, Wasser, Wärme, Internet, Mobilfunk) – typisch für Stadtwerke">Multi-Sparten-Versorger</a></strong> (Strom, Gas, Wasser, Internet,
+  Mobilfunk), der einen regionalen <a class="term" href="glossar.html#glasfaser" title="Internetanschlüsse; im Demo die Sparten des übernommenen Anbieters">Internet-/Mobilfunkanbieter</a> übernommen hat;</li>
+<li>jeder Besucher erhält per <a class="term" href="glossar.html#einladungslink" title="persönlicher, einmal verwendbarer Link, der einen Demo-Pass ausstellt">Einladungslink</a> einen eigenen <strong><a class="term" href="glossar.html#mandant" title="abgeschotteter Bereich eines Kunden in einer gemeinsam betriebenen Anwendung; im Demo je Demo-Pass ein Mandant">Mandanten</a></strong>
+  (<a class="term" href="glossar.html#bridge-modell" title="Mandantenmodell: Rechenleistung geteilt, Daten und Ereignisse je Mandant getrennt">Bridge-Modell</a>) mit vollständigem Beispieldatenstand;</li>
+<li>zwei simulierte <strong><a class="term" href="glossar.html#legacy-system" title="bestehendes Altsystem mit Kundendaten, das abgelöst werden soll; im Demo simuliert">Altsysteme</a></strong> auf einem eigenen <a class="term" href="glossar.html#server" title="Rechner oder Prozess, der Anfragen beantwortet">Server</a>, Portal auf <a class="term" href="glossar.html#aws" title="Cloud-Plattform von Amazon mit über 200 Diensten (Rechenleistung, Datenbanken, Netzwerk, Messaging …), abgerechnet nach Nutzung">AWS</a> (<a class="term" href="glossar.html#hybrid-architektur" title="Teile eines Systems laufen in der Cloud, andere im eigenen Rechenzentrum bzw. auf eigenen Servern; im Demo: Altsysteme auf eigenem Server, Portal auf AWS">Hybrid</a>);</li>
+<li>Anmeldung am Portal über <strong><a class="term" href="glossar.html#amazon-cognito" title="AWS-Identitätsdienst für Registrierung, Login, MFA und Benutzerverwaltung; im Demo der Portal-Login (Entscheidung 29.09.2026), angelegt per CDK">Amazon Cognito</a></strong>; das Telko-Altsystem meldet
+  seine Kunden über einen selbst betriebenen <strong><a class="term" href="glossar.html#keycloak" title="Open-Source-Identitätsdienst (OIDC, SAML), selbst betrieben; im Demo unter id.rypox.net die Anmeldung des Telko-Altsystems und ab Phase 3 Gegenstelle des Migrate-User-Triggers">Keycloak</a></strong> (<code>id.rypox.net</code>)
+  an. Die Muster (<a class="term" href="glossar.html#login" title="Anmeldung eines Nutzers">Login</a> per <a class="term" href="glossar.html#openid-connect" title="Identitätsschicht auf OAuth2: liefert zusätzlich ein ID-Token mit Nutzerangaben; auch für die Anmeldung von GitHub Actions bei AWS genutzt">OIDC</a>, <a class="term" href="glossar.html#lazy-migration" title="Konto wird erst beim ersten Login ins neue System übernommen: im Demo ruft Cognito den Migrate-User-Trigger, der das Passwort einmalig beim Altsystem prüft; danach speichert Cognit">Lazy Migration</a>, <a class="term" href="glossar.html#bulk-import" title="Übernahme vieler Konten auf einmal; bei Cognito per CSV-Import oder AdminCreateUser, im Demo ohne Passwörter (Nutzer müssen zurücksetzen); Hash-Import (u. a. bcrypt) ist noch nicht">Bulk-Import</a>) funktionieren
+  mit jedem Standard-OIDC-Anbieter; <a class="term" href="glossar.html#auth0" title="verbreiteter Identitätsdienst (SaaS, von Okta) für Registrierung, Login, Social Login, MFA und Benutzerverwaltung; im Demo nicht verwendet (ersetzt durch Amazon Cognito), bleibt üb">Auth0</a> oder Keycloak wären austauschbar;</li>
+<li>keine Markennamen: Die Unternehmen heißen im Demo schlicht
+  <strong>„Versorger"</strong> und <strong>„Telko"</strong> (der übernommene Anbieter).</li>
+</ul>
+<p>Nicht Ziel: echte Abrechnung, echte Tarife, rechtlich belastbare
+Vertragsabschlüsse. Alles Fachliche ist <strong>plausibel vereinfacht</strong> [E].</p>
+<h2 id="2-die-geschichte-in-drei-sätzen">2. Die Geschichte in drei Sätzen<a class="anchor" href="#2-die-geschichte-in-drei-sätzen" title="Permanent link">#</a></h2>
+<p>Der <a class="term" href="glossar.html#multi-sparten-versorger" title="Unternehmen, das mehrere Versorgungs- und Kommunikationsprodukte anbietet (Strom, Gas, Wasser, Wärme, Internet, Mobilfunk) – typisch für Stadtwerke">Versorger</a> modernisiert sein <a class="term" href="glossar.html#kundenportal" title="Web-Anwendung, in der Endkunden ihre Verträge, Rechnungen und Daten selbst verwalten (Self-Service)">Kundenportal</a> und holt dabei die Kunden der
+übernommenen Telko herüber. <a class="term" href="glossar.html#altkonto" title="Kundenkonto im Altsystem des Versorgers oder der Telko, das ins neue Portal übernommen wird (nicht zu verwechseln mit einem alten AWS-Konto)">Bestandskunden</a> beider Häuser sollen sich
+<strong>ohne Neuregistrierung</strong> mit ihren alten Zugangsdaten anmelden können;
+wer bei beiden Kunde ist, bekommt <strong>ein</strong> Konto mit allen Verträgen. Das
+<strong><a class="term" href="glossar.html#migrations-cockpit" title="im Demo geplantes Micro-Frontend, das den Fortschritt der Kontenübernahme, Ereignisse und DLQ-Fälle live zeigt">Migrations-Cockpit</a></strong> zeigt jederzeit, wie weit die Übernahme ist und wo
+es hakt.</p>
+<h2 id="3-demo-personen-je-mandant">3. Demo-Personen (je Mandant)<a class="anchor" href="#3-demo-personen-je-mandant" title="Permanent link">#</a></h2>
+<p>Jeder Mandant enthält dieselben <a class="term" href="glossar.html#demo-person" title="im Demo vorbereitete fiktive Kundinnen und Kunden mit festgelegter Geschichte (z. B. Anna Becker: Altkundin, Lazy Migration)">Demo-Personen</a>; der Besucher meldet sich
+auf der <a class="term" href="glossar.html#demo-pass" title="im Demo: zeitlich begrenzte Berechtigung (7 Tage, Kontingent) für eine eigene Instanz; ausgestellt per Einladungslink oder für den Inhaber">Pass</a>-Seite per Knopf „Als … anmelden" an (Zugangsdaten werden dort
+angezeigt, die Personen existieren nur in seinem <a class="term" href="glossar.html#mandant" title="abgeschotteter Bereich eines Kunden in einer gemeinsam betriebenen Anwendung; im Demo je Demo-Pass ein Mandant">Mandanten</a>) [E].</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Person</th>
+<th>Herkunft</th>
+<th>Verträge</th>
+<th>Besonderheit</th>
+<th>zeigt</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Anna Becker</strong></td>
+<td><a class="term" href="glossar.html#multi-sparten-versorger" title="Unternehmen, das mehrere Versorgungs- und Kommunikationsprodukte anbietet (Strom, Gas, Wasser, Wärme, Internet, Mobilfunk) – typisch für Stadtwerke">Versorger</a>-<a class="term" href="glossar.html#legacy-system" title="bestehendes Altsystem mit Kundendaten, das abgelöst werden soll; im Demo simuliert">Altsystem</a>, aktiv</td>
+<td>Strom, Gas</td>
+<td><a class="term" href="glossar.html#passwort-hash" title="Einweg-verschlüsselte Form eines Passworts; alte Systeme nutzen oft schwache Verfahren (MD5, SHA-1), die bei der Migration einen Passwort-Reset erzwingen">Passwort-Hash</a> bcrypt, Profil vollständig</td>
+<td><strong><a class="term" href="glossar.html#lazy-migration" title="Konto wird erst beim ersten Login ins neue System übernommen: im Demo ruft Cognito den Migrate-User-Trigger, der das Passwort einmalig beim Altsystem prüft; danach speichert Cognit">Lazy Migration</a></strong> beim ersten <a class="term" href="glossar.html#login" title="Anmeldung eines Nutzers">Login</a>, danach Zählerstand erfassen</td>
+</tr>
+<tr>
+<td><strong>Bernd Yilmaz</strong></td>
+<td>beide Altsysteme</td>
+<td>Strom (Versorger), Internet + Mobilfunk (Telko)</td>
+<td>zwei Konten, Adresse unterschiedlich geschrieben („Hauptstr. 5" / „Hauptstraße 5")</td>
+<td><strong>Dublettenerkennung</strong> und <strong><a class="term" href="glossar.html#account-linking" title="mehrere Identitäten derselben Person (z. B. Google-Login und Altkonto) zu einem Konto zusammenführen">Account-Linking</a></strong></td>
+</tr>
+<tr>
+<td><strong>Carla Schulz</strong></td>
+<td>Telko-Altsystem, seit 2 Jahren nicht angemeldet</td>
+<td>Mobilfunk</td>
+<td>Telko-eigenes Hash-Verfahren; Hashes lassen sich nicht nach <a class="term" href="glossar.html#amazon-cognito" title="AWS-Identitätsdienst für Registrierung, Login, MFA und Benutzerverwaltung; im Demo der Portal-Login (Entscheidung 29.09.2026), angelegt per CDK">Cognito</a> importieren</td>
+<td><strong><a class="term" href="glossar.html#bulk-import" title="Übernahme vieler Konten auf einmal; bei Cognito per CSV-Import oder AdminCreateUser, im Demo ohne Passwörter (Nutzer müssen zurücksetzen); Hash-Import (u. a. bcrypt) ist noch nicht">Bulk-Import</a></strong> der Inaktiven, erzwungener <strong>Passwort-Reset</strong></td>
+</tr>
+<tr>
+<td><strong>David Neumann</strong></td>
+<td>kein <a class="term" href="glossar.html#altkonto" title="Kundenkonto im Altsystem des Versorgers oder der Telko, das ins neue Portal übernommen wird (nicht zu verwechseln mit einem alten AWS-Konto)">Altkonto</a></td>
+<td>–</td>
+<td>Neukunde</td>
+<td><strong>Registrierung</strong> und <strong><a class="term" href="glossar.html#progressive-profiling" title="Profildaten schrittweise über mehrere Logins abfragen statt in einem langen Formular">progressives Onboarding</a></strong> (Kundennummer verknüpfen)</td>
+</tr>
+<tr>
+<td><strong>Emil Wagner</strong></td>
+<td>Versorger-Altsystem</td>
+<td>Wasser</td>
+<td>fehlende <a class="term" href="glossar.html#e-mail" title="elektronische Post; SNS verschickt bis 1.000 E-Mails im Monat kostenlos">E-Mail</a>-Adresse im Altsystem</td>
+<td>Datenmangel → landet im Cockpit unter „Klärfälle"</td>
+</tr>
+</tbody>
+</table></div>
+<p>Zusätzlich zwei Rollen außerhalb der Geschichte:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Rolle</th>
+<th>Wer</th>
+<th>darf</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong><a class="term" href="glossar.html#demo-pass" title="im Demo: zeitlich begrenzte Berechtigung (7 Tage, Kontingent) für eine eigene Instanz; ausgestellt per Einladungslink oder für den Inhaber">Pass-Inhaber</a></strong></td>
+<td>Besucher mit <a class="term" href="glossar.html#einladungslink" title="persönlicher, einmal verwendbarer Link, der einen Demo-Pass ausstellt">Einladungslink</a></td>
+<td>Demo-Personen nutzen, <a class="term" href="glossar.html#migrations-cockpit" title="im Demo geplantes Micro-Frontend, das den Fortschritt der Kontenübernahme, Ereignisse und DLQ-Fälle live zeigt">Migrations-Cockpit</a> seines Mandanten, Mandant zurücksetzen</td>
+</tr>
+<tr>
+<td><strong>Inhaber</strong></td>
+<td>Projektinhaber</td>
+<td>Einladungslinks erzeugen, Mandanten starten/löschen, Übersicht aller Mandanten</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="4-journeys">4. Journeys<a class="anchor" href="#4-journeys" title="Permanent link">#</a></h2>
+<figure class="chart"><figcaption>Die neun Journeys des Demos</figcaption><svg viewBox="0 0 1000 522" role="img" aria-label="Die neun Journeys des Demos" preserveAspectRatio="xMinYMin meet"><line class="axis" x1="162" y1="10" x2="162" y2="512"/><g tabindex="0" data-tip="J1: Registrierung: Neukunde (David) registriert sich, bestätigt E-Mail im Demo-Postfach, verknüpft seine Kundennummer im Onboarding"><text x="144.0" y="26.0" class="t-ink2" font-size="13" text-anchor="end" font-weight="600">J1</text><circle class="f-s1 ring" cx="162" cy="21" r="6"/><text x="180.0" y="26.0" class="t-ink" font-size="14" text-anchor="start">Registrierung: Neukunde (David) registriert sich, bestätigt E-Mail im Demo-Postfach, verknüpft</text><text x="180.0" y="46.0" class="t-ink" font-size="14" text-anchor="start">seine Kundennummer im Onboarding</text></g><g tabindex="0" data-tip="J2: Erst-Login Altkunde: Anna meldet sich mit altem Passwort an; Cognito ruft per Migrate-User-Trigger das Versorger-Altsystem, prüft das Passwort dort und übernimmt das Konto (Lazy Migration); Telko-Kunden werden ebenso gegen den Keycloak der Telko geprüft; fehlende Angaben per Formular"><text x="144.0" y="80.0" class="t-ink2" font-size="13" text-anchor="end" font-weight="600">J2</text><circle class="f-s1 ring" cx="162" cy="75" r="6"/><text x="180.0" y="80.0" class="t-ink" font-size="14" text-anchor="start">Erst-Login Altkunde: Anna meldet sich mit altem Passwort an; Cognito ruft per</text><text x="180.0" y="100.0" class="t-ink" font-size="14" text-anchor="start">Migrate-User-Trigger das Versorger-Altsystem, prüft das Passwort dort und übernimmt das Konto</text><text x="180.0" y="120.0" class="t-ink" font-size="14" text-anchor="start">(Lazy Migration); Telko-Kunden werden ebenso gegen den Keycloak der Telko geprüft; fehlende</text><text x="180.0" y="140.0" class="t-ink" font-size="14" text-anchor="start">Angaben per Formular</text></g><g tabindex="0" data-tip="J3: Konten zusammenführen: Bernd meldet sich an; das Portal erkennt ein zweites Altkonto bei der Telko und bietet die Verknüpfung an; nach Bestätigung sieht er alle Verträge"><text x="144.0" y="174.0" class="t-ink2" font-size="13" text-anchor="end" font-weight="600">J3</text><circle class="f-s1 ring" cx="162" cy="169" r="6"/><text x="180.0" y="174.0" class="t-ink" font-size="14" text-anchor="start">Konten zusammenführen: Bernd meldet sich an; das Portal erkennt ein zweites Altkonto bei der</text><text x="180.0" y="194.0" class="t-ink" font-size="14" text-anchor="start">Telko und bietet die Verknüpfung an; nach Bestätigung sieht er alle Verträge</text></g><g tabindex="0" data-tip="J4: Zählerstand: Anna fotografiert den Stromzähler, gibt den Stand ein; Ereignis → neuer Abschlag berechnet → Bestätigung im Postfach"><text x="144.0" y="228.0" class="t-ink2" font-size="13" text-anchor="end" font-weight="600">J4</text><circle class="f-s1 ring" cx="162" cy="223" r="6"/><text x="180.0" y="228.0" class="t-ink" font-size="14" text-anchor="start">Zählerstand: Anna fotografiert den Stromzähler, gibt den Stand ein; Ereignis → neuer Abschlag</text><text x="180.0" y="248.0" class="t-ink" font-size="14" text-anchor="start">berechnet → Bestätigung im Postfach</text></g><g tabindex="0" data-tip="J5: Datenvolumen: Zeitgesteuert: Bernds Mobilfunk-Datenvolumen erreicht 80 % → Benachrichtigung im Portal"><text x="144.0" y="282.0" class="t-ink2" font-size="13" text-anchor="end" font-weight="600">J5</text><circle class="f-s1 ring" cx="162" cy="277" r="6"/><text x="180.0" y="282.0" class="t-ink" font-size="14" text-anchor="start">Datenvolumen: Zeitgesteuert: Bernds Mobilfunk-Datenvolumen erreicht 80 % → Benachrichtigung im</text><text x="180.0" y="302.0" class="t-ink" font-size="14" text-anchor="start">Portal</text></g><g tabindex="0" data-tip="J6: Vertrag ändern: Kunde ändert Abschlag oder Tarifoption; Änderung erscheint als Ereignis in der Timeline"><text x="144.0" y="336.0" class="t-ink2" font-size="13" text-anchor="end" font-weight="600">J6</text><circle class="f-s1 ring" cx="162" cy="331" r="6"/><text x="180.0" y="336.0" class="t-ink" font-size="14" text-anchor="start">Vertrag ändern: Kunde ändert Abschlag oder Tarifoption; Änderung erscheint als Ereignis in der</text><text x="180.0" y="356.0" class="t-ink" font-size="14" text-anchor="start">Timeline</text></g><g tabindex="0" data-tip="J7: Bulk-Migration: Pass-Inhaber startet im Cockpit den Import der inaktiven Telko-Kunden; Carla erhält Reset-Aufforderung; ein fehlerhafter Datensatz landet in der DLQ"><text x="144.0" y="390.0" class="t-ink2" font-size="13" text-anchor="end" font-weight="600">J7</text><circle class="f-s1 ring" cx="162" cy="385" r="6"/><text x="180.0" y="390.0" class="t-ink" font-size="14" text-anchor="start">Bulk-Migration: Pass-Inhaber startet im Cockpit den Import der inaktiven Telko-Kunden; Carla</text><text x="180.0" y="410.0" class="t-ink" font-size="14" text-anchor="start">erhält Reset-Aufforderung; ein fehlerhafter Datensatz landet in der DLQ</text></g><g tabindex="0" data-tip="J8: Migrations-Cockpit: Fortschritt beider Altbestände, Klärfälle (Emil), DLQ mit Redrive-Knopf, Ereignis-Timeline live"><text x="144.0" y="444.0" class="t-ink2" font-size="13" text-anchor="end" font-weight="600">J8</text><circle class="f-s1 ring" cx="162" cy="439" r="6"/><text x="180.0" y="444.0" class="t-ink" font-size="14" text-anchor="start">Migrations-Cockpit: Fortschritt beider Altbestände, Klärfälle (Emil), DLQ mit Redrive-Knopf,</text><text x="180.0" y="464.0" class="t-ink" font-size="14" text-anchor="start">Ereignis-Timeline live</text></g><g tabindex="0" data-tip="J9: Demo-Pass: Einladungslink → Mandant in Sekunden → 7 Tage Nutzung → automatische Löschung"><text x="144.0" y="498.0" class="t-ink2" font-size="13" text-anchor="end" font-weight="600">J9</text><circle class="f-s1 ring" cx="162" cy="493" r="6"/><text x="180.0" y="498.0" class="t-ink" font-size="14" text-anchor="start">Demo-Pass: Einladungslink → Mandant in Sekunden → 7 Tage Nutzung → automatische Löschung</text></g></svg><details><summary>Daten als Tabelle</summary><div class="table-wrap"><div class="table-wrap"><table><thead><tr><th>Datum</th><th>Ereignis</th></tr></thead><tbody><tr><td><a class="term" href="glossar.html#journey-kürzel" title="Nummern der neun Demo-Abläufe im Fachkonzept (J1 Registrierung … J9 Demo-Pass)">J1</a></td><td>Registrierung: Neukunde (David) registriert sich, bestätigt E-Mail im Demo-Postfach, verknüpft seine Kundennummer im Onboarding</td></tr><tr><td><a class="term" href="glossar.html#journey-kürzel" title="Nummern der neun Demo-Abläufe im Fachkonzept (J1 Registrierung … J9 Demo-Pass)">J2</a></td><td>Erst-Login Altkunde: Anna meldet sich mit altem Passwort an; Cognito ruft per Migrate-User-Trigger das Versorger-Altsystem, prüft das Passwort dort und übernimmt das Konto (Lazy Migration); Telko-Kunden werden ebenso gegen den Keycloak der Telko geprüft; fehlende Angaben per Formular</td></tr><tr><td><a class="term" href="glossar.html#journey-kürzel" title="Nummern der neun Demo-Abläufe im Fachkonzept (J1 Registrierung … J9 Demo-Pass)">J3</a></td><td>Konten zusammenführen: Bernd meldet sich an; das Portal erkennt ein zweites Altkonto bei der Telko und bietet die Verknüpfung an; nach Bestätigung sieht er alle Verträge</td></tr><tr><td><a class="term" href="glossar.html#journey-kürzel" title="Nummern der neun Demo-Abläufe im Fachkonzept (J1 Registrierung … J9 Demo-Pass)">J4</a></td><td>Zählerstand: Anna fotografiert den Stromzähler, gibt den Stand ein; Ereignis → neuer Abschlag berechnet → Bestätigung im Postfach</td></tr><tr><td><a class="term" href="glossar.html#journey-kürzel" title="Nummern der neun Demo-Abläufe im Fachkonzept (J1 Registrierung … J9 Demo-Pass)">J5</a></td><td>Datenvolumen: Zeitgesteuert: Bernds Mobilfunk-Datenvolumen erreicht 80 % → Benachrichtigung im Portal</td></tr><tr><td><a class="term" href="glossar.html#journey-kürzel" title="Nummern der neun Demo-Abläufe im Fachkonzept (J1 Registrierung … J9 Demo-Pass)">J6</a></td><td>Vertrag ändern: Kunde ändert Abschlag oder Tarifoption; Änderung erscheint als Ereignis in der Timeline</td></tr><tr><td><a class="term" href="glossar.html#journey-kürzel" title="Nummern der neun Demo-Abläufe im Fachkonzept (J1 Registrierung … J9 Demo-Pass)">J7</a></td><td>Bulk-Migration: Pass-Inhaber startet im Cockpit den Import der inaktiven Telko-Kunden; Carla erhält Reset-Aufforderung; ein fehlerhafter Datensatz landet in der DLQ</td></tr><tr><td><a class="term" href="glossar.html#journey-kürzel" title="Nummern der neun Demo-Abläufe im Fachkonzept (J1 Registrierung … J9 Demo-Pass)">J8</a></td><td>Migrations-Cockpit: Fortschritt beider Altbestände, Klärfälle (Emil), DLQ mit Redrive-Knopf, Ereignis-Timeline live</td></tr><tr><td><a class="term" href="glossar.html#journey-kürzel" title="Nummern der neun Demo-Abläufe im Fachkonzept (J1 Registrierung … J9 Demo-Pass)">J9</a></td><td>Demo-Pass: Einladungslink → Mandant in Sekunden → 7 Tage Nutzung → automatische Löschung</td></tr></tbody></table></div></div></details></figure>
+<p>Die <strong>5-Minuten-Demo</strong> nutzt J2 → J3 → J4 → <a class="term" href="glossar.html#journey-kürzel" title="Nummern der neun Demo-Abläufe im Fachkonzept (J1 Registrierung … J9 Demo-Pass)">J7</a> → J8 [E].</p>
+<h2 id="5-fachliche-bereiche">5. Fachliche Bereiche<a class="anchor" href="#5-fachliche-bereiche" title="Permanent link">#</a></h2>
+<p>Jeder Bereich hat eine klare Zuständigkeit, eigene Daten und
+veröffentlicht <a class="term" href="glossar.html#event" title="Nachricht, dass etwas passiert ist (z. B. „Zählerstand erfasst&quot;); Empfänger reagieren darauf, ohne dass der Absender sie kennt">Ereignisse</a>; Bereiche lesen fremde Daten nie direkt [E].</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Bereich</th>
+<th>Verantwortet</th>
+<th>Oberfläche (Zone)</th>
+<th>Service</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Identität &amp; Konto</strong></td>
+<td><a class="term" href="glossar.html#login" title="Anmeldung eines Nutzers">Login</a>, Registrierung, Verknüpfung von <a class="term" href="glossar.html#altkonto" title="Kundenkonto im Altsystem des Versorgers oder der Telko, das ins neue Portal übernommen wird (nicht zu verwechseln mit einem alten AWS-Konto)">Altkonten</a>, Rollen</td>
+<td><a class="term" href="glossar.html#shell" title="Rahmenanwendung, die Navigation, Login und Layout stellt und die Micro-Frontends einbindet">Shell</a> (<code>/</code>, Login, <a class="term" href="glossar.html#onboarding" title="erste Schritte nach der Registrierung (Daten ergänzen, Vertrag verknüpfen)">Onboarding</a>)</td>
+<td><a class="term" href="glossar.html#amazon-cognito" title="AWS-Identitätsdienst für Registrierung, Login, MFA und Benutzerverwaltung; im Demo der Portal-Login (Entscheidung 29.09.2026), angelegt per CDK">Cognito</a> + <code>identity</code>-<a class="term" href="glossar.html#lambda" title="führt eine einzelne Funktion (z. B. einen HTTP-Handler) bei Bedarf aus; Abrechnung pro Aufruf und Laufzeit, skaliert automatisch von 0 auf viele Instanzen">Lambda</a> (<a class="term" href="glossar.html#lambda-trigger-cognito" title="Lambda-Funktion, die Cognito an festen Punkten aufruft (vor Registrierung, vor/nach Login, Token-Erzeugung, Migration); im Demo in services/identity">Cognito-Trigger</a>, u. a. <a class="term" href="glossar.html#migrate-user-trigger" title="Cognito-Trigger für die Lazy Migration: meldet sich ein unbekannter Nutzer mit Passwort an, prüft die Lambda die Daten beim Altsystem; bei Erfolg legt Cognito den Nutzer mit demsel">Migrate User</a>)</td>
+</tr>
+<tr>
+<td><strong>Kunde</strong></td>
+<td>Stammdaten, Adresse, Einwilligungen, Profilvollständigkeit</td>
+<td>Shell (<code>/profil</code>)</td>
+<td><code>customer</code></td>
+</tr>
+<tr>
+<td><strong>Vertrag</strong></td>
+<td>Verträge je <a class="term" href="glossar.html#sparte" title="Produktbereich eines Versorgers, z. B. Strom, Gas, Mobilfunk; im Demo zentraler Begriff des Datenmodells">Sparte</a>, Tarif, <a class="term" href="glossar.html#abschlag" title="monatliche Vorauszahlung auf die Energie-Jahresrechnung; wird nach neuem Zählerstand angepasst">Abschlag</a>, Laufzeit</td>
+<td><a class="term" href="glossar.html#multi-zones" title="Next.js-Ansatz, mehrere Next.js-Apps unter einer Domain zu betreiben, aufgeteilt nach Pfaden">Zone</a> „Verträge &amp; Rechnungen" (<code>/vertraege</code>)</td>
+<td><code>contract</code></td>
+</tr>
+<tr>
+<td><strong>Verbrauch</strong></td>
+<td>Zählerstände (Strom, Gas, Wasser), Datenvolumen (Mobilfunk)</td>
+<td>Zone „Verbrauch" (<code>/verbrauch</code>)</td>
+<td><code>consumption</code></td>
+</tr>
+<tr>
+<td><strong>Dokumente</strong></td>
+<td>Rechnungen (<a class="term" href="glossar.html#pdf" title="Dokumentformat, hier für Rechnungen">PDF</a>), <a class="term" href="glossar.html#upload" title="Hochladen einer Datei vom Browser zum Server bzw. nach S3">Uploads</a> (Zählerfotos)</td>
+<td>Zone „Verträge &amp; Rechnungen"</td>
+<td><code>documents</code> (<a class="term" href="glossar.html#s3" title="Objektspeicher für Dateien beliebiger Größe in „Buckets&quot;; Standard für statische Websites, Uploads, Build-Artefakte">S3</a>)</td>
+</tr>
+<tr>
+<td><strong>Benachrichtigung</strong></td>
+<td><a class="term" href="glossar.html#demo-postfach" title="im Portal angezeigtes Postfach der Demo-Personen; ersetzt echte E-Mails, damit die Demo niemanden anschreibt">Demo-Postfach</a>, <a class="term" href="glossar.html#in-app-feed" title="Benachrichtigungsliste innerhalb der Anwendung (statt E-Mail)">In-App-Feed</a></td>
+<td><a class="term" href="glossar.html#widget" title="kleiner, eingebetteter Oberflächenbaustein">Widget</a> „Glocke" in allen Zonen</td>
+<td><code>notification</code> (<a class="term" href="glossar.html#sns" title="Publish/Subscribe-Dienst: eine Nachricht an ein Topic geht an alle Abonnenten (E-Mail, SQS, Lambda, HTTP, SMS)">SNS</a>)</td>
+</tr>
+<tr>
+<td><strong>Migration</strong></td>
+<td>Lazy-/<a class="term" href="glossar.html#bulk-import" title="Übernahme vieler Konten auf einmal; bei Cognito per CSV-Import oder AdminCreateUser, im Demo ohne Passwörter (Nutzer müssen zurücksetzen); Hash-Import (u. a. bcrypt) ist noch nicht">Bulk-Migration</a>, <a class="term" href="glossar.html#dublette" title="doppelt vorhandene Kundendatensätze, die bei der Übernahme erkannt und zusammengeführt werden müssen">Dubletten</a>, Klärfälle, Fortschritt</td>
+<td>Zone „<a class="term" href="glossar.html#migrations-cockpit" title="im Demo geplantes Micro-Frontend, das den Fortschritt der Kontenübernahme, Ereignisse und DLQ-Fälle live zeigt">Migrations-Cockpit</a>" (<code>/cockpit</code>)</td>
+<td><code>migration</code></td>
+</tr>
+<tr>
+<td><strong><a class="term" href="glossar.html#mandant" title="abgeschotteter Bereich eines Kunden in einer gemeinsam betriebenen Anwendung; im Demo je Demo-Pass ein Mandant">Mandant</a> &amp; <a class="term" href="glossar.html#demo-pass" title="im Demo: zeitlich begrenzte Berechtigung (7 Tage, Kontingent) für eine eigene Instanz; ausgestellt per Einladungslink oder für den Inhaber">Pass</a></strong></td>
+<td>Einladungen, Mandanten anlegen/löschen, <a class="term" href="glossar.html#free-tier" title="Sammelbegriff für kostenlose Nutzungsmengen bei AWS">Kontingent</a></td>
+<td><a class="term" href="glossar.html#inhaber-zugang" title="Anmeldung des Projektinhabers mit Sonderrechten: Instanzen starten, Einladungslinks erzeugen">Verwaltungsbereich</a> (<code>/admin</code>, <code>/pass</code>)</td>
+<td><code>tenancy</code></td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="6-ereigniskatalog">6. Ereigniskatalog<a class="anchor" href="#6-ereigniskatalog" title="Permanent link">#</a></h2>
+<p>Alle <a class="term" href="glossar.html#event" title="Nachricht, dass etwas passiert ist (z. B. „Zählerstand erfasst&quot;); Empfänger reagieren darauf, ohne dass der Absender sie kennt">Ereignisse</a> laufen über <a class="term" href="glossar.html#eventbridge" title="Event-Bus: Dienste veröffentlichen Ereignisse, Regeln leiten sie anhand ihres Inhalts an Ziele (SQS, Lambda, SNS …) weiter">EventBridge</a>; Name in Vergangenheitsform, jedes
+enthält <code>tenantId</code>, <code>occurredAt</code>, <code>correlationId</code> [E].</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Ereignis</th>
+<th>Quelle</th>
+<th>Reagiert</th>
+<th>Wirkung</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CustomerRegistered</code></td>
+<td>identity</td>
+<td>customer, notification</td>
+<td>Kundendatensatz anlegen, Willkommensnachricht</td>
+</tr>
+<tr>
+<td><code>LegacyAccountMigrated</code></td>
+<td>identity (Lazy) / migration (Bulk)</td>
+<td>customer, contract, migration</td>
+<td>Stammdaten und Verträge aus <a class="term" href="glossar.html#legacy-system" title="bestehendes Altsystem mit Kundendaten, das abgelöst werden soll; im Demo simuliert">Altsystem</a> übernehmen, Cockpit zählt</td>
+</tr>
+<tr>
+<td><code>DuplicateCandidateFound</code></td>
+<td>migration</td>
+<td>notification</td>
+<td>Kunde erhält Verknüpfungsangebot</td>
+</tr>
+<tr>
+<td><code>AccountsLinked</code></td>
+<td>identity</td>
+<td>contract, migration</td>
+<td>Verträge beider Häuser einem Konto zuordnen</td>
+</tr>
+<tr>
+<td><code>OnboardingCompleted</code></td>
+<td>customer</td>
+<td>notification</td>
+<td>Hinweis „Profil vollständig"</td>
+</tr>
+<tr>
+<td><code>MeterReadingSubmitted</code></td>
+<td>consumption</td>
+<td>contract, notification</td>
+<td><a class="term" href="glossar.html#abschlag" title="monatliche Vorauszahlung auf die Energie-Jahresrechnung; wird nach neuem Zählerstand angepasst">Abschlag</a> neu berechnen, Bestätigung</td>
+</tr>
+<tr>
+<td><code>InstallmentAdjusted</code></td>
+<td>contract</td>
+<td>notification, documents</td>
+<td>neue Abschlagsinfo als <a class="term" href="glossar.html#pdf" title="Dokumentformat, hier für Rechnungen">PDF</a></td>
+</tr>
+<tr>
+<td><code>DataVolumeThresholdReached</code></td>
+<td>consumption (per <a class="term" href="glossar.html#eventbridge-scheduler" title="zeitgesteuertes Auslösen von Zielen (einmalig oder wiederkehrend); 14 Mio. Aufrufe/Monat frei">Scheduler</a>)</td>
+<td>notification</td>
+<td>Warnung im Portal</td>
+</tr>
+<tr>
+<td><code>ContractChanged</code></td>
+<td>contract</td>
+<td>notification</td>
+<td>Bestätigung</td>
+</tr>
+<tr>
+<td><code>BulkMigrationStarted</code> / <code>BulkMigrationCompleted</code></td>
+<td>migration</td>
+<td>notification</td>
+<td>Cockpit-Status</td>
+</tr>
+<tr>
+<td><code>PasswordResetRequired</code></td>
+<td>migration</td>
+<td>notification</td>
+<td><a class="term" href="glossar.html#passwort-hash" title="Einweg-verschlüsselte Form eines Passworts; alte Systeme nutzen oft schwache Verfahren (MD5, SHA-1), die bei der Migration einen Passwort-Reset erzwingen">Reset-Aufforderung</a> ins <a class="term" href="glossar.html#demo-postfach" title="im Portal angezeigtes Postfach der Demo-Personen; ersetzt echte E-Mails, damit die Demo niemanden anschreibt">Demo-Postfach</a></td>
+</tr>
+<tr>
+<td><code>MigrationRecordFailed</code></td>
+<td>migration (<a class="term" href="glossar.html#dlq" title="Ablage für Nachrichten, die nach mehreren Versuchen nicht verarbeitet werden konnten, zur Analyse und Nachverarbeitung">DLQ</a>)</td>
+<td>—</td>
+<td>Klärfall im Cockpit, <a class="term" href="glossar.html#redrive" title="Zurückführen von Nachrichten aus der DLQ in die Ursprungs-Queue, nachdem der Fehler behoben ist">Redrive</a> möglich</td>
+</tr>
+<tr>
+<td><code>DemoPassIssued</code> / <code>DemoPassExpired</code></td>
+<td>tenancy</td>
+<td>tenancy, alle</td>
+<td><a class="term" href="glossar.html#mandant" title="abgeschotteter Bereich eines Kunden in einer gemeinsam betriebenen Anwendung; im Demo je Demo-Pass ein Mandant">Mandant</a> anlegen bzw. löschen</td>
+</tr>
+</tbody>
+</table></div>
+<figure class="chart"><figcaption>Beispiel: Zählerstand erfassen (J4)</figcaption><svg viewBox="0 0 1000 200" role="img" aria-label="Beispiel: Zählerstand erfassen (J4)" preserveAspectRatio="xMinYMin meet"><defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="edge-head" d="M0,0L10,5L0,10z"/></marker></defs><text x="84.0" y="18.0" class="t-muted" font-size="12" text-anchor="middle" font-weight="600">Oberfläche</text><rect class="box" x="10.0" y="32" width="148.0" height="69" rx="6"/><text x="20.0" y="53.0" class="t-ink" font-size="13" text-anchor="start" font-weight="600">Zone Verbrauch</text><text x="20.0" y="72.0" class="t-ink2" font-size="12" text-anchor="start">Foto +</text><text x="20.0" y="89.0" class="t-ink2" font-size="12" text-anchor="start">Zählerstand</text><text x="292.0" y="18.0" class="t-muted" font-size="12" text-anchor="middle" font-weight="600">Eingang</text><rect class="box-accent" x="218.0" y="32" width="148.0" height="69" rx="6"/><text x="228.0" y="53.0" class="t-ink" font-size="13" text-anchor="start" font-weight="600">API Gateway</text><text x="228.0" y="72.0" class="t-ink2" font-size="12" text-anchor="start">JWT prüfen,</text><text x="228.0" y="89.0" class="t-ink2" font-size="12" text-anchor="start">Mandant bestimmen</text><rect class="box-accent" x="218.0" y="113" width="148.0" height="71" rx="6"/><text x="228.0" y="134.0" class="t-ink" font-size="13" text-anchor="start" font-weight="600">S3 (Presigned</text><text x="228.0" y="153.0" class="t-ink" font-size="13" text-anchor="start" font-weight="600">URL)</text><text x="228.0" y="172.0" class="t-ink2" font-size="12" text-anchor="start">Foto</text><text x="500.0" y="18.0" class="t-muted" font-size="12" text-anchor="middle" font-weight="600">Service</text><rect class="box" x="426.0" y="32" width="148.0" height="52" rx="6"/><text x="436.0" y="53.0" class="t-ink" font-size="13" text-anchor="start" font-weight="600">consumption</text><text x="436.0" y="72.0" class="t-ink2" font-size="12" text-anchor="start">speichert Stand</text><text x="708.0" y="18.0" class="t-muted" font-size="12" text-anchor="middle" font-weight="600">Ereignis</text><rect class="box-accent" x="634.0" y="32" width="148.0" height="52" rx="6"/><text x="644.0" y="53.0" class="t-ink" font-size="13" text-anchor="start" font-weight="600">EventBridge</text><text x="644.0" y="72.0" class="t-ink2" font-size="12" text-anchor="start">MeterReadingSubmitted</text><text x="916.0" y="18.0" class="t-muted" font-size="12" text-anchor="middle" font-weight="600">Reaktion</text><rect class="box" x="842.0" y="32" width="148.0" height="52" rx="6"/><text x="852.0" y="53.0" class="t-ink" font-size="13" text-anchor="start" font-weight="600">SQS → contract</text><text x="852.0" y="72.0" class="t-ink2" font-size="12" text-anchor="start">Abschlag neu</text><rect class="box" x="842.0" y="96" width="148.0" height="71" rx="6"/><text x="852.0" y="117.0" class="t-ink" font-size="13" text-anchor="start" font-weight="600">SQS →</text><text x="852.0" y="136.0" class="t-ink" font-size="13" text-anchor="start" font-weight="600">notification</text><text x="852.0" y="155.0" class="t-ink2" font-size="12" text-anchor="start">Postfach, Glocke</text><path class="edge" marker-end="url(#ah)" d="M158.0,66.5 C188.0,66.5 188.0,66.5 216.0,66.5"/><path class="edge" marker-end="url(#ah)" d="M158.0,66.5 C188.0,66.5 188.0,148.5 216.0,148.5"/><path class="edge" marker-end="url(#ah)" d="M366.0,66.5 C396.0,66.5 396.0,58.0 424.0,58.0"/><path class="edge" marker-end="url(#ah)" d="M574.0,58.0 C604.0,58.0 604.0,58.0 632.0,58.0"/><path class="edge" marker-end="url(#ah)" d="M782.0,58.0 C812.0,58.0 812.0,58.0 840.0,58.0"/><path class="edge" marker-end="url(#ah)" d="M782.0,58.0 C812.0,58.0 812.0,131.5 840.0,131.5"/></svg><details><summary>Daten als Tabelle</summary><div class="table-wrap"><div class="table-wrap"><table><thead><tr><th>Schicht</th><th>Komponente</th></tr></thead><tbody><tr><td><a class="term" href="glossar.html#ui" title="Benutzeroberfläche">Oberfläche</a></td><td>Zone Verbrauch (Foto + Zählerstand)</td></tr><tr><td>Eingang</td><td>API Gateway (JWT prüfen, Mandant bestimmen)</td></tr><tr><td>Eingang</td><td>S3 (Presigned URL) (Foto)</td></tr><tr><td>Service</td><td>consumption (speichert Stand)</td></tr><tr><td><a class="term" href="glossar.html#event" title="Nachricht, dass etwas passiert ist (z. B. „Zählerstand erfasst&quot;); Empfänger reagieren darauf, ohne dass der Absender sie kennt">Ereignis</a></td><td>EventBridge (MeterReadingSubmitted)</td></tr><tr><td>Reaktion</td><td>SQS → contract (Abschlag neu)</td></tr><tr><td>Reaktion</td><td>SQS → notification (Postfach, Glocke)</td></tr></tbody></table></div></div></details></figure>
+<h2 id="7-datenmodell">7. Datenmodell<a class="anchor" href="#7-datenmodell" title="Permanent link">#</a></h2>
+<h3 id="71-mandanten-tabelle-eine-dynamodb-tabelle-je-mandant-provisioned-5-rcu5-wcu">7.1 Mandanten-Tabelle (eine DynamoDB-Tabelle je Mandant, provisioned 5 RCU/5 WCU)<a class="anchor" href="#71-mandanten-tabelle-eine-dynamodb-tabelle-je-mandant-provisioned-5-rcu5-wcu" title="Permanent link">#</a></h3>
+<p>Kapazitätsmodus <strong><a class="term" href="glossar.html#provisioned" title="DynamoDB-Modus mit fest eingestellter Kapazität (RCU/WCU); im Always Free bis 25 Einheiten; bei Überlast wird gedrosselt statt berechnet">provisioned</a> mit 5 <a class="term" href="glossar.html#rcu" title="Lese-Kapazitätseinheit von DynamoDB: 1 stark konsistenter Lesevorgang pro Sekunde bis 4 KB">RCU</a>/5 <a class="term" href="glossar.html#wcu" title="Schreib-Kapazitätseinheit von DynamoDB: 1 Schreibvorgang pro Sekunde bis 1 KB">WCU</a></strong> je Tabelle (Entscheidung
+29.09.2026), weil nur provisionierte Kapazität unter <a class="term" href="glossar.html#always-free" title="Freikontingente, die unbefristet jeden Monat gelten, z. B. 1 Mio. Lambda-Aufrufe">Always Free</a> fällt
+(25 RCU/WCU je Konto und <a class="term" href="glossar.html#region" title="geografischer Standort mit eigenen Rechenzentren; eu-central-1 = Frankfurt, us-east-1 = Nord-Virginia (dort müssen manche globalen Einstellungen, z. B. CloudFront-Zertifikate, lieg">Region</a>). Folge [E]: <a class="term" href="glossar.html#plattform-tabelle" title="mandantenübergreifende DynamoDB-Tabelle für Einladungen, Pässe, Mandanten und Kontingent-Zähler">Plattform-Tabelle</a> und
+<a class="term" href="glossar.html#mandant" title="abgeschotteter Bereich eines Kunden in einer gemeinsam betriebenen Anwendung; im Demo je Demo-Pass ein Mandant">Mandanten</a>-Tabellen teilen sich diese 25 Einheiten; ein <a class="term" href="glossar.html#single-table-design" title="DynamoDB-Modellierung, bei der alle Entitäten einer Anwendung in einer Tabelle liegen und über zusammengesetzte Schlüssel (Partition/Sort Key) nach Zugriffsmustern angeordnet werde">GSI</a> belegt eigene
+Kapazität. Ohne <a class="term" href="glossar.html#guthaben" title="Gutschrift in US-Dollar, die mit Rechnungsbeträgen verrechnet wird; bei Neukonten bis 200 $, verfällt nach 12 Monaten">Guthaben</a> sind damit nur wenige Mandanten gleichzeitig
+kostenlos — siehe <a href="demo-pass.html">Demo-Pass</a> §5.</p>
+<p>Single-Table-Design: Partition Key <code>PK</code>, Sort Key <code>SK</code>, ein globaler
+Sekundärindex <code>GSI1</code> für Suchen [E].</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Entität</th>
+<th>PK</th>
+<th>SK</th>
+<th>Zugriffsmuster</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Kunde</td>
+<td><code>CUST#&lt;kundeId&gt;</code></td>
+<td><code>PROFILE</code></td>
+<td>Profil lesen/ändern</td>
+</tr>
+<tr>
+<td>Verknüpftes <a class="term" href="glossar.html#altkonto" title="Kundenkonto im Altsystem des Versorgers oder der Telko, das ins neue Portal übernommen wird (nicht zu verwechseln mit einem alten AWS-Konto)">Altkonto</a></td>
+<td><code>CUST#&lt;kundeId&gt;</code></td>
+<td><code>LEGACY#&lt;system&gt;#&lt;altId&gt;</code></td>
+<td>Herkunft anzeigen, <a class="term" href="glossar.html#dublette" title="doppelt vorhandene Kundendatensätze, die bei der Übernahme erkannt und zusammengeführt werden müssen">Dubletten</a> prüfen</td>
+</tr>
+<tr>
+<td>Vertrag</td>
+<td><code>CUST#&lt;kundeId&gt;</code></td>
+<td><code>CONTRACT#&lt;sparte&gt;#&lt;vertragId&gt;</code></td>
+<td>alle Verträge eines Kunden, je <a class="term" href="glossar.html#sparte" title="Produktbereich eines Versorgers, z. B. Strom, Gas, Mobilfunk; im Demo zentraler Begriff des Datenmodells">Sparte</a> filtern</td>
+</tr>
+<tr>
+<td>Zählerstand</td>
+<td><code>CONTRACT#&lt;vertragId&gt;</code></td>
+<td><code>READING#&lt;datum&gt;</code></td>
+<td>Verlauf je Zähler, neuester zuerst</td>
+</tr>
+<tr>
+<td>Datenvolumen</td>
+<td><code>CONTRACT#&lt;vertragId&gt;</code></td>
+<td><code>USAGE#&lt;monat&gt;</code></td>
+<td>Monatsverbrauch</td>
+</tr>
+<tr>
+<td>Dokument</td>
+<td><code>CUST#&lt;kundeId&gt;</code></td>
+<td><code>DOC#&lt;datum&gt;#&lt;docId&gt;</code></td>
+<td>Postfach, Rechnungen</td>
+</tr>
+<tr>
+<td>Benachrichtigung</td>
+<td><code>CUST#&lt;kundeId&gt;</code></td>
+<td><code>NOTE#&lt;zeitstempel&gt;</code></td>
+<td>Glocke, ungelesene zuerst</td>
+</tr>
+<tr>
+<td>Migrationsstatus</td>
+<td><code>MIGRATION</code></td>
+<td><code>REC#&lt;system&gt;#&lt;altId&gt;</code></td>
+<td>Cockpit: Status je Altdatensatz; <code>GSI1PK=MIGSTATUS#&lt;status&gt;</code> für Zählungen</td>
+</tr>
+<tr>
+<td><a class="term" href="glossar.html#event" title="Nachricht, dass etwas passiert ist (z. B. „Zählerstand erfasst&quot;); Empfänger reagieren darauf, ohne dass der Absender sie kennt">Ereignis</a>-<a class="term" href="glossar.html#timeline" title="zeitliche Liste von Ereignissen in der Oberfläche">Timeline</a></td>
+<td><code>TIMELINE</code></td>
+<td><code>EVT#&lt;zeitstempel&gt;#&lt;id&gt;</code></td>
+<td>Cockpit-Timeline (<a class="term" href="glossar.html#dynamodb-streams" title="Änderungsprotokoll einer DynamoDB-Tabelle: jede Änderung erscheint als Ereignis, das z. B. Lambda verarbeitet">Stream-Kopie</a> aller Ereignisse)</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="72-plattform-tabelle-eine-mandantenübergreifend">7.2 Plattform-Tabelle (eine, mandantenübergreifend)<a class="anchor" href="#72-plattform-tabelle-eine-mandantenübergreifend" title="Permanent link">#</a></h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Entität</th>
+<th>PK</th>
+<th>SK</th>
+<th>Zweck</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Einladung</td>
+<td><code>INVITE#&lt;code-hash&gt;</code></td>
+<td><code>META</code></td>
+<td><a class="term" href="glossar.html#einladungslink" title="persönlicher, einmal verwendbarer Link, der einen Demo-Pass ausstellt">Einladungslink</a>, einmalig, 14 Tage gültig</td>
+</tr>
+<tr>
+<td><a class="term" href="glossar.html#demo-pass" title="im Demo: zeitlich begrenzte Berechtigung (7 Tage, Kontingent) für eine eigene Instanz; ausgestellt per Einladungslink oder für den Inhaber">Pass</a></td>
+<td><code>PASS#&lt;passId&gt;</code></td>
+<td><code>META</code></td>
+<td>Inhaber-<a class="term" href="glossar.html#e-mail" title="elektronische Post; SNS verschickt bis 1.000 E-Mails im Monat kostenlos">E-Mail</a>, gültig bis, <a class="term" href="glossar.html#free-tier" title="Sammelbegriff für kostenlose Nutzungsmengen bei AWS">Kontingent</a>-Zähler</td>
+</tr>
+<tr>
+<td><a class="term" href="glossar.html#mandant" title="abgeschotteter Bereich eines Kunden in einer gemeinsam betriebenen Anwendung; im Demo je Demo-Pass ein Mandant">Mandant</a></td>
+<td><code>TENANT#&lt;tenantId&gt;</code></td>
+<td><code>META</code></td>
+<td>Tabellenname, Status (anlegen, aktiv, löschen)</td>
+</tr>
+<tr>
+<td><a class="term" href="glossar.html#free-tier" title="Sammelbegriff für kostenlose Nutzungsmengen bei AWS">Kontingent</a>-Zähler</td>
+<td><code>PASS#&lt;passId&gt;</code></td>
+<td><code>QUOTA#&lt;art&gt;</code></td>
+<td><a class="term" href="glossar.html#api" title="Programmierschnittstelle, über die Programme miteinander sprechen">API</a>-Aufrufe, Events, <a class="term" href="glossar.html#upload" title="Hochladen einer Datei vom Browser zum Server bzw. nach S3">Uploads</a> (atomar hochgezählt)</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="73-altsysteme-eigener-server-je-mandant-ein-datenbankschema">7.3 Altsysteme (eigener Server, je Mandant ein Datenbankschema)<a class="anchor" href="#73-altsysteme-eigener-server-je-mandant-ein-datenbankschema" title="Permanent link">#</a></h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th>Versorger-Altsystem</th>
+<th>Telko-Altsystem</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Technik (simuliert)</td>
+<td>relationale <a class="term" href="glossar.html#datenbank" title="geordnete Datenablage">DB</a>, „klassischer" Aufbau</td>
+<td>andere Feldnamen, andere Formate</td>
+</tr>
+<tr>
+<td>Kundennummer</td>
+<td><code>V-1000123</code></td>
+<td><code>T/88-4711</code></td>
+</tr>
+<tr>
+<td>Anmeldung</td>
+<td><a class="term" href="glossar.html#rest" title="Architekturstil für HTTP-APIs: Ressourcen unter URLs, Operationen über HTTP-Methoden (GET, POST …)">REST</a> „Anmeldung prüfen" (bcrypt-<a class="term" href="glossar.html#passwort-hash" title="Einweg-verschlüsselte Form eines Passworts; alte Systeme nutzen oft schwache Verfahren (MD5, SHA-1), die bei der Migration einen Passwort-Reset erzwingen">Hash</a> im <a class="term" href="glossar.html#legacy-system" title="bestehendes Altsystem mit Kundendaten, das abgelöst werden soll; im Demo simuliert">Altsystem</a>)</td>
+<td>eigener <strong><a class="term" href="glossar.html#keycloak" title="Open-Source-Identitätsdienst (OIDC, SAML), selbst betrieben; im Demo unter id.rypox.net die Anmeldung des Telko-Altsystems und ab Phase 3 Gegenstelle des Migrate-User-Triggers">Keycloak</a></strong> unter <code>id.rypox.net</code> (<a class="term" href="glossar.html#realm" title="abgeschlossener Bereich in Keycloak mit eigenen Nutzern, Clients und Einstellungen">Realm</a> der Telko)</td>
+</tr>
+<tr>
+<td>Passwort</td>
+<td>bcrypt; beim <a class="term" href="glossar.html#login" title="Anmeldung eines Nutzers">Login</a> per <a class="term" href="glossar.html#migrate-user-trigger" title="Cognito-Trigger für die Lazy Migration: meldet sich ein unbekannter Nutzer mit Passwort an, prüft die Lambda die Daten beim Altsystem; bei Erfolg legt Cognito den Nutzer mit demsel">Migrate-User-Trigger</a> übernehmbar (<a class="term" href="glossar.html#amazon-cognito" title="AWS-Identitätsdienst für Registrierung, Login, MFA und Benutzerverwaltung; im Demo der Portal-Login (Entscheidung 29.09.2026), angelegt per CDK">Cognito</a> erhält das Passwort einmalig im Trigger); beim <a class="term" href="glossar.html#bulk-import" title="Übernahme vieler Konten auf einmal; bei Cognito per CSV-Import oder AdminCreateUser, im Demo ohne Passwörter (Nutzer müssen zurücksetzen); Hash-Import (u. a. bcrypt) ist noch nicht">Bulk-Import</a> gilt im Demo: nicht übernehmen → Reset. Hinweis: Cognito kann inzwischen bcrypt-Hashes per <a class="term" href="glossar.html#csv" title="einfache Tabellendatei mit durch Komma getrennten Werten, lesbar mit LibreOffice Calc oder Excel">CSV</a> importieren, aber nicht in jedem <a class="term" href="glossar.html#user-pool" title="Nutzerverzeichnis in Cognito mit eigenen Nutzern, Gruppen, App-Clients und Triggern; zugleich OIDC-Aussteller">User Pool</a> (offen, siehe <a href="index.html">Übersicht</a>)</td>
+<td>Telko-eigenes Verfahren mit geheimem Zusatzwert; beim Login per Migrate-User-Trigger gegen Keycloak übernehmbar, per Bulk-Import <strong>nicht</strong> (Verfahren von Cognito nicht unterstützt) → Reset nötig</td>
+</tr>
+<tr>
+<td>Adresse</td>
+<td>Straße und Hausnummer getrennt</td>
+<td>eine Zeile, Abkürzungen („Str.")</td>
+</tr>
+<tr>
+<td>Gezielte Mängel</td>
+<td>fehlende E-Mail (Emil), veraltete Telefonnummern</td>
+<td>Dublette zu <a class="term" href="glossar.html#multi-sparten-versorger" title="Unternehmen, das mehrere Versorgungs- und Kommunikationsprodukte anbietet (Strom, Gas, Wasser, Wärme, Internet, Mobilfunk) – typisch für Stadtwerke">Versorger</a> (Bernd), ungültige E-Mail, ein Datensatz mit Pflichtfeld leer (→ <a class="term" href="glossar.html#dlq" title="Ablage für Nachrichten, die nach mehreren Versuchen nicht verarbeitet werden konnten, zur Analyse und Nachverarbeitung">DLQ</a>)</td>
+</tr>
+<tr>
+<td><a class="term" href="glossar.html#api" title="Programmierschnittstelle, über die Programme miteinander sprechen">Schnittstelle</a></td>
+<td>REST: Anmeldung prüfen, Kunde lesen, Kunden seitenweise exportieren (<a class="term" href="glossar.html#openapi" title="maschinenlesbare Beschreibung einer REST-API (YAML/JSON); daraus lassen sich Clients und Dokumentation erzeugen">OpenAPI</a>-Vertrag öffentlich im <a class="term" href="glossar.html#github" title="Plattform für Git-Repositories, Pull Requests und CI">GitHub</a>-<a class="term" href="glossar.html#repository" title="von Git verwaltetes Projektverzeichnis, z. B. auf GitHub">Repository</a>)</td>
+<td>dieselbe Schnittstelle, andere Datenform</td>
+</tr>
+</tbody>
+</table></div>
+<p>Die Mängel sind <strong>Absicht</strong>: Sie machen die Migrationsgeschichte echt und
+füllen das Cockpit mit Klärfällen [E].</p>
+<h2 id="8-rest-schnittstelle-überblick">8. REST-Schnittstelle (Überblick)<a class="anchor" href="#8-rest-schnittstelle-überblick" title="Permanent link">#</a></h2>
+<p>Alle Pfade unter <code>/api</code>, <a class="term" href="glossar.html#mandant" title="abgeschotteter Bereich eines Kunden in einer gemeinsam betriebenen Anwendung; im Demo je Demo-Pass ein Mandant">Mandant</a> aus dem <a class="term" href="glossar.html#jwt" title="signiertes Token im JSON-Format mit Angaben (Claims) wie Nutzer-ID und Ablaufzeit; der Empfänger prüft die Signatur ohne Rückfrage beim Aussteller">JWT</a> (nie aus der <a class="term" href="glossar.html#url" title="Internetadresse einer Seite oder eines API-Endpunkts">URL</a>), <a class="term" href="glossar.html#openapi" title="maschinenlesbare Beschreibung einer REST-API (YAML/JSON); daraus lassen sich Clients und Dokumentation erzeugen">OpenAPI</a> als
+Vertrag, <a class="term" href="glossar.html#typescript" title="JavaScript mit statischen Typen; wird zu JavaScript übersetzt">TypeScript</a>-Client wird daraus erzeugt [E].</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Ressource</th>
+<th>Methoden</th>
+<th>Bereich</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/me</code></td>
+<td>GET, <a class="term" href="glossar.html#http-methoden" title="Arten von REST-Aufrufen: lesen (GET), anlegen (POST), teilweise ändern (PATCH), ersetzen (PUT), löschen (DELETE)">PATCH</a></td>
+<td>Kunde</td>
+</tr>
+<tr>
+<td><code>/me/links</code></td>
+<td>GET, POST (Verknüpfung bestätigen)</td>
+<td>Identität</td>
+</tr>
+<tr>
+<td><code>/contracts</code>, <code>/contracts/{id}</code></td>
+<td>GET, PATCH (<a class="term" href="glossar.html#abschlag" title="monatliche Vorauszahlung auf die Energie-Jahresrechnung; wird nach neuem Zählerstand angepasst">Abschlag</a>, Option)</td>
+<td>Vertrag</td>
+</tr>
+<tr>
+<td><code>/contracts/{id}/readings</code></td>
+<td>GET, POST</td>
+<td>Verbrauch</td>
+</tr>
+<tr>
+<td><code>/contracts/{id}/usage</code></td>
+<td>GET</td>
+<td>Verbrauch</td>
+</tr>
+<tr>
+<td><code>/documents</code>, <code>/documents/upload-url</code></td>
+<td>GET, POST</td>
+<td>Dokumente</td>
+</tr>
+<tr>
+<td><code>/notifications</code></td>
+<td>GET, PATCH (gelesen)</td>
+<td>Benachrichtigung</td>
+</tr>
+<tr>
+<td><code>/migration/status</code>, <code>/migration/bulk</code>, <code>/migration/dlq/{id}/redrive</code></td>
+<td>GET, POST</td>
+<td>Migration (nur <a class="term" href="glossar.html#demo-pass" title="im Demo: zeitlich begrenzte Berechtigung (7 Tage, Kontingent) für eine eigene Instanz; ausgestellt per Einladungslink oder für den Inhaber">Pass-Inhaber</a>)</td>
+</tr>
+<tr>
+<td><code>/admin/invites</code>, <code>/admin/tenants</code></td>
+<td>GET, POST, DELETE</td>
+<td>Mandant &amp; Pass (nur Inhaber)</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="9-repository-struktur">9. Repository-Struktur<a class="anchor" href="#9-repository-struktur" title="Permanent link">#</a></h2>
+<p><strong>Öffentlich (<a class="term" href="glossar.html#github" title="Plattform für Git-Repositories, Pull Requests und CI">GitHub</a>, <a class="term" href="glossar.html#monorepo" title="ein Git-Repository mit mehreren Paketen/Apps (Frontend, Services, IaC) und gemeinsamen Typen">Monorepo</a>)</strong> [E]:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Pfad</th>
+<th>Inhalt</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>apps/shell</code></td>
+<td><a class="term" href="glossar.html#nextjs" title="React-Framework (von Vercel) mit Routing, Server-Rendering, API-Routen und Build-Optimierung">Next.js</a>-<a class="term" href="glossar.html#multi-zones" title="Next.js-Ansatz, mehrere Next.js-Apps unter einer Domain zu betreiben, aufgeteilt nach Pfaden">Zone</a>: Start, <a class="term" href="glossar.html#login" title="Anmeldung eines Nutzers">Login</a>, <a class="term" href="glossar.html#onboarding" title="erste Schritte nach der Registrierung (Daten ergänzen, Vertrag verknüpfen)">Onboarding</a>, Profil, <a class="term" href="glossar.html#demo-pass" title="im Demo: zeitlich begrenzte Berechtigung (7 Tage, Kontingent) für eine eigene Instanz; ausgestellt per Einladungslink oder für den Inhaber">Pass</a>-Seite</td>
+</tr>
+<tr>
+<td><code>apps/contracts</code></td>
+<td>Next.js-Zone „Verträge &amp; Rechnungen"</td>
+</tr>
+<tr>
+<td><code>apps/consumption</code></td>
+<td>Next.js-Zone „Verbrauch"</td>
+</tr>
+<tr>
+<td><code>apps/cockpit</code></td>
+<td>Next.js-Zone „<a class="term" href="glossar.html#migrations-cockpit" title="im Demo geplantes Micro-Frontend, das den Fortschritt der Kontenübernahme, Ereignisse und DLQ-Fälle live zeigt">Migrations-Cockpit</a>"</td>
+</tr>
+<tr>
+<td><code>apps/admin</code></td>
+<td><a class="term" href="glossar.html#inhaber-zugang" title="Anmeldung des Projektinhabers mit Sonderrechten: Instanzen starten, Einladungslinks erzeugen">Verwaltungsbereich</a> des Inhabers</td>
+</tr>
+<tr>
+<td><code>packages/ui</code></td>
+<td><a class="term" href="glossar.html#component-library" title="gemeinsames Paket wiederverwendbarer UI-Bausteine (Buttons, Formulare, Layouts), das alle Micro-Frontends nutzen und so ein einheitliches Aussehen sichern">Component Library</a> + <a class="term" href="glossar.html#storybook" title="Werkzeug, das jede Komponente der Component Library isoliert darstellt und dokumentiert; als statische Seite veröffentlicht">Storybook</a></td>
+</tr>
+<tr>
+<td><code>packages/widget-notifications</code></td>
+<td><a class="term" href="glossar.html#laufzeit-integration" title="Einbinden eines Bausteins erst im laufenden Browser statt beim Build">Laufzeit-Widget</a> „Glocke"</td>
+</tr>
+<tr>
+<td><code>packages/api-contract</code></td>
+<td><a class="term" href="glossar.html#openapi" title="maschinenlesbare Beschreibung einer REST-API (YAML/JSON); daraus lassen sich Clients und Dokumentation erzeugen">OpenAPI</a> des Portals und der <a class="term" href="glossar.html#legacy-system" title="bestehendes Altsystem mit Kundendaten, das abgelöst werden soll; im Demo simuliert">Altsysteme</a>, erzeugte <a class="term" href="glossar.html#typescript" title="JavaScript mit statischen Typen; wird zu JavaScript übersetzt">TS</a>-Clients</td>
+</tr>
+<tr>
+<td><code>packages/events</code></td>
+<td><a class="term" href="glossar.html#event" title="Nachricht, dass etwas passiert ist (z. B. „Zählerstand erfasst&quot;); Empfänger reagieren darauf, ohne dass der Absender sie kennt">Ereignis</a>-<a class="term" href="glossar.html#schema" title="formale Beschreibung einer Datenstruktur, z. B. JSON Schema">Schemas</a> und Typen</td>
+</tr>
+<tr>
+<td><code>services/*</code></td>
+<td><a class="term" href="glossar.html#lambda" title="führt eine einzelne Funktion (z. B. einen HTTP-Handler) bei Bedarf aus; Abrechnung pro Aufruf und Laufzeit, skaliert automatisch von 0 auf viele Instanzen">Lambdas</a> je Bereich (<code>identity</code> mit den <a class="term" href="glossar.html#lambda-trigger-cognito" title="Lambda-Funktion, die Cognito an festen Punkten aufruft (vor Registrierung, vor/nach Login, Token-Erzeugung, Migration); im Demo in services/identity">Cognito-Triggern</a>, <code>customer</code>, <code>contract</code>, <code>consumption</code>, <code>documents</code>, <code>notification</code>, <code>migration</code>, <code>tenancy</code>)</td>
+</tr>
+<tr>
+<td><code>infra/cdk</code></td>
+<td><a class="term" href="glossar.html#cdk" title="Infrastruktur als Programmcode (TypeScript, Java, Python …): man schreibt Klassen wie new Table(...), CDK erzeugt daraus CloudFormation-Vorlagen und legt die Ressourcen an">CDK</a>-Anwendung (<a class="term" href="glossar.html#stack" title="Einheit in CloudFormation/CDK: eine Gruppe von Ressourcen, die gemeinsam angelegt und gelöscht wird">Stacks</a>: <a class="term" href="glossar.html#edge-stack" title="CDK-Stack für alles am Rand des Systems: CloudFront, Zertifikat, CloudFront Functions">Edge</a>, Identität mit <a class="term" href="glossar.html#amazon-cognito" title="AWS-Identitätsdienst für Registrierung, Login, MFA und Benutzerverwaltung; im Demo der Portal-Login (Entscheidung 29.09.2026), angelegt per CDK">Cognito</a> <a class="term" href="glossar.html#user-pool" title="Nutzerverzeichnis in Cognito mit eigenen Nutzern, Gruppen, App-Clients und Triggern; zugleich OIDC-Aussteller">User Pool</a> und <a class="term" href="glossar.html#app-client" title="Eintrag einer Anwendung im User Pool mit Client-ID, erlaubten Rückkehr-Adressen und Abläufen; ein vertraulicher Client (hier die Next.js-Shell) hat zusätzlich ein Geheimnis, das nu">App-Client</a>, <a class="term" href="glossar.html#plattform-tabelle" title="mandantenübergreifende DynamoDB-Tabelle für Einladungen, Pässe, Mandanten und Kontingent-Zähler">Plattform-Tabelle</a>, Services, <a class="term" href="glossar.html#mandant" title="abgeschotteter Bereich eines Kunden in einer gemeinsam betriebenen Anwendung; im Demo je Demo-Pass ein Mandant">Mandanten</a>-Vorlage)</td>
+</tr>
+<tr>
+<td><code>infra/terraform</code></td>
+<td><a class="term" href="glossar.html#plattform-schicht" title="im Demo: per Terraform aus GitLab CI verwaltete Grundlagen (OIDC-Vertrauensstellungen, Budget + SNS-Grundlage des Kill-Switch, SSM-Grundwerte, ab Phase 3 Keycloak-Konfiguration), a">Fundament</a> (<a class="term" href="glossar.html#openid-connect" title="Identitätsschicht auf OAuth2: liefert zusätzlich ein ID-Token mit Nutzerangaben; auch für die Anmeldung von GitHub Actions bei AWS genutzt">OIDC</a>-<a class="term" href="glossar.html#trust-policy" title="Teil einer IAM-Rolle: wer diese Rolle übernehmen darf (z. B. nur GitHub Actions aus einem bestimmten Repo)">Vertrauensstellungen</a> für <a class="term" href="glossar.html#github-actions" title="CI/CD-Dienst von GitHub: Workflows in YAML laufen bei Push, Pull Request oder manuell">GitHub Actions</a> und <a class="term" href="glossar.html#gitlab-ci" title="CI/CD in GitLab; hier auf gitlab.rypox.org für Plattform (Terraform) und Altsysteme">GitLab CI</a>, <a class="term" href="glossar.html#aws-budgets" title="kostenloser Dienst für Kostengrenzen mit E-Mail-/SNS-Alarm bei Überschreitung; kein harter Stopp, Daten kommen Stunden verzögert">Budget</a> + <a class="term" href="glossar.html#sns" title="Publish/Subscribe-Dienst: eine Nachricht an ein Topic geht an alle Abonnenten (E-Mail, SQS, Lambda, HTTP, SMS)">SNS</a>-Grundlage des <a class="term" href="glossar.html#kill-switch" title="im Demo geplante Automatik: Budget-Alarm → SNS → Lambda setzt Throttling/Concurrency auf 0 und legt die API still">Kill-Switch</a>, <a class="term" href="glossar.html#ssm-parameter-store" title="Ablage für Konfigurationswerte und (verschlüsselt als SecureString) Geheimnisse; Standard-Stufe kostenlos. Im Demo auch Übergabestelle zwischen Terraform und CDK">SSM</a>-Grundwerte; ab Phase 3 <a class="term" href="glossar.html#keycloak" title="Open-Source-Identitätsdienst (OIDC, SAML), selbst betrieben; im Demo unter id.rypox.net die Anmeldung des Telko-Altsystems und ab Phase 3 Gegenstelle des Migrate-User-Triggers">Keycloak</a>-Konfiguration) — <a class="term" href="glossar.html#deployment" title="Ausliefern einer neuen Version in eine Umgebung">deployt</a> von GitLab CI</td>
+</tr>
+<tr>
+<td><code>docs/</code></td>
+<td>dieses Wiki und die Berichte</td>
+</tr>
+<tr>
+<td><code>.github/workflows</code></td>
+<td><a class="term" href="glossar.html#ci" title="automatisches Bauen und Testen bei jeder Änderung">CI</a>, Deploy, <a class="term" href="glossar.html#teardown" title="vollständiges Entfernen aller Demo-Ressourcen per cdk destroy und terraform destroy">Teardown</a></td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Privat (gitlab.rypox.org)</strong>: <code>legacy-versorger</code>, <code>legacy-telko</code> (je
+Dienst + <a class="term" href="glossar.html#beispieldaten-generator" title="Programm, das die Altsysteme je Mandant mit denselben Demo-Personen und gezielten Datenmängeln befüllt">Beispieldaten-Generator</a>), <a class="term" href="glossar.html#pipeline" title="automatisierte Abfolge von Schritten (bauen, testen, ausliefern)">Pipeline</a>-Projekt für <a class="term" href="glossar.html#terraform" title="verbreitetes IaC-Werkzeug von HashiCorp: Infrastruktur deklarativ in HCL beschreiben, für viele Anbieter (AWS, Azure, Keycloak, GitHub …) über Provider">Terraform</a>. Der
+Keycloak der Telko (<code>id.rypox.net</code>) läuft auf eigener Infrastruktur; seine
+Konfiguration kommt ab Phase 3 aus <code>infra/terraform</code>.</p>
+<h2 id="10-entscheidungen-29092026">10. Entscheidungen (29.09.2026)<a class="anchor" href="#10-entscheidungen-29092026" title="Permanent link">#</a></h2>
+<ol>
+<li><a class="term" href="glossar.html#demo-person" title="im Demo vorbereitete fiktive Kundinnen und Kunden mit festgelegter Geschichte (z. B. Anna Becker: Altkundin, Lazy Migration)">Demo-Personen</a> und <a class="term" href="glossar.html#customer-journey" title="Weg eines Kunden durch das Portal: Registrierung → Onboarding → angemeldeter Bereich">Journeys</a>: <strong>passen</strong> wie beschrieben.</li>
+<li>Besucher dürfen <strong>eigene Testkunden</strong> anlegen — nur im eigenen <a class="term" href="glossar.html#mandant" title="abgeschotteter Bereich eines Kunden in einer gemeinsam betriebenen Anwendung; im Demo je Demo-Pass ein Mandant">Mandanten</a>;
+   sie verschwinden mit dem <a class="term" href="glossar.html#demo-pass" title="im Demo: zeitlich begrenzte Berechtigung (7 Tage, Kontingent) für eine eigene Instanz; ausgestellt per Einladungslink oder für den Inhaber">Pass</a>.</li>
+<li><strong><a class="term" href="glossar.html#demo-postfach" title="im Portal angezeigtes Postfach der Demo-Personen; ersetzt echte E-Mails, damit die Demo niemanden anschreibt">Demo-Postfach</a></strong> statt echter <a class="term" href="glossar.html#e-mail" title="elektronische Post; SNS verschickt bis 1.000 E-Mails im Monat kostenlos">E-Mails</a> an Demo-Personen; echte E-Mails
+   gehen nur an die bestätigte Adresse des Pass-Inhabers.</li>
+<li><a class="term" href="glossar.html#ui" title="Benutzeroberfläche">Oberfläche</a> <strong><a class="term" href="glossar.html#internationalisierung" title="Vorbereitung einer Anwendung auf mehrere Sprachen; Texte liegen in Übersetzungsdateien statt im Code">zweisprachig</a>: Deutsch und Englisch</strong> (Umschalter in der
+   <a class="term" href="glossar.html#shell" title="Rahmenanwendung, die Navigation, Login und Layout stellt und die Micro-Frontends einbindet">Shell</a>, Texte je <a class="term" href="glossar.html#multi-zones" title="Next.js-Ansatz, mehrere Next.js-Apps unter einer Domain zu betreiben, aufgeteilt nach Pfaden">Zone</a> und in der <a class="term" href="glossar.html#component-library" title="gemeinsames Paket wiederverwendbarer UI-Bausteine (Buttons, Formulare, Layouts), das alle Micro-Frontends nutzen und so ein einheitliches Aussehen sichern">Component Library</a> über gemeinsame
+   Übersetzungsdateien; Demo-Daten bleiben deutsch) [E].</li>
+</ol></main></div>
+<footer class="site"><a href="../wiki/fachkonzept.md">Markdown-Quelle</a> · Generiert 2026-09-30 07:10 aus <code>docs/wiki</code> mit <code>scripts/build_reports.py</code></footer>
+</body>
+</html>

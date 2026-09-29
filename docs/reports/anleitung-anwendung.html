@@ -1,0 +1,739 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Anleitung Anwendung · kundenportal-demo</title>
+<link rel="stylesheet" href="assets/report.css">
+<script src="assets/report.js"></script>
+</head>
+<body>
+<header class="topbar"><a class="brand" href="index.html">kundenportal-demo · Konzept</a><nav class="topnav"><a href="index.html">Übersicht</a><a href="machbarkeit-kosten.html">Machbarkeit &amp; Kosten</a><a href="fachkonzept.html">Fachkonzept</a><a href="demo-pass.html">Demo-Pass</a><a href="kostenfrei.html">Kostenfreier Betrieb</a><a href="anleitung-kontoinhaber.html">Anleitung Kontoinhaber</a><a href="anleitung-fundament.html">Anleitung Fundament</a><a href="anleitung-anwendung.html" aria-current="page">Anleitung Anwendung</a><a href="nextjs-betrieb.html">Next.js-Betrieb</a><a href="architektur.html">Architektur Phase 1</a><a href="glossar.html">Glossar</a></nav>
+<button class="theme-toggle" type="button">Dunkel</button></header>
+<div class="layout"><nav class="toc" aria-label="Inhalt"><div class="toc-title">Inhalt</div><div>
+<ul>
+<li><a href="#6-gitlab-pipeline-für-das-fundament">6. GitLab-Pipeline für das Fundament</a><ul>
+<li><a href="#61-branch-schutz-prüfen">6.1 Branch-Schutz prüfen 👁</a></li>
+<li><a href="#62-lesenden-deploy-key-anlegen">6.2 Lesenden Deploy-Key anlegen ✎</a></li>
+<li><a href="#63-cicd-variablen-setzen">6.3 CI/CD-Variablen setzen ✎</a></li>
+<li><a href="#64-pipeline-datei-erledigt-durch-den-agenten-29092026">6.4 Pipeline-Datei (erledigt durch den Agenten, 29.09.2026)</a></li>
+<li><a href="#65-plan-ansehen-und-ggf-anwenden">6.5 Plan ansehen 👁 und ggf. anwenden ✎</a></li>
+<li><a href="#66-protokoll">6.6 Protokoll</a></li>
+</ul>
+</li>
+<li><a href="#7-cdk-bootstrap-und-github-freigabe">7. CDK-Bootstrap und GitHub-Freigabe</a><ul>
+<li><a href="#71-cdk-bootstrap">7.1 CDK-Bootstrap ✎</a></li>
+<li><a href="#72-github-environment-production">7.2 GitHub-Environment production ✎</a></li>
+<li><a href="#73-solange-das-repository-privat-ist">7.3 Solange das Repository privat ist ✎</a></li>
+<li><a href="#74-protokoll">7.4 Protokoll</a></li>
+</ul>
+</li>
+<li><a href="#8-anwendung-deployen-testen-abbauen">8. Anwendung deployen, testen, abbauen</a><ul>
+<li><a href="#81-deploy-starten">8.1 Deploy starten ✎</a></li>
+<li><a href="#82-zertifikat-per-dns-bestätigen-nur-beim-ersten-deploy">8.2 Zertifikat per DNS bestätigen ✎ (nur beim ersten Deploy)</a></li>
+<li><a href="#83-portal-adresse-eintragen-einmalig">8.3 Portal-Adresse eintragen ✎ (einmalig)</a></li>
+<li><a href="#84-hinweis-abo-bestätigen-und-testen">8.4 Hinweis-Abo bestätigen und testen ✎</a></li>
+<li><a href="#85-dlq-probe">8.5 DLQ-Probe ✎</a></li>
+<li><a href="#86-protokoll-erster-deploy">8.6 Protokoll erster Deploy</a></li>
+<li><a href="#87-abbau-teardown">8.7 Abbau (Teardown) ✎</a></li>
+<li><a href="#88-protokoll-abbau">8.8 Protokoll Abbau</a></li>
+</ul>
+</li>
+<li><a href="#9-vor-ablauf-des-free-plans">9. Vor Ablauf des Free Plans</a></li>
+<li><a href="#10-repository-öffentlich-schalten">10. Repository öffentlich schalten</a><ul>
+<li><a href="#101-protokoll">10.1 Protokoll</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</nav><main><h1 id="anleitung-anwendung-kapitel-610">Anleitung Anwendung (Kapitel 6–10)<a class="anchor" href="#anleitung-anwendung-kapitel-610" title="Permanent link">#</a></h1>
+<p>Stand: 2026-09-29 · Fortsetzung der <a href="anleitung-fundament.html">Anleitung Fundament</a> (Kapitel 4–5); Grundsätze in <a href="anleitung-kontoinhaber.html#0-grundsätze">Kapitel 0</a>. Aufbau der Anwendung: <a href="architektur.html">Architektur Phase 1</a>.</p>
+<p>Fachbegriffe sind in jedem Abschnitt beim ersten Vorkommen mit dem <a href="glossar.html">Glossar</a> verlinkt (Erklärung und Entsprechung außerhalb von <a class="term" href="glossar.html#aws" title="Cloud-Plattform von Amazon mit über 200 Diensten (Rechenleistung, Datenbanken, Netzwerk, Messaging …), abgerechnet nach Nutzung">AWS</a>).</p>
+<p>Voraussetzung: Kapitel 4–5 erledigt — <code>aws login</code> funktioniert, das
+<a class="term" href="glossar.html#terraform" title="verbreitetes IaC-Werkzeug von HashiCorp: Infrastruktur deklarativ in HCL beschreiben, für viele Anbieter (AWS, Azure, Keycloak, GitHub …) über Provider">Terraform</a>-<a class="term" href="glossar.html#plattform-schicht" title="im Demo: per Terraform aus GitLab CI verwaltete Grundlagen (OIDC-Vertrauensstellungen, Budget + SNS-Grundlage des Kill-Switch, SSM-Grundwerte, ab Phase 3 Keycloak-Konfiguration), a">Fundament</a> steht, die Outputs aus Kapitel 5.4 liegen im privaten
+Protokoll. Markierungen wie in Kapitel 0: 👁 lesend, ✎ verändernd (mit
+Rückweg); „(Stand 09/2026, nicht selbst geprüft)" bei Klickpfaden ohne
+Beleg in der Hersteller-Dokumentation.</p>
+<h2 id="6-gitlab-pipeline-für-das-fundament">6. GitLab-Pipeline für das Fundament<a class="anchor" href="#6-gitlab-pipeline-für-das-fundament" title="Permanent link">#</a></h2>
+<p>Ziel: Künftige Änderungen am <a class="term" href="glossar.html#plattform-schicht" title="im Demo: per Terraform aus GitLab CI verwaltete Grundlagen (OIDC-Vertrauensstellungen, Budget + SNS-Grundlage des Kill-Switch, SSM-Grundwerte, ab Phase 3 Keycloak-Konfiguration), a">Fundament</a> laufen nicht mehr lokal, sondern
+über <a href="glossar.html#gitlab-ci">GitLab CI</a> im Projekt
+<code>saas/kundenportal-demo/platform</code>: <code>plan</code> automatisch bei jedem Push auf
+<code>main</code>, <code>apply</code> erst nach Klick. Die <a class="term" href="glossar.html#pipeline" title="automatisierte Abfolge von Schritten (bauen, testen, ausliefern)">Pipeline</a> klont das <a class="term" href="glossar.html#github" title="Plattform für Git-Repositories, Pull Requests und CI">GitHub</a>-<a class="term" href="glossar.html#repository" title="von Git verwaltetes Projektverzeichnis, z. B. auf GitHub">Repository</a> an
+einem festen <a class="term" href="glossar.html#commit" title="Commit = gespeicherter Änderungsstand in Git; Git-Tag = Name für einen bestimmten Commit, z. B. eine Version v1.2.0 (nicht zu verwechseln mit AWS-Tags)">Commit</a> (<code>SOURCE_REF</code>); GitHub erhält kein <a class="term" href="glossar.html#gitlab" title="Git-Plattform mit CI, auch selbst betreibbar; bei rypox intern auf gitlab.rypox.org im Einsatz">GitLab</a>-<a class="term" href="glossar.html#token" title="digitaler Ausweis, den ein Identitätsdienst ausstellt und den eine App bei jedem API-Aufruf mitschickt">Token</a> und
+GitLab kein GitHub-Token — solange das Repository privat ist, nur einen
+lesenden <a href="glossar.html#deploy-key">Deploy Key</a>.</p>
+<h3 id="61-branch-schutz-prüfen">6.1 Branch-Schutz prüfen 👁<a class="anchor" href="#61-branch-schutz-prüfen" title="Permanent link">#</a></h3>
+<p>Die <a class="term" href="glossar.html#aws" title="Cloud-Plattform von Amazon mit über 200 Diensten (Rechenleistung, Datenbanken, Netzwerk, Messaging …), abgerechnet nach Nutzung">AWS</a>-Rolle vertraut nur Pipelines auf dem <strong>geschützten</strong> Branch <code>main</code>.</p>
+<ol>
+<li>gitlab.rypox.org → Projekt <code>saas/kundenportal-demo/platform</code> →
+   <strong>Settings</strong> → <strong>Repository</strong> → <strong>Protected branches</strong> aufklappen.</li>
+<li>Ergebnis: Zeile <code>main</code> mit <strong>Allowed to merge</strong> / <strong>Allowed to push</strong>
+   (z. B. Maintainers). Neue Projekte schützen den Standard-Branch
+   automatisch.</li>
+<li>Fehlt <code>main</code>: <strong>Add protected branch</strong> → <code>main</code> → Maintainers → <strong>Protect</strong> ✎
+   (Rückweg: <strong>Unprotect</strong>).</li>
+<li>👁 <strong>Settings</strong> → <strong><a class="term" href="glossar.html#ci" title="automatisches Bauen und Testen bei jeder Änderung">CI</a>/<a class="term" href="glossar.html#cd" title="automatisches Ausliefern geprüfter Änderungen">CD</a></strong> → <strong><a class="term" href="glossar.html#runner" title="Maschine, auf der ein GitHub-Actions-Job läuft; Standard-Runner sind für öffentliche Repos kostenlos">Runners</a></strong>: mindestens ein verfügbarer
+   Runner mit Tag <code>docker</code> (die Pipeline verlangt ihn).</li>
+</ol>
+<p>(Stand 09/2026, nicht selbst geprüft.)</p>
+<h3 id="62-lesenden-deploy-key-anlegen">6.2 Lesenden Deploy-Key anlegen ✎<a class="anchor" href="#62-lesenden-deploy-key-anlegen" title="Permanent link">#</a></h3>
+<p>Nur solange das GitHub-Repository privat ist (Ende: Kapitel 10).
+Grundlage: <a href="https://docs.github.com/en/authentication/connecting-to-github-with-ssh/managing-deploy-keys">https://docs.github.com/en/authentication/connecting-to-github-with-ssh/managing-deploy-keys</a></p>
+<ol>
+<li>Lokal ein Schlüsselpaar ohne Passphrase im SSH-Verzeichnis erzeugen
+   (dort, wo SSH-Schlüssel üblicherweise liegen und nur man selbst lesen
+   darf — <strong>nicht</strong> im Projektverzeichnis, damit er nie in einem Commit
+   landet):</li>
+</ol>
+<p><code>ssh-keygen -t ed25519 -N "" -C "gitlab-platform-readonly" -f ~/.ssh/kundenportal-deploy-key</code></p>
+<p>Ergebnis: <code>~/.ssh/kundenportal-deploy-key</code> (privat, Rechte <code>600</code>) und
+   <code>~/.ssh/kundenportal-deploy-key.pub</code> (öffentlich).
+2. GitHub → Repository <code>janpfeil/kundenportal-demo</code> → <strong>Settings</strong> →
+   <strong><a class="term" href="glossar.html#deployment" title="Ausliefern einer neuen Version in eine Umgebung">Deploy</a> keys</strong> → <strong>Add deploy key</strong>.
+3. <strong>Title</strong> <code>gitlab-platform (read-only)</code>, <strong>Key</strong>: Inhalt der <code>.pub</code>-Datei
+   (<code>cat ~/.ssh/kundenportal-deploy-key.pub</code>). <strong>Allow write access NICHT
+   anhaken.</strong> <strong>Add key</strong>.
+4. Ergebnis: Eintrag in der Liste, ohne „Read/write".
+5. Den <strong>privaten</strong> Schlüssel in GitLab hinterlegen: <a href="https://gitlab.rypox.org">https://gitlab.rypox.org</a>
+   → Projekt <code>saas/kundenportal-demo/platform</code> → links <strong>Settings</strong> →
+   <strong>CI/CD</strong> → Abschnitt <strong>Variables</strong> aufklappen (<strong>Expand</strong>) → <strong>Add
+   variable</strong> (Stand 09/2026, nicht selbst geprüft).
+6. Im Formular:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Feld</th>
+<th>Eingabe</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Type</strong></td>
+<td><strong>File</strong> (nicht „Variable")</td>
+</tr>
+<tr>
+<td><strong><a class="term" href="glossar.html#environment" title="GitHub-Umgebung (z. B. „production&quot;) mit Schutzregeln, etwa Freigabe durch eine Person vor dem Deploy">Environments</a></strong></td>
+<td>All (default)</td>
+</tr>
+<tr>
+<td><strong>Visibility</strong></td>
+<td>Visible</td>
+</tr>
+<tr>
+<td><strong>Flags</strong></td>
+<td><strong>Protect variable</strong> an; <strong>Expand variable reference</strong> aus</td>
+</tr>
+<tr>
+<td><strong>Key</strong></td>
+<td><code>GITHUB_DEPLOY_KEY</code></td>
+</tr>
+<tr>
+<td><strong>Value</strong></td>
+<td>kompletten Inhalt des privaten Schlüssels einfügen</td>
+</tr>
+</tbody>
+</table></div>
+<p>Den Inhalt holt man mit <code>cat ~/.ssh/kundenportal-deploy-key</code> im
+   Terminal: alles markieren von <code>-----BEGIN OPENSSH PRIVATE KEY-----</code> bis
+   einschließlich <code>-----END OPENSSH PRIVATE KEY-----</code>, kopieren und in
+   <strong>Value</strong> einfügen; danach im Feld einmal <strong>Enter</strong> drücken, damit die
+   letzte Zeile mit einem Zeilenumbruch endet (sonst lehnt SSH den
+   Schlüssel ab).
+7. <strong>Add variable</strong>. Ergebnis: In der Liste steht <code>GITHUB_DEPLOY_KEY</code> mit
+   Typ „File" und dem Merkmal „Protected".
+8. Danach wird der Schlüssel lokal nicht mehr gebraucht — die Pipeline nutzt
+   nur die GitLab-Variable. Empfehlung: beide Dateien vernichten
+   <code>shred -u ~/.ssh/kundenportal-deploy-key ~/.ssh/kundenportal-deploy-key.pub</code>;
+   wer sie behalten will, lässt sie in <code>~/.ssh/</code> (nie ins Projekt kopieren).</p>
+<p>Rückweg: GitHub → <strong>Deploy keys</strong> → <strong>Delete</strong>; GitLab-Variable
+<code>GITHUB_DEPLOY_KEY</code> löschen.</p>
+<h3 id="63-cicd-variablen-setzen">6.3 CI/CD-Variablen setzen ✎<a class="anchor" href="#63-cicd-variablen-setzen" title="Permanent link">#</a></h3>
+<p>Stand 29.09.2026: <code>AWS_ROLE_ARN</code> und <code>TF_VAR_owner_email</code> hat der Agent per
+GitLab-<a class="term" href="glossar.html#api" title="Programmierschnittstelle, über die Programme miteinander sprechen">API</a> gesetzt, <code>GITHUB_DEPLOY_KEY</code> entsteht in 6.2 (Schritte 5–7).
+Hier nur 👁 prüfen, dass alle drei in der Liste stehen.</p>
+<p>Ort: Projekt <code>platform</code> → <strong>Settings</strong> → <strong>CI/CD</strong> → <strong>Variables</strong> →
+<strong>Add variable</strong> (Stand 09/2026, nicht selbst geprüft).</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Key</th>
+<th>Value</th>
+<th>Type</th>
+<th>Visibility</th>
+<th>Protect variable</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>AWS_ROLE_ARN</code></td>
+<td>Output <code>gitlab_foundation_role_arn</code> aus 5.4</td>
+<td>Variable</td>
+<td>Visible</td>
+<td>an</td>
+</tr>
+<tr>
+<td><code>TF_VAR_owner_email</code></td>
+<td><a class="term" href="glossar.html#e-mail" title="elektronische Post; SNS verschickt bis 1.000 E-Mails im Monat kostenlos">E-Mail</a>-Adresse wie in 5.3</td>
+<td>Variable</td>
+<td>Masked</td>
+<td>an</td>
+</tr>
+<tr>
+<td><code>GITHUB_DEPLOY_KEY</code></td>
+<td>privater Schlüssel, siehe 6.2 Schritt 6</td>
+<td><strong>File</strong></td>
+<td>Visible</td>
+<td>an</td>
+</tr>
+</tbody>
+</table></div>
+<p>Bei allen: <strong>Environments</strong> „All (default)", <strong>Expand variable reference</strong>
+aus. Lehnt GitLab das Maskieren der E-Mail-Adresse ab (nicht erlaubte
+Zeichen), nur <strong>Protect variable</strong> setzen — die Adresse ist kein Geheimnis.</p>
+<p>Rückweg: je Variable <strong>Delete</strong>. Wirkung: nächste Pipeline scheitert
+(<code>AWS_ROLE_ARN</code>) bzw. klont per <a class="term" href="glossar.html#https" title="verschlüsseltes Web-Protokoll; HTTP ohne Verschlüsselung">HTTPS</a> (<code>GITHUB_DEPLOY_KEY</code>).</p>
+<h3 id="64-pipeline-datei-erledigt-durch-den-agenten-29092026">6.4 Pipeline-Datei (erledigt durch den Agenten, 29.09.2026)<a class="anchor" href="#64-pipeline-datei-erledigt-durch-den-agenten-29092026" title="Permanent link">#</a></h3>
+<p>Im Projekt <code>platform</code> liegt <code>.gitlab-ci.yml</code> — eine Kopie von
+<code>infra/terraform/gitlab/platform.gitlab-ci.yml</code> mit gepinntem <code>SOURCE_REF</code>.
+Die Pipeline startet erst, wenn die Variable <code>AWS_ROLE_ARN</code> aus 6.3 gesetzt
+ist. Der Inhaber tut hier nichts.</p>
+<h3 id="65-plan-ansehen-und-ggf-anwenden">6.5 Plan ansehen 👁 und ggf. anwenden ✎<a class="anchor" href="#65-plan-ansehen-und-ggf-anwenden" title="Permanent link">#</a></h3>
+<ol>
+<li>Projekt <code>platform</code> → <strong><a class="term" href="glossar.html#build" title="Übersetzen und Paketieren des Quellcodes zu auslieferbaren Dateien (Artefakten)">Build</a></strong> → <strong>Pipelines</strong>: die neueste Pipeline auf
+   <code>main</code>.</li>
+<li>Ergebnis: Job <strong>plan</strong> grün (✓), Job <strong>apply</strong> grau mit ▶ (manuell).</li>
+<li>Job <strong>plan</strong> öffnen, ans Ende des Protokolls scrollen. Erwartet nach dem
+   Erstlauf: <strong>No changes. Your infrastructure matches the configuration.</strong>
+   Dann <strong>nicht</strong> auf ▶ klicken — fertig.</li>
+<li>Zeigt der Plan Änderungen (z. B. weil <code>SOURCE_REF</code> neuer ist als der
+   lokal angewendete Stand): Artefakt <code>plan.txt</code> herunterladen (rechts
+   <strong>Job artifacts</strong> → <strong>Download</strong>) oder das Protokoll lesen. Nur wenn die
+   Änderungen verstanden und gewollt sind: im Pipeline-Bild beim Job
+   <strong>apply</strong> auf ▶ klicken. Ergebnis: Job grün, „Apply complete!".</li>
+<li>Scheitert <strong>plan</strong> mit „Not authorized to perform
+   sts:AssumeRoleWithWebIdentity": Branch-Schutz (6.1) und <code>AWS_ROLE_ARN</code>
+   (6.3) prüfen.</li>
+</ol>
+<p>Rückweg für ein <code>apply</code>: im Projekt <code>platform</code> den Commit mit dem vorigen
+<code>SOURCE_REF</code> wiederherstellen (Revert), Pipeline abwarten, ▶ bei <strong>apply</strong>.</p>
+<h3 id="66-protokoll">6.6 Protokoll<a class="anchor" href="#66-protokoll" title="Permanent link">#</a></h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Datum</th>
+<th>Schritt</th>
+<th>Ergebnis</th>
+<th>Wer</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td></td>
+<td>6.1 <code>main</code> geschützt, Runner mit Tag <code>docker</code> vorhanden</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td>6.2 <a class="term" href="glossar.html#deploy-key" title="SSH-Schlüssel, der nur einem GitHub-Repository zugeordnet ist und – ohne „Allow write access“ – nur Lesen erlaubt; im Demo klont die GitLab-Pipeline damit das private Repository">Deploy-Key</a> angelegt (nur lesend), lokale Dateien vernichtet</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td>6.3 drei Variablen gesetzt (nur Namen notieren)</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td>6.5 Plan-Job grün, Ergebnis „No changes" bzw. Apply am</td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="7-cdk-bootstrap-und-github-freigabe">7. CDK-Bootstrap und GitHub-Freigabe<a class="anchor" href="#7-cdk-bootstrap-und-github-freigabe" title="Permanent link">#</a></h2>
+<h3 id="71-cdk-bootstrap">7.1 CDK-Bootstrap ✎<a class="anchor" href="#71-cdk-bootstrap" title="Permanent link">#</a></h3>
+<p>Ziel: <a href="glossar.html#cdk">CDK</a> braucht je Konto und <a class="term" href="glossar.html#region" title="geografischer Standort mit eigenen Rechenzentren; eu-central-1 = Frankfurt, us-east-1 = Nord-Virginia (dort müssen manche globalen Einstellungen, z. B. CloudFront-Zertifikate, lieg">Region</a> einmalig
+Hilfsressourcen (<a href="glossar.html#cdk-bootstrap">CDK Bootstrap</a>), bevor
+irgendetwas <a class="term" href="glossar.html#deployment" title="Ausliefern einer neuen Version in eine Umgebung">deployt</a> werden kann. Die Anwendung nutzt zwei Regionen:
+Frankfurt (alles) und Nord-Virginia (nur das <a class="term" href="glossar.html#cloudfront" title="Content Delivery Network (CDN): liefert Inhalte weltweit aus nahen Standorten aus, cacht sie und leitet Pfade an verschiedene Ziele (S3, API Gateway, Lambda) weiter">CloudFront</a>-Zertifikat). Der
+<a class="term" href="glossar.html#cdk-bootstrap" title="einmalig je Konto und Region angelegte CDK-Hilfsressourcen (S3-Bucket für Artefakte, ECR-Repository, Rollen)">Bootstrap</a> geschieht lokal durch den Inhaber, weil die <a class="term" href="glossar.html#github" title="Plattform für Git-Repositories, Pull Requests und CI">GitHub</a>-Rolle bewusst
+nur die Bootstrap-Rollen <strong>benutzen</strong>, aber nicht anlegen darf.</p>
+<p>Was entsteht, je Region ein <a href="glossar.html#stack">Stack</a> <code>CDKToolkit</code>:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Ressource</th>
+<th>Zweck</th>
+<th>Kosten</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a class="term" href="glossar.html#s3" title="Objektspeicher für Dateien beliebiger Größe in „Buckets&quot;; Standard für statische Websites, Uploads, Build-Artefakte">S3-Bucket</a> <code>cdk-hnb659fds-assets-&lt;Konto&gt;-&lt;Region&gt;</code></td>
+<td>Zwischenablage für <a class="term" href="glossar.html#lambda" title="führt eine einzelne Funktion (z. B. einen HTTP-Handler) bei Bedarf aus; Abrechnung pro Aufruf und Laufzeit, skaliert automatisch von 0 auf viele Instanzen">Lambda</a>-Code und statische Dateien beim Deploy</td>
+<td>wenige <a class="term" href="glossar.html#gb" title="Gigabyte / Terabyte (1 TB = 1.000 GB)">MB</a>; im <a class="term" href="glossar.html#free-plan" title="AWS-Kontoplan für Neukonten seit 15.07.2025: garantiert keine Kosten, aber nur ausgewählte Dienste und automatische Kontoschließung nach 6 Monaten oder aufgebrauchtem Guthaben">Free Plan</a> über das <a class="term" href="glossar.html#guthaben" title="Gutschrift in US-Dollar, die mit Rechnungsbeträgen verrechnet wird; bei Neukonten bis 200 $, verfällt nach 12 Monaten">Guthaben</a>, Bruchteile eines Cents</td>
+</tr>
+<tr>
+<td><a class="term" href="glossar.html#ecr" title="AWS-Registry für Docker-Images">ECR</a>-<a class="term" href="glossar.html#repository" title="von Git verwaltetes Projektverzeichnis, z. B. auf GitHub">Repository</a> <code>cdk-hnb659fds-container-assets-…</code></td>
+<td>für Container-Images (hier ungenutzt)</td>
+<td>leer = 0 <a class="term" href="glossar.html#usd" title="Währung, in der AWS abrechnet">$</a></td>
+</tr>
+<tr>
+<td><a class="term" href="glossar.html#iam" title="Rechteverwaltung von AWS: Rollen und Richtlinien legen fest, wer (Mensch, Dienst, Lambda) was mit welcher Ressource darf">IAM-Rollen</a> <code>cdk-hnb659fds-*</code> (deploy, file-publishing, image-publishing, lookup, cfn-exec)</td>
+<td>werden beim Deploy angenommen</td>
+<td>0 $</td>
+</tr>
+<tr>
+<td><a class="term" href="glossar.html#ssm-parameter-store" title="Ablage für Konfigurationswerte und (verschlüsselt als SecureString) Geheimnisse; Standard-Stufe kostenlos. Im Demo auch Übergabestelle zwischen Terraform und CDK">SSM-Parameter</a> <code>/cdk-bootstrap/hnb659fds/version</code></td>
+<td>Versionsprüfung</td>
+<td>0 $</td>
+</tr>
+</tbody>
+</table></div>
+<p>Sicherheitshinweis: Die Ausführungsrolle für <a class="term" href="glossar.html#cloudformation" title="AWS-eigener Dienst, der Ressourcen aus einer JSON/YAML-Vorlage anlegt, ändert und löscht; Grundlage von CDK und SAM">CloudFormation</a>
+(<code>cdk-hnb659fds-cfn-exec-role-…</code>) hat nach <a class="term" href="glossar.html#cdk" title="Infrastruktur als Programmcode (TypeScript, Java, Python …): man schreibt Klassen wie new Table(...), CDK erzeugt daraus CloudFormation-Vorlagen und legt die Ressourcen an">CDK</a>-Standard
+<code>AdministratorAccess</code>. Deshalb darf die GitHub-Rolle nur die
+Bootstrap-Rollen annehmen, und nur das <a class="term" href="glossar.html#environment" title="GitHub-Umgebung (z. B. „production&quot;) mit Schutzregeln, etwa Freigabe durch eine Person vor dem Deploy">Environment</a> <code>production</code> mit Freigabe
+kommt an die GitHub-Rolle (7.2).</p>
+<p>Schritte (im Repository-Wurzelverzeichnis, Node.js laut <code>.nvmrc</code>, pnpm):</p>
+<ol>
+<li><code>aws login --profile kundenportal</code> und Export wie in
+   <a href="anleitung-fundament.html#44-aws-login-auf-dem-eigenen-rechner">Kapitel 4.4</a>,
+   Schritt 5.</li>
+<li><code>pnpm install --frozen-lockfile &amp;&amp; pnpm build</code> — die CDK-App prüft beim
+   Start, dass die <a class="term" href="glossar.html#shell" title="Rahmenanwendung, die Navigation, Login und Layout stellt und die Micro-Frontends einbindet">Shell</a> gebaut ist.</li>
+<li><a class="term" href="glossar.html#account-id" title="zwölfstellige Nummer eines AWS-Kontos; kein Geheimnis, aber nicht öffentlich zu machen">Kontonummer</a> holen:
+   <code>ACCOUNT=$(aws sts get-caller-identity --query Account --output text)</code></li>
+<li>Bootstrap:</li>
+</ol>
+<p><code>cd infra/cdk
+   pnpm exec cdk bootstrap aws://$ACCOUNT/eu-central-1 aws://$ACCOUNT/us-east-1 --tags project=kundenportal-demo</code></p>
+<ol start="5">
+<li>Ergebnis: je Region „✅ Environment aws://…/… bootstrapped." Dauer: ein
+   bis drei Minuten.</li>
+<li>Prüfen 👁: <a class="term" href="glossar.html#aws-management-console" title="Weboberfläche von AWS; der Bereich Billing zeigt Rechnungen, Guthaben (Credits) und Freikontingent-Verbrauch">Konsole</a> → <strong>CloudFormation</strong> → <strong><a class="term" href="glossar.html#stack" title="Einheit in CloudFormation/CDK: eine Gruppe von Ressourcen, die gemeinsam angelegt und gelöscht wird">Stacks</a></strong>: in <strong>Europe
+   (Frankfurt)</strong> und in <strong>US East (N. Virginia)</strong> je ein Stack <code>CDKToolkit</code>
+   mit Status <strong>CREATE_COMPLETE</strong>.</li>
+</ol>
+<p>Notieren: Datum, beide Stacks vorhanden.</p>
+<p>Rückweg: erst die Anwendung abbauen (8.7). Dann je Region <strong>S3</strong> → Bucket
+<code>cdk-hnb659fds-assets-…</code> → <strong>Empty</strong>; <strong>CloudFormation</strong> → <code>CDKToolkit</code> →
+<strong>Delete</strong>. Bleiben Bucket oder ECR-Repository danach stehen (sie sind zum
+Schutz vor Datenverlust oft vom Löschen ausgenommen), sie einzeln löschen
+(Stand 09/2026, nicht selbst geprüft).</p>
+<h3 id="72-github-environment-production">7.2 GitHub-Environment <code>production</code> ✎<a class="anchor" href="#72-github-environment-production" title="Permanent link">#</a></h3>
+<p>Ziel: Jeder Lauf von Deploy, <a class="term" href="glossar.html#teardown" title="vollständiges Entfernen aller Demo-Ressourcen per cdk destroy und terraform destroy">Teardown</a> und <a class="term" href="glossar.html#dlq" title="Ablage für Nachrichten, die nach mehreren Versuchen nicht verarbeitet werden konnten, zur Analyse und Nachverarbeitung">DLQ</a>-Probe braucht die Freigabe des
+Inhabers, und nur diese Läufe kommen an die <a class="term" href="glossar.html#aws" title="Cloud-Plattform von Amazon mit über 200 Diensten (Rechenleistung, Datenbanken, Netzwerk, Messaging …), abgerechnet nach Nutzung">AWS</a>-Rolle — die Rolle vertraut
+ausschließlich dem <a href="glossar.html#environment">Environment</a> <code>production</code>.</p>
+<p><strong>Einschränkung (GitHub-Dokumentation):</strong> Bei GitHub Free, Pro und Team gibt
+es <strong>Required reviewers</strong> nur in <strong>öffentlichen</strong> Repositories;
+Deployment-Branch-Regeln und Environment-Variablen gibt es in privaten
+Repositories nur mit GitHub Pro oder Team
+[B: <a href="https://docs.github.com/en/actions/reference/workflows-and-actions/deployments-and-environments">https://docs.github.com/en/actions/reference/workflows-and-actions/deployments-and-environments</a>].
+Solange das Repository privat ist, zeigt GitHub diese Optionen je nach Plan
+nicht an. Dann gilt 7.3.</p>
+<ol>
+<li>GitHub → Repository <code>janpfeil/kundenportal-demo</code> → <strong>Settings</strong> → links
+   <strong>Environments</strong> → <strong>New environment</strong>.</li>
+<li>Name <code>production</code>, <strong>Configure environment</strong>.</li>
+<li><strong>Deployment protection rules</strong>: <strong>Required reviewers</strong> anhaken,
+   <code>janpfeil</code> hinzufügen. <strong>Prevent self-review</strong> <strong>nicht</strong> anhaken — sonst
+   kann der Inhaber seine eigenen Läufe nicht freigeben. <strong>Save protection
+   rules</strong>.</li>
+<li><strong>Deployment branches and tags</strong>: <strong>Selected branches and tags</strong> →
+   <strong>Add deployment branch or tag rule</strong> → <code>main</code>; noch einmal → <code>develop</code>.</li>
+<li><strong>Environment variables</strong> → <strong>Add environment variable</strong>: Name
+   <code>AWS_DEPLOY_ROLE_ARN</code>, Wert = Output <code>github_deploy_role_arn</code> aus
+   Kapitel 5.4. Als <strong>Variable</strong>, nicht als Secret — der Wert ist kein
+   Geheimnis.</li>
+<li>Ergebnis: Environment <code>production</code> mit „1 protection rule", zwei
+   Branch-Regeln und einer Variable.</li>
+</ol>
+<p>(Beschriftungen laut GitHub-Dokumentation; genaue Knopftexte Stand 09/2026,
+nicht selbst geprüft.)</p>
+<p>Rückweg: <strong>Environments</strong> → <code>production</code> → <strong>Delete environment</strong> (danach
+kann kein <a class="term" href="glossar.html#workflow" title="allgemein: automatisierter Ablauf mehrerer Schritte; bei GitHub: eine Pipeline-Datei">Workflow</a> mehr deployen).</p>
+<h3 id="73-solange-das-repository-privat-ist">7.3 Solange das Repository privat ist ✎<a class="anchor" href="#73-solange-das-repository-privat-ist" title="Permanent link">#</a></h3>
+<p>Fehlen in 7.2 die Felder für Reviewer oder Variablen:</p>
+<ol>
+<li>Das Environment <code>production</code> trotzdem anlegen (Schritte 1–2); die
+   Workflows melden sich damit bei AWS an.</li>
+<li><code>AWS_DEPLOY_ROLE_ARN</code> als <strong>Repository-Variable</strong> setzen: <strong>Settings</strong> →
+   <strong>Secrets and variables</strong> → <strong>Actions</strong> → Reiter <strong>Variables</strong> → <strong>New
+   repository variable</strong>.</li>
+<li>Wissen: Ohne Required reviewers laufen Deploy, Teardown und DLQ-Probe
+   sofort nach dem Start ohne Freigabeschritt. Starten kann sie nur, wer
+   Schreibrechte am privaten Repository hat — also nur der Inhaber.</li>
+<li>Nach dem Öffentlichschalten (Kapitel 10) die Schritte 3–5 aus 7.2
+   nachholen und die Repository-Variable löschen.</li>
+</ol>
+<h3 id="74-protokoll">7.4 Protokoll<a class="anchor" href="#74-protokoll" title="Permanent link">#</a></h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Datum</th>
+<th>Schritt</th>
+<th>Ergebnis</th>
+<th>Wer</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td></td>
+<td>7.1 <code>CDKToolkit</code> in eu-central-1 und us-east-1</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td>7.2 Environment <code>production</code>: Reviewer, Branches, Variable</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td>7.3 falls privat: Repository-Variable gesetzt</td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="8-anwendung-deployen-testen-abbauen">8. Anwendung deployen, testen, abbauen<a class="anchor" href="#8-anwendung-deployen-testen-abbauen" title="Permanent link">#</a></h2>
+<h3 id="81-deploy-starten">8.1 Deploy starten ✎<a class="anchor" href="#81-deploy-starten" title="Permanent link">#</a></h3>
+<p>Ziel: die Anwendung aus <a href="architektur.html">Architektur Phase 1</a> in <a class="term" href="glossar.html#aws" title="Cloud-Plattform von Amazon mit über 200 Diensten (Rechenleistung, Datenbanken, Netzwerk, Messaging …), abgerechnet nach Nutzung">AWS</a>
+aufbauen oder nach einer Pause wieder in Betrieb nehmen. Kosten: im <a class="term" href="glossar.html#free-plan" title="AWS-Kontoplan für Neukonten seit 15.07.2025: garantiert keine Kosten, aber nur ausgewählte Dienste und automatische Kontoschließung nach 6 Monaten oder aufgebrauchtem Guthaben">Free Plan</a>
+0 <a class="term" href="glossar.html#usd" title="Währung, in der AWS abrechnet">$</a> (Cent-Bruchteile für <a class="term" href="glossar.html#api-gateway" title="verwalteter Eingangspunkt für APIs: nimmt HTTP-Anfragen an, prüft Authentifizierung, drosselt, leitet an Lambda weiter">API Gateway</a>, <a class="term" href="glossar.html#eventbridge" title="Event-Bus: Dienste veröffentlichen Ereignisse, Regeln leiten sie anhand ihres Inhalts an Ziele (SQS, Lambda, SNS …) weiter">EventBridge</a> und <a class="term" href="glossar.html#s3" title="Objektspeicher für Dateien beliebiger Größe in „Buckets&quot;; Standard für statische Websites, Uploads, Build-Artefakte">S3</a> laufen über das
+<a class="term" href="glossar.html#guthaben" title="Gutschrift in US-Dollar, die mit Rechnungsbeträgen verrechnet wird; bei Neukonten bis 200 $, verfällt nach 12 Monaten">Guthaben</a>; <a href="kostenfrei.html">Kostenfreier Betrieb</a>).</p>
+<p>Der <a class="term" href="glossar.html#deployment" title="Ausliefern einer neuen Version in eine Umgebung">Deploy</a> läuft <strong>unbeaufsichtigt</strong> über <code>scripts/deploy.sh</code> (Bash, keine
+Rückfragen): <a class="term" href="glossar.html#build" title="Übersetzen und Paketieren des Quellcodes zu auslieferbaren Dateien (Artefakten)">Build</a> → <a class="term" href="glossar.html#stack" title="Einheit in CloudFormation/CDK: eine Gruppe von Ressourcen, die gemeinsam angelegt und gelöscht wird">Stacks</a> <code>KundenportalCertificate</code>, <code>KundenportalBase</code>,
+<code>KundenportalApp</code> → danach <code>KundenportalEdge</code>, das <a class="term" href="glossar.html#cloudfront" title="Content Delivery Network (CDN): liefert Inhalte weltweit aus nahen Standorten aus, cacht sie und leitet Pfade an verschiedene Ziele (S3, API Gateway, Lambda) weiter">CloudFront</a> auf die (ggf.
+neuen) Adressen der Anwendung umstellt. Adresse und <a class="term" href="glossar.html#dns" title="Telefonbuch des Internets: übersetzt Namen wie energie-demo.rypox.com in Adressen">DNS</a>-Eintrag bleiben
+dabei gleich.</p>
+<ol>
+<li><a class="term" href="glossar.html#github" title="Plattform für Git-Repositories, Pull Requests und CI">GitHub</a> → <a class="term" href="glossar.html#repository" title="von Git verwaltetes Projektverzeichnis, z. B. auf GitHub">Repository</a> → <strong>Actions</strong> → links <strong>Deploy</strong> → rechts <strong>Run
+   workflow</strong> → Branch <code>develop</code> (oder <code>main</code>) → <strong>Run workflow</strong>.</li>
+<li>Solange das Repository öffentlich ist und eine Freigabe verlangt wird
+   (Kapitel 10): <strong>Review deployments</strong> → <code>production</code> anhaken →
+   <strong>Approve and deploy</strong>. Bei privatem Repository entfällt der Schritt.</li>
+<li>Ergebnis: Lauf grün; die <strong>Summary</strong> zeigt Dauer (<code>BUILD_SECONDS</code>,
+   <code>CORE_SECONDS</code>, <code>EDGE_SECONDS</code>, <code>TOTAL_SECONDS</code>) und die Ausgaben.</li>
+</ol>
+<p>Lokal (als <code>jan-admin</code>, Kapitel 4.4): <code>AWS_PROFILE=kundenportal ./scripts/deploy.sh</code>.</p>
+<p>Rückweg: 8.7 (Pause oder Ende).</p>
+<h3 id="82-zertifikat-per-dns-bestätigen-nur-beim-ersten-deploy">8.2 Zertifikat per DNS bestätigen ✎ (nur beim ersten Deploy)<a class="anchor" href="#82-zertifikat-per-dns-bestätigen-nur-beim-ersten-deploy" title="Permanent link">#</a></h3>
+<p>Beim ersten Deploy wartet der Stack <code>KundenportalCertificate</code> in
+Nord-Virginia, bis das Zertifikat für <code>kundenportal-demo.rypox.com</code> per DNS
+bestätigt ist. <a class="term" href="glossar.html#route-53" title="DNS-Dienst von AWS; eine Hosted Zone kostet 0,50 $/Monat">Route 53</a> wird nicht genutzt; der Eintrag kommt auf den eigenen
+<a class="term" href="glossar.html#nameserver" title="Server, der die DNS-Einträge einer Domain verwaltet; bei rypox eigene (ns1.rypox.net)">Nameserver</a>. Der Deploy-Job bricht nach <strong>60 Minuten</strong> ab — den Eintrag also
+zügig anlegen.</p>
+<ol>
+<li>Etwa eine Minute nach Start des Deploy-Schritts: AWS-<a class="term" href="glossar.html#aws-management-console" title="Weboberfläche von AWS; der Bereich Billing zeigt Rechnungen, Guthaben (Credits) und Freikontingent-Verbrauch">Konsole</a>, <a class="term" href="glossar.html#region" title="geografischer Standort mit eigenen Rechenzentren; eu-central-1 = Frankfurt, us-east-1 = Nord-Virginia (dort müssen manche globalen Einstellungen, z. B. CloudFront-Zertifikate, lieg">Region</a> oben
+   rechts <strong>US East (N. Virginia)</strong>, Suchleiste <strong>Certificate Manager</strong>.</li>
+<li><strong>List certificates</strong> → Zertifikat <code>kundenportal-demo.rypox.com</code> mit
+   Status <strong>Pending validation</strong> → auf die <strong>Certificate ID</strong> klicken.</li>
+<li>Abschnitt <strong><a class="term" href="glossar.html#domain" title="Internet-Adresse wie beispiel.de; wird bei einem Registrar für ca. 10–15 €/Jahr registriert">Domains</a></strong>: Spalten <strong><a class="term" href="glossar.html#cname" title="DNS-Eintrag, der einen Namen auf einen anderen verweist, z. B. energie-demo.rypox.com → CloudFront-Adresse; auch für die Zertifikatsprüfung von ACM genutzt">CNAME</a> name</strong> (Form
+   <code>_&lt;lange Zeichenkette&gt;.kundenportal-demo.rypox.com.</code>) und <strong>CNAME value</strong>
+   (Form <code>_&lt;…&gt;.acm-validations.aws.</code>) kopieren.</li>
+<li>Beim eigenen Nameserver für die Domain <code>rypox.com</code> einen Eintrag anlegen:
+   Typ <strong>CNAME</strong>, Name = CNAME name <strong>ohne</strong> Domain-Anhang, also
+   <code>_&lt;…&gt;.kundenportal-demo</code> (viele <a class="term" href="glossar.html#ui" title="Benutzeroberfläche">Oberflächen</a> hängen <code>.rypox.com</code>
+   selbst an; sonst entsteht <code>….rypox.com.rypox.com</code>), Ziel = CNAME value,
+   TTL 300.</li>
+<li>Prüfen 👁: <code>dig +short CNAME _&lt;…&gt;.kundenportal-demo.rypox.com</code> zeigt den
+   <code>acm-validations.aws</code>-Wert.</li>
+<li>Ergebnis nach Minuten (bis zu 30): Status <strong>Issued</strong>; der Deploy läuft
+   von selbst weiter.</li>
+</ol>
+<p>Der Eintrag <strong>bleibt dauerhaft</strong> stehen: Solange er existiert, bestätigt <a class="term" href="glossar.html#acm" title="stellt kostenlose TLS-Zertifikate für AWS-Dienste aus und erneuert sie automatisch">ACM</a>
+auch neue Zertifikate für denselben Namen (nach Abbau und Neuaufbau) und
+erneuert sie automatisch
+[B: <a href="https://docs.aws.amazon.com/acm/latest/userguide/dns-validation.html">https://docs.aws.amazon.com/acm/latest/userguide/dns-validation.html</a>].
+Läuft der Job trotzdem in den Zeitabbruch: Eintrag stehen lassen, Deploy neu
+starten.</p>
+<p>Rückweg: den Validierungs-CNAME erst löschen, wenn das Projekt endet (nach
+<a class="term" href="glossar.html#teardown" title="vollständiges Entfernen aller Demo-Ressourcen per cdk destroy und terraform destroy">Teardown</a> und Löschen des Zertifikats).</p>
+<h3 id="83-portal-adresse-eintragen-einmalig">8.3 Portal-Adresse eintragen ✎ (einmalig)<a class="anchor" href="#83-portal-adresse-eintragen-einmalig" title="Permanent link">#</a></h3>
+<p>Die CloudFront-Distribution liegt im dauerhaften Stack <code>KundenportalEdge</code>;
+ihr Name ändert sich bei normalen Deploys und bei Pausen (8.7, Variante A)
+<strong>nicht</strong>. Der Eintrag ist deshalb nur einmal nötig — und erneut nur nach
+einem Vollabbau (8.7, Variante B).</p>
+<ol>
+<li>Nach Ende des Laufs: <strong>Summary</strong> → „Outputs": Wert
+   <code>KundenportalEdge.DistributionDomain</code>, z. B. <code>d123abc.cloudfront.net</code>.</li>
+<li>Beim eigenen Nameserver (PowerDNS): Typ <strong>CNAME</strong>,
+   Name <code>kundenportal-demo</code>, Ziel = dieser Wert mit Punkt am Ende, TTL 300.
+   Auf der Kommandozeile des Nameservers:</li>
+</ol>
+<p><code>pdnsutil replace-rrset rypox.com kundenportal-demo.rypox.com CNAME 300 d123abc.cloudfront.net.
+   pdnsutil increase-serial rypox.com</code></p>
+<ol start="3">
+<li>Prüfen 👁: <code>dig +short CNAME kundenportal-demo.rypox.com @ns1.rypox.net</code>
+   zeigt den <code>cloudfront.net</code>-Namen; <a href="https://kundenportal-demo.rypox.com">https://kundenportal-demo.rypox.com</a>
+   öffnet die Startseite.</li>
+</ol>
+<p>CloudFront verweigert einen <a class="term" href="glossar.html#konto-alias" title="optionaler, weltweit eindeutiger Name für die Anmelde-Adresse eines AWS-Kontos; nach Kontoschließung nicht wiederverwendbar">Alias</a>, dessen DNS-Eintrag noch auf eine
+<strong>andere</strong> (auch gelöschte) <a class="term" href="glossar.html#distribution" title="eine CloudFront-Konfiguration mit eigener Domain, Ursprüngen und Regeln">Distribution</a> zeigt. Deshalb vor einem
+Neuaufbau nach Vollabbau den alten Eintrag löschen (8.7, Variante B).</p>
+<h3 id="84-hinweis-abo-bestätigen-und-testen">8.4 Hinweis-Abo bestätigen und testen ✎<a class="anchor" href="#84-hinweis-abo-bestätigen-und-testen" title="Permanent link">#</a></h3>
+<ol>
+<li>Beim ersten Deploy (und nur nach einem Vollabbau erneut) kommt eine
+   <strong>AWS Notification - Subscription Confirmation</strong> für das <a class="term" href="glossar.html#sns" title="Publish/Subscribe-Dienst: eine Nachricht an ein Topic geht an alle Abonnenten (E-Mail, SQS, Lambda, HTTP, SMS)">Topic</a>
+   „<a class="term" href="glossar.html#kundenportal" title="Web-Anwendung, in der Endkunden ihre Verträge, Rechnungen und Daten selbst verwalten (Self-Service)">Kundenportal</a>" → <strong>Confirm subscription</strong> (wie 5.5). Das Topic liegt im
+   dauerhaften Stack <code>KundenportalBase</code>; Pausen (8.7 A) ändern daran nichts.</li>
+<li><a href="https://kundenportal-demo.rypox.com">https://kundenportal-demo.rypox.com</a> → <strong>Anmelden</strong> → registrieren
+   (Passwort mindestens 12 Zeichen). Der Code kommt von
+   <code>no-reply@verificationemail.com</code> (<a class="term" href="glossar.html#amazon-cognito" title="AWS-Identitätsdienst für Registrierung, Login, MFA und Benutzerverwaltung; im Demo der Portal-Login (Entscheidung 29.09.2026), angelegt per CDK">Cognito</a>-Standard, höchstens 50 <a class="term" href="glossar.html#e-mail" title="elektronische Post; SNS verschickt bis 1.000 E-Mails im Monat kostenlos">E-Mails</a>
+   pro Tag). Kommt keine E-Mail (Spamfilter/Greylisting des eigenen
+   Mailservers), bestätigt der Agent das Konto per Admin-<a class="term" href="glossar.html#api" title="Programmierschnittstelle, über die Programme miteinander sprechen">API</a>.</li>
+<li>Ergebnis: <strong>Mein Konto</strong> zeigt die Daten; im <strong>Postfach</strong> steht nach
+   wenigen Sekunden die Willkommensnachricht. Automatisch prüft das der
+   <a class="term" href="glossar.html#workflow" title="allgemein: automatisierter Ablauf mehrerer Schritte; bei GitHub: eine Pipeline-Datei">Workflow</a> <strong>E2E</strong> (Playwright, Wegwerf-Nutzer, misst die Zeit).</li>
+</ol>
+<p>Rückweg: Testnutzer in Cognito → <strong>Delete user</strong>.</p>
+<h3 id="85-dlq-probe">8.5 DLQ-Probe ✎<a class="anchor" href="#85-dlq-probe" title="Permanent link">#</a></h3>
+<p>Ziel: prüfen, dass nicht verarbeitbare <a class="term" href="glossar.html#event" title="Nachricht, dass etwas passiert ist (z. B. „Zählerstand erfasst&quot;); Empfänger reagieren darauf, ohne dass der Absender sie kennt">Ereignisse</a> in der <a class="term" href="glossar.html#dlq" title="Ablage für Nachrichten, die nach mehreren Versuchen nicht verarbeitet werden konnten, zur Analyse und Nachverarbeitung">DLQ</a> landen und der
+Inhaber davon erfährt (Abnahmekriterium).</p>
+<ol>
+<li><strong>Actions</strong> → <strong>DLQ probe</strong> → <strong>Run workflow</strong> → Freigabe wie in 8.1.</li>
+<li>Der Workflow sendet ein absichtlich ungültiges Ereignis (ohne <a class="term" href="glossar.html#mandant" title="abgeschotteter Bereich eines Kunden in einer gemeinsam betriebenen Anwendung; im Demo je Demo-Pass ein Mandant">Mandant</a>).
+   Der notification-Dienst lehnt es dreimal ab; danach liegt es in der DLQ.</li>
+<li>Ergebnis nach etwa 10 Minuten: E-Mail „ALARM: …DlqNotEmpty…" an die
+   Inhaberadresse.</li>
+<li>Prüfen 👁: Konsole (Frankfurt) → <strong>Simple <a class="term" href="glossar.html#sqs" title="Nachrichtenwarteschlange: Absender legt Nachrichten ab, Empfänger holt sie ab und bestätigt sie; entkoppelt Dienste und puffert Last">Queue</a> Service</strong> → <strong>Queues</strong> →
+   Queue mit <code>NotificationDlq</code> im Namen → Spalte <strong>Messages available</strong> = 1.</li>
+<li>Aufräumen ✎: Queue anklicken → <strong>Purge</strong> → <code>purge</code> eintippen →
+   <strong>Purge</strong>. Der <a class="term" href="glossar.html#alarm" title="Benachrichtigung, wenn eine Metrik einen Grenzwert überschreitet">Alarm</a> geht in den folgenden Minuten zurück auf „OK"
+   (👁 <strong><a class="term" href="glossar.html#cloudwatch" title="AWS-Dienst für Logs, Metriken und Alarme">CloudWatch</a></strong> → <strong>Alarms</strong>); dafür kommt keine E-Mail.</li>
+</ol>
+<p>Rückweg: nicht nötig (die Nachricht ist wertlos).</p>
+<h3 id="86-protokoll-erster-deploy">8.6 Protokoll erster Deploy<a class="anchor" href="#86-protokoll-erster-deploy" title="Permanent link">#</a></h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Datum</th>
+<th>Schritt</th>
+<th>Ergebnis</th>
+<th>Wer</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td></td>
+<td>8.2 Validierungs-CNAME angelegt, Zertifikat „Issued" nach … min</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td>8.4 Abo „Kundenportal" bestätigt, Registrierung → Willkommensnachricht in … s</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td>8.5 DLQ-Alarm-E-Mail nach … min, Queue geleert</td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="87-abbau-teardown">8.7 Abbau (Teardown) ✎<a class="anchor" href="#87-abbau-teardown" title="Permanent link">#</a></h3>
+<p>Zwei Varianten, beide unbeaufsichtigt über <code>scripts/teardown.sh</code>:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th>A — Pause (Standard)</th>
+<th>B — Ende (Vollabbau)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Zweck</td>
+<td>kostenpflichtige Teile ruhen lassen, jederzeit per 8.1 zurück</td>
+<td>Konto räumen, z. B. vor Ablauf des Free Plans (Kapitel 9)</td>
+</tr>
+<tr>
+<td>Entfernt</td>
+<td>Stack <code>KundenportalApp</code>: <a class="term" href="glossar.html#lambda" title="führt eine einzelne Funktion (z. B. einen HTTP-Handler) bei Bedarf aus; Abrechnung pro Aufruf und Laufzeit, skaliert automatisch von 0 auf viele Instanzen">Lambdas</a>, <a class="term" href="glossar.html#http-api" title="schlanke, günstige Variante des API Gateway (≈ 1 $/Mio. Aufrufe) mit eingebautem JWT-Authorizer; im Demo gewählt">HTTP API</a>, EventBridge-Bus, Queues, Alarm</td>
+<td>zusätzlich <code>KundenportalEdge</code> (CloudFront, statische Dateien), <code>KundenportalBase</code> (Cognito mit allen Nutzern, <a class="term" href="glossar.html#dynamodb" title="vollständig verwaltete NoSQL-Datenbank (Schlüssel-Wert/Dokument) mit Antwortzeiten im Millisekundenbereich, ohne Server und ohne Verbindungs-Pool">DynamoDB</a> mit allen Daten, Hinweis-Topic), <code>KundenportalCertificate</code></td>
+</tr>
+<tr>
+<td>Bleibt</td>
+<td>Zertifikat, Nutzer, Daten, bestätigtes E-Mail-Abo, CloudFront und DNS-Eintrag</td>
+<td>nur <a class="term" href="glossar.html#terraform" title="verbreitetes IaC-Werkzeug von HashiCorp: Infrastruktur deklarativ in HCL beschreiben, für viele Anbieter (AWS, Azure, Keycloak, GitHub …) über Provider">Terraform</a>-<a class="term" href="glossar.html#plattform-schicht" title="im Demo: per Terraform aus GitLab CI verwaltete Grundlagen (OIDC-Vertrauensstellungen, Budget + SNS-Grundlage des Kill-Switch, SSM-Grundwerte, ab Phase 3 Keycloak-Konfiguration), a">Fundament</a> und <a class="term" href="glossar.html#cdk" title="Infrastruktur als Programmcode (TypeScript, Java, Python …): man schreibt Klassen wie new Table(...), CDK erzeugt daraus CloudFormation-Vorlagen und legt die Ressourcen an">CDK</a>-<a class="term" href="glossar.html#cdk-bootstrap" title="einmalig je Konto und Region angelegte CDK-Hilfsressourcen (S3-Bucket für Artefakte, ECR-Repository, Rollen)">Bootstrap</a></td>
+</tr>
+<tr>
+<td><a class="term" href="glossar.html#dns" title="Telefonbuch des Internets: übersetzt Namen wie energie-demo.rypox.com in Adressen">DNS</a></td>
+<td>nichts zu tun</td>
+<td>Portal-CNAME löschen; Validierungs-CNAME darf bleiben</td>
+</tr>
+<tr>
+<td>Wieder aufbauen</td>
+<td>8.1 — gleiche Adresse, ca. 2–6 min</td>
+<td>8.1, danach neuer Portal-CNAME (8.3)</td>
+</tr>
+</tbody>
+</table></div>
+<ol>
+<li><strong>Actions</strong> → <strong>Teardown</strong> → <strong>Run workflow</strong> → Feld „Type destroy …":
+   <code>destroy</code>, <strong>scope</strong>: <code>app</code> (A) oder <code>all</code> (B) → <strong>Run workflow</strong>
+   (Freigabe wie in 8.1, falls verlangt).
+   Lokal: <code>AWS_PROFILE=kundenportal ./scripts/teardown.sh</code> (A) bzw.
+   <code>… ./scripts/teardown.sh --all</code> (B).</li>
+<li>Ergebnis: Lauf grün; die Summary zeigt <code>TEARDOWN_SECONDS</code> →
+   Architektur §9.</li>
+<li>Nur bei B: Portal-CNAME beim Nameserver löschen:
+   <code>pdnsutil delete-rrset rypox.com kundenportal-demo.rypox.com CNAME</code>.</li>
+<li>Prüfen 👁 wie <a href="anleitung-kontoinhaber.html#36-laufende-ressourcen-finden">Kapitel 3.6</a>,
+   aber mit Filter: <strong><a class="term" href="glossar.html#resource-explorer" title="AWS-Suche über alle Ressourcen eines Kontos (alle Regionen); Tag Editor findet und ändert Ressourcen nach Tags">Tag Editor</a></strong> → <strong>Regions</strong> „All regions",
+   <strong>Resource types</strong> „All supported resource types", <strong><a class="term" href="glossar.html#tags" title="Schlüssel-Wert-Etiketten an Ressourcen, z. B. project=kundenportal-demo; wichtig für Kostenauswertung und Aufräumen">Tags</a></strong>: Key
+   <code>project</code>, Value <code>kundenportal-demo</code> → <strong>Search resources</strong>.
+   Der Index hinkt einige Minuten nach; im Zweifel direkt in der Konsole des
+   Dienstes nachsehen.</li>
+<li>Erwartet bei B: nur Fundament (<a class="term" href="glossar.html#iam" title="Rechteverwaltung von AWS: Rollen und Richtlinien legen fest, wer (Mensch, Dienst, Lambda) was mit welcher Ressource darf">IAM-Rollen</a>, <a class="term" href="glossar.html#openid-connect" title="Identitätsschicht auf OAuth2: liefert zusätzlich ein ID-Token mit Nutzerangaben; auch für die Anmeldung von GitHub Actions bei AWS genutzt">OIDC</a>-Anbieter, Richtlinie,
+   SNS-Topic <code>kundenportal-budget-alerts</code>, <a class="term" href="glossar.html#ssm-parameter-store" title="Ablage für Konfigurationswerte und (verschlüsselt als SecureString) Geheimnisse; Standard-Stufe kostenlos. Im Demo auch Übergabestelle zwischen Terraform und CDK">SSM-Parameter</a> unter
+   <code>/kundenportal/…</code> aus Terraform) und CDK-Bootstrap (je Region Stack
+   <code>CDKToolkit</code>, Bucket, <a class="term" href="glossar.html#ecr" title="AWS-Registry für Docker-Images">ECR</a>-Repository, Rollen, Parameter). Bei A zusätzlich
+   die Ressourcen von Certificate, Base und <a class="term" href="glossar.html#edge-stack" title="CDK-Stack für alles am Rand des Systems: CloudFront, Zertifikat, CloudFront Functions">Edge</a>.</li>
+</ol>
+<p>Das Skript leert Buckets vor dem Löschen, räumt Log-Gruppen außerhalb von
+<a class="term" href="glossar.html#cloudformation" title="AWS-eigener Dienst, der Ressourcen aus einer JSON/YAML-Vorlage anlegt, ändert und löscht; Grundlage von CDK und SAM">CloudFormation</a> auf und bricht bei unklaren Fehlern ab, statt Stacks still zu
+überspringen.</p>
+<p>Fundament abbauen (nur wenn das Projekt endet, nach B): lokal <code>terraform
+destroy</code> wie in <a href="anleitung-fundament.html#54-plan-und-apply">Kapitel 5.4</a>,
+nicht über <a class="term" href="glossar.html#gitlab" title="Git-Plattform mit CI, auch selbst betreibbar; bei rypox intern auf gitlab.rypox.org im Einsatz">GitLab</a> — die GitLab-Rolle würde sich dabei selbst löschen.</p>
+<h3 id="88-protokoll-abbau">8.8 Protokoll Abbau<a class="anchor" href="#88-protokoll-abbau" title="Permanent link">#</a></h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Datum</th>
+<th>Schritt</th>
+<th>Ergebnis</th>
+<th>Wer</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td></td>
+<td>8.7 Teardown-Lauf, Dauer</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td>8.7 Portal-CNAME gelöscht</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td>8.7 Tag Editor: nur Fundament und Bootstrap übrig</td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="9-vor-ablauf-des-free-plans">9. Vor Ablauf des Free Plans<a class="anchor" href="#9-vor-ablauf-des-free-plans" title="Permanent link">#</a></h2>
+<p>Der <a href="glossar.html#free-plan">Free Plan</a> endet 6 Monate nach Kontoanlage
+(Konto vom 29.09.2026 → Ende März 2027) oder früher, wenn das <a class="term" href="glossar.html#guthaben" title="Gutschrift in US-Dollar, die mit Rechnungsbeträgen verrechnet wird; bei Neukonten bis 200 $, verfällt nach 12 Monaten">Guthaben</a>
+aufgebraucht ist; danach schließt <a class="term" href="glossar.html#aws" title="Cloud-Plattform von Amazon mit über 200 Diensten (Rechenleistung, Datenbanken, Netzwerk, Messaging …), abgerechnet nach Nutzung">AWS</a> das Konto, sofern nicht vorher auf den
+<a class="term" href="glossar.html#paid-plan" title="regulärer AWS-Kontoplan: alle Dienste, Startguthaben wird zuerst verbraucht, danach Abrechnung nach Nutzung; Konto bleibt bestehen">Paid Plan</a> gewechselt wurde
+[B: <a href="https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/free-tier-plans.html">https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/free-tier-plans.html</a>].</p>
+<p>Anfang März 2027 entscheiden 👁 (Guthaben prüfen wie Kapitel 3.3):</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Entscheidung</th>
+<th>Schritte</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Demo soll weiterlaufen</td>
+<td>✎ <strong><a class="term" href="glossar.html#aws-management-console" title="Weboberfläche von AWS; der Bereich Billing zeigt Rechnungen, Guthaben (Credits) und Freikontingent-Verbrauch">Billing and Cost Management</a></strong> → <strong><a class="term" href="glossar.html#free-tier" title="Sammelbegriff für kostenlose Nutzungsmengen bei AWS">Free Tier</a></strong> → <strong>Upgrade plan</strong>; das Restguthaben (gültig bis 29.09.2027) bleibt. Ab dann ist das <a class="term" href="glossar.html#aws-budgets" title="kostenloser Dienst für Kostengrenzen mit E-Mail-/SNS-Alarm bei Überschreitung; kein harter Stopp, Daten kommen Stunden verzögert">Budget</a> aus Kapitel 5 die Frühwarnung. Rückweg: keiner (Wechsel ist endgültig)</td>
+</tr>
+<tr>
+<td>Demo endet</td>
+<td>✎ <a class="term" href="glossar.html#teardown" title="vollständiges Entfernen aller Demo-Ressourcen per cdk destroy und terraform destroy">Teardown</a> (8.7), <a class="term" href="glossar.html#cdk" title="Infrastruktur als Programmcode (TypeScript, Java, Python …): man schreibt Klassen wie new Table(...), CDK erzeugt daraus CloudFormation-Vorlagen und legt die Ressourcen an">CDK</a>-<a class="term" href="glossar.html#cdk-bootstrap" title="einmalig je Konto und Region angelegte CDK-Hilfsressourcen (S3-Bucket für Artefakte, ECR-Repository, Rollen)">Bootstrap</a> entfernen (7.1), <code>terraform destroy</code> (5.4), <a class="term" href="glossar.html#terraform-state" title="Datei, in der Terraform den tatsächlichen Zustand der verwalteten Ressourcen festhält; liegt im Demo im GitLab-managed Terraform State (kein State-Bucket in S3)">State</a> <code>foundation</code> in <a class="term" href="glossar.html#gitlab" title="Git-Plattform mit CI, auch selbst betreibbar; bei rypox intern auf gitlab.rypox.org im Einsatz">GitLab</a> löschen, <a class="term" href="glossar.html#dns" title="Telefonbuch des Internets: übersetzt Namen wie energie-demo.rypox.com in Adressen">DNS</a>-Einträge löschen; das Konto schließt AWS dann selbst</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="10-repository-öffentlich-schalten">10. Repository öffentlich schalten<a class="anchor" href="#10-repository-öffentlich-schalten" title="Permanent link">#</a></h2>
+<p>Ziel: Das <a class="term" href="glossar.html#github" title="Plattform für Git-Repositories, Pull Requests und CI">GitHub</a>-<a class="term" href="glossar.html#repository" title="von Git verwaltetes Projektverzeichnis, z. B. auf GitHub">Repository</a> wird öffentlich (Vorgabe: Referenzprojekt).
+Danach braucht <a class="term" href="glossar.html#gitlab" title="Git-Plattform mit CI, auch selbst betreibbar; bei rypox intern auf gitlab.rypox.org im Einsatz">GitLab</a> keinen <a class="term" href="glossar.html#deploy-key" title="SSH-Schlüssel, der nur einem GitHub-Repository zugeordnet ist und – ohne „Allow write access“ – nur Lesen erlaubt; im Demo klont die GitLab-Pipeline damit das private Repository">Deploy-Key</a> mehr, und die Freigaberegeln des
+<a class="term" href="glossar.html#environment" title="GitHub-Umgebung (z. B. „production&quot;) mit Schutzregeln, etwa Freigabe durch eine Person vor dem Deploy">Environments</a> greifen auch im GitHub-Free-Plan.</p>
+<p>Vorher 👁: Der Agent prüft die <a class="term" href="glossar.html#git" title="verteilte Versionsverwaltung">Git</a>-Historie auf Geheimnisse, <a class="term" href="glossar.html#account-id" title="zwölfstellige Nummer eines AWS-Kontos; kein Geheimnis, aber nicht öffentlich zu machen">Kontonummern</a> und
+private Adressen und meldet das Ergebnis. Erst danach umschalten.</p>
+<ol>
+<li>✎ GitHub → Repository → <strong>Settings</strong> → <strong>General</strong> → ganz unten <strong>Danger
+   <a class="term" href="glossar.html#multi-zones" title="Next.js-Ansatz, mehrere Next.js-Apps unter einer Domain zu betreiben, aufgeteilt nach Pfaden">Zone</a></strong> → <strong>Change repository visibility</strong> → <strong>Change to public</strong> →
+   Bestätigungen folgen (Repository-Namen eintippen).
+   Rückweg: dieselbe Stelle, <strong>Change to private</strong> (bereits erstellte Forks
+   und Kopien bleiben öffentlich).</li>
+<li>✎ Deploy-Key löschen: <strong>Settings</strong> → <strong><a class="term" href="glossar.html#deployment" title="Ausliefern einer neuen Version in eine Umgebung">Deploy</a> keys</strong> →
+   <code>gitlab-platform (read-only)</code> → <strong>Delete</strong>.</li>
+<li>✎ GitLab-Variable löschen: Projekt <code>platform</code> → <strong>Settings</strong> → <strong><a class="term" href="glossar.html#ci" title="automatisches Bauen und Testen bei jeder Änderung">CI</a>/<a class="term" href="glossar.html#cd" title="automatisches Ausliefern geprüfter Änderungen">CD</a></strong> →
+   <strong>Variables</strong> → <code>GITHUB_DEPLOY_KEY</code> → <strong>Delete</strong>. Die <a class="term" href="glossar.html#pipeline" title="automatisierte Abfolge von Schritten (bauen, testen, ausliefern)">Pipeline</a> klont dann
+   anonym per <a class="term" href="glossar.html#https" title="verschlüsseltes Web-Protokoll; HTTP ohne Verschlüsselung">HTTPS</a> (<code>SOURCE_HTTPS</code>); <code>SOURCE_REF</code> bleibt ein fester <a class="term" href="glossar.html#commit" title="Commit = gespeicherter Änderungsstand in Git; Git-Tag = Name für einen bestimmten Commit, z. B. eine Version v1.2.0 (nicht zu verwechseln mit AWS-Tags)">Commit</a>,
+   den der Agent bei <a class="term" href="glossar.html#plattform-schicht" title="im Demo: per Terraform aus GitLab CI verwaltete Grundlagen (OIDC-Vertrauensstellungen, Budget + SNS-Grundlage des Kill-Switch, SSM-Grundwerte, ab Phase 3 Keycloak-Konfiguration), a">Fundament</a>-Änderungen neu setzt.</li>
+<li>👁 Nächste Pipeline im Projekt <code>platform</code> (oder <strong>Run pipeline</strong> auf
+   <code>main</code>): Job <strong>plan</strong> grün, im Protokoll „Source: <Commit>".</li>
+<li>✎ Environment <code>production</code> vervollständigen, falls 7.3 galt: Required
+   reviewers, Branch-Regeln, Environment-Variable <code>AWS_DEPLOY_ROLE_ARN</code>
+   (7.2, Schritte 3–5); danach die Repository-Variable löschen.</li>
+<li>👁 Probe: <strong>Deploy</strong> starten → der Lauf muss auf „Review deployments"
+   warten. Wenn nicht: Schritt 5 prüfen.</li>
+</ol>
+<p>Die <a class="term" href="glossar.html#workflow" title="allgemein: automatisierter Ablauf mehrerer Schritte; bei GitHub: eine Pipeline-Datei">Workflows</a> sind gegen Fremdnutzung abgesichert: Sie starten nur manuell
+(Schreibrechte nötig), nur im Repository <code>janpfeil/kundenportal-demo</code>, und
+<a class="term" href="glossar.html#pull-request" title="Änderungsvorschlag auf GitHub mit Review und automatischen Prüfungen">Pull Requests</a> aus Forks erreichen das Environment nie.</p>
+<h3 id="101-protokoll">10.1 Protokoll<a class="anchor" href="#101-protokoll" title="Permanent link">#</a></h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Datum</th>
+<th>Schritt</th>
+<th>Ergebnis</th>
+<th>Wer</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td></td>
+<td>Vorab: Historie geprüft (durch Agent)</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td>Schritt 1: Repository öffentlich</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td>Schritte 2–3: Deploy-Key und GitLab-Variable entfernt</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td>Schritt 4: Plan-Job über HTTPS grün</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td>Schritte 5–6: Freigabe greift</td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table></div></main></div>
+<footer class="site"><a href="../wiki/anleitung-anwendung.md">Markdown-Quelle</a> · Generiert 2026-09-30 07:10 aus <code>docs/wiki</code> mit <code>scripts/build_reports.py</code></footer>
+</body>
+</html>
