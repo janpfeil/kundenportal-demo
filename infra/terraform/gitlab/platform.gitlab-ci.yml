@@ -75,8 +75,9 @@ default:
 
 workflow:
   rules:
-    # The AWS role trusts only the protected main branch.
-    - if: $CI_COMMIT_BRANCH == "main"
+    # The AWS role trusts only the protected main branch; nothing runs before the
+    # owner has configured the role (after the first local Terraform run).
+    - if: $CI_COMMIT_BRANCH == "main" && $AWS_ROLE_ARN
 
 plan:
   stage: plan
