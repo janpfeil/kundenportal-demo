@@ -43,9 +43,13 @@ jobs:
           aws-region: eu-central-1
       - name: Deploy
         working-directory: infra/cdk
+        env:
+          # 0 while the account's Lambda concurrency limit is too low to reserve any.
+          RESERVED_CONCURRENCY: ${{ vars.RESERVED_CONCURRENCY || '2' }}
         run: |
           start=$(date +%s)
-          pnpm exec cdk deploy --all --require-approval never --outputs-file cdk-outputs.json
+          pnpm exec cdk deploy --all --require-approval never --outputs-file cdk-outputs.json \
+            -c reservedConcurrency="$RESERVED_CONCURRENCY"
           echo "DEPLOY_SECONDS=$(( $(date +%s) - start ))" >> "$GITHUB_ENV"
       - name: Summary
         working-directory: infra/cdk
