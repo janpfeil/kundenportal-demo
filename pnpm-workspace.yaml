@@ -4,7 +4,6 @@ packages:
   - services/*
   - infra/cdk
 
-# Only these dependencies may run install scripts (native binaries).
 minimumReleaseAgeExclude:
   - "@typescript-eslint/eslint-plugin@8.71.0"
   - "@typescript-eslint/parser@8.71.0"
@@ -34,6 +33,7 @@ minimumReleaseAgeExclude:
   - "@next/swc-win32-x64-msvc@16.3.7"
   - next@16.3.7
 
-onlyBuiltDependencies:
-  - esbuild
-  - sharp
+# Only these dependencies may run install scripts (native binaries).
+allowBuilds:
+  esbuild: true
+  sharp: true

@@ -1,0 +1,61 @@
+import { HttpApi, HttpMethod, HttpStage } from "aws-cdk-lib/aws-apigatewayv2";
+import { HttpJwtAuthorizer } from "aws-cdk-lib/aws-apigatewayv2-authorizers";
+import { HttpLambdaIntegration } from "aws-cdk-lib/aws-apigatewayv2-integrations";
+import type { IFunction } from "aws-cdk-lib/aws-lambda";
+import type { ApiRoute } from "@kundenportal/api-contract/routes";
+import { Construct } from "constructs";
+
+/** Stage name doubles as path prefix, so CloudFront can pass `/api/*` through unchanged. */
+export const API_STAGE = "api";
+
+export interface ApiProps {
+  routes: ApiRoute[];
+  /** Which function serves which operation of the contract. */
+  handlers: Record<string, IFunction>;
+  issuer: string;
+  audience: string[];
+}
+
+/** HTTP API with a JWT authorizer; routes and required scopes come from the OpenAPI contract. */
+export class Api extends Construct {
+  readonly httpApi: HttpApi;
+  readonly stage: HttpStage;
+  /** Base URL including the stage, e.g. https://abc.execute-api.eu-central-1.amazonaws.com/api */
+  readonly url: string;
+
+  constructor(scope: Construct, id: string, props: ApiProps) {
+    super(scope, id);
+
+    this.httpApi = new HttpApi(this, "HttpApi", {
+      createDefaultStage: false,
+      description: "Kundenportal API",
+    });
+    this.stage = new HttpStage(this, "Stage", {
+      httpApi: this.httpApi,
+      stageName: API_STAGE,
+      autoDeploy: true,
+      // Cost and abuse guard: far above demo traffic, far below anything that costs money.
+      throttle: { rateLimit: 10, burstLimit: 20 },
+    });
+
+    const authorizer = new HttpJwtAuthorizer("Jwt", props.issuer, { jwtAudience: props.audience });
+    const integrations = new Map<IFunction, HttpLambdaIntegration>();
+    for (const route of props.routes) {
+      const handler = props.handlers[route.operationId];
+      if (!handler) throw new Error(`No function for operation ${route.operationId}`);
+      const integration =
+        integrations.get(handler) ??
+        new HttpLambdaIntegration(`${route.operationId}Integration`, handler);
+      integrations.set(handler, integration);
+      this.httpApi.addRoutes({
+        path: route.path,
+        methods: [HttpMethod[route.method]],
+        integration,
+        authorizer,
+        authorizationScopes: route.scopes,
+      });
+    }
+
+    this.url = `${this.httpApi.apiEndpoint}/${API_STAGE}`;
+  }
+}

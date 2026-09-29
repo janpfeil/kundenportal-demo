@@ -1,0 +1,29 @@
+{
+  "name": "@kundenportal/infra-cdk",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AWS CDK application: identity (Cognito), API, services, events, data and edge of the portal",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "build": "cdk synth --quiet",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint bin lib test",
+    "test": "vitest run",
+    "cdk": "cdk"
+  },
+  "dependencies": {
+    "@kundenportal/api-contract": "workspace:*",
+    "aws-cdk-lib": "^2.271.0",
+    "constructs": "^10.8.1"
+  },
+  "devDependencies": {
+    "@kundenportal/customer": "workspace:*",
+    "@kundenportal/identity": "workspace:*",
+    "@kundenportal/notification": "workspace:*",
+    "@kundenportal/shell": "workspace:*",
+    "aws-cdk": "^2.1143.0",
+    "esbuild": "^0.28.2",
+    "tsx": "^4.23.15"
+  }
+}

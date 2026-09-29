@@ -1,0 +1,10 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    // aws-cdk-lib types are not written for exact optional properties (e.g. Bucket vs IBucket).
+    "exactOptionalPropertyTypes": false,
+    "types": ["node"]
+  },
+  "include": ["bin", "lib", "test"]
+}
