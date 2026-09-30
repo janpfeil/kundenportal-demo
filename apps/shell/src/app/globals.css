@@ -34,3 +34,28 @@
   color: var(--kp-muted);
   font-size: 0.9rem;
 }
+
+/* Demo pass */
+
+.pass-secret {
+  overflow-wrap: anywhere;
+  font-size: 0.95rem;
+}
+
+.pass-password {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.copy {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.redeem-check {
+  margin: 0 0 var(--kp-space);
+}

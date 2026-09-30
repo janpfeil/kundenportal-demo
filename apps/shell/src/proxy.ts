@@ -15,4 +15,5 @@ export function proxy(request: NextRequest) {
   return NextResponse.redirect(login);
 }
 
-export const config = { matcher: ["/konto/:path*", "/postfach/:path*"] };
+// "/pass" only: the redeem page /pass/einloesen and its route handlers are public.
+export const config = { matcher: ["/konto/:path*", "/postfach/:path*", "/pass"] };

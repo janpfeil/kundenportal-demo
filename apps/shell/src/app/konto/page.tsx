@@ -1,14 +1,19 @@
 import { Facts, Notice, Page } from "@kundenportal/ui";
+import { PASS_GROUP, groupsOf } from "@kundenportal/web-auth";
 import { dictionary } from "@/i18n";
 import { LinkOffers } from "@/components/link-offers";
 import { ProfileForm } from "@/components/profile-form";
 import { api } from "@/lib/api";
+import { readSession } from "@/lib/session";
+import { ShellLink } from "@/lib/shell-link";
 
 export const dynamic = "force-dynamic";
 
 export default async function AccountPage() {
   const { locale, t } = await dictionary();
   const client = await api();
+  const session = await readSession();
+  const passHolder = session ? groupsOf(session.accessToken).includes(PASS_GROUP) : false;
   const [{ data: customer }, { data: links }] = await Promise.all([
     client.GET("/me"),
     client.GET("/me/links"),
@@ -25,6 +30,11 @@ export default async function AccountPage() {
   );
   return (
     <Page title={t.account.title}>
+      {passHolder && (
+        <p data-testid="account-pass">
+          <ShellLink href="/pass">{t.account.passHint}</ShellLink>
+        </p>
+      )}
       <Facts
         data-testid="account"
         items={[

@@ -1,6 +1,7 @@
 import { AppShell, type NavItem } from "@kundenportal/ui";
 import { otherLocale } from "@kundenportal/ui/i18n";
 import type { Metadata } from "next";
+import { PASS_GROUP, groupsOf } from "@kundenportal/web-auth";
 import type { ReactNode } from "react";
 import { dictionary } from "@/i18n";
 import { readSession } from "@/lib/session";
@@ -15,7 +16,12 @@ export const metadata: Metadata = {
 };
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
-  const [{ locale, common: t }, session] = await Promise.all([dictionary(), readSession()]);
+  const [{ locale, common: t, t: shell }, session] = await Promise.all([
+    dictionary(),
+    readSession(),
+  ]);
+  // Pass holders get a link to their pass status; read from the token, no extra API call.
+  const passHolder = session ? groupsOf(session.accessToken).includes(PASS_GROUP) : false;
   const target = otherLocale(locale);
   const nav: NavItem[] = [
     { href: "/", label: t.nav.home },
@@ -26,6 +32,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
           { href: "/postfach", label: t.nav.mailbox },
           { href: "/vertraege", label: t.nav.contracts },
           { href: "/verbrauch", label: t.nav.consumption },
+          ...(passHolder ? [{ href: "/pass", label: shell.nav.pass }] : []),
         ]
       : []),
   ];

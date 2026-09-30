@@ -42,6 +42,7 @@ minimumReleaseAgeExclude:
   - "@storybook/react-vite@10.6.1"
   - "@storybook/react@10.6.1"
   - storybook@10.6.1
+  - altcha@3.2.4
 
 # Only these dependencies may run install scripts (native binaries).
 allowBuilds:

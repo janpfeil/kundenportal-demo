@@ -3,7 +3,7 @@ import Link from "next/link";
 import type { ComponentProps } from "react";
 
 /** Pages rendered by this zone; everything else belongs to another zone. */
-const SHELL_PAGES = new Set(["/", "/konto", "/postfach"]);
+const SHELL_PAGES = new Set(["/", "/konto", "/postfach", "/pass", "/pass/einloesen"]);
 
 type NextLinkRest = Omit<ComponentProps<typeof Link>, "href">;
 
