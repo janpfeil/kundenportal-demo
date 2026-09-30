@@ -5,3 +5,4 @@ export * from "./consumption.js";
 export * from "./documents.js";
 export * from "./delivery.js";
 export * from "./migration.js";
+export * from "./tenancy.js";

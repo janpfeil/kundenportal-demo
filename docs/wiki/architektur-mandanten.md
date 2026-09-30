@@ -28,7 +28,7 @@ das System den Mandanten vollständig zurück.
 | Mandant | Kennung | Daten | Konten |
 |---|---|---|---|
 | Inhaber (Bestand) | `owner` | Tabelle der Base (unverändert) | bisherige Konten, Gruppe `owner` |
-| Demo-Pass | `p` + 7 Zeichen Base32, z. B. `p4k9x2qa` | eigene Tabelle `kp-tenant-<kennung>` | Pass-Inhaber (Gruppe `pass`) und Demo-Personen des Mandanten |
+| Demo-Pass | `p` + 7 Zeichen Base32, z. B. `p4k7x2qa` | eigene Tabelle `kp-tenant-<kennung>` | Pass-Inhaber (Gruppe `pass`) und Demo-Personen des Mandanten |
 
 Die Kennung passt in alle bestehenden Muster (Token-Claim
 `/^[a-z0-9-]{1,40}$/`, Altsysteme `/^[a-z0-9][a-z0-9-]{0,39}$/`,
@@ -60,7 +60,7 @@ Pass-Mandanten entsteht durch das System, nie durch Selbstregistrierung:
   Cognito schickt das Einmal-Passwort an diese Adresse; die erste Anmeldung
   bestätigt sie. Weitere E-Mails verschickt das System an Pass-Inhaber nicht.
 - **Demo-Personen:** Anmeldename mit Plus-Adresse, z. B.
-  `anna.becker+p4k9x2qa@example.org`. Der Migrate-User-Trigger liest den
+  `anna.becker+p4k7x2qa@example.org`. Der Migrate-User-Trigger liest den
   Zusatz, prüft, dass ein aktiver Pass-Mandant dieser Kennung existiert,
   fragt das Altsystem **dieses** Mandanten mit der Adresse ohne Zusatz und
   setzt `custom:tenant_id` beim Anlegen. Der Bulk-Import eines

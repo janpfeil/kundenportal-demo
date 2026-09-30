@@ -217,7 +217,7 @@ Generator liest beide Dateien und erzeugt daraus **eine** Glossar-Seite.
 | Token Vending Machine | Token-Vending | Muster für Mandantentrennung: eine geteilte Funktion holt sich je Anfrage kurzlebige Anmeldedaten, die nur die Daten eines Mandanten erlauben | Row-Level Security in PostgreSQL, Hibernate-Filter |
 | Sitzungs-Tag | Session Tag, Principal Tag, aws:PrincipalTag | Schlüssel-Wert-Paar, das beim Annehmen einer IAM-Rolle mitgegeben wird; Richtlinien können Ressourcennamen daraus bilden (z. B. nur die Tabelle des eigenen Mandanten) | Claims in einem Token, die eine Datenbank-Policy auswertet |
 | STS | AWS STS, Security Token Service, AssumeRole | AWS-Dienst, der kurzlebige Anmeldedaten für eine Rolle ausgibt; kostenlos | Keycloak Token Exchange, HashiCorp Vault |
-| Plus-Adresse | Plus-Adressierung, Subaddressing | E-Mail-Adresse mit Zusatz nach einem Pluszeichen (`anna+p4k9@…`); im Demo trägt der Zusatz die Kennung des Mandanten einer Demo-Person | — |
+| Plus-Adresse | Plus-Adressierung, Subaddressing | E-Mail-Adresse mit Zusatz nach einem Pluszeichen (`anna+p4k7x2qa@…`); im Demo trägt der Zusatz die Kennung des Mandanten einer Demo-Person | — |
 | IP-Adresse | IP | Internetadresse eines Geräts; dient zur Begrenzung von Anfragen je Absender | — |
 | Spam | Spam-Schleuder | unerwünschte Massen-Nachrichten; hier: Missbrauch der Demo zum Versand an Dritte | — |
 | Infrastruktur-Automatisierung | Bereitstellung auf Knopfdruck | Anlegen vollständiger Umgebungen per Programm statt per Hand | — |

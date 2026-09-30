@@ -54,7 +54,7 @@ das System den Mandanten vollständig zurück.</p>
 </tr>
 <tr>
 <td><a class="term" href="glossar.html#demo-pass" title="im Demo: zeitlich begrenzte Berechtigung (7 Tage, Kontingent) für eine eigene Instanz; ausgestellt per Einladungslink oder für den Inhaber">Demo-Pass</a></td>
-<td><code>p</code> + 7 Zeichen Base32, z. B. <code>p4k9x2qa</code></td>
+<td><code>p</code> + 7 Zeichen Base32, z. B. <code>p4k7x2qa</code></td>
 <td>eigene Tabelle <code>kp-tenant-&lt;kennung&gt;</code></td>
 <td>Pass-Inhaber (Gruppe <code>pass</code>) und <a class="term" href="glossar.html#demo-person" title="im Demo vorbereitete fiktive Kundinnen und Kunden mit festgelegter Geschichte (z. B. Anna Becker: Altkundin, Lazy Migration)">Demo-Personen</a> des <a class="term" href="glossar.html#mandant" title="abgeschotteter Bereich eines Kunden in einer gemeinsam betriebenen Anwendung; im Demo je Demo-Pass ein Mandant">Mandanten</a></td>
 </tr>
@@ -118,8 +118,8 @@ Anlegen eines Kontos setzen. Genau das nutzt der Entwurf — jedes Konto eines
   <a class="term" href="glossar.html#e-mail" title="elektronische Post; SNS verschickt bis 1.000 E-Mails im Monat kostenlos">E-Mail</a> aus der Einladung, <code>custom:tenant_id</code> = Kennung, Gruppe <code>pass</code>.
   Cognito schickt das Einmal-Passwort an diese Adresse; die erste Anmeldung
   bestätigt sie. Weitere E-Mails verschickt das System an Pass-Inhaber nicht.</li>
-<li><strong><a class="term" href="glossar.html#demo-person" title="im Demo vorbereitete fiktive Kundinnen und Kunden mit festgelegter Geschichte (z. B. Anna Becker: Altkundin, Lazy Migration)">Demo-Personen</a>:</strong> Anmeldename mit <a class="term" href="glossar.html#plus-adresse" title="E-Mail-Adresse mit Zusatz nach einem Pluszeichen (anna+p4k9@…); im Demo trägt der Zusatz die Kennung des Mandanten einer Demo-Person">Plus-Adresse</a>, z. B.
-  <code>anna.becker+p4k9x2qa@example.org</code>. Der <a class="term" href="glossar.html#migrate-user-trigger" title="Cognito-Trigger für die Lazy Migration: meldet sich ein unbekannter Nutzer mit Passwort an, prüft die Lambda die Daten beim Altsystem; bei Erfolg legt Cognito den Nutzer mit demsel">Migrate-User-Trigger</a> liest den
+<li><strong><a class="term" href="glossar.html#demo-person" title="im Demo vorbereitete fiktive Kundinnen und Kunden mit festgelegter Geschichte (z. B. Anna Becker: Altkundin, Lazy Migration)">Demo-Personen</a>:</strong> Anmeldename mit <a class="term" href="glossar.html#plus-adresse" title="E-Mail-Adresse mit Zusatz nach einem Pluszeichen (anna+p4k7x2qa@…); im Demo trägt der Zusatz die Kennung des Mandanten einer Demo-Person">Plus-Adresse</a>, z. B.
+  <code>anna.becker+p4k7x2qa@example.org</code>. Der <a class="term" href="glossar.html#migrate-user-trigger" title="Cognito-Trigger für die Lazy Migration: meldet sich ein unbekannter Nutzer mit Passwort an, prüft die Lambda die Daten beim Altsystem; bei Erfolg legt Cognito den Nutzer mit demsel">Migrate-User-Trigger</a> liest den
   Zusatz, prüft, dass ein aktiver Pass-Mandant dieser Kennung existiert,
   fragt das <a class="term" href="glossar.html#legacy-system" title="bestehendes Altsystem mit Kundendaten, das abgelöst werden soll; im Demo simuliert">Altsystem</a> <strong>dieses</strong> Mandanten mit der Adresse ohne Zusatz und
   setzt <code>custom:tenant_id</code> beim Anlegen. Der <a class="term" href="glossar.html#bulk-import" title="Übernahme vieler Konten auf einmal; bei Cognito per CSV-Import oder AdminCreateUser, im Demo ohne Passwörter (Nutzer müssen zurücksetzen); Hash-Import (u. a. bcrypt) ist noch nicht">Bulk-Import</a> eines
@@ -340,6 +340,6 @@ Hinweis.</p>
 Code</a> am deutlichsten, dauert aber 2–5 Minuten und belegt je Instanz einen
 Bus und eine <a class="term" href="glossar.html#distribution" title="eine CloudFront-Konfiguration mit eigener Domain, Ursprüngen und Regeln">Distribution</a>. Er bleibt eine Option für den Inhaber und ist
 nicht Teil von Phase 4.</p></main></div>
-<footer class="site"><a href="../wiki/architektur-mandanten.md">Markdown-Quelle</a> · Generiert 2026-09-30 19:52 aus <code>docs/wiki</code> mit <code>scripts/build_reports.py</code></footer>
+<footer class="site"><a href="../wiki/architektur-mandanten.md">Markdown-Quelle</a> · Generiert 2026-09-30 19:54 aus <code>docs/wiki</code> mit <code>scripts/build_reports.py</code></footer>
 </body>
 </html>
