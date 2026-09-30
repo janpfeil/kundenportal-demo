@@ -6,6 +6,10 @@ import {
   CachePolicy,
   CfnOriginAccessControl,
   Distribution,
+  Function as CloudFrontFunction,
+  FunctionCode,
+  FunctionEventType,
+  FunctionRuntime,
   HttpVersion,
   OriginProtocolPolicy,
   OriginRequestPolicy,
@@ -21,12 +25,19 @@ import { BucketDeployment, Source } from "aws-cdk-lib/aws-s3-deployment";
 import { StringParameter } from "aws-cdk-lib/aws-ssm";
 import type { Construct } from "constructs";
 import { REPO_ROOT } from "./functions.js";
+import { pauseFunctionCode } from "./pause-page.js";
 import { PARAM } from "./parameters.js";
 import { ZONES, zoneParams } from "./zones.js";
 
 export interface EdgeStackProps extends StackProps {
   domainName: string;
   certificate: ICertificate;
+  /**
+   * The application stack is paused (teardown.sh without --all): no origin of the app
+   * exists, so the edge answers every page and API call itself with a 503 page. The
+   * static files stay; the distribution and its DNS name do not change.
+   */
+  paused?: boolean;
 }
 
 /**
@@ -36,6 +47,7 @@ export interface EdgeStackProps extends StackProps {
  * (`cdk deploy --force`), which points the same distribution at the new origins.
  *
  * `/` → shell function URL (origin access control), `/_next/static/*` → S3, `/api/*` → HTTP API.
+ * While paused, a CloudFront Function answers `/` and `/api/*` with 503 instead.
  */
 export class EdgeStack extends Stack {
   constructor(scope: Construct, id: string, props: EdgeStackProps) {
@@ -68,6 +80,10 @@ export class EdgeStack extends Stack {
       });
 
     const assetsOrigin = S3BucketOrigin.withOriginAccessControl(assets);
+    if (props.paused) {
+      this.pausedDistribution(props, assets, assetsOrigin);
+      return;
+    }
     const distribution = new Distribution(this, "Distribution", {
       comment: "Kundenportal demo",
       priceClass: PriceClass.PRICE_CLASS_100,
@@ -206,6 +222,51 @@ export class EdgeStack extends Stack {
       value: distribution.distributionDomainName,
       description:
         "Target of the CNAME record for the portal's domain (stable across app redeploys)",
+    });
+  }
+
+  /** Paused edge: same distribution, every dynamic path answered by the pause function. */
+  private pausedDistribution(
+    props: EdgeStackProps,
+    assets: Bucket,
+    assetsOrigin: ReturnType<typeof S3BucketOrigin.withOriginAccessControl>,
+  ): void {
+    const pause = new CloudFrontFunction(this, "PauseFunction", {
+      comment: "Answers every request with the pause page while the app is torn down",
+      runtime: FunctionRuntime.JS_2_0,
+      code: FunctionCode.fromInline(pauseFunctionCode()),
+    });
+    const answeredByPause = {
+      origin: assetsOrigin,
+      viewerProtocolPolicy: ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+      allowedMethods: AllowedMethods.ALLOW_ALL,
+      cachePolicy: CachePolicy.CACHING_DISABLED,
+      functionAssociations: [{ function: pause, eventType: FunctionEventType.VIEWER_REQUEST }],
+    };
+    const staticFiles = {
+      origin: assetsOrigin,
+      viewerProtocolPolicy: ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+      cachePolicy: CachePolicy.CACHING_OPTIMIZED,
+      responseHeadersPolicy: ResponseHeadersPolicy.SECURITY_HEADERS,
+    };
+    const distribution = new Distribution(this, "Distribution", {
+      comment: "Kundenportal demo",
+      priceClass: PriceClass.PRICE_CLASS_100,
+      httpVersion: HttpVersion.HTTP2_AND_3,
+      domainNames: [props.domainName],
+      certificate: props.certificate,
+      defaultBehavior: answeredByPause,
+      additionalBehaviors: {
+        "/_next/static/*": staticFiles,
+        "/widgets/*": staticFiles,
+        "/api/*": answeredByPause,
+      },
+    });
+    void assets;
+    new CfnOutput(this, "PortalUrl", { value: `https://${props.domainName}` });
+    new CfnOutput(this, "DistributionDomain", {
+      value: distribution.distributionDomainName,
+      description: "Target of the CNAME record; unchanged while paused",
     });
   }
 }

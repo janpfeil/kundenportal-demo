@@ -42,6 +42,7 @@ new EdgeStack(app, "KundenportalEdge", {
   crossRegionReferences: true,
   domainName: config.domainName,
   certificate: certificate.certificate,
+  paused: config.edgePaused,
   description: "Kundenportal demo: CloudFront distribution and static files (long-lived)",
 });
 

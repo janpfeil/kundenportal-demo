@@ -20,6 +20,8 @@ export interface PortalConfig {
   ownerEmailParameter: string;
   /** Allows sign-in callbacks to http://localhost:3000 for local development of the shell. */
   allowLocalhostCallback: boolean;
+  /** The app stack is paused: the edge serves the pause page (see teardown.sh). */
+  edgePaused: boolean;
 }
 
 export const PROJECT_TAG = "kundenportal-demo";
@@ -39,5 +41,6 @@ export function loadConfig(app: App): PortalConfig {
     apiReservedConcurrency: reserved > 0 ? Number(context("apiReservedConcurrency") ?? 5) : 0,
     ownerEmailParameter: String(context("ownerEmailParameter") ?? "/kundenportal/owner-email"),
     allowLocalhostCallback: String(context("allowLocalhostCallback") ?? "true") === "true",
+    edgePaused: String(context("edgePaused") ?? "false") === "true",
   };
 }

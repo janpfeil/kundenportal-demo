@@ -3,7 +3,8 @@
 #   teardown.sh          removes the application stack only (services, shell, API, events —
 #                        the pay-per-use part); certificate, base (users, data, confirmed
 #                        e-mail subscription) and edge (CloudFront, DNS target) stay, so the
-#                        next deploy.sh brings the portal back under the same address.
+#                        next deploy.sh brings the portal back under the same address. The
+#                        edge then answers every request with a "demo paused" page (503).
 #   teardown.sh --all    removes every stack; the next deploy creates a new CloudFront
 #                        distribution, whose new domain the DNS record must then point to.
 # CDK bootstrap and the Terraform foundation are never touched.
@@ -30,6 +31,12 @@ destroy() {
     [ "$region" = "$AWS_REGION" ] && delete_stack "$stack"
   fi
 }
+
+if [ "$ALL" = false ] && stack_exists KundenportalEdge; then
+  # First the edge, so visitors get the pause page instead of errors from vanishing origins.
+  log "Switching the edge to the pause page"
+  cdk deploy KundenportalEdge --require-approval never --exclusively --force -c edgePaused=true
+fi
 
 destroy KundenportalApp
 delete_log_groups /aws/lambda/KundenportalApp-
