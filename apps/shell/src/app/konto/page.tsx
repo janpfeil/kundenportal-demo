@@ -1,5 +1,6 @@
 import { Facts, Notice, Page } from "@kundenportal/ui";
 import { dictionary } from "@/i18n";
+import { LinkOffers } from "@/components/link-offers";
 import { ProfileForm } from "@/components/profile-form";
 import { api } from "@/lib/api";
 
@@ -7,7 +8,11 @@ export const dynamic = "force-dynamic";
 
 export default async function AccountPage() {
   const { locale, t } = await dictionary();
-  const { data: customer } = await (await api()).GET("/me");
+  const client = await api();
+  const [{ data: customer }, { data: links }] = await Promise.all([
+    client.GET("/me"),
+    client.GET("/me/links"),
+  ]);
   if (!customer) {
     return (
       <Page title={t.account.title}>
@@ -29,8 +34,20 @@ export default async function AccountPage() {
           { term: t.account.locale, description: customer.locale === "de" ? "Deutsch" : "English" },
           { term: t.account.origin, description: t.account.origins[customer.origin] },
           { term: t.account.since, description: since },
+          ...(customer.address
+            ? [
+                {
+                  term: t.account.address,
+                  description: `${customer.address.street} ${customer.address.houseNumber}, ${customer.address.postalCode} ${customer.address.city}`,
+                },
+              ]
+            : []),
+          ...(customer.legacyAccounts?.length
+            ? [{ term: t.account.legacyAccounts, description: customer.legacyAccounts.join(", ") }]
+            : []),
         ]}
       />
+      <LinkOffers offers={links?.links ?? []} texts={t.account.links} />
       <ProfileForm
         displayName={customer.displayName}
         locale={customer.locale}

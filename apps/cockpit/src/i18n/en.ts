@@ -1,0 +1,76 @@
+import type { Dictionary } from "./index";
+
+export const en: Dictionary = {
+  title: "Migration cockpit",
+  nav: "Cockpit",
+  lead: "Takeover of the customer accounts from the utility's and the telco's legacy systems: progress, clarification cases, failed records and all events.",
+  refresh: "Refresh",
+  live: "Refreshes every 10 seconds.",
+  forbidden: "The migration cockpit is only available to the owner of the portal.",
+  error: "The migration status could not be loaded right now.",
+  systems: { utility: "Utility", telco: "Telco" },
+  progress: {
+    title: "Progress",
+    caption: "Status per legacy system",
+    system: "Legacy system",
+    total: "Records",
+    done: "taken over",
+    unknown: "Legacy system unreachable",
+    of: "{done} of {total} taken over ({percent} %)",
+  },
+  statuses: {
+    "pending-lazy": "waiting for sign-in",
+    queued: "in progress",
+    migrated: "taken over",
+    linked: "linked",
+    clarification: "clarification",
+    failed: "failed",
+  },
+  bulk: {
+    title: "Bulk import of inactive accounts",
+    intro:
+      "Takes over all accounts without sign-in for 12 months. Passwords are not transferred; the customers are asked to choose a new one.",
+    start: "Start {system} import",
+    started: "Import started. Progress appears in a few seconds.",
+    running: "An import for this legacy system is already running.",
+    failed: "The import could not be started.",
+    runs: "Recent runs",
+    runCaption: "Bulk import runs",
+    startedAt: "Started",
+    status: "Status",
+    counts: "Result",
+    runStatus: { running: "running", completed: "completed" },
+    countsText:
+      "{read} read · {migrated} taken over · {skippedActive} active · {clarification} clarification · {failed} failed",
+  },
+  clarifications: {
+    title: "Clarification cases",
+    intro: "Records that cannot be taken over without asking, e.g. without a valid email address.",
+    caption: "Clarification cases",
+    empty: "No clarification cases.",
+  },
+  deadLetters: {
+    title: "Dead-letter queue",
+    intro:
+      "Records whose processing failed. After a correction they can be processed again (redrive); the legacy system stays unchanged.",
+    caption: "Failed records",
+    empty: "The dead-letter queue is empty.",
+    attempts: "Attempts",
+    redrive: "Process again",
+    postalCode: "Postal code (correction)",
+    email: "Email address (correction)",
+    queued: "Queued again.",
+    failed: "The redrive failed.",
+  },
+  columns: {
+    account: "Account",
+    name: "Name",
+    problem: "Problem",
+    updatedAt: "Updated",
+  },
+  timeline: {
+    title: "Event timeline",
+    intro: "All events of the portal in the last seven days, newest first.",
+    empty: "No events yet.",
+  },
+};

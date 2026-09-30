@@ -3,16 +3,18 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const session = { sub: "s", accessToken: "t", expiresAt: Date.now() + 60_000 };
 const readSession = vi.fn();
 const patch = vi.fn();
+const post = vi.fn();
 
 vi.mock("next/headers", () => ({ cookies: vi.fn() }));
 vi.mock("./session", () => ({ readSession: () => readSession() }));
-vi.mock("./api", () => ({ api: async () => ({ PATCH: patch }) }));
+vi.mock("./api", () => ({ api: async () => ({ PATCH: patch, POST: post }) }));
 vi.mock("./config", () => ({
   config: () => ({ appUrl: new URL("https://kundenportal-demo.rypox.com") }),
 }));
 
 const { PATCH: patchProfile } = await import("../app/konto/profil/route");
 const { POST: markRead } = await import("../app/postfach/[notificationId]/gelesen/route");
+const { POST: confirmLink } = await import("../app/konto/verknuepfung/route");
 
 const request = (origin: string | undefined, body?: unknown) =>
   new Request("https://kundenportal-demo.rypox.com/x", {
@@ -61,5 +63,16 @@ describe("write routes", () => {
       params: { path: { notificationId: "n-1" } },
       body: { read: true },
     });
+  });
+
+  it("passes a link confirmation to POST /me/links and the API's status back", async () => {
+    post.mockResolvedValue({ error: { title: "Forbidden" }, response: { status: 403 } });
+    const origin = "https://kundenportal-demo.rypox.com";
+    const link = { system: "telco", customerNumber: "T/88-4711", password: "pw" };
+    expect((await confirmLink(request(origin, link))).status).toBe(403);
+    expect(post).toHaveBeenCalledWith("/me/links", { body: link });
+    expect((await confirmLink(request(origin, { system: "gas" }))).status).toBe(400);
+    expect((await confirmLink(request("https://evil.example", link))).status).toBe(403);
+    expect(post).toHaveBeenCalledTimes(1);
   });
 });

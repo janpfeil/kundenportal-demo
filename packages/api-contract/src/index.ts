@@ -34,3 +34,7 @@ export function createApiClient(baseUrl: string, getAccessToken: () => Promise<s
   client.use(auth);
   return client;
 }
+export type LinkOffer = components["schemas"]["LinkOffer"];
+export type MigrationStatus = components["schemas"]["MigrationStatus"];
+export type MigrationRecord = components["schemas"]["MigrationRecord"];
+export type MigrationRun = components["schemas"]["MigrationRun"];

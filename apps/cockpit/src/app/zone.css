@@ -1,0 +1,48 @@
+/* Zone-specific styles; tokens, base styles and components come from @kundenportal/ui/styles.css. */
+
+.zone-section {
+  margin-top: 24px;
+}
+
+/* Long ids and messages must wrap on 360 px wide screens. */
+.zone-break {
+  overflow-wrap: anywhere;
+}
+
+.cockpit-progress {
+  display: grid;
+  gap: 16px;
+  padding: 0;
+  list-style: none;
+}
+
+.cockpit-progress progress {
+  display: block;
+  width: 100%;
+  height: 12px;
+  margin: 8px 0 4px;
+}
+
+.cockpit-counts {
+  font-size: 0.875rem;
+}
+
+.cockpit-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 16px 0;
+}
+
+.cockpit-redrive {
+  display: grid;
+  gap: 8px;
+  min-width: 12rem;
+}
+
+.cockpit-timeline {
+  display: grid;
+  gap: 8px;
+  padding-left: 1.25rem;
+  font-size: 0.9375rem;
+}

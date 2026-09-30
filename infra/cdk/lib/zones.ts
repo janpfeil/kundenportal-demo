@@ -17,6 +17,8 @@ export interface ZoneDefinition {
 export const ZONES: readonly ZoneDefinition[] = [
   { id: "contracts", app: "apps/contracts", basePath: "/vertraege" },
   { id: "consumption", app: "apps/consumption", basePath: "/verbrauch" },
+  // Phase 3: migration cockpit, owner only (the API checks the Cognito group).
+  { id: "cockpit", app: "apps/cockpit", basePath: "/cockpit" },
 ];
 
 export const zoneParams = (zone: ZoneDefinition) => ({
