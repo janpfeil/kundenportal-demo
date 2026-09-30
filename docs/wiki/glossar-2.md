@@ -41,6 +41,9 @@ Generator liest beide Dateien und erzeugt daraus **eine** Glossar-Seite.
 | Server Actions | | Next.js-Funktionen, die ein Formular direkt auf dem Server verarbeiten, ohne eigene API | Spring-MVC-`@PostMapping` mit Formular |
 | Streaming | | Server schickt eine Seite in Teilen, sobald sie fertig sind, statt auf alles zu warten | `StreamingResponseBody` in Spring |
 | Client-Komponente | Client-Komponenten, Client Components | React-Komponente, die im Browser läuft (Gegenstück zu Server Components) | — |
+| Hydration | hydriert, Hydrierung | Schritt, in dem React im Browser das vom Server gelieferte HTML übernimmt und interaktiv macht; erst danach reagieren Schaltflächen und Formulare | Hydration in Vue/Nuxt, Angular Universal |
+| Prerendering | vorgerendert, Vorgerenderte Seiten, statisch vorgerendert | Next.js erzeugt eine Seite schon beim Build als fertiges HTML, wenn sie weder Cookies noch Header liest; die Seite ist dann für alle Besucher gleich und kann im CDN liegen | Static Site Generation (Astro, Hugo), gecachte Seiten in Varnish |
+| Route Group | Route Groups, Root-Layout | Ordner in Klammern (`(public)`) im Next.js-App-Router: gruppiert Seiten ohne Einfluss auf die URL, z. B. um ihnen ein eigenes Root-Layout zu geben | getrennte Layouts je Bereich in Thymeleaf oder Spring MVC |
 | Middleware | | Code, der in Next.js vor jeder Anfrage läuft (z. B. Login prüfen, umleiten) | Servlet-Filter, Spring `HandlerInterceptor` |
 | SSR | Server-Side Rendering, Server-Rendering | HTML wird pro Anfrage auf dem Server erzeugt | JSP, Thymeleaf |
 | ISR | Incremental Static Regeneration, ISR-Revalidierung | Next.js erzeugt statische Seiten und aktualisiert sie im Hintergrund nach Zeit oder Ereignis | Cache mit Hintergrund-Aktualisierung |
