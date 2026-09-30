@@ -1,6 +1,6 @@
 # Architektur — Ist-Stand des Portals
 
-Stand: 2026-09-30 · Beschreibt den **Ist-Stand** des Codes (Phase 1 bis 3 abgeschlossen), nicht die Zielarchitektur. Kennzeichnung: **[B]** belegt (offizielle Quelle oder Messung), **[A]** Annahme, **[E]** Einschätzung.
+Stand: 2026-09-30 · Beschreibt den **Ist-Stand** des Codes (Phase 1 bis 4 abgeschlossen, Release v0.4.0), nicht die Zielarchitektur. Kennzeichnung: **[B]** belegt (offizielle Quelle oder Messung), **[A]** Annahme, **[E]** Einschätzung.
 
 Fachbegriffe sind in jedem Abschnitt beim ersten Vorkommen mit dem [Glossar](glossar.md) verlinkt (Erklärung und Entsprechung außerhalb von AWS).
 
@@ -19,6 +19,10 @@ diese Seite zeigt, was davon tatsächlich gebaut ist:
   simulierte Altsysteme, Übernahme der Kundenkonten per Migrate-User-Trigger
   und Bulk-Import, Dublettenerkennung mit Account-Linking, Migrations-Cockpit
   ([Architektur: Altsysteme und Migration](architektur-migration.md)).
+- **Phase 4 (abgeschlossen, v0.4.0):** Einladungslinks und Demo-Pass mit
+  eigenem Mandanten je Besucher im Bridge-Modell, Isolation per Token
+  Vending, Kontingente, automatischer Ablauf und Rückbau (Abschnitt 11,
+  [Architektur: Mandanten und Demo-Pass](architektur-mandanten.md)).
 
 Wie der Kontoinhaber das Ganze aufbaut, steht in der
 [Anleitung Fundament](anleitung-fundament.md) und der
@@ -132,7 +136,7 @@ Ein [Pre-Token-Generation-Trigger](glossar.md#pre-token-generation-trigger)
 
 | Claim | Quelle |
 |---|---|
-| `tenant_id` | Attribut `custom:tenant_id` (unveränderlich, nur die Plattform setzt es); fehlt es, gilt in Phase 1 der Mandant `owner` |
+| `tenant_id` | Attribut `custom:tenant_id` (unveränderlich, nur die Plattform setzt es); fehlt es, gilt der Mandant `owner`. Seit Phase 4 tragen Konten eines Pass-Mandanten dessen Kennung, und der Trigger lehnt Anmeldungen zu nicht mehr nutzbaren Pässen ab |
 | `email` | nur wenn `email_verified = true` |
 | `locale` | Attribut `locale`, falls gesetzt |
 | `name` | Attribut `name`, falls gesetzt |
@@ -148,8 +152,9 @@ Der OpenAPI-Vertrag (`packages/api-contract/openapi.yaml`) nennt je Operation
 den nötigen Scope. Die CDK-App liest ihn und erzeugt daraus
 
 - den [Resource Server](glossar.md#resource-server) `kundenportal` mit
-  zehn Scopes, je Bereich `.read` und `.write`: `profile`, `notifications`
-  (Phase 1) sowie `contracts`, `readings`, `documents` (Phase 2);
+  14 Scopes, je Bereich `.read` und `.write`: `profile`, `notifications`
+  (Phase 1), `contracts`, `readings`, `documents` (Phase 2), `migration`
+  (Phase 3) sowie `tenancy.read` und `tenancy.admin` (Phase 4);
 - je Route einen Eintrag im HTTP API mit
   [JWT-Authorizer](glossar.md#jwt-authorizer) (Aussteller = User Pool,
   Zielgruppe = Client-ID) und den verlangten Scopes.
@@ -162,8 +167,13 @@ den nötigen Scope. Die CDK-App liest ihn und erzeugt daraus
 | `listMeterReadings`, `submitMeterReading` | `GET/POST /contracts/{id}/readings` | `readings.read` / `readings.write` | consumption |
 | `getDataUsage` | `GET /contracts/{id}/usage` | `readings.read` | consumption |
 | `listDocuments`, `createUploadUrl` | `GET /documents`, `POST /documents/upload-url` | `documents.read` / `documents.write` | documents |
+| `createInvitation`, `listPasses`, `revokePass` | `POST /tenancy/invitations`, `GET /tenancy/passes`, `POST /tenancy/passes/{id}/revoke` | `tenancy.admin` (zusätzlich Gruppe `owner`) | tenancy |
+| `getOwnPass` | `GET /tenancy/pass` | `tenancy.read` | tenancy |
+| `getRedeemChallenge`, `redeemInvitation` | `GET /tenancy/challenge`, `POST /tenancy/redeem` | keiner (`security: []`, ohne Authorizer) | tenancy |
 
 Fehlt ein Scope, antwortet das API Gateway mit 403, bevor eine Lambda läuft.
+Die beiden öffentlichen Tenancy-Operationen sind die einzigen Routen ohne
+JWT; sie schützen sich selbst (ALTCHA, Begrenzung je IP, einmaliger Link).
 Die Shell fordert `openid email profile` und alle API-Scopes an (der
 SSM-Parameter `/kundenportal/base/oidc-scopes` enthält die Liste).
 
@@ -317,7 +327,7 @@ Uploads eine Pause der Anwendung überstehen:
 | Leitplanke | Umsetzung |
 |---|---|
 | Laufzeit | Node.js 24, arm64, 256 MB (Shell 1024 MB) |
-| Kostendeckel Lambda | [Reserved Concurrency](glossar.md#reserved-concurrency) je Funktion: Services aus CDK-Kontext `reservedConcurrency` (Standard 2, `0` = nicht setzen), Next.js-Funktionen (Shell, Zonen) `webReservedConcurrency` (Standard 5); Stand Phase 3: 16 Services × 2 + 4 Next.js-Funktionen × 5 = 52 (Phase 2: 35, Phase 1: 10) |
+| Kostendeckel Lambda | [Reserved Concurrency](glossar.md#reserved-concurrency) je Funktion: Worker und Trigger aus CDK-Kontext `reservedConcurrency` (Standard 2, `0` = gar nicht reservieren), API-Funktionen `apiReservedConcurrency` (Standard 5, seit Phase 4), Next.js-Funktionen (Shell, Zonen) `webReservedConcurrency` (Standard 5); Stand Phase 4: Base 4 × 2 + App-Worker 8 × 2 + API-Funktionen 8 × 5 + Next.js 4 × 5 = 84 (Phase 3: 52, Phase 2: 35, Phase 1: 10) |
 | Kostendeckel API | Throttling der Stage: 10 Anfragen/s, Spitze 20 |
 | Kostendeckel Datenbank | provisioned 5/5 statt On-Demand |
 | Logs | eigene Log-Gruppen mit 3 Tagen Aufbewahrung; Reste löscht der Teardown |
@@ -331,16 +341,19 @@ Kontokapazität minus 100" reservieren
 Neue Konten haben oft ein Limit von 10
 [B: https://docs.aws.amazon.com/lambda/latest/dg/gettingstarted-limits.html];
 dann ist gar keine Reservierung möglich. Faustregel: Kontolimit ≥ 100 +
-Summe der Reservierungen, derzeit also ≥ 152; jede weitere Service-Funktion
-erhöht den Wert um 2, jede weitere Zone um 5. Das Konto hat nach genehmigter
+Summe der Reservierungen, derzeit also ≥ 100 + 8 + 16 + 40 + 20 = 184; jeder
+weitere Worker erhöht den Wert um 2, jede weitere API-Funktion oder Zone um 5. Das Konto hat nach genehmigter
 Erhöhung ein Limit von 1.000 [B]. Weg bei zu kleinem Limit: Quotenerhöhung
 oder `reservedConcurrency=0` (Anleitung Kapitel 4.5).
 
-Die 17 Funktionen im App-Stack: customer-API und -Worker, notification-API,
-notification-Konsument, je API-Funktion und Worker von contract,
-consumption und documents, migration-API, -Worker und -Record-Processor,
-Shell und drei Zonen. Im Base-Stack die drei Cognito-Trigger: Pre Token
-Generation, Migrate User und Post Authentication.
+Die 20 Funktionen im App-Stack: acht API-Funktionen (customer,
+notification, contract, consumption, documents, migration, tenancy-API und
+die öffentliche Einlöse-Funktion von tenancy), acht Worker (customer-Worker,
+notification-Konsument, Worker von contract, consumption, documents,
+migration-Worker und -Record-Processor, tenancy-Worker), Shell und drei
+Zonen. Im Base-Stack vier: die drei Cognito-Trigger (Pre Token Generation,
+Migrate User, Post Authentication) und die Aufräum-Funktion der
+Pass-Mandanten (Abschnitt 11).
 
 Zusätzlich legt CDK Hilfs-Lambdas an (Kopieren der statischen Dateien nach S3,
 Leeren des Buckets beim Löschen, regionsübergreifende Werte zwischen den zwei
@@ -352,7 +365,7 @@ Concurrency [E].
 | Stack | Region | Inhalt | Lebensdauer |
 |---|---|---|---|
 | `KundenportalCertificate` | us-east-1 | TLS-Zertifikat für CloudFront | dauerhaft |
-| `KundenportalBase` | eu-central-1 | Cognito (User Pool, Client, Trigger), DynamoDB, Upload-Bucket, Hinweis-Topic | dauerhaft — Nutzer, Daten, Uploads (bis zu 7 Tage) und bestätigtes Abo bleiben |
+| `KundenportalBase` | eu-central-1 | Cognito (User Pool, Client, Trigger), DynamoDB, Upload-Bucket, Hinweis-Topic; seit Phase 4 die Mandanten-Rolle für Token Vending, die Zeitplangruppe `kundenportal-passes` und `Custom::PassTenantCleanup` | dauerhaft — Nutzer, Daten, Uploads (bis zu 7 Tage), Pass-Mandanten und bestätigtes Abo bleiben |
 | `KundenportalApp` | eu-central-1 | Services mit Workern, Shell- und Zonen-Lambdas, HTTP API, EventBridge-Bus und -Regeln, Scheduler, SQS, DLQs mit Alarmen | wird bei einer Pause abgebaut |
 | `KundenportalEdge` | eu-central-1 | CloudFront mit Verhalten für Shell, Zonen, `/api/*`, `/_next/static/*`, `/widgets/*`; statische Dateien und Widget; Aufrufrechte für Shell und Zonen | dauerhaft — Domain und DNS-Eintrag ändern sich nie |
 
@@ -430,6 +443,37 @@ Migrate-User-Trigger (J2) und Bulk-Import mit DLQ und Redrive (J7),
 Dublettenerkennung und Account-Linking (J3) sowie das Migrations-Cockpit (J8)
 beschreibt die eigene Seite
 [Architektur: Altsysteme und Migration](architektur-migration.md).
+
+## 11. Mandanten und Demo-Pass (Phase 4)
+
+Jeder eingeladene Besucher bekommt einen eigenen
+[Mandanten](glossar.md#mandant) im [Bridge-Modell](glossar.md#bridge-modell):
+geteilte Lambdas, API und Bus; eigene Tabelle `kp-tenant-<kennung>`,
+eigener Altsystem-Datenstand, eigenes Upload-Präfix und eigene Konten.
+
+- **Service `tenancy`:** API für den Inhaber (Einladungen, Pässe, Widerruf)
+  und den Pass-Inhaber (eigener Pass), öffentliche Einlöse-Funktion ohne
+  Authorizer, Worker für Einrichtung (`DemoPassIssued`), Ablauf per
+  einmaligem [EventBridge Scheduler](glossar.md#eventbridge-scheduler)-Zeitplan,
+  täglichen Abgleich 03:30 und Ereignis-Kontingent; der Budget-Alarm sperrt
+  per SNS das Einlösen ([Kill-Switch](glossar.md#kill-switch)).
+- **[Token Vending](glossar.md#token-vending-machine) in `service-kit`:**
+  `tenantData(tenantId)` nimmt per [STS](glossar.md#sts) die Mandanten-Rolle
+  aus der Base mit Sitzungs-Tag `tenant` an; deren Richtlinie erlaubt nur
+  `table/kp-tenant-${aws:PrincipalTag/tenant}` und
+  `uploads/${aws:PrincipalTag/tenant}/*`. Der Inhaber-Mandant `owner` bleibt
+  in der Tabelle der Base. Der Router zählt API-Aufrufe je Pass-Mandant
+  (429 an der Grenze, 403 wenn nicht aktiv).
+- **Aufräumen beim Vollabbau:** Die
+  [Custom Resource](glossar.md#custom-resource) `Custom::PassTenantCleanup`
+  im Base-Stack baut vor Tabelle, User Pool und Bucket alle Pass-Mandanten
+  zurück; CloudFormation kennt die zur Laufzeit angelegten Tabellen sonst
+  nicht.
+
+Einrichtung ≈ 10 s, Rückbau ≈ 10 s nach Ablauf, E2E 23/23 grün
+[B: 30.09.2026]. Einzelheiten, Messwerte und offene Punkte:
+[Architektur: Mandanten und Demo-Pass](architektur-mandanten.md); die
+Seiten in Shell und Cockpit: [Zonen & Frontend](architektur-zonen.md) §8.
 
 ## Quellen
 

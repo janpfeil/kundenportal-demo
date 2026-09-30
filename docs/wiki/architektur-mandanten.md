@@ -1,6 +1,6 @@
 # Architektur: Mandanten und Demo-Pass
 
-Stand: 2026-09-30 · Phase 4, **Entwurf** (wird mit der Umsetzung zum Ist-Stand). Ergänzt die [Architektur](architektur.md), [Zonen & Frontend](architektur-zonen.md) und [Altsysteme & Migration](architektur-migration.md); Anforderungen und Grundentscheidung (Bridge-Modell) stehen in [Demo-Pass](demo-pass.md). Kennzeichnung: **[B]** belegt, **[A]** Annahme, **[E]** Einschätzung.
+Stand: 2026-09-30 · Beschreibt den **Ist-Stand** des Codes (Phase 4 abgeschlossen, Release v0.4.0), live geprüft am 30.09.2026. Ergänzt die [Architektur](architektur.md), [Zonen & Frontend](architektur-zonen.md) und [Altsysteme & Migration](architektur-migration.md); Anforderungen und Grundentscheidung (Bridge-Modell) stehen in [Demo-Pass](demo-pass.md). Kennzeichnung: **[B]** belegt, **[A]** Annahme, **[E]** Einschätzung.
 
 Fachbegriffe sind in jedem Abschnitt beim ersten Vorkommen mit dem [Glossar](glossar.md) verlinkt (Erklärung und Entsprechung außerhalb von AWS).
 
@@ -13,14 +13,24 @@ Die Lambdas, das API und der Ereignisbus sind geteilt; Daten, Altsystem-
 Datenstand, Uploads und Konten gehören dem Mandanten allein. Nach Ablauf baut
 das System den Mandanten vollständig zurück.
 
+Gebaut ist das im Service `services/tenancy` (API, öffentliche Einlöse-
+Funktionen, Worker), in `packages/service-kit` (`tenantData`,
+`TenantDirectory`, Kontingent-Wächter im Router), in den Cognito-Triggern
+(`services/identity`), in beiden Altsystemen (Datenstand je Mandant) und in
+Shell und Cockpit ([Zonen & Frontend](architektur-zonen.md) §8).
+
+```chart
+{"type": "stats", "items": [["≈ 10 s", "vom Einlösen bis zum nutzbaren Mandanten (Ziel < 1 min)"], ["≈ 10 s", "Rückbau nach Ablauf"], ["23/23", "E2E-Schritte grün, inkl. J2/J3/J4/J6 im Pass-Mandanten"], ["3", "gleichzeitige Pass-Mandanten höchstens"]]}
+```
+
 ```chart
 {"type": "timeline", "title": "Lebenszyklus eines Mandanten", "events": [
  ["Einladung", "Inhaber erzeugt im Cockpit einen Link für eine E-Mail-Adresse (einmalig, 14 Tage)"],
  ["Einlösen", "Besucher öffnet den Link, löst das ALTCHA-Rätsel; Pass wird ausgestellt"],
- ["Einrichtung", "Tabelle, Altsystem-Datenstand, Konto des Pass-Inhabers, Ablauf-Zeitplan (Ziel unter 1 Minute)"],
+ ["Einrichtung", "Tabelle, Altsystem-Datenstand, Konto des Pass-Inhabers, Ablauf-Zeitplan (gemessen ≈ 10 s)"],
  ["Tag 1–7", "Nutzung mit den Demo-Personen des Mandanten; Kontingent sichtbar"],
- ["Tag 7", "Zeitplan oder täglicher Abgleich meldet den Ablauf"],
- ["Rückbau", "Tabelle, Altsystem-Daten, Uploads, Konten, Zeitplan, Plattform-Einträge"]]}
+ ["Tag 7", "Einmal-Zeitplan oder täglicher Abgleich (03:30) meldet den Ablauf"],
+ ["Rückbau", "Tabelle, Altsystem-Daten, Uploads, Konten, Zeitplan, Plattform-Einträge (gemessen ≈ 10 s)"]]}
 ```
 
 ## 1. Mandanten und Kennungen
@@ -43,39 +53,48 @@ Mandanten, Kontingente) liegen ebenfalls dort, unter eigenen Präfixen
 | PK | SK | Inhalt |
 |---|---|---|
 | `INVITE#<sha256(token)>` | `META` | E-Mail, erstellt, gültig bis (TTL 14 Tage), eingelöst |
-| `PASS#<passId>` | `META` | Mandant, E-Mail, Status, ausgestellt, gültig bis |
+| `PASS#<passId>` | `META` | Mandant, E-Mail, Status, ausgestellt, gültig bis; bleibt nach dem Rückbau 30 Tage als Nachweis, dann [TTL](glossar.md#dynamodb-ttl) |
 | `TENANT#<kennung>` | `QUOTA#<art>` | Zähler `used` (`api`, `events`, `uploads`) — der Router kennt nur den Mandanten, nicht den Pass |
 | `PLATFORM` | `TENANT#<kennung>` | Tabelle, Status (`provisioning`, `active`, `quota-exceeded`, `tearing-down`, `deleted`), Pass — Liste für Abgleich und Cockpit |
-| `PLATFORM` | `SETTINGS` | Einlösen offen/gesperrt (Kill-Switch), Obergrenze |
-| `RATE#<ip-hash>` | `REDEEM` | Einlöseversuche je IP, TTL 1 h |
+| `PLATFORM` | `SETTINGS` | Einlösen offen/gesperrt ([Kill-Switch](glossar.md#kill-switch)), Obergrenze |
+| `EMAIL#<sha256(adresse)>` | `PASS` | ein Pass je E-Mail-Adresse |
+| `RATE#<sha256(ip)>` | `REDEEM` | Einlöseversuche je IP, TTL 1 h |
+| `ALTCHA#<sha256(signatur)>` | `USED` | gelöste Rätsel, [Replay-Schutz](glossar.md#replay-schutz), TTL bis zum Ablauf des Rätsels |
 
 ## 2. Bindung von Konten an den Mandanten
 
 `custom:tenant_id` ist in Cognito **unveränderlich** und lässt sich nur beim
-Anlegen eines Kontos setzen. Genau das nutzt der Entwurf — jedes Konto eines
+Anlegen eines Kontos setzen. Genau das nutzt die Umsetzung — jedes Konto eines
 Pass-Mandanten entsteht durch das System, nie durch Selbstregistrierung:
 
-- **Pass-Inhaber:** Das Einlösen legt das Konto per `AdminCreateUser` an —
-  E-Mail aus der Einladung, `custom:tenant_id` = Kennung, Gruppe `pass`.
-  Cognito schickt das Einmal-Passwort an diese Adresse; die erste Anmeldung
-  bestätigt sie. Weitere E-Mails verschickt das System an Pass-Inhaber nicht.
+- **Pass-Inhaber:** Die Einrichtung (Worker auf `DemoPassIssued`) legt das
+  Konto per `AdminCreateUser` an — E-Mail aus der Einladung,
+  `custom:tenant_id` = Kennung, Gruppe `pass`. Cognito schickt das
+  Einmal-Passwort an diese Adresse; die erste Anmeldung bestätigt sie. Das
+  ist die **einzige** Systemmail; kurze Test-Pässe des E2E-Laufs
+  unterdrücken auch sie (`MessageAction: SUPPRESS`).
 - **Demo-Personen:** Anmeldename mit Plus-Adresse, z. B.
   `anna.becker+p4k7x2qa@example.org`. Der Migrate-User-Trigger liest den
   Zusatz, prüft, dass ein aktiver Pass-Mandant dieser Kennung existiert,
   fragt das Altsystem **dieses** Mandanten mit der Adresse ohne Zusatz und
-  setzt `custom:tenant_id` beim Anlegen. Der Bulk-Import eines
+  setzt `custom:tenant_id` beim Anlegen. Plus-Adressen nimmt er **nur für
+  aktive Pass-Mandanten** an; eine unbekannte oder abgelaufene Kennung
+  scheitert wie ein falsches Passwort. Der Bulk-Import eines
   Pass-Mandanten verfährt ebenso. Ohne Zusatz bleibt alles wie bisher
   (Mandant `owner`).
 - **Pre-Token-Trigger:** unverändert — `tenant_id` aus `custom:tenant_id`,
   sonst `owner`. Zusätzlich lehnt er Anmeldungen ab, deren Pass nicht mehr
-  aktiv ist (Status aus `PLATFORM/TENANT#…`).
+  nutzbar ist (Status aus `PLATFORM/TENANT#…`); nach Ablauf und Rückbau
+  kann sich der Pass-Inhaber nicht mehr anmelden [B: E2E 30.09.2026].
 
 **Demo-Passwort je Mandant:** Das Einrichten erzeugt ein zufälliges
 Passwort und übergibt es beiden Altsystemen, die damit den Datenstand des
-Mandanten anlegen. Die Statusseite zeigt es dem Pass-Inhaber zusammen mit
+Mandanten anlegen (ausdrückliches `PUT` je Mandant; `DELETE` baut ihn
+zurück; unbekannte Mandanten außer `owner` beantworten die Altsysteme mit
+404). Die Statusseite zeigt es dem Pass-Inhaber zusammen mit
 den Anmeldenamen der Demo-Personen. So verrät ein Pass nichts über den
 Inhaber-Mandanten. Die Telko-Anmeldung eines Pass-Mandanten prüft das
-Telko-Altsystem direkt (`/v2/auth/check`); der Keycloak-Realm `telko` bleibt
+Telko-Altsystem direkt (`checkLogin`, `POST /v2/auth/check`); der Keycloak-Realm `telko` bleibt
 dem Inhaber-Mandanten vorbehalten.
 
 ## 3. Isolation
@@ -84,7 +103,7 @@ dem Inhaber-Mandanten vorbehalten.
 {"type": "flow", "title": "Zugriff einer geteilten Lambda auf Mandantendaten", "gap": 30,
  "layers": [
   {"title": "Mandant", "nodes": [["Token oder Ereignis", "tenant_id aus dem geprüften JWT bzw. detail.tenantId"]]},
-  {"title": "Token Vending", "accent": true, "nodes": [["sts:AssumeRole", "Rolle kundenportal-tenant-data, Sitzungs-Tag tenant, gecacht 15 min"]]},
+  {"title": "Token Vending", "accent": true, "nodes": [["sts:AssumeRole", "Rolle aus der Base, Sitzungs-Tag tenant, 15 min, gecacht je Mandant"]]},
   {"title": "Client", "nodes": [["DynamoDB, S3", "Clients mit diesen Anmeldedaten"]]},
   {"title": "IAM", "accent": true, "nodes": [["Richtlinie", "nur table/kp-tenant-${aws:PrincipalTag/tenant} und uploads/${aws:PrincipalTag/tenant}/*"]]}
  ],
@@ -93,7 +112,8 @@ dem Inhaber-Mandanten vorbehalten.
 
 - **[Token Vending Machine](glossar.md#token-vending-machine):** Die
   Lambda-Rollen haben **keine** Rechte an `kp-tenant-*`-Tabellen. Sie dürfen
-  nur die Rolle `kundenportal-tenant-data` annehmen und müssen dabei den
+  nur die Mandanten-Rolle des Base-Stacks annehmen (ARN in SSM
+  `/kundenportal/base/tenant-data-role-arn`) und müssen dabei den
   Sitzungs-Tag `tenant` setzen; deren Richtlinie löst den Tabellennamen und
   das Upload-Präfix aus dem Tag auf. Ein Programmfehler, der den falschen
   Schlüssel baut, trifft damit höchstens die eigene Tabelle — nie eine
@@ -101,7 +121,11 @@ dem Inhaber-Mandanten vorbehalten.
 - **`packages/service-kit`:** `tenantData(tenantId)` liefert Tabellenname
   und Client — `owner` → Tabelle der Base mit den Rechten der Lambda,
   sonst Tabelle des Mandanten mit Vending-Anmeldedaten. Die Repositories der
-  Services werden je Mandant gebaut statt einmal je Kaltstart.
+  Services werden je Mandant gebaut statt einmal je Kaltstart; Anmeldedaten
+  und Clients bleiben je Mandant gecacht, bis die Sitzung bald abläuft.
+- **`TenantDirectory`** (ebenfalls `service-kit`) liest den Status eines
+  Mandanten aus `PLATFORM/TENANT#…` und cacht ihn 30 s; darauf baut der
+  Kontingent-Wächter (Abschnitt 5).
 - **Ereignisse:** Jedes Ereignis trägt `tenantId` (Umschlag,
   `packages/events`); Konsumenten schreiben nur über `tenantData` des
   Ereignis-Mandanten. Eigene Regeln je Mandant sind nicht nötig und würden
@@ -120,43 +144,60 @@ dem Inhaber-Mandanten vorbehalten.
 
 ## 4. Einlösen und Missbrauchsschutz
 
+- **Weg:** Die Shell-Seite `/pass/einloesen` liest den Token nur aus dem
+  URL-Fragment (`#…`), das nie an einen Server oder in ein Log geht. Das
+  Widget holt das Rätsel über den [Route Handler](glossar.md#route-handler)
+  `/pass/einloesen/challenge`; `/pass/einloesen/api` prüft den
+  Origin-Header, reicht die IP des Besuchers als `x-kp-client-ip` weiter
+  und ruft `POST /api/tenancy/redeem`. Die beiden öffentlichen Operationen
+  (`getRedeemChallenge`, `redeemInvitation`) tragen im Vertrag
+  `security: []` und laufen damit **ohne** JWT-Authorizer.
 - **[ALTCHA](glossar.md#altcha)** statt Turnstile/hCaptcha: ein
-  [Proof-of-Work](glossar.md#proof-of-work)-Rätsel, das der Browser in
-  ungefähr einer Sekunde löst; selbst gehostet, Open Source (MIT), keine
-  Daten an Dritte, kein Konto beim Anbieter, 0 $. Der HMAC-Schlüssel liegt
-  als SecureString im Parameter Store (AWS-verwalteter Schlüssel). Der
-  E2E-Test löst das Rätsel wie ein Browser — es gibt **keine**
+  [Proof-of-Work](glossar.md#proof-of-work)-Rätsel; selbst gehostet, Open
+  Source (MIT), keine Daten an Dritte, kein Konto beim Anbieter, 0 $.
+  Gemessen: in Node.js ≈ 0,6 s, im Browser löst das Widget es
+  selbsttätig [B: 30.09.2026]. Der HMAC-Schlüssel liegt als SecureString im
+  Parameter Store (AWS-verwalteter Schlüssel). Jedes gelöste Rätsel gilt
+  nur einmal (`ALTCHA#…/USED`); ein wiederholtes wird mit 400 abgelehnt.
+  Der E2E-Test löst das Rätsel wie ein Browser — es gibt **keine**
   Umgehung.
 - Einladungs-Token: 32 Byte Zufall, im Link; gespeichert wird nur sein
   SHA-256. Einlösen per bedingtem Schreiben (`attribute_not_exists(redeemedAt)`)
   — genau einmal.
 - Begrenzung: 10 Einlöseversuche je IP und Stunde; höchstens **3
-  gleichzeitige Pass-Mandanten** (Abschnitt 6); ein Pass je E-Mail-Adresse.
+  gleichzeitige Pass-Mandanten** (Abschnitt 6); ein Pass je E-Mail-Adresse
+  (`EMAIL#…/PASS`). Ein unbekannter Link ergibt 404.
 - **Kill-Switch:** Der Budget-Alarm (Terraform, Thema
   `kundenportal-budget-alerts`) ruft zusätzlich die Tenancy-Lambda auf, die
-  `PLATFORM/SETTINGS` auf „gesperrt" setzt. Laufende Pässe bleiben nutzbar.
+  `PLATFORM/SETTINGS` auf „gesperrt" setzt (SNS-Abo auf das Budget-Thema).
+  Einlösen antwortet dann mit 503; laufende Pässe bleiben nutzbar
+  [B: live 30.09.2026].
+- **Einladungslink:** Das Cockpit zeigt ihn genau einmal; der Inhaber
+  schickt ihn selbst. Das System verschickt keine Einladungs-E-Mails.
 
 ## 5. Kontingente
 
 | Größe | Grenze | Zählung |
 |---|---|---|
 | Laufzeit | 7 Tage | Zeitplan + täglicher Abgleich |
-| API-Aufrufe | 5.000 (`QUOTA_API_CALLS`) | `service-kit`-Router vor jeder Route eines Pass-Mandanten: atomares `ADD` auf `TENANT#<kennung>/QUOTA#api` der Base mit Bedingung, sonst 429; Pass nicht `active` → 403 (`quota-exceeded` → 429), Status 30 s gecacht |
-| Domänen-Ereignisse | 1.000 | Timeline-Konsument der Migration zählt; bei Überschreitung Status „Kontingent erschöpft" → API 429 |
-| Uploads | 20, je ≤ 5 MB, nur JPEG/PNG/PDF | Documents beim Ausstellen der URL |
+| API-Aufrufe | 5.000 (`QUOTA_API_CALLS`) | `service-kit`-Router vor jeder Route eines Pass-Mandanten: atomares `ADD` auf `TENANT#<kennung>/QUOTA#api` der Base mit Bedingung, an der Grenze 429; Mandant nicht `active` → 403 (`quota-exceeded` → 429), Status 30 s gecacht (`TenantDirectory`). Die Tenancy-Routen selbst umgehen den Wächter, damit Statusseite und Cockpit erreichbar bleiben |
+| Domänen-Ereignisse | 1.000 | **eine** Regel „alle `kundenportal.*`-Ereignisse mit `detail.tenantId` Präfix `p`" an den Tenancy-Worker; der zählt `QUOTA#events`, das erste Ereignis über der Grenze setzt `quota-exceeded` → API 429 |
+| Uploads | 20, je ≤ 5 MB, nur JPEG/PNG/PDF | Größe und Typ prüft Documents; die Zahl 20 wird **noch nicht** durchgesetzt (Offen) |
 | Gleichzeitige Instanzen | 1 je Pass | ein Mandant je Pass |
 | E-Mails | 1 (Einmal-Passwort) | keine weiteren E-Mails an Pass-Inhaber |
 
 Bei Überschreitung erscheint `QuotaExceeded`; die Shell zeigt
-„Kontingent: … übrig · gültig bis …" aus `GET /pass`.
+„Kontingent: … übrig · gültig bis …" aus `GET /api/tenancy/pass` auf der
+Seite `/pass` (Komponente `Meter` aus `packages/ui`).
 
 ## 6. Kosten und Obergrenze
 
 | Baustein | Kosten | Begründung |
 |---|---|---|
 | Tabelle je Mandant, provisioned 5/5 | 0 $ | Always Free: 25 RCU/25 WCU je Konto und Region; Base 5/5 + 3 × 5/5 = 20 [B] |
+| Einmal-Zeitplan je Pass | 0 $ | [EventBridge Scheduler](glossar.md#eventbridge-scheduler), wird nach dem Auslösen gelöscht |
 | STS AssumeRole | 0 $ | STS ist kostenlos [B] |
-| EventBridge Scheduler | 0 $ | 14 Mio. Aufrufe/Monat frei [B] |
+| EventBridge Scheduler (Zeitpläne und täglicher Abgleich) | 0 $ | 14 Mio. Aufrufe/Monat frei [B] |
 | Cognito-Konten | 0 $ | 10.000 aktive Nutzer/Monat frei [B] |
 | ALTCHA | 0 $ | eigene Lambda, kein Drittanbieter |
 | CreateTable/DeleteTable | 0 $ | Steuerungsaufrufe sind kostenlos [B] |
@@ -168,19 +209,29 @@ kostete jede weitere Tabelle 5 × (0,00065 + 0,00013) $/h ≈ 2,85 $/Monat [A].
 ## 7. Ablauf und Rückbau
 
 - **Zeitplan:** Die Einrichtung legt einen einmaligen Zeitplan
-  (`at(…)`, `ActionAfterCompletion: DELETE`) in der Gruppe
+  (`at(…)`, `ActionAfterCompletion: DELETE`, Ziel: Tenancy-Worker) in der Gruppe
   `kundenportal-passes` an. Die Gruppe liegt im Base-Stack, damit eine Pause
   (Abbau des App-Stacks) sie nicht löscht.
-- **Täglicher Abgleich:** Ein Lauf findet abgelaufene, hängende
+- **Täglicher Abgleich** (03:30 Europe/Berlin): Ein Lauf findet abgelaufene, hängende
   (Einrichtung > 10 min) und verwaiste Mandanten (z. B. Zeitplan während
   einer Pause ins Leere gelaufen) und baut sie zurück.
+- **Ablauf:** Zeitplan, Abgleich oder Widerruf im Cockpit setzen den
+  Mandanten auf `tearing-down` und veröffentlichen `DemoPassExpired`; dessen
+  Handler baut zurück. Gemessen: ≈ 10 s nach Ablauf ist alles weg
+  [B: 30.09.2026]; Altsystem-Daten des gelöschten Mandanten antworten
+  danach mit 404.
 - **Rückbau** (idempotent, jeder Schritt überspringt Fehlendes): Cognito-
   Konten mit `custom:tenant_id` = Kennung löschen; Altsysteme
   `DELETE …/mandant` bzw. `…/tenant`; Upload-Präfix löschen; Tabelle
   löschen; Zeitplan löschen; Plattform-Einträge auf „gelöscht" (Pass bleibt
   30 Tage als Nachweis, dann TTL); `TenantDeleted`.
-- **`scripts/teardown.sh --all`** löscht zusätzlich alle Tabellen
-  `kp-tenant-*` und die Zeitplangruppe; eine Pause lässt sie bestehen.
+- **Vollabbau:** Pass-Mandanten entstehen zur Laufzeit; CloudFormation
+  kennt sie nicht. Deshalb liegt im Base-Stack die
+  [Custom Resource](glossar.md#custom-resource) `Custom::PassTenantCleanup`.
+  Beim Löschen des Base-Stacks (`scripts/teardown.sh --all`) baut sie
+  **zuerst** alle Pass-Mandanten zurück — Tabellen, Altsystem-Daten,
+  Konten, Uploads —, erst danach gehen Tabelle, User Pool und Bucket. Eine
+  Pause (nur App-Stack) lässt Mandanten und Zeitplangruppe bestehen.
 
 ## 8. Ereignisse
 
@@ -193,9 +244,11 @@ kostete jede weitere Tabelle 5 × (0,00065 + 0,00013) $/h ≈ 2,85 $/Monat [A].
 | `DemoPassExpired` | `kundenportal.tenancy` | Laufzeit vorbei oder widerrufen |
 | `TenantDeleted` | `kundenportal.tenancy` | Rückbau abgeschlossen |
 
-`tenantId` im Umschlag ist bei allen die Kennung des Pass-Mandanten; das
-Postfach des Inhabers erhält `DemoPassIssued` und `TenantDeleted` als
-Hinweis.
+`tenantId` im Umschlag ist bei allen die Kennung des Pass-Mandanten.
+`DemoPassIssued` startet die Einrichtung, `DemoPassExpired` den Rückbau
+(beides im Tenancy-Worker). Geplant war zusätzlich ein Hinweis im Postfach
+des Inhabers zu `DemoPassIssued` und `TenantDeleted`; er ist **nicht**
+gebaut (Offen).
 
 ## 9. Ausblick: Silo für den Inhaber
 
@@ -203,3 +256,48 @@ Ein vollständiger eigener Stack je Instanz (Silo) zeigt Infrastruktur als
 Code am deutlichsten, dauert aber 2–5 Minuten und belegt je Instanz einen
 Bus und eine Distribution. Er bleibt eine Option für den Inhaber und ist
 nicht Teil von Phase 4.
+
+## 10. Messwerte
+
+Gemessen am 30.09.2026 gegen die Live-Umgebung (Playwright, CloudWatch-Logs,
+`curl`).
+
+| Messgröße | Wert | Anmerkung |
+|---|---|---|
+| Einlösen → Mandant `active` | ≈ 10 s | davon Worker 9,6 s (Tabelle, Altsysteme, Konto, Zeitplan); Ziel < 1 min erreicht |
+| Ablauf → Rückbau abgeschlossen | ≈ 10 s | kurzer Test-Pass, Zeitplan löst aus |
+| ALTCHA lösen | ≈ 0,6 s | Node.js im E2E-Test; im Browser selbsttätig |
+| E2E gesamt | 23/23 grün | inkl. J2, J3, J4, J6 im Pass-Mandanten, Isolation im Cockpit, Ablauf und Löschung, Anmeldung danach abgelehnt |
+| Kill-Switch aktiv → Einlösen | 503 | |
+| wiederholtes ALTCHA | 400 | Replay-Schutz |
+| unbekannter Link | 404 | |
+| Altsystem-Daten eines gelöschten Mandanten | 404 | beide Altsysteme |
+
+## 11. Befunde aus dem Live-Test
+
+Drei Fehler fielen erst live auf und sind behoben:
+
+- **Cognito `ListUsers`** lehnt benutzerdefinierte Attribute in
+  `AttributesToGet` ab. Die Konten eines Mandanten werden deshalb ohne
+  diesen Parameter gelistet.
+- **Typen der Oberfläche** waren vom API-Vertrag abgewichen (Pass-Liste
+  unter einem anderen Schlüssel). Shell und Cockpit verwenden jetzt die
+  Typen aus `packages/api-contract`.
+- **Reserved Concurrency 2** drosselte parallele Aufrufe eines
+  Seitenaufbaus. API-Funktionen haben jetzt 5 wie die Next.js-Funktionen,
+  Worker weiter 2 ([Architektur](architektur.md) §7).
+
+## Offen
+
+- Die Obergrenze von 3 wird **vor** der Transaktion gezählt; zwei
+  gleichzeitige Einlösungen könnten sie überschreiten.
+- Das Upload-Kontingent (20) setzt Documents noch nicht durch.
+- Hinweise im Postfach des Inhabers zu `DemoPassIssued` und `TenantDeleted`
+  fehlen.
+- Der Demo-Reset des **Inhaber**-Mandanten lässt migrierte Profile in der
+  Tabelle der Base stehen. Pass-Mandanten werden vollständig gelöscht; für
+  Besucher ist der Hinweis aus Phase 3 damit erledigt.
+- Die Startseite ist nicht im CDN zwischenspeicherbar, weil das gemeinsame
+  Layout Cookies liest.
+- Die Kontingent-Zahlen auf der Einlöse-Seite sind fester Text, nicht aus
+  der Konfiguration gelesen.

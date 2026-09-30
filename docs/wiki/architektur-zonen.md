@@ -1,6 +1,6 @@
 # Architektur: Zonen und Frontend
 
-Stand: 2026-09-30 · Beschreibt den **Ist-Stand** des Codes (Phase 2 abgeschlossen), nicht die Zielarchitektur. Kennzeichnung: **[B]** belegt (offizielle Quelle oder Messung), **[A]** Annahme, **[E]** Einschätzung.
+Stand: 2026-09-30 · Beschreibt den **Ist-Stand** des Codes (Phase 2 abgeschlossen; Seiten für Mandanten und Demo-Pass aus Phase 4 in Abschnitt 8), nicht die Zielarchitektur. Kennzeichnung: **[B]** belegt (offizielle Quelle oder Messung), **[A]** Annahme, **[E]** Einschätzung.
 
 Fachbegriffe sind in jedem Abschnitt beim ersten Vorkommen mit dem [Glossar](glossar.md) verlinkt (Erklärung und Entsprechung außerhalb von AWS).
 
@@ -20,10 +20,10 @@ Edge-Stack lesen sie beide.
 
 | Zone | Pfad | App | Stand 30.09.2026 |
 |---|---|---|---|
-| Shell | `/` (alles, was keine Zone ist) | `apps/shell` | Startseite, Anmeldung, Konto mit Profil-Bearbeitung, Demo-Postfach mit „als gelesen markieren", Glocke |
+| Shell | `/` (alles, was keine Zone ist) | `apps/shell` | Startseite, Anmeldung, Konto mit Profil-Bearbeitung, Demo-Postfach mit „als gelesen markieren", Glocke; seit Phase 4 Demo-Pass einlösen und Pass-Status (Abschnitt 8) |
 | `contracts` | `/vertraege` | `apps/contracts` | Vertragsübersicht, Detailseite mit Abschlag und Tarifoption (J6), Dokumente mit Upload per Presigned URL |
 | `consumption` | `/verbrauch` | `apps/consumption` | Zählerstand-Verlauf und -Erfassung mit Plausibilitätsprüfung (J4), Zählerfoto, Datenvolumen Mobilfunk |
-| `cockpit` | `/cockpit` | — | kommt in Phase 3 (Migrations-Cockpit) |
+| `cockpit` | `/cockpit` | `apps/cockpit` | Migrations-Cockpit (Phase 3, [Altsysteme & Migration](architektur-migration.md)); seit Phase 4 Pass-Verwaltung unter `/cockpit/paesse` |
 
 ```chart
 {"type": "flow", "title": "Zonen: eine Domain, mehrere Next.js-Apps", "gap": 40,
@@ -182,6 +182,28 @@ ohne S3 oder CloudFront ([Kostenfreier Betrieb](kostenfrei.md) §3).
 
 Weitere Messwerte, auch der Deploy mit allen Services, stehen in
 [Architektur](architektur.md) §9.
+
+## 8. Seiten für Mandanten und Demo-Pass (Phase 4)
+
+Die Architektur dahinter steht in
+[Architektur: Mandanten und Demo-Pass](architektur-mandanten.md).
+
+| Route | Zone | Art | Wer | Zweck |
+|---|---|---|---|---|
+| `/pass/einloesen` | Shell | Seite | öffentlich | Einladungslink einlösen: Token nur im URL-Fragment (`#…`), [ALTCHA](glossar.md#altcha)-Widget, danach Hinweis auf das Einmal-Passwort |
+| `/pass/einloesen/challenge` | Shell | [Route Handler](glossar.md#route-handler), GET | öffentlich | holt das Rätsel von `GET /api/tenancy/challenge` |
+| `/pass/einloesen/api` | Shell | Route Handler, POST | öffentlich | prüft den [Origin-Header](glossar.md#origin-header) (sonst 403), gibt die IP des Besuchers als `x-kp-client-ip` weiter, ruft `POST /api/tenancy/redeem` |
+| `/pass` | Shell | Seite | Gruppe `pass` | Status des eigenen Passes: Einrichtung, gültig bis, Kontingente als `Meter` (neu in `packages/ui`), Demo-Personen mit Anmeldenamen und Demo-Passwort |
+| `/cockpit/paesse` | Cockpit | Seite | Gruppe `owner` | Einladungen erzeugen (Link wird genau einmal angezeigt), Pässe mit Status und Kontingent, Widerruf |
+| `/cockpit/api/invitations` | Cockpit | Route Handler, POST | Gruppe `owner` | `POST /api/tenancy/invitations` |
+| `/cockpit/api/passes/<id>/revoke` | Cockpit | Route Handler, POST | Gruppe `owner` | `POST /api/tenancy/passes/{id}/revoke` |
+| `/cockpit` | Cockpit | Seite | Gruppe `pass` | Migrationsansichten **des eigenen** Mandanten (Mandant aus dem Token) |
+
+Die Navigation der Shell hat dafür den Eintrag „Demo-Pass". Die beiden
+öffentlichen Route Handler brauchen keine Sitzung; sie laufen wie alle
+schreibenden Aufrufe über `sendJson` mit Payload-Hash (Abschnitt 4).
+Die Kontingent-Zahlen auf `/pass/einloesen` sind fester Text (offen:
+aus der Konfiguration lesen).
 
 ## Quellen
 

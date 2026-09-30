@@ -1,8 +1,16 @@
 # Demo-Pass — eigene Instanz je Besucher
 
-Stand: 2026-09-29 · Kennzeichnung: **[B]** belegt (offizielle Quelle), **[A]** Annahme/Schätzung, **[E]** Einschätzung.
+Stand: 2026-09-30 · Stufe 1 umgesetzt (Phase 4, Release v0.4.0) · Kennzeichnung: **[B]** belegt (offizielle Quelle), **[A]** Annahme/Schätzung, **[E]** Einschätzung.
 
 **Entscheidung (29.09.2026): Stufe 1 — Inhaber-Zugang und Einladungslinks.** Ein bezahlter Zugang ist optional für später denkbar, aber nicht geplant.
+
+**Umgesetzt (30.09.2026):** Stufe 1 ist gebaut und live geprüft —
+Einladungslinks aus dem Cockpit, Einlösen mit [ALTCHA](glossar.md#altcha),
+eigener Mandant im Bridge-Modell in ≈ 10 s, Kontingente, Ablauf und
+Rückbau nach 7 Tagen, höchstens 3 gleichzeitige Pass-Mandanten. Wie es
+gebaut ist, beschreibt [Architektur: Mandanten und Demo-Pass](architektur-mandanten.md).
+Diese Seite bleibt die Entscheidungsgrundlage; wo die Umsetzung vom
+ursprünglichen Vorschlag abweicht, ist das vermerkt.
 
 Fachbegriffe sind in jedem Abschnitt beim ersten Vorkommen mit dem [Glossar](glossar.md) verlinkt (Erklärung und Entsprechung außerhalb von AWS).
 
@@ -49,16 +57,22 @@ Datenschutzerklärung.
 ```chart
 {"type": "timeline", "title": "Vom Einladungslink zur eigenen Instanz", "events": [
  ["Schritt 1", "Öffentliche Demoseite: Beschreibung, Architekturbild, Video — alles kostenlos, ohne Anmeldung"],
- ["Schritt 2", "Einladungslink öffnen: Bot-Prüfung (CAPTCHA), der Link ist einmalig verwendbar"],
+ ["Schritt 2", "Einladungslink öffnen: Bot-Prüfung (ALTCHA), der Link ist einmalig verwendbar"],
  ["Schritt 3", "Lambda stellt den Pass aus (7 Tage, Kontingent) und startet die eigene Instanz"],
- ["Schritt 4", "Statusseite „Ihre Instanz wird eingerichtet\" (Ziel: unter 1 Minute), dann Login in das eigene Portal mit Demo-Personen"],
+ ["Schritt 4", "Statusseite „Ihre Instanz wird eingerichtet\" (gemessen ≈ 10 s), dann Login in das eigene Portal mit Demo-Personen"],
  ["Tag 1–7", "Beliebig oft nutzen; Anzeige „Kontingent: 83 % übrig · gültig bis …\"; Instanz schläft bei Nichtnutzung und wacht beim nächsten Besuch auf"],
- ["Tag 7", "Pass läuft ab; Instanz und alle Daten werden automatisch gelöscht; Bestätigung per E-Mail"]]}
+ ["Tag 7", "Pass läuft ab; Instanz und alle Daten werden automatisch gelöscht (keine Bestätigungs-E-Mail)"]]}
 ```
 
 Technisch: Die Ausstellung legt den Pass in DynamoDB an und veröffentlicht
 das Domänen-Event `DemoPassIssued`; daraufhin wird der Mandant
 eingerichtet, und EventBridge Scheduler plant den Ablauf in 7 Tagen.
+
+**Umsetzung:** So gebaut, mit zwei Abweichungen: Das System verschickt außer
+dem Einmal-Passwort von Cognito **keine** E-Mails (auch keine Bestätigung
+nach dem Löschen), und die Instanz „schläft" nicht eigens — geteilte
+Lambdas kosten ohne Aufrufe ohnehin nichts. Details:
+[Architektur: Mandanten und Demo-Pass](architektur-mandanten.md) §4 und §7.
 
 ## 5. Eigene Instanz je Besucher
 
@@ -86,10 +100,20 @@ je Mandant gedrosselt; IAM-Bedingungen verhindern, dass eine Lambda auf die
 Tabelle eines anderen Mandanten zugreift. Start in Sekunden statt Minuten —
 wichtig, weil Besucher sonst wieder warten.
 
+**Umsetzung:** Eigene Ereignis-Regeln je Mandant sind nicht nötig
+geworden — jedes Ereignis trägt `tenantId`, Konsumenten schreiben nur in
+die Tabelle dieses Mandanten, und eine einzige Regel zählt die Ereignisse
+aller Pass-Mandanten. Die Drosselung je Mandant ist das API-Kontingent;
+den Zugriff auf fremde Tabellen verhindert eine
+[Token Vending Machine](glossar.md#token-vending-machine) mit Sitzungs-Tag
+([Architektur: Mandanten und Demo-Pass](architektur-mandanten.md) §3).
+
 Silo bleibt als Option für den **Inhaber-Zugang** (eigener vollständiger
 Stack auf Knopfdruck zeigt „Infrastruktur als Code" am deutlichsten).
 
-Kontingent je Pass [A], als Vorschlag:
+Kontingent je Pass [A], als Vorschlag (umgesetzt wie unten, außer den
+E-Mails: nur das Einmal-Passwort; das Upload-Kontingent ist noch nicht
+durchgesetzt — [Architektur: Mandanten und Demo-Pass](architektur-mandanten.md) §5):
 
 | Größe | Grenze | Begründung |
 |---|---|---|
@@ -105,17 +129,20 @@ Kontingent je Pass [A], als Vorschlag:
 | Risiko | Maßnahme |
 |---|---|
 | Bots rufen die öffentliche Seite massenhaft auf | Seite ist statisch und im CDN zwischengespeichert — Aufrufe kosten nichts; CloudFront Functions begrenzen auffällige Muster |
-| Bots lösen Einladungslinks ein oder erraten sie | CAPTCHA vor der Ausstellung (z. B. Cloudflare Turnstile oder hCaptcha, kostenlos), Links einmalig verwendbar und befristet, Begrenzung je IP |
+| Bots lösen Einladungslinks ein oder erraten sie | CAPTCHA vor der Ausstellung — ursprünglich Cloudflare Turnstile oder hCaptcha vorgeschlagen, **umgesetzt mit ALTCHA** (selbst gehostet, kein Drittanbieter, kein Konto; gelöste Rätsel gelten nur einmal); Links einmalig verwendbar und befristet, Begrenzung je IP |
 | Missbrauch der Demo als E-Mail-Versender | E-Mails nur an die bestätigte Pass-Adresse; alle anderen Benachrichtigungen im In-App-Postfach der Instanz |
 | Hochladen fremder oder schädlicher Inhalte | nur über Presigned URL mit Größen- und Typbeschränkung; Dateien nur für den eigenen Mandanten sichtbar; Löschung mit Pass-Ablauf |
 | Ein Besucher lastet das System aus | Kontingent je Pass (Abschnitt 5), Drosselung je Mandant, Reserved Concurrency je Lambda |
 | Weitergabe eines Passes | Pass an Login gebunden; eine aktive Sitzung zur Zeit; Einladungslinks einmalig verwendbar |
-| Kosten laufen trotzdem davon | globaler Kill-Switch per Budget-Alarm (siehe [Kostenfreier Betrieb](kostenfrei.md)), Obergrenze gleichzeitiger Instanzen (z. B. 20) |
+| Kosten laufen trotzdem davon | globaler Kill-Switch per Budget-Alarm (siehe [Kostenfreier Betrieb](kostenfrei.md)) sperrt das Einlösen; Obergrenze gleichzeitiger Instanzen — vorgeschlagen z. B. 20, **entschieden: 3**, damit alle Tabellen in die 25 freien DynamoDB-Einheiten passen |
 
 ## 7. Stufenplan [E]
 
 1. **Stufe 1 – Inhaber-Zugang und Einladungslinks.** Die Kosten
-   (Cent-Bruchteile je Mandant) trägt der Inhaber.
+   (Cent-Bruchteile je Mandant) trägt der Inhaber. **Umgesetzt
+   (30.09.2026, v0.4.0).** Der Inhaber-Mandant (`owner`) bleibt in der
+   Tabelle der Base und läuft dauerhaft; Einladungslinks erzeugt er im
+   Cockpit unter `/cockpit/paesse`.
 2. Die öffentliche Seite zeigt von Anfang an Video, Architektur und Code
    — kostenlos, ohne Instanz.
 
@@ -130,7 +157,8 @@ Kontingent je Pass [A], als Vorschlag:
 - Kosten der **gemeinsamen** Cent-Dienste (API Gateway, EventBridge, S3)
   entstehen nur durch Mandanten, also durch Pass-Inhaber.
 - Neu im Umfang: Pass-Verwaltung, Einladungslinks, Verwaltungsbereich für
-  den Inhaber.
+  den Inhaber — gebaut in Phase 4 (Service `tenancy`, Seiten `/pass` und
+  `/pass/einloesen` in der Shell, `/cockpit/paesse`).
 
 ## Quellen
 

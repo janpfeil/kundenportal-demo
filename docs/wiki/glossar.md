@@ -53,7 +53,7 @@ immer auf `glossar.md#anker`.
 | Mitgliedskonto | Mitgliedskonten | Konto innerhalb einer AWS Organization; eigene Ressourcen und Kosten, gemeinsame Rechnung | Azure Subscription unter einer Management Group |
 | Control Tower | | AWS-Dienst, der eine Mehrkonten-Landschaft mit Leitplanken automatisiert aufsetzt | Azure Landing Zones |
 | SCP | Service Control Policy | Richtlinie in AWS Organizations, die ganze Konten einschränkt (z. B. „keine Regionen außer Frankfurt") | Azure Policy, GCP Organization Policy |
-| Kill-Switch | Not-Aus | im Demo geplante Automatik: Budget-Alarm → SNS → Lambda setzt Throttling/Concurrency auf 0 und legt die API still | Feature-Flag „maintenance mode" |
+| Kill-Switch | Not-Aus | automatische Notbremse bei Kostenalarm; im Demo (seit Phase 4): Budget-Alarm → SNS → Tenancy-Lambda sperrt das Einlösen neuer Demo-Pässe (503), laufende Pässe bleiben nutzbar | Feature-Flag „maintenance mode" |
 | Teardown | Rückbau, Teardown-Workflow | vollständiges Entfernen aller Demo-Ressourcen per `cdk destroy` und `terraform destroy` | `docker compose down -v`, `helm uninstall` |
 | Demo-Modus | Z2, Demo auf Abruf, Auf-/Abbau | Betriebsart, bei der der AWS-Stack nur für eine Vorführung per GitHub-Workflow aufgebaut und danach wieder abgebaut wird; dazwischen 0 $ | ephemere Testumgebung |
 | Schlafmodus | Z3, Aufweck-Mechanik, Scale to zero | Betriebsart, in der die kostenpflichtigen Teile nach Inaktivität automatisch entfernt und beim nächsten Besuch automatisch neu angelegt werden; der Besucher wartet dann 1–3 Minuten | Scale-to-zero bei Knative/Cloud Run |

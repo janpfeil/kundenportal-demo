@@ -14,6 +14,7 @@ Generator liest beide Dateien und erzeugt daraus **eine** Glossar-Seite.
 | Construct | Constructs | wiederverwendbarer Baustein in CDK (z. B. „Lambda + Queue + DLQ" als eine Klasse) | Terraform-Modul, Pulumi Component |
 | CDK Bootstrap | Bootstrap | einmalig je Konto und Region angelegte CDK-Hilfsressourcen (S3-Bucket für Artefakte, ECR-Repository, Rollen) | — |
 | cdk destroy | | CDK-Befehl, der alle Ressourcen eines Stacks löscht | `terraform destroy` |
+| Custom Resource | Custom::PassTenantCleanup, benutzerdefinierte Ressource | Ressource in CloudFormation, deren Anlegen, Ändern und Löschen eine eigene Lambda ausführt; im Demo baut `Custom::PassTenantCleanup` beim Löschen des Base-Stacks zuerst alle zur Laufzeit angelegten Pass-Mandanten zurück | Terraform `null_resource` mit `local-exec`, Helm-Hooks |
 | RemovalPolicy | RemovalPolicy.DESTROY, autoDeleteObjects | CDK-Einstellung, ob eine Datenbank/ein Bucket beim Löschen des Stacks mitgelöscht (DESTROY) oder behalten wird | `force_destroy` in Terraform |
 | Terraform | TF | verbreitetes IaC-Werkzeug von HashiCorp: Infrastruktur deklarativ in HCL beschreiben, für viele Anbieter (AWS, Azure, Keycloak, GitHub …) über Provider | OpenTofu (Open-Source-Fork), Pulumi, Ansible |
 | HCL | | HashiCorp Configuration Language, die Beschreibungssprache von Terraform | YAML/JSON-Konfiguration |
@@ -214,6 +215,7 @@ Generator liest beide Dateien und erzeugt daraus **eine** Glossar-Seite.
 | Cloudflare | | CDN- und Sicherheitsanbieter; hier nur wegen des kostenlosen CAPTCHA-Dienstes Turnstile genannt | — |
 | ALTCHA | | selbst gehostetes, quelloffenes CAPTCHA ohne Bilderrätsel: der Browser löst ein kleines Rechenrätsel (Proof-of-Work), der Server prüft es mit einem geheimen HMAC-Schlüssel; im Demo vor dem Einlösen eines Einladungslinks | Friendly Captcha, mCaptcha |
 | Proof-of-Work | Rechenrätsel | Nachweis, dass ein Gerät eine bestimmte Rechenarbeit geleistet hat; für einen Besucher ein Moment, für massenhafte Bot-Anfragen teuer | Hashcash |
+| Replay-Schutz | Replay, Wiederholungsangriff | Schutz dagegen, dass eine einmal gültige Nachricht (z. B. ein gelöstes Rätsel oder ein Einladungs-Token) ein zweites Mal verwendet wird; im Demo merkt sich die Plattform jedes gelöste ALTCHA-Rätsel bis zu seinem Ablauf | Nonce-Speicher, JWT `jti`-Sperrliste |
 | Token Vending Machine | Token-Vending | Muster für Mandantentrennung: eine geteilte Funktion holt sich je Anfrage kurzlebige Anmeldedaten, die nur die Daten eines Mandanten erlauben | Row-Level Security in PostgreSQL, Hibernate-Filter |
 | Sitzungs-Tag | Session Tag, Principal Tag, aws:PrincipalTag | Schlüssel-Wert-Paar, das beim Annehmen einer IAM-Rolle mitgegeben wird; Richtlinien können Ressourcennamen daraus bilden (z. B. nur die Tabelle des eigenen Mandanten) | Claims in einem Token, die eine Datenbank-Policy auswertet |
 | STS | AWS STS, Security Token Service, AssumeRole | AWS-Dienst, der kurzlebige Anmeldedaten für eine Rolle ausgibt; kostenlos | Keycloak Token Exchange, HashiCorp Vault |
