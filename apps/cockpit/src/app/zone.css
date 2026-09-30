@@ -46,3 +46,10 @@
   padding-left: 1.25rem;
   font-size: 0.9375rem;
 }
+
+/* Demo-pass settings: cap selector and its save button. */
+.cockpit-settings {
+  display: grid;
+  gap: 16px;
+  max-width: 32rem;
+}

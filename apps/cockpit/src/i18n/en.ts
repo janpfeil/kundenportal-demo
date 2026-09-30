@@ -141,5 +141,31 @@ export const en: Dictionary = {
       done: "Revoked. The instance is being deleted.",
       failed: "Revoking failed.",
     },
+    settings: {
+      title: "Settings",
+      intro:
+        "Whether invitations can be redeemed right now, and how many pass tenants may run at the same time.",
+      redemption: "Redemption",
+      open: "open",
+      closed: "closed",
+      closedAt: "Closed since",
+      reason: "Reason",
+      noReason: "no reason given",
+      active: "Active pass tenants",
+      activeText: "{active} of {max}",
+      full: "All places are taken: invitations can only be redeemed again once a pass ends or the cap is raised.",
+      close: "Close redemption",
+      reopen: "Reopen redemption",
+      redemptionHint:
+        "While closed, no invitation can be redeemed; running passes stay usable. The budget alarm closes redemption automatically.",
+      cap: "Cap of concurrent pass tenants",
+      capHint:
+        "Each pass tenant has its own DynamoDB table with 5 read and 5 write capacity units. The free tier covers 25/25 per account; the base uses 5/5, which leaves room for at most 4 — free of charge.",
+      saveCap: "Save cap",
+      saving: "Saving …",
+      saved: "Saved.",
+      failed: "The settings could not be saved.",
+      error: "The settings could not be loaded right now.",
+    },
   },
 };

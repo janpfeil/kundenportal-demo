@@ -6,6 +6,7 @@ import {
   zoneConfig,
 } from "@kundenportal/web-auth";
 import type { ApiResult } from "@kundenportal/web-auth";
+import { type TenancySettings, parseSettings } from "./settings";
 
 /*
  * Demo-pass administration of the tenancy service. The typed client
@@ -50,7 +51,7 @@ export function isRevocable(status: PassStatus): boolean {
 /** Calls a tenancy endpoint with the session's access token, shaped like an openapi-fetch result. */
 export async function tenancyCall(
   session: Session,
-  method: "GET" | "POST",
+  method: "GET" | "POST" | "PUT",
   path: string,
   body?: unknown,
 ): Promise<ApiResult> {
@@ -101,4 +102,14 @@ export function parseInvitation(
   const minutes = Number(validMinutes);
   if (!Number.isInteger(minutes) || minutes < 1 || minutes > 60) return undefined;
   return { email: address, validMinutes: minutes };
+}
+
+/** GET /tenancy/settings (owner only); undefined on any error. */
+export async function fetchSettings(session: Session): Promise<TenancySettings | undefined> {
+  try {
+    const { data, response } = await tenancyCall(session, "GET", "/tenancy/settings");
+    return response.ok ? parseSettings(data) : undefined;
+  } catch {
+    return undefined;
+  }
 }

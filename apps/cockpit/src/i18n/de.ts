@@ -141,5 +141,31 @@ export const de = {
       done: "Widerrufen. Die Instanz wird gelöscht.",
       failed: "Widerrufen fehlgeschlagen.",
     },
+    settings: {
+      title: "Einstellungen",
+      intro:
+        "Ob sich Einladungen gerade einlösen lassen und wie viele Pass-Mandanten gleichzeitig laufen dürfen.",
+      redemption: "Einlösen",
+      open: "offen",
+      closed: "gesperrt",
+      closedAt: "Gesperrt seit",
+      reason: "Grund",
+      noReason: "kein Grund angegeben",
+      active: "Aktive Pass-Mandanten",
+      activeText: "{active} von {max}",
+      full: "Alle Plätze sind belegt: Einladungen lassen sich erst wieder einlösen, wenn ein Pass endet oder die Höchstzahl steigt.",
+      close: "Einlösen sperren",
+      reopen: "Einlösen wieder öffnen",
+      redemptionHint:
+        "Gesperrt lässt sich keine Einladung einlösen; laufende Pässe bleiben nutzbar. Der Budget-Alarm sperrt das Einlösen automatisch.",
+      cap: "Höchstzahl gleichzeitiger Pass-Mandanten",
+      capHint:
+        "Jeder Pass-Mandant hat eine eigene DynamoDB-Tabelle mit 5 Lese- und 5 Schreibeinheiten. Kostenlos sind 25/25 je Konto; die Basis belegt 5/5, also passen höchstens 4 ohne Kosten.",
+      saveCap: "Höchstzahl speichern",
+      saving: "Wird gespeichert …",
+      saved: "Gespeichert.",
+      failed: "Die Einstellungen konnten nicht gespeichert werden.",
+      error: "Die Einstellungen konnten gerade nicht geladen werden.",
+    },
   },
 } as const;

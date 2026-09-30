@@ -11,6 +11,7 @@ import {
 } from "@kundenportal/ui";
 import { InvitationForm } from "@/components/invitation-form";
 import { RevokeButton } from "@/components/revoke-button";
+import { SettingsPanel } from "@/components/settings-panel";
 import { dictionary } from "@/i18n";
 import { requireSession } from "@kundenportal/web-auth/pages";
 import {
@@ -18,6 +19,7 @@ import {
   type PassSummary,
   accessOf,
   isRevocable,
+  fetchSettings,
   listPasses,
 } from "@/lib/tenancy";
 import { fill } from "@kundenportal/ui/i18n";
@@ -54,7 +56,7 @@ export default async function PassesPage() {
     );
   }
 
-  const passes = await listPasses(session);
+  const [passes, settings] = await Promise.all([listPasses(session), fetchSettings(session)]);
   const used = (pass: PassSummary, kind: "api" | "events" | "uploads") => {
     const quota = pass.quotas[kind];
     return quota ? `${quota.used}/${quota.limit}` : "–";
@@ -102,7 +104,16 @@ export default async function PassesPage() {
 
   return (
     <Page title={texts.title} lead={texts.lead} actions={back}>
-      <Card title={texts.invite.title}>
+      <Card title={texts.settings.title}>
+        <p className="kp-muted">{texts.settings.intro}</p>
+        {settings === undefined ? (
+          <Notice tone="error">{texts.settings.error}</Notice>
+        ) : (
+          <SettingsPanel settings={settings} texts={texts.settings} locale={locale} />
+        )}
+      </Card>
+
+      <Card title={texts.invite.title} className="zone-section">
         <p className="kp-muted">{texts.invite.intro}</p>
         <InvitationForm texts={texts.invite} locale={locale} />
       </Card>
