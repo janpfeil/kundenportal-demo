@@ -1,6 +1,6 @@
 # kundenportal-demo — Konzept für ein AWS-Fullstack-Referenzprojekt
 
-Stand: 2026-09-30 · Phase 1 (Fundament und Durchstich) abgeschlossen: live unter https://kundenportal-demo.rypox.com, Release v0.1.0
+Stand: 2026-09-30 · Phase 1 (Fundament und Durchstich) abgeschlossen: live unter https://kundenportal-demo.rypox.com, Release v0.1.0 · Phase 2 (Zonen und Component Library) in Arbeit; Storybook: https://janpfeil.github.io/kundenportal-demo/storybook/
 
 Fachbegriffe sind in jedem Abschnitt beim ersten Vorkommen mit dem [Glossar](glossar.md) verlinkt (Erklärung und Entsprechung außerhalb von AWS).
 
@@ -82,11 +82,15 @@ Jede Phase endet mit einem lauffähigen, deployten Stand.
 
 | Phase | Inhalt | Stand |
 |---|---|---|
-| **1 – Fundament und Durchstich** | Monorepo, CI/CD, Fundament per Terraform (OIDC-Vertrauensstellungen, Budget), Identität mit Amazon Cognito, Shell-Zone mit Login (Deutsch/Englisch), Services `customer` und `notification`, Ereignisfluss über EventBridge und SQS, unbeaufsichtigter Auf- und Abbau | **abgeschlossen (30.09.2026)** — Release v0.1.0, live unter https://kundenportal-demo.rypox.com; Aufbau in [Architektur Phase 1](architektur.md) |
-| 2 – Zonen und Component Library | Zonen „Verträge & Rechnungen" und „Verbrauch", Laufzeit-Widget „Glocke", Component Library mit Storybook, Uploads (S3) | geplant |
+| **1 – Fundament und Durchstich** | Monorepo, CI/CD, Fundament per Terraform (OIDC-Vertrauensstellungen, Budget), Identität mit Amazon Cognito, Shell-Zone mit Login (Deutsch/Englisch), Services `customer` und `notification`, Ereignisfluss über EventBridge und SQS, unbeaufsichtigter Auf- und Abbau | **abgeschlossen (30.09.2026)** — Release v0.1.0, live unter https://kundenportal-demo.rypox.com; Aufbau in [Architektur](architektur.md) |
+| **2 – Zonen und Component Library** | Zonen „Verträge & Rechnungen" und „Verbrauch", Laufzeit-Widget „Glocke", Component Library mit Storybook, Uploads (S3) | **in Arbeit** — erledigt: Zonen-Muster mit zwei Zonen (Grundgerüst), Schreibweg aus dem Browser (Profil bearbeiten, „als gelesen markieren"), Services `contract`, `consumption`, `documents` mit Ereignissen und täglichem Zeitplan, Upload-Bucket, Glocke `<kp-bell>`, Component Library mit Storybook ([veröffentlicht](https://janpfeil.github.io/kundenportal-demo/storybook/)); offen: fachliche Seiten der Zonen. Aufbau in [Architektur](architektur.md) und [Zonen & Frontend](architektur-zonen.md) |
 | 3 – Altsysteme und Migration | zwei simulierte Altsysteme auf eigenem Server, Telko-Anmeldung über den eigenen Keycloak, Lazy Migration per Cognito-Migrate-User-Trigger, Bulk-Import, Dublettenerkennung, Migrations-Cockpit | geplant |
 | 4 – Mandanten und Demo-Pass | Einladungslinks, eigener Mandant je Besucher im Bridge-Modell, Kontingente, automatischer Ablauf ([Demo-Pass](demo-pass.md)) | geplant |
 | 5 – Feinschliff | 5-Minuten-Demo, Video, Messungen, Abschluss der Dokumentation | geplant |
+
+Die Component Library ist mit Storybook öffentlich einsehbar:
+https://janpfeil.github.io/kundenportal-demo/storybook/ (veröffentlicht
+zusammen mit diesen Berichten über GitHub Pages).
 
 Alle Handgriffe des Kontoinhabers für Phase 1 beschreiben die
 [Anleitung Fundament](anleitung-fundament.md) (Kapitel 4–5) und die

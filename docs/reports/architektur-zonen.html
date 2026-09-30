@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Zonen &amp; Frontend · kundenportal-demo</title>
+<link rel="stylesheet" href="assets/report.css">
+<script src="assets/report.js"></script>
+</head>
+<body>
+<header class="topbar"><a class="brand" href="index.html">kundenportal-demo · Konzept</a><nav class="topnav"><a href="index.html">Übersicht</a><a href="machbarkeit-kosten.html">Machbarkeit &amp; Kosten</a><a href="fachkonzept.html">Fachkonzept</a><a href="demo-pass.html">Demo-Pass</a><a href="kostenfrei.html">Kostenfreier Betrieb</a><a href="anleitung-kontoinhaber.html">Anleitung Kontoinhaber</a><a href="anleitung-fundament.html">Anleitung Fundament</a><a href="anleitung-anwendung.html">Anleitung Anwendung</a><a href="nextjs-betrieb.html">Next.js-Betrieb</a><a href="architektur.html">Architektur</a><a href="architektur-zonen.html" aria-current="page">Zonen &amp; Frontend</a><a href="glossar.html">Glossar</a></nav>
+<button class="theme-toggle" type="button">Dunkel</button></header>
+<div class="layout"><nav class="toc" aria-label="Inhalt"><div class="toc-title">Inhalt</div><div>
+<ul>
+<li><a href="#1-zonen-im-überblick">1. Zonen im Überblick</a></li>
+<li><a href="#2-aufbau-einer-zone">2. Aufbau einer Zone</a></li>
+<li><a href="#3-anmeldung-in-den-zonen">3. Anmeldung in den Zonen</a></li>
+<li><a href="#4-schreibweg-aus-dem-browser">4. Schreibweg aus dem Browser</a></li>
+<li><a href="#5-laufzeit-widget-glocke">5. Laufzeit-Widget „Glocke"</a></li>
+<li><a href="#6-component-library-und-storybook">6. Component Library und Storybook</a></li>
+<li><a href="#7-messwerte">7. Messwerte</a></li>
+<li><a href="#quellen">Quellen</a></li>
+</ul>
+</div>
+</nav><main><h1 id="architektur-zonen-und-frontend">Architektur: Zonen und Frontend<a class="anchor" href="#architektur-zonen-und-frontend" title="Permanent link">#</a></h1>
+<p>Stand: 2026-09-30 · Beschreibt den <strong>Ist-Stand</strong> des Codes (Branch <code>develop</code>, Phase 2 in Arbeit), nicht die Zielarchitektur. Kennzeichnung: <strong>[B]</strong> belegt (offizielle Quelle oder Messung), <strong>[A]</strong> Annahme, <strong>[E]</strong> Einschätzung.</p>
+<p>Fachbegriffe sind in jedem Abschnitt beim ersten Vorkommen mit dem <a href="glossar.html">Glossar</a> verlinkt (Erklärung und Entsprechung außerhalb von <a class="term" href="glossar.html#aws" title="Cloud-Plattform von Amazon mit über 200 Diensten (Rechenleistung, Datenbanken, Netzwerk, Messaging …), abgerechnet nach Nutzung">AWS</a>).</p>
+<p>Diese Seite ergänzt die <a href="architektur.html">Architektur</a> um die <a class="term" href="glossar.html#ui" title="Benutzeroberfläche">Oberfläche</a>:
+wie das Portal in mehrere <a class="term" href="glossar.html#nextjs" title="React-Framework (von Vercel) mit Routing, Server-Rendering, API-Routen und Build-Optimierung">Next.js</a>-Apps zerfällt, wie der <a class="term" href="glossar.html#browser" title="Programm zum Anzeigen von Webseiten; „Browser-App&quot; = Anwendung, die im Browser läuft">Browser</a> schreibt,
+wie das <a class="term" href="glossar.html#laufzeit-integration" title="Einbinden eines Bausteins erst im laufenden Browser statt beim Build">Laufzeit-Widget</a> „Glocke" eingebunden ist und was die <a class="term" href="glossar.html#component-library" title="gemeinsames Paket wiederverwendbarer UI-Bausteine (Buttons, Formulare, Layouts), das alle Micro-Frontends nutzen und so ein einheitliches Aussehen sichern">Component
+Library</a> liefert. Warum <a href="glossar.html#multi-zones">Multi-Zones</a> statt <a class="term" href="glossar.html#module-federation" title="Mechanismus (Webpack/Rspack), mit dem ein Bundle zur Laufzeit Module aus einem anderen, separat deployten Build lädt">Module
+Federation</a>, steht in <a href="nextjs-betrieb.html">Next.js-Betrieb</a>.</p>
+<h2 id="1-zonen-im-überblick">1. Zonen im Überblick<a class="anchor" href="#1-zonen-im-überblick" title="Permanent link">#</a></h2>
+<p>Das Portal besteht aus der <strong><a class="term" href="glossar.html#shell" title="Rahmenanwendung, die Navigation, Login und Layout stellt und die Micro-Frontends einbindet">Shell</a></strong> und weiteren <strong><a class="term" href="glossar.html#multi-zones" title="Next.js-Ansatz, mehrere Next.js-Apps unter einer Domain zu betreiben, aufgeteilt nach Pfaden">Zonen</a></strong>: je eine eigene
+<a class="term" href="glossar.html#nextjs" title="React-Framework (von Vercel) mit Routing, Server-Rendering, API-Routen und Build-Optimierung">Next.js</a>-App mit eigenem <a href="glossar.html#basepath">basePath</a>, eigener <a class="term" href="glossar.html#lambda" title="führt eine einzelne Funktion (z. B. einen HTTP-Handler) bei Bedarf aus; Abrechnung pro Aufruf und Laufzeit, skaliert automatisch von 0 auf viele Instanzen">Lambda</a> und
+eigenem Pfadbereich unter derselben <a class="term" href="glossar.html#domain" title="Internet-Adresse wie beispiel.de; wird bei einem Registrar für ca. 10–15 €/Jahr registriert">Domain</a>. Welche Zonen es gibt, steht an
+genau einer Stelle, der Registry <code>infra/cdk/lib/zones.ts</code>; App-<a class="term" href="glossar.html#stack" title="Einheit in CloudFormation/CDK: eine Gruppe von Ressourcen, die gemeinsam angelegt und gelöscht wird">Stack</a> und
+<a class="term" href="glossar.html#edge-stack" title="CDK-Stack für alles am Rand des Systems: CloudFront, Zertifikat, CloudFront Functions">Edge-Stack</a> lesen sie beide.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Zone</th>
+<th>Pfad</th>
+<th>App</th>
+<th>Stand 30.09.2026</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a class="term" href="glossar.html#shell" title="Rahmenanwendung, die Navigation, Login und Layout stellt und die Micro-Frontends einbindet">Shell</a></td>
+<td><code>/</code> (alles, was keine Zone ist)</td>
+<td><code>apps/shell</code></td>
+<td>Startseite, Anmeldung, Konto mit Profil-Bearbeitung, <a class="term" href="glossar.html#demo-postfach" title="im Portal angezeigtes Postfach der Demo-Personen; ersetzt echte E-Mails, damit die Demo niemanden anschreibt">Demo-Postfach</a> mit „als gelesen markieren", Glocke</td>
+</tr>
+<tr>
+<td><code>contracts</code></td>
+<td><code>/vertraege</code></td>
+<td><code>apps/contracts</code></td>
+<td>Grundgerüst: liest die Sitzung, leitet ohne Sitzung zur Anmeldung; fachliche Seiten (Verträge, <a class="term" href="glossar.html#abschlag" title="monatliche Vorauszahlung auf die Energie-Jahresrechnung; wird nach neuem Zählerstand angepasst">Abschlag</a>, Dokumente) in Arbeit</td>
+</tr>
+<tr>
+<td><code>consumption</code></td>
+<td><code>/verbrauch</code></td>
+<td><code>apps/consumption</code></td>
+<td>Grundgerüst wie oben; fachliche Seiten (Zählerstand, Datenvolumen) in Arbeit</td>
+</tr>
+<tr>
+<td><code>cockpit</code></td>
+<td><code>/cockpit</code></td>
+<td>—</td>
+<td>kommt in Phase 3 (<a class="term" href="glossar.html#migrations-cockpit" title="im Demo geplantes Micro-Frontend, das den Fortschritt der Kontenübernahme, Ereignisse und DLQ-Fälle live zeigt">Migrations-Cockpit</a>)</td>
+</tr>
+</tbody>
+</table></div>
+<figure class="chart"><figcaption>Zonen: eine Domain, mehrere Next.js-Apps</figcaption><svg viewBox="0 0 1000 309" role="img" aria-label="Zonen: eine Domain, mehrere Next.js-Apps" preserveAspectRatio="xMinYMin meet"><defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="edge-head" d="M0,0L10,5L0,10z"/></marker></defs><text x="117.5" y="18.0" class="t-muted" font-size="12" text-anchor="middle" font-weight="600">Nutzer</text><rect class="box" x="10.0" y="32" width="215.0" height="52" rx="6"/><text x="20.0" y="53.0" class="t-ink" font-size="13" text-anchor="start" font-weight="600">Browser</text><text x="20.0" y="72.0" class="t-ink2" font-size="12" text-anchor="start">Session-Cookie, &lt;kp-bell&gt;</text><text x="372.5" y="18.0" class="t-muted" font-size="12" text-anchor="middle" font-weight="600">Rand</text><rect class="box-accent" x="265.0" y="32" width="215.0" height="69" rx="6"/><text x="275.0" y="53.0" class="t-ink" font-size="13" text-anchor="start" font-weight="600">CloudFront</text><text x="275.0" y="72.0" class="t-ink2" font-size="12" text-anchor="start">eine Lambda-OAC für alle</text><text x="275.0" y="89.0" class="t-ink2" font-size="12" text-anchor="start">Zonen</text><text x="627.5" y="18.0" class="t-muted" font-size="12" text-anchor="middle" font-weight="600">Zonen</text><rect class="box" x="520.0" y="32" width="215.0" height="69" rx="6"/><text x="530.0" y="53.0" class="t-ink" font-size="13" text-anchor="start" font-weight="600">Shell-Lambda</text><text x="530.0" y="72.0" class="t-ink2" font-size="12" text-anchor="start">/ — Anmeldung, Konto,</text><text x="530.0" y="89.0" class="t-ink2" font-size="12" text-anchor="start">Postfach</text><rect class="box" x="520.0" y="113" width="215.0" height="52" rx="6"/><text x="530.0" y="134.0" class="t-ink" font-size="13" text-anchor="start" font-weight="600">Zone Verträge</text><text x="530.0" y="153.0" class="t-ink2" font-size="12" text-anchor="start">/vertraege/*</text><rect class="box" x="520.0" y="177" width="215.0" height="52" rx="6"/><text x="530.0" y="198.0" class="t-ink" font-size="13" text-anchor="start" font-weight="600">Zone Verbrauch</text><text x="530.0" y="217.0" class="t-ink2" font-size="12" text-anchor="start">/verbrauch/*</text><rect class="box" x="520.0" y="241" width="215.0" height="52" rx="6"/><text x="530.0" y="262.0" class="t-ink" font-size="13" text-anchor="start" font-weight="600">S3 (Assets)</text><text x="530.0" y="281.0" class="t-ink2" font-size="12" text-anchor="start">/_next/static/*, /widgets/*</text><text x="882.5" y="18.0" class="t-muted" font-size="12" text-anchor="middle" font-weight="600">Dienste</text><rect class="box-accent" x="775.0" y="32" width="215.0" height="69" rx="6"/><text x="785.0" y="53.0" class="t-ink" font-size="13" text-anchor="start" font-weight="600">HTTP API</text><text x="785.0" y="72.0" class="t-ink2" font-size="12" text-anchor="start">/api/* mit Access Token aus</text><text x="785.0" y="89.0" class="t-ink2" font-size="12" text-anchor="start">der Sitzung</text><path class="edge" marker-end="url(#ah)" d="M225.0,58.0 C245.0,58.0 245.0,66.5 263.0,66.5"/><path class="edge" marker-end="url(#ah)" d="M480.0,66.5 C500.0,66.5 500.0,66.5 518.0,66.5"/><path class="edge" marker-end="url(#ah)" d="M480.0,66.5 C500.0,66.5 500.0,139.0 518.0,139.0"/><path class="edge" marker-end="url(#ah)" d="M480.0,66.5 C500.0,66.5 500.0,203.0 518.0,203.0"/><path class="edge" marker-end="url(#ah)" d="M480.0,66.5 C500.0,66.5 500.0,267.0 518.0,267.0"/><path class="edge" marker-end="url(#ah)" d="M735.0,66.5 C755.0,66.5 755.0,66.5 773.0,66.5"/><path class="edge" marker-end="url(#ah)" d="M735.0,139.0 C755.0,139.0 755.0,66.5 773.0,66.5"/><path class="edge" marker-end="url(#ah)" d="M735.0,203.0 C755.0,203.0 755.0,66.5 773.0,66.5"/></svg><details><summary>Daten als Tabelle</summary><div class="table-wrap"><div class="table-wrap"><table><thead><tr><th>Schicht</th><th>Komponente</th></tr></thead><tbody><tr><td>Nutzer</td><td>Browser (Session-Cookie, &lt;kp-bell&gt;)</td></tr><tr><td>Rand</td><td>CloudFront (eine Lambda-OAC für alle Zonen)</td></tr><tr><td><a class="term" href="glossar.html#multi-zones" title="Next.js-Ansatz, mehrere Next.js-Apps unter einer Domain zu betreiben, aufgeteilt nach Pfaden">Zonen</a></td><td>Shell-Lambda (/ — Anmeldung, Konto, Postfach)</td></tr><tr><td><a class="term" href="glossar.html#multi-zones" title="Next.js-Ansatz, mehrere Next.js-Apps unter einer Domain zu betreiben, aufgeteilt nach Pfaden">Zonen</a></td><td>Zone Verträge (/vertraege/*)</td></tr><tr><td><a class="term" href="glossar.html#multi-zones" title="Next.js-Ansatz, mehrere Next.js-Apps unter einer Domain zu betreiben, aufgeteilt nach Pfaden">Zonen</a></td><td>Zone Verbrauch (/verbrauch/*)</td></tr><tr><td><a class="term" href="glossar.html#multi-zones" title="Next.js-Ansatz, mehrere Next.js-Apps unter einer Domain zu betreiben, aufgeteilt nach Pfaden">Zonen</a></td><td>S3 (Assets) (/_next/static/*, /widgets/*)</td></tr><tr><td>Dienste</td><td>HTTP API (/api/* mit Access Token aus der Sitzung)</td></tr></tbody></table></div></div></details></figure>
+<p>Ein Wechsel zwischen Zonen ist ein <strong>voller Seitenwechsel</strong> (gewöhnlicher
+Link, kein clientseitiges Routing): Jede Zone hat ihr eigenes
+JavaScript-<a class="term" href="glossar.html#bundle" title="vom Build erzeugte, zusammengefasste JavaScript-/CSS-Dateien">Bundle</a>, und nur innerhalb einer Zone navigiert Next.js ohne
+Neuladen [E].</p>
+<h2 id="2-aufbau-einer-zone">2. Aufbau einer Zone<a class="anchor" href="#2-aufbau-einer-zone" title="Permanent link">#</a></h2>
+<p>Eine <a class="term" href="glossar.html#multi-zones" title="Next.js-Ansatz, mehrere Next.js-Apps unter einer Domain zu betreiben, aufgeteilt nach Pfaden">Zone</a> hinzuzufügen heißt: eine App unter <code>apps/</code> mit <code>basePath</code> und
+<code>output: "standalone"</code> und ein Eintrag in <code>zones.ts</code>. Den Rest leiten die
+<a class="term" href="glossar.html#stack" title="Einheit in CloudFormation/CDK: eine Gruppe von Ressourcen, die gemeinsam angelegt und gelöscht wird">Stacks</a> aus der Registry ab:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Baustein</th>
+<th>Umsetzung</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Paket</td>
+<td><code>scripts/package-next-lambda.mjs &lt;app&gt; --serve-static</code>: <a href="glossar.html#standalone-build">Standalone-Build</a> als Zip (mit den pnpm-Symlinks); <code>--serve-static</code> legt <code>.next/static</code> und <code>public</code> mit ins Paket, die Zone liefert ihre statischen Dateien also <strong>selbst</strong> aus</td>
+</tr>
+<tr>
+<td><a class="term" href="glossar.html#lambda" title="führt eine einzelne Funktion (z. B. einen HTTP-Handler) bei Bedarf aus; Abrechnung pro Aufruf und Laufzeit, skaliert automatisch von 0 auf viele Instanzen">Lambda</a></td>
+<td><a class="term" href="glossar.html#construct" title="wiederverwendbarer Baustein in CDK (z. B. „Lambda + Queue + DLQ&quot; als eine Klasse)">Construct</a> <code>NextLambda</code> (<code>infra/cdk/lib/next-lambda.ts</code>), dasselbe wie für die <a class="term" href="glossar.html#shell" title="Rahmenanwendung, die Navigation, Login und Layout stellt und die Micro-Frontends einbindet">Shell</a>: <a href="glossar.html#lambda-web-adapter">Lambda Web Adapter</a>, <a class="term" href="glossar.html#response-streaming" title="Lambda schickt die Antwort in Teilen statt am Stück – nötig für Next.js-Streaming">Response Streaming</a>, 1024 <a class="term" href="glossar.html#gb" title="Gigabyte / Terabyte (1 TB = 1.000 GB)">MB</a>, 15 s, <a href="glossar.html#function-url">Function URL</a> mit <code>AWS_IAM</code>; Bereitschaftsprüfung unter <code>&lt;basePath&gt;/healthz</code></td>
+</tr>
+<tr>
+<td>Übergabe an den <a class="term" href="glossar.html#edge-stack" title="CDK-Stack für alles am Rand des Systems: CloudFront, Zertifikat, CloudFront Functions">Edge</a></td>
+<td><a class="term" href="glossar.html#ssm-parameter-store" title="Ablage für Konfigurationswerte und (verschlüsselt als SecureString) Geheimnisse; Standard-Stufe kostenlos. Im Demo auch Übergabestelle zwischen Terraform und CDK">SSM</a> <code>/kundenportal/app/zones/&lt;id&gt;/function-arn</code> und <code>/kundenportal/app/zones/&lt;id&gt;/origin-domain</code></td>
+</tr>
+<tr>
+<td><a class="term" href="glossar.html#cloudfront" title="Content Delivery Network (CDN): liefert Inhalte weltweit aus nahen Standorten aus, cacht sie und leitet Pfade an verschiedene Ziele (S3, API Gateway, Lambda) weiter">CloudFront</a></td>
+<td>je Zone <strong>drei</strong> <a href="glossar.html#cache-behavior">Cache-Behaviors</a>: <code>&lt;basePath&gt;</code> und <code>&lt;basePath&gt;/*</code> (alle <a class="term" href="glossar.html#http-methoden" title="Arten von REST-Aufrufen: lesen (GET), anlegen (POST), teilweise ändern (PATCH), ersetzen (PUT), löschen (DELETE)">HTTP-Methoden</a>, kein <a class="term" href="glossar.html#cache" title="Zwischenspeicher, der wiederholte Anfragen schneller und billiger beantwortet">Cache</a>) sowie <code>&lt;basePath&gt;/_next/static/*</code> (gecacht; jede neue Fassung einer Datei bekommt einen neuen Namen)</td>
+</tr>
+<tr>
+<td>Signatur</td>
+<td><strong>eine</strong> gemeinsame <a href="glossar.html#oac">OAC</a> vom Typ <code>lambda</code> für Shell und alle Zonen (<code>originAccessControlId</code> am <a class="term" href="glossar.html#origin" title="Ziel, von dem CloudFront Inhalte holt (S3-Bucket, API Gateway, Lambda-URL)">Ursprung</a>)</td>
+</tr>
+<tr>
+<td>Aufrufrechte</td>
+<td>je Zone <code>lambda:InvokeFunctionUrl</code> und <code>lambda:InvokeFunction</code> nur für diese <a class="term" href="glossar.html#distribution" title="eine CloudFront-Konfiguration mit eigener Domain, Ursprüngen und Regeln">Distribution</a>, wie bei der Shell</td>
+</tr>
+<tr>
+<td>Umgebung</td>
+<td><code>API_URL</code>, <code>OIDC_CLIENT_ID</code>, <code>COGNITO_USER_POOL_ID</code>, <code>APP_URL</code>; die Zone darf wie die Shell <code>DescribeUserPoolClient</code> aufrufen (Schlüssel der Sitzung, siehe Abschnitt 3)</td>
+</tr>
+</tbody>
+</table></div>
+<p>Die statischen Dateien der Shell liegen weiterhin im <a class="term" href="glossar.html#s3" title="Objektspeicher für Dateien beliebiger Größe in „Buckets&quot;; Standard für statische Websites, Uploads, Build-Artefakte">S3-Bucket</a> des
+Edge-Stacks unter <code>/_next/static/*</code>. Bei den Zonen hätte ein eigener
+S3-Pfad je Zone einen weiteren <a class="term" href="glossar.html#upload" title="Hochladen einer Datei vom Browser zum Server bzw. nach S3">Upload</a>-Schritt im Edge-<a class="term" href="glossar.html#deployment" title="Ausliefern einer neuen Version in eine Umgebung">Deploy</a> bedeutet; die
+Lambda liefert sie beim ersten Abruf, danach kommen sie aus dem
+CloudFront-Cache [E].</p>
+<h2 id="3-anmeldung-in-den-zonen">3. Anmeldung in den Zonen<a class="anchor" href="#3-anmeldung-in-den-zonen" title="Permanent link">#</a></h2>
+<p>Die Anmeldung bleibt <strong>in der <a class="term" href="glossar.html#shell" title="Rahmenanwendung, die Navigation, Login und Layout stellt und die Micro-Frontends einbindet">Shell</a></strong>; <a class="term" href="glossar.html#multi-zones" title="Next.js-Ansatz, mehrere Next.js-Apps unter einer Domain zu betreiben, aufgeteilt nach Pfaden">Zonen</a> haben keinen eigenen
+<a class="term" href="glossar.html#openid-connect" title="Identitätsschicht auf OAuth2: liefert zusätzlich ein ID-Token mit Nutzerangaben; auch für die Anmeldung von GitHub Actions bei AWS genutzt">OIDC</a>-Ablauf. Das gemeinsame Paket <code>@kundenportal/web-auth</code> gibt jeder Zone
+dieselben Werkzeuge:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Funktion</th>
+<th>Zweck</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>readSession()</code></td>
+<td>liest und entschlüsselt das <a href="glossar.html#cookie">Cookie</a> <code>kp_session</code> der Shell (<a href="glossar.html#jwe">JWE</a>, Schlüssel per <a href="glossar.html#hkdf">HKDF</a> aus dem Client-Secret, das die Zone wie die Shell aus dem <a class="term" href="glossar.html#user-pool" title="Nutzerverzeichnis in Cognito mit eigenen Nutzern, Gruppen, App-Clients und Triggern; zugleich OIDC-Aussteller">User Pool</a> liest); abgelaufene Sitzungen gelten als fehlend</td>
+</tr>
+<tr>
+<td><code>apiFor(session)</code></td>
+<td>typisierter <a class="term" href="glossar.html#api" title="Programmierschnittstelle, über die Programme miteinander sprechen">API</a>-Client mit dem Access <a class="term" href="glossar.html#token" title="digitaler Ausweis, den ein Identitätsdienst ausstellt und den eine App bei jedem API-Aufruf mitschickt">Token</a> aus der Sitzung, <a class="term" href="glossar.html#serverseitig" title="läuft auf dem Server statt im Browser">serverseitig</a></td>
+</tr>
+<tr>
+<td><code>loginUrl(returnTo)</code></td>
+<td><strong>absolute</strong> Adresse <code>https://&lt;Domain&gt;/auth/login?returnTo=…</code> der Shell. Absolut, weil <a class="term" href="glossar.html#nextjs" title="React-Framework (von Vercel) mit Routing, Server-Rendering, API-Routen und Build-Optimierung">Next.js</a> relative Weiterleitungsziele innerhalb einer Zone mit dem <code>basePath</code> präfixt — aus <code>/auth/login</code> würde sonst <code>/vertraege/auth/login</code></td>
+</tr>
+<tr>
+<td><code>isSameOrigin(headers, appUrl)</code></td>
+<td><a href="glossar.html#csrf">CSRF</a>-Prüfung für schreibende <a class="term" href="glossar.html#request" title="einzelne Anfrage an einen Dienst; viele AWS-Dienste rechnen pro Million Requests ab">Anfragen</a> (Abschnitt 4)</td>
+</tr>
+</tbody>
+</table></div>
+<p>Ohne Sitzung leitet eine Zone zur Shell-Anmeldung weiter und kommt danach
+über <code>returnTo</code> zurück. Der <a class="term" href="glossar.html#browser" title="Programm zum Anzeigen von Webseiten; „Browser-App&quot; = Anwendung, die im Browser läuft">Browser</a> hält weiterhin nur <a class="term" href="glossar.html#cookie" title="kleine Datei, die der Browser bei jeder Anfrage mitschickt; httpOnly heißt: für JavaScript unsichtbar und damit vor XSS geschützt">Cookies</a>, nie Tokens
+(<a href="glossar.html#bff">BFF</a>).</p>
+<h2 id="4-schreibweg-aus-dem-browser">4. Schreibweg aus dem Browser<a class="anchor" href="#4-schreibweg-aus-dem-browser" title="Permanent link">#</a></h2>
+<p><strong>Problem:</strong> <a class="term" href="glossar.html#cloudfront" title="Content Delivery Network (CDN): liefert Inhalte weltweit aus nahen Standorten aus, cacht sie und leitet Pfade an verschiedene Ziele (S3, API Gateway, Lambda) weiter">CloudFront</a> signiert <a class="term" href="glossar.html#request" title="einzelne Anfrage an einen Dienst; viele AWS-Dienste rechnen pro Million Requests ab">Anfragen</a> an die <a class="term" href="glossar.html#function-url" title="eigene HTTPS-Adresse einer Lambda ohne API Gateway; unterstützt Response Streaming und kann hinter CloudFront (mit OAC) liegen">Function URLs</a> per
+<a href="glossar.html#oac">OAC</a> mit <a href="glossar.html#sigv4">SigV4</a>. Für Anfragen <strong>mit
+Body</strong> (POST, PUT, <a class="term" href="glossar.html#http-methoden" title="Arten von REST-Aufrufen: lesen (GET), anlegen (POST), teilweise ändern (PATCH), ersetzen (PUT), löschen (DELETE)">PATCH</a>) signiert CloudFront den Inhalt nicht selbst;
+der Absender muss den SHA-256 des Bodys im Header <code>x-amz-content-sha256</code>
+mitschicken [B: <a href="https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/private-content-restricting-access-to-lambda.html">https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/private-content-restricting-access-to-lambda.html</a>].
+Ein gewöhnliches <a class="term" href="glossar.html#html" title="Auszeichnungssprache für Webseiten; JS = JavaScript">HTML</a>-Formular kann das nicht.</p>
+<p><strong>Lösung:</strong> Alle schreibenden Aufrufe aus dem <a class="term" href="glossar.html#browser" title="Programm zum Anzeigen von Webseiten; „Browser-App&quot; = Anwendung, die im Browser läuft">Browser</a> laufen über
+<code>sendJson(method, url, body)</code> aus <code>@kundenportal/web-auth/browser</code>. Die
+Funktion serialisiert den Body, berechnet den
+<a href="glossar.html#payload-hash">Payload-Hash</a> mit <a href="glossar.html#webcrypto">WebCrypto</a>
+und sendet beides per <code>fetch</code> (nur gleiche Herkunft, mit <a class="term" href="glossar.html#cookie" title="kleine Datei, die der Browser bei jeder Anfrage mitschickt; httpOnly heißt: für JavaScript unsichtbar und damit vor XSS geschützt">Cookie</a>).</p>
+<ul>
+<li><strong>Live belegt [B]:</strong> POST an die <a class="term" href="glossar.html#shell" title="Rahmenanwendung, die Navigation, Login und Layout stellt und die Micro-Frontends einbindet">Shell</a> ohne <a class="term" href="glossar.html#payload-hash" title="SHA-256 des Anfrage-Bodys; CloudFront braucht ihn vom Absender, um Anfragen mit Body per SigV4 zu signieren">Payload-Hash</a> → 403 von
+  CloudFront; mit Payload-Hash → die Anfrage erreicht die App.</li>
+<li><strong>Function URLs bleiben <code>AWS_IAM</code></strong> mit <a class="term" href="glossar.html#oac" title="CloudFront signiert seine Anfragen an den Ursprung, der nur CloudFront einlässt: ein privater S3-Bucket oder eine Lambda-Function-URL mit IAM-Prüfung; bei Function URLs werden Anfr">OAC</a>. Die Alternativen wären eine
+  öffentliche Function URL (Schutz nur noch über ein Geheimnis im Header,
+  das dann im CloudFront-Template stünde) — beides verworfen [E].</li>
+<li><strong>Folge:</strong> Formulare <strong>ohne JavaScript</strong> werden nicht unterstützt [E].
+  Das betrifft nur schreibende Aktionen; Seiten und Links funktionieren
+  auch ohne JavaScript.</li>
+</ul>
+<p><strong><a class="term" href="glossar.html#csrf" title="Angriff, bei dem eine fremde Seite den Browser dazu bringt, mit der Sitzung des Nutzers eine schreibende Anfrage ans Portal zu schicken">CSRF-Schutz</a></strong> in zwei Schichten:</p>
+<ol>
+<li>Das Sitzungs-Cookie ist <a href="glossar.html#samesite">SameSite</a><code>=Lax</code>; fremde
+   Seiten können damit keine POST-Anfragen mit Sitzung auslösen.</li>
+<li>Jeder <a class="term" href="glossar.html#route-handler" title="Datei route.ts im Next.js-App-Router, die eine HTTP-Schnittstelle (GET, POST, PATCH …) statt einer Seite bereitstellt">Route Handler</a>, der schreibt, prüft den
+   <a href="glossar.html#origin-header">Origin-Header</a>: nur die Portal-<a class="term" href="glossar.html#domain" title="Internet-Adresse wie beispiel.de; wird bei einem Registrar für ca. 10–15 €/Jahr registriert">Domain</a>, sonst
+   <strong>403</strong>; danach die Sitzung, sonst <strong>401</strong> (<code>guardWrite</code> in der Shell).
+   Fehlt <code>Origin</code>, gilt die Anfrage als fremd — <code>fetch</code> sendet ihn bei
+   allen Nicht-GET-Anfragen.</li>
+</ol>
+<p>Schreibende <a href="glossar.html#route-handler">Route Handler</a> der Shell (Stand
+30.09.2026):</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Route (Shell)</th>
+<th>Methode</th>
+<th>ruft die API</th>
+<th>Zweck</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/konto/profil</code></td>
+<td>PATCH</td>
+<td><code>PATCH /api/me</code></td>
+<td>Anzeigename und Sprache ändern</td>
+</tr>
+<tr>
+<td><code>/postfach/&lt;id&gt;/gelesen</code></td>
+<td>POST</td>
+<td><code>PATCH /api/notifications/&lt;id&gt;</code></td>
+<td>Nachricht als gelesen markieren</td>
+</tr>
+<tr>
+<td><code>/postfach/anzahl</code></td>
+<td>GET</td>
+<td><code>GET /api/notifications</code></td>
+<td>Zahl der ungelesenen Nachrichten für die Glocke (401 ohne Sitzung)</td>
+</tr>
+</tbody>
+</table></div>
+<p>Das Verhalten der Shell in CloudFront erlaubt dafür jetzt alle
+<a href="glossar.html#http-methoden">HTTP-Methoden</a> (Phase 1: nur GET, HEAD,
+OPTIONS).</p>
+<h2 id="5-laufzeit-widget-glocke">5. Laufzeit-Widget „Glocke"<a class="anchor" href="#5-laufzeit-widget-glocke" title="Permanent link">#</a></h2>
+<p><code>&lt;kp-bell&gt;</code> (<code>packages/widget-notifications</code>) zeigt die Zahl der
+ungelesenen Nachrichten und verlinkt aufs Postfach. Es ist die zweite
+Integrationsart neben <a class="term" href="glossar.html#multi-zones" title="Next.js-Ansatz, mehrere Next.js-Apps unter einer Domain zu betreiben, aufgeteilt nach Pfaden">Multi-Zones</a>: eine
+<a href="glossar.html#laufzeit-integration">Laufzeit-Integration</a> im <a class="term" href="glossar.html#browser" title="Programm zum Anzeigen von Webseiten; „Browser-App&quot; = Anwendung, die im Browser läuft">Browser</a>, die
+jede Zone unabhängig von ihrem eigenen <a class="term" href="glossar.html#stack" title="Einheit in CloudFormation/CDK: eine Gruppe von Ressourcen, die gemeinsam angelegt und gelöscht wird">Stack</a> einbinden kann.</p>
+<ul>
+<li><strong>Technik:</strong> ein <a href="glossar.html#custom-element">Custom Element</a> mit
+  <a href="glossar.html#shadow-dom">Shadow DOM</a>, ohne Framework, gebaut mit
+  <a href="glossar.html#vite">Vite</a>; <strong>2,3 kB</strong>. Farben kommen über die
+  <a class="term" href="glossar.html#design-token" title="benannte Gestaltungswerte (Farben, Abstände, Schriften) als CSS-Variablen, hier --kp- mit Werten für hell und dunkel">Design-Tokens</a> der <a class="term" href="glossar.html#component-library" title="gemeinsames Paket wiederverwendbarer UI-Bausteine (Buttons, Formulare, Layouts), das alle Micro-Frontends nutzen und so ein einheitliches Aussehen sichern">Component Library</a> (<code>--kp-accent</code>), mit Ersatzwerten.</li>
+<li><strong>Einbinden:</strong> <code>&lt;script type="module" src="/widgets/bell.js"&gt;</code> und
+  <code>&lt;kp-bell&gt;</code>; Attribute <code>label</code>, <code>href</code> (Standard <code>/postfach</code>), <code>src</code>
+  (Standard <code>/postfach/anzahl</code>), <code>interval</code> (Sekunden, Standard 30).</li>
+<li><strong>Auslieferung:</strong> Der <a class="term" href="glossar.html#edge-stack" title="CDK-Stack für alles am Rand des Systems: CloudFront, Zertifikat, CloudFront Functions">Edge-Stack</a> legt <code>bell.js</code> in den Asset-<a class="term" href="glossar.html#s3" title="Objektspeicher für Dateien beliebiger Größe in „Buckets&quot;; Standard für statische Websites, Uploads, Build-Artefakte">Bucket</a> unter
+  <code>/widgets/</code>; ein eigenes Verhalten <code>/widgets/*</code> liefert es <a class="term" href="glossar.html#cache" title="Zwischenspeicher, der wiederholte Anfragen schneller und billiger beantwortet">gecacht</a> aus.
+  Weil der Dateiname gleich bleibt, <a href="glossar.html#invalidierung">invalidiert</a>
+  jeder <a class="term" href="glossar.html#deployment" title="Ausliefern einer neuen Version in eine Umgebung">Deploy</a> <code>/widgets/*</code>.</li>
+<li><strong>Daten:</strong> <a class="term" href="glossar.html#http-methoden" title="Arten von REST-Aufrufen: lesen (GET), anlegen (POST), teilweise ändern (PATCH), ersetzen (PUT), löschen (DELETE)">GET</a> <code>/postfach/anzahl</code> der <a class="term" href="glossar.html#shell" title="Rahmenanwendung, die Navigation, Login und Layout stellt und die Micro-Frontends einbindet">Shell</a> mit dem <a class="term" href="glossar.html#session" title="Anmeldezustand, den der Server (hier die Next.js-Shell) im Cookie verschlüsselt hält">Session</a>-<a class="term" href="glossar.html#cookie" title="kleine Datei, die der Browser bei jeder Anfrage mitschickt; httpOnly heißt: für JavaScript unsichtbar und damit vor XSS geschützt">Cookie</a> (gleiche
+  Herkunft, kein <a class="term" href="glossar.html#token" title="digitaler Ausweis, den ein Identitätsdienst ausstellt und den eine App bei jedem API-Aufruf mitschickt">Token</a> im Browser). Ohne Sitzung antwortet die Route mit
+  401, das <a class="term" href="glossar.html#widget" title="kleiner, eingebetteter Oberflächenbaustein">Widget</a> bleibt dann still.</li>
+</ul>
+<h2 id="6-component-library-und-storybook">6. Component Library und Storybook<a class="anchor" href="#6-component-library-und-storybook" title="Permanent link">#</a></h2>
+<p><code>packages/ui</code> ist die gemeinsame <a href="glossar.html#component-library">Component Library</a>
+aller <a class="term" href="glossar.html#multi-zones" title="Next.js-Ansatz, mehrere Next.js-Apps unter einer Domain zu betreiben, aufgeteilt nach Pfaden">Zonen</a>; die <a class="term" href="glossar.html#shell" title="Rahmenanwendung, die Navigation, Login und Layout stellt und die Micro-Frontends einbindet">Shell</a> baut bereits vollständig darauf auf.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Teil</th>
+<th>Inhalt</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Komponenten</td>
+<td>13: <code>AppShell</code>/<code>TopBar</code> (mit Platz für die Glocke), <code>Page</code>, <code>Card</code>, <code>Facts</code>, <code>DataTable</code>, <code>Button</code>/<code>ButtonLink</code>, <code>TextField</code>, <code>NumberField</code>, <code>Select</code>, <code>Notice</code>, <code>Badge</code>, <code>EmptyState</code>, <code>Footer</code>; reines <a class="term" href="glossar.html#react" title="JavaScript-Bibliothek für Benutzeroberflächen aus Komponenten">React</a> ohne Client-Zustand, daher alle als <a href="glossar.html#server-components">Server Components</a> nutzbar</td>
+</tr>
+<tr>
+<td><a href="glossar.html#design-token">Design-Tokens</a></td>
+<td>CSS-Variablen <code>--kp-*</code> für hell und dunkel; folgt <code>prefers-color-scheme</code>, <code>data-theme</code> erzwingt eine Variante</td>
+</tr>
+<tr>
+<td>Übersetzungen</td>
+<td>gemeinsame Texte DE/EN (Navigation, An-/Abmelden, Sprachwechsel, Fußzeile) und Sprachauswahl aus <a class="term" href="glossar.html#cookie" title="kleine Datei, die der Browser bei jeder Anfrage mitschickt; httpOnly heißt: für JavaScript unsichtbar und damit vor XSS geschützt">Cookie</a> und <code>Accept-Language</code>; zonenspezifische Texte bleiben in den Zonen</td>
+</tr>
+<tr>
+<td>Tests</td>
+<td>20 (Vitest, Testing Library)</td>
+</tr>
+<tr>
+<td><a href="glossar.html#storybook">Storybook</a></td>
+<td>Version 10.6, statisch gebaut; Umschalter für Sprache und Hell/Dunkel, 360-px-Ansicht voreingestellt</td>
+</tr>
+</tbody>
+</table></div>
+<p>Der <a class="term" href="glossar.html#workflow" title="allgemein: automatisierter Ablauf mehrerer Schritte; bei GitHub: eine Pipeline-Datei">Workflow</a> <code>Pages</code> veröffentlicht <a class="term" href="glossar.html#storybook" title="Werkzeug, das jede Komponente der Component Library isoliert darstellt und dokumentiert; als statische Seite veröffentlicht">Storybook</a> zusammen mit diesen Berichten
+auf <a href="glossar.html#github-pages">GitHub Pages</a>:
+<a href="https://janpfeil.github.io/kundenportal-demo/storybook/">https://janpfeil.github.io/kundenportal-demo/storybook/</a> — kostenlos und
+ohne <a class="term" href="glossar.html#s3" title="Objektspeicher für Dateien beliebiger Größe in „Buckets&quot;; Standard für statische Websites, Uploads, Build-Artefakte">S3</a> oder <a class="term" href="glossar.html#cloudfront" title="Content Delivery Network (CDN): liefert Inhalte weltweit aus nahen Standorten aus, cacht sie und leitet Pfade an verschiedene Ziele (S3, API Gateway, Lambda) weiter">CloudFront</a> (<a href="kostenfrei.html">Kostenfreier Betrieb</a> §3).</p>
+<h2 id="7-messwerte">7. Messwerte<a class="anchor" href="#7-messwerte" title="Permanent link">#</a></h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Messgröße</th>
+<th>Wert</th>
+<th>Gemessen am</th>
+<th>Anmerkung</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a class="term" href="glossar.html#deployment" title="Ausliefern einer neuen Version in eine Umgebung">Deploy</a> nur der <a class="term" href="glossar.html#multi-zones" title="Next.js-Ansatz, mehrere Next.js-Apps unter einer Domain zu betreiben, aufgeteilt nach Pfaden">Zonen</a> (lokal)</td>
+<td>212 s</td>
+<td class="num">30.09.2026</td>
+<td><a class="term" href="glossar.html#build" title="Übersetzen und Paketieren des Quellcodes zu auslieferbaren Dateien (Artefakten)">Build</a>, App- und <a class="term" href="glossar.html#edge-stack" title="CDK-Stack für alles am Rand des Systems: CloudFront, Zertifikat, CloudFront Functions">Edge-Stack</a></td>
+</tr>
+<tr>
+<td>Größe <code>bell.js</code></td>
+<td>2,3 kB</td>
+<td class="num">30.09.2026</td>
+<td><a class="term" href="glossar.html#vite" title="schnelles Build-Werkzeug für Frontends">Vite</a>-Build</td>
+</tr>
+<tr>
+<td><a class="term" href="glossar.html#http-methoden" title="Arten von REST-Aufrufen: lesen (GET), anlegen (POST), teilweise ändern (PATCH), ersetzen (PUT), löschen (DELETE)">POST</a> ohne <code>x-amz-content-sha256</code></td>
+<td class="num">403</td>
+<td class="num">30.09.2026</td>
+<td><a class="term" href="glossar.html#cloudfront" title="Content Delivery Network (CDN): liefert Inhalte weltweit aus nahen Standorten aus, cacht sie und leitet Pfade an verschiedene Ziele (S3, API Gateway, Lambda) weiter">CloudFront</a>, live</td>
+</tr>
+</tbody>
+</table></div>
+<p>Weitere Messwerte, auch der Deploy mit allen Services, stehen in
+<a href="architektur.html">Architektur</a> §9.</p>
+<h2 id="quellen">Quellen<a class="anchor" href="#quellen" title="Permanent link">#</a></h2>
+<ul class="sources">
+<li>CloudFront OAC für Lambda Function URLs (Payload-Hash bei PUT/POST): <a href="https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/private-content-restricting-access-to-lambda.html">https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/private-content-restricting-access-to-lambda.html</a></li>
+<li>Next.js Multi-Zones: <a href="https://nextjs.org/docs/app/guides/multi-zones">https://nextjs.org/docs/app/guides/multi-zones</a></li>
+<li>Next.js <code>basePath</code>: <a href="https://nextjs.org/docs/app/api-reference/config/next-config-js/basePath">https://nextjs.org/docs/app/api-reference/config/next-config-js/basePath</a></li>
+<li>Custom Elements (MDN): <a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_custom_elements">https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_custom_elements</a></li>
+<li>Cookie-Attribut SameSite (MDN): <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Set-Cookie#samesitesamesite-value">https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Set-Cookie#samesitesamesite-value</a></li>
+</ul></main></div>
+<footer class="site"><a href="../wiki/architektur-zonen.md">Markdown-Quelle</a> · Generiert 2026-09-30 09:00 aus <code>docs/wiki</code> mit <code>scripts/build_reports.py</code></footer>
+</body>
+</html>

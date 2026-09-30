@@ -1,6 +1,6 @@
 # Kostenfreier Betrieb — AWS nur im Freikontingent
 
-Stand: 2026-09-29 · Kennzeichnung: **[B]** belegt (offizielle Quelle), **[D]** Drittquelle, **[A]** Annahme/Schätzung, **[E]** Einschätzung.
+Stand: 2026-09-30 · Kennzeichnung: **[B]** belegt (offizielle Quelle), **[D]** Drittquelle, **[A]** Annahme/Schätzung, **[E]** Einschätzung.
 
 Fachbegriffe sind in jedem Abschnitt beim ersten Vorkommen mit dem [Glossar](glossar.md) verlinkt (Erklärung und Entsprechung außerhalb von AWS).
 
@@ -63,9 +63,9 @@ dauerhaft laufen (Variante Z2 in Abschnitt 4).
 | Lambda | 1 Mio. Aufrufe + 400.000 GB-s [D] | REST-Handler, Event-Konsumenten, Next.js-SSR | 0 $ |
 | DynamoDB | 25 GB, 25 RCU/WCU provisioned [B] | Single Table, provisioned 5 RCU/5 WCU je Tabelle, zusammen ≤ 25 | 0 $ |
 | Cognito (Plan Essentials) | 10.000 aktive Nutzer (MAU) im Monat, läuft nicht ab [B: https://aws.amazon.com/cognito/pricing/] | Portal-Login, Managed Login, Lambda-Trigger | 0 $ |
-| SQS | 1 Mio. Anfragen [D] | Workflows mit DLQ | 0 $ |
+| SQS | 1 Mio. Anfragen [D] | eine Queue (notification) mit DLQ, drei weitere DLQs ohne Abfrager | 0 $ |
 | SNS | 1 Mio. Publishes, 1.000 E-Mails [D] | Benachrichtigungen, Kill-Switch | 0 $ |
-| EventBridge Scheduler | 14 Mio. Aufrufe [B] | zeitgesteuerte Erinnerungen | 0 $ |
+| EventBridge Scheduler | 14 Mio. Aufrufe [B] | tägliche Datenvolumen-Prüfung (≈ 30 Aufrufe/Monat) | 0 $ |
 | CloudWatch | Logs ≈ 5 GB, 10 Metriken, 10 Alarme [D] | Logs mit 3–7 Tagen Retention | 0 $ |
 | IAM, ACM, AWS Budgets, SSM Parameter Store (Standard), KMS mit AWS-verwalteten Schlüsseln | kostenlos [B/A] | Rechte, Zertifikat, Kostenalarm, Konfiguration | 0 $ |
 | CloudFormation | für AWS-eigene Ressourcen kostenlos [A] | CDK-Deployments | 0 $ |
@@ -78,7 +78,7 @@ eigenen Nameservern), NAT Gateway, ALB, RDS, Secrets Manager, WAF
 (Pay-as-you-go), öffentliche IPv4-Adressen.
 
 **Ergänzungen aus Phase 1 (Stand 29.09.2026)** — was der gebaute Code
-zusätzlich verbraucht ([Architektur Phase 1](architektur.md)):
+zusätzlich verbraucht ([Architektur](architektur.md)):
 
 - **SQS im Leerlauf [A]:** Die Lambda-Ereignisquelle fragt die Queue auch
   ohne Nachrichten dauerhaft ab (Long Polling, 20 s je Abfrage, mehrere
@@ -93,6 +93,36 @@ zusätzlich verbraucht ([Architektur Phase 1](architektur.md)):
   Nord-Virginia) mit wenigen MB Lambda-Code und statischen Dateien; ohne
   Guthaben Bruchteile eines Cents [A]. Ein leeres ECR-Repository kostet nichts.
 
+**Ergänzungen aus Phase 2 (Stand 30.09.2026)** — neue Services, Uploads und
+Zonen ([Architektur](architektur.md) §6):
+
+- **Nur eine SQS-Queue [E]:** Jede weitere Queue mit Lambda-Ereignisquelle
+  käme im Leerlauf auf weitere ≈ 0,65 Mio. Anfragen im Monat [A]; zusammen
+  mit der notification-Queue wären die 1 Mio. freien Anfragen überschritten.
+  Deshalb ruft EventBridge die Worker von `contract`, `consumption` und
+  `documents` **direkt** auf (asynchroner Lambda-Aufruf). Zuverlässigkeit
+  kommt von der Retry-Policy am Regelziel, zwei Lambda-Wiederholungen und
+  einer On-Failure-DLQ je Service. Die drei DLQs verursachen nur Anfragen,
+  wenn tatsächlich etwas darin landet (kein Abfrager).
+- **EventBridge (eigene Events):** je Kundenaktion ein bis zwei Ereignisse
+  mehr als in Phase 1 (z. B. Zählerstand → `MeterReadingSubmitted` →
+  `InstallmentAdjusted`); weiterhin 1 $ je Mio., also bei Demo-Traffic
+  Bruchteile eines Cents [A]. S3-Ereignisse kommen über den Standard-Bus;
+  Ereignisse von AWS-Diensten sind dort kostenlos
+  [B: https://aws.amazon.com/eventbridge/pricing/].
+- **EventBridge Scheduler:** ein täglicher Zeitplan (Datenvolumen-Prüfung
+  07:00) ≈ 30 Aufrufe im Monat von 14 Mio. freien [B].
+- **S3 für Uploads:** ein Bucket im dauerhaften Base-Stack; Dateien bis 5 MB,
+  Löschung nach 7 Tagen per Lifecycle-Regel; Speicher und Anfragen bei
+  Demo-Nutzung < 0,01 $ im Monat [A], im Free Plan über das Guthaben.
+- **Lambda:** 13 Funktionen statt 5; die Aufrufe bleiben bei Demo-Traffic
+  weit unter 1 Mio. im Monat. Zonen liefern ihre statischen Dateien einmal
+  selbst aus, danach kommen sie aus dem CloudFront-Cache [E].
+- **CloudWatch:** vier Alarme (je eine DLQ für notification, contract,
+  consumption, documents) von 10 freien.
+- **Storybook** liegt auf GitHub Pages (Abschnitt 3), nicht auf S3 oder
+  CloudFront.
+
 ## 3. Was auf eigene Infrastruktur wandert
 
 Eigene, bereits vorhandene Infrastruktur: ein **eigener Server** mit Docker,
@@ -104,7 +134,7 @@ Repository, Actions, Pages).
 | Terraform-State | S3-Bucket | **GitLab-managed Terraform State** auf gitlab.rypox.org (HTTP-Backend mit Locking) [B: https://docs.gitlab.com/user/infrastructure/iac/terraform_state/]; Terraform läuft **nur in GitLab CI** (siehe 3.1) | kein State-Bucket in S3; State (ab Phase 3 mit Keycloak-Zugangsdaten) bleibt privat |
 | Altsysteme (Energie-Kundensystem, Kundensystem des übernommenen Telekommunikationsanbieters) | simuliert, teils als Lambda | **Docker-Container auf dem eigenen Server**, eigenes Deployment über GitLab CI auf gitlab.rypox.org | echte Hybrid-Architektur „Altsystem im eigenen Rechenzentrum, neues Portal in der Cloud"; ab Phase 3 ruft der Cognito-Migrate-User-Trigger (Lambda) das Altsystem per HTTPS für die Lazy Migration auf [E] |
 | Anmeldung des Telko-Altsystems | — | **eigener Keycloak** unter `id.rypox.net` (self-hosted); Konfiguration ab Phase 3 per Terraform | Gegenstelle des Migrate-User-Triggers für Telko-Kunden; 0 $ auf AWS [E] |
-| Storybook (Component Library) und diese Berichte | S3 + CloudFront | **GitHub Pages** | kostenlos für öffentliche Repositories, entlastet S3 und CloudFront-Behaviors [E] |
+| Storybook (Component Library) und diese Berichte | S3 + CloudFront | **GitHub Pages** (umgesetzt 30.09.2026: https://janpfeil.github.io/kundenportal-demo/storybook/) | kostenlos für öffentliche Repositories, entlastet S3 und CloudFront-Behaviors [E] |
 | DNS | Route 53 optional | eigene Nameserver, CNAME auf CloudFront | 0 $ |
 | CI/CD | GitHub Actions | GitHub Actions für die Anwendung auf AWS; GitLab CI für Plattform und Altsysteme (siehe 3.1) | 0 $ [B]; kein GitLab-Zugang in GitHub |
 

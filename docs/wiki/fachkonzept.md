@@ -1,6 +1,6 @@
 # Fachkonzept — Multi-Sparten-Kundenportal
 
-Stand: 2026-09-29 (Identität: Cognito/Keycloak eingearbeitet) · Status: **abgestimmt** (29.09.2026) · Kennzeichnung: **[E]** Einschätzung/Festlegung im Entwurf.
+Stand: 2026-09-30 (Identität: Cognito/Keycloak eingearbeitet; §7.1 mit dem Code abgeglichen) · Status: **abgestimmt** (29.09.2026) · Kennzeichnung: **[E]** Einschätzung/Festlegung im Entwurf.
 
 Fachbegriffe sind in jedem Abschnitt beim ersten Vorkommen mit dem [Glossar](glossar.md) verlinkt (Erklärung und Entsprechung außerhalb von AWS).
 
@@ -107,9 +107,9 @@ enthält `tenantId`, `occurredAt`, `correlationId` [E].
   {"title": "Eingang", "accent": true, "nodes": [["API Gateway", "JWT prüfen, Mandant bestimmen"], ["S3 (Presigned URL)", "Foto"]]},
   {"title": "Service", "nodes": [["consumption", "speichert Stand"]]},
   {"title": "Ereignis", "accent": true, "nodes": [["EventBridge", "MeterReadingSubmitted"]]},
-  {"title": "Reaktion", "nodes": [["SQS → contract", "Abschlag neu"], ["SQS → notification", "Postfach, Glocke"]]}
+  {"title": "Reaktion", "nodes": [["contract (direkt)", "Abschlag neu"], ["SQS → notification", "Postfach, Glocke"]]}
  ],
- "edges": [["Zone Verbrauch", "API Gateway"], ["Zone Verbrauch", "S3 (Presigned URL)"], ["API Gateway", "consumption"], ["consumption", "EventBridge"], ["EventBridge", "SQS → contract"], ["EventBridge", "SQS → notification"]]}
+ "edges": [["Zone Verbrauch", "API Gateway"], ["Zone Verbrauch", "S3 (Presigned URL)"], ["API Gateway", "consumption"], ["consumption", "EventBridge"], ["EventBridge", "contract (direkt)"], ["EventBridge", "SQS → notification"]]}
 ```
 
 ## 7. Datenmodell
@@ -126,17 +126,30 @@ kostenlos — siehe [Demo-Pass](demo-pass.md) §5.
 Single-Table-Design: Partition Key `PK`, Sort Key `SK`, ein globaler
 Sekundärindex `GSI1` für Suchen [E].
 
-| Entität | PK | SK | Zugriffsmuster |
-|---|---|---|---|
-| Kunde | `CUST#<kundeId>` | `PROFILE` | Profil lesen/ändern |
-| Verknüpftes Altkonto | `CUST#<kundeId>` | `LEGACY#<system>#<altId>` | Herkunft anzeigen, Dubletten prüfen |
-| Vertrag | `CUST#<kundeId>` | `CONTRACT#<sparte>#<vertragId>` | alle Verträge eines Kunden, je Sparte filtern |
-| Zählerstand | `CONTRACT#<vertragId>` | `READING#<datum>` | Verlauf je Zähler, neuester zuerst |
-| Datenvolumen | `CONTRACT#<vertragId>` | `USAGE#<monat>` | Monatsverbrauch |
-| Dokument | `CUST#<kundeId>` | `DOC#<datum>#<docId>` | Postfach, Rechnungen |
-| Benachrichtigung | `CUST#<kundeId>` | `NOTE#<zeitstempel>` | Glocke, ungelesene zuerst |
-| Migrationsstatus | `MIGRATION` | `REC#<system>#<altId>` | Cockpit: Status je Altdatensatz; `GSI1PK=MIGSTATUS#<status>` für Zählungen |
-| Ereignis-Timeline | `TIMELINE` | `EVT#<zeitstempel>#<id>` | Cockpit-Timeline (Stream-Kopie aller Ereignisse) |
+**Abgleich mit dem Code (Stand 30.09.2026, Phase 2 in Arbeit):** Bis zum
+Demo-Pass (Phase 4) gibt es genau **eine** Tabelle für alle Mandanten. Jeder
+Schlüssel beginnt deshalb mit dem Mandanten (`TENANT#<t>#…`, Helfer
+`tenantKey` in `packages/service-kit`); mit einer eigenen Tabelle je Mandant
+wäre dieses Präfix überflüssig, schadet aber nicht [E]. `GSI1` ist noch nicht
+angelegt. Die Spalte „Stand" nennt, was schon gebaut ist; Einzelheiten in
+[Architektur](architektur.md) §5.
+
+| Entität | PK | SK | Zugriffsmuster | Stand |
+|---|---|---|---|---|
+| Kunde | `TENANT#<t>#CUST#<kundeId>` | `PROFILE` | Profil lesen/ändern | gebaut (customer) |
+| Anmelde-Identität → Kunde | `TENANT#<t>#SUBJ#<sub>` | `CUSTOMER` | Kunde zum Token finden | gebaut (customer) |
+| Projektion Identität → Kunde je Service | `TENANT#<t>#SUBJ#<sub>` | `CONTRACTS`, `CONSUMPTION`, `DOCUMENTS`, `MAILBOX` | jeder Service findet den Kunden ohne fremde Einträge | gebaut |
+| Verknüpftes Altkonto | `TENANT#<t>#CUST#<kundeId>` | `LEGACY#<system>#<altId>` | Herkunft anzeigen, Dubletten prüfen | geplant (Phase 3) |
+| Vertrag | `TENANT#<t>#CUST#<kundeId>` | `CONTRACT#<sparte>#<vertragId>` | alle Verträge eines Kunden, je Sparte filtern | gebaut (contract) |
+| Vertragsprojektion | `TENANT#<t>#CONTRACT#<vertragId>` | `CONSUMPTION` | Vertrag aus Sicht des Verbrauchs, mit Versionsschutz | gebaut (consumption) |
+| Zählerstand | `TENANT#<t>#CONTRACT#<vertragId>` | `READING#<datum>#<readingId>` | Verlauf je Zähler, neuester zuerst (geplant: `READING#<datum>`; die ID erlaubt mehrere Stände am selben Tag) | gebaut (consumption) |
+| Datenvolumen | `TENANT#<t>#CONTRACT#<vertragId>` | `USAGE#<monat>` | Monatsverbrauch; im Code bisher nur der Merker „Warnung verschickt", der Verbrauch selbst ist berechnet (Demo) | teilweise |
+| Zeitplan Datenvolumen | `SCHEDULE#DATAVOLUME` | `TENANT#<t>#CONTRACT#<vertragId>` | täglicher Lauf über alle Mobilfunkverträge; einziger Schlüssel ohne Mandanten-Präfix vorne, weil der Lauf mandantenübergreifend ist | gebaut (consumption) |
+| Dokument | `TENANT#<t>#CUST#<kundeId>` | `DOC#<documentId>` | Postfach, Rechnungen; die ID beginnt mit dem Zeitpunkt (geplant: `DOC#<datum>#<docId>`, gleiche Sortierung) | gebaut (documents) |
+| Benachrichtigung | `TENANT#<t>#CUST#<kundeId>` | `NOTE#<id>` | Glocke, ungelesene zuerst; `<id>` = Zeitstempel + eventId | gebaut (notification) |
+| Postfach-Sprache | `TENANT#<t>#CUST#<kundeId>` | `MAILBOX` | Texte auf Deutsch oder Englisch | gebaut (notification) |
+| Migrationsstatus | `TENANT#<t>#MIGRATION` | `REC#<system>#<altId>` | Cockpit: Status je Altdatensatz; `GSI1PK=MIGSTATUS#<status>` für Zählungen | geplant (Phase 3; Präfix nach der Konvention oben [E]) |
+| Ereignis-Timeline | `TENANT#<t>#TIMELINE` | `EVT#<zeitstempel>#<id>` | Cockpit-Timeline (Stream-Kopie aller Ereignisse) | geplant (Phase 3; Präfix nach der Konvention oben [E]) |
 
 ### 7.2 Plattform-Tabelle (eine, mandantenübergreifend)
 

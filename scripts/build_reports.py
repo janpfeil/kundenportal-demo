@@ -25,7 +25,8 @@ PAGES = [
     ("anleitung-fundament", "anleitung-fundament", "Anleitung Fundament", "Alltagszugang, Terraform-Erstlauf, Budget (Kapitel 4–5)"),
     ("anleitung-anwendung", "anleitung-anwendung", "Anleitung Anwendung", "GitLab-Pipeline, CDK-Bootstrap, GitHub-Freigabe, DNS, Deploy, Test, Abbau (Kapitel 6–10)"),
     ("nextjs-betrieb", "nextjs-betrieb", "Next.js-Betrieb", "Static Export oder OpenNext: Auswirkungen, Micro-Frontends, Empfehlung"),
-    ("architektur", "architektur", "Architektur Phase 1", "Ist-Architektur des Durchstichs: Anmeldung, API, Daten, Ereignisse, Pipelines"),
+    ("architektur", "architektur", "Architektur", "Ist-Architektur: Anmeldung, API, Services, Daten, Ereignisse, Pipelines, Messwerte"),
+    ("architektur-zonen", "architektur-zonen", "Zonen & Frontend", "Multi-Zones, Schreibweg aus dem Browser, Laufzeit-Widget, Component Library"),
 ]
 SKIP_TAGS = {"a", "h1", "h2", "h3", "h4", "h5", "h6", "code", "pre", "svg", "figure", "script", "style", "summary", "th"}
 URL_RE = re.compile(r'(?<![(<"\'=])\bhttps?://[^\s<>()\]]*[^\s<>()\].,;:!?\'"»“”]')

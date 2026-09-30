@@ -1,6 +1,6 @@
 # Glossar
 
-Stand: 2026-09-29. Zentrale Begriffsquelle für alle Wiki-Seiten. Spalten:
+Stand: 2026-09-30. Zentrale Begriffsquelle für alle Wiki-Seiten. Spalten:
 **Begriff** (Anker im Glossar), **Auch** (weitere Schreibweisen, durch
 Komma getrennt; der Generator verlinkt auch diese), **Erklärung**,
 **Außerhalb von AWS** (vergleichbare Lösungen anderer Anbieter, aus der
@@ -87,6 +87,8 @@ immer auf `glossar.md#anker`.
 | S3 | Amazon S3, S3-Bucket, Bucket, Buckets | Objektspeicher für Dateien beliebiger Größe in „Buckets"; Standard für statische Websites, Uploads, Build-Artefakte | Azure Blob Storage, Google Cloud Storage, MinIO (selbst gehostet, S3-kompatibel), Hetzner Object Storage |
 | Presigned URL | vorsignierte URL | zeitlich begrenzter, signierter Link, mit dem der Browser direkt in S3 hoch- oder herunterlädt, ohne AWS-Zugangsdaten | Azure SAS-Token, GCS Signed URL |
 | Lifecycle-Regel | Lifecycle | S3-Regel, die alte Objekte automatisch löscht oder in günstigere Klassen verschiebt | Aufräum-Cronjob |
+| Block Public Access | | S3-Einstellung, die jeden öffentlichen Zugriff auf einen Bucket sperrt, auch wenn eine Richtlinie ihn erlauben würde | Zugriffsebene „privat“ bei Azure Blob Storage, Public Access Prevention bei Google Cloud Storage |
+| SSE-S3 | serverseitige Verschlüsselung | S3 verschlüsselt jedes Objekt beim Speichern mit von AWS verwalteten Schlüsseln; kostenlos | Verschlüsselung ruhender Daten bei Azure Storage und Google Cloud Storage; MinIO SSE |
 | Versioning | Versionierung | S3 behält alte Fassungen überschriebener Dateien; kostet Speicher | Dateiversionierung in Nextcloud/Dropbox |
 | DynamoDB | Amazon DynamoDB | vollständig verwaltete NoSQL-Datenbank (Schlüssel-Wert/Dokument) mit Antwortzeiten im Millisekundenbereich, ohne Server und ohne Verbindungs-Pool | MongoDB, Apache Cassandra, Azure Cosmos DB, Google Firestore, ScyllaDB |
 | Single-Table-Design | Single Table, Single-Table, PK, SK, Partition Key, Sort Key, GSI, Sekundärindex | DynamoDB-Modellierung, bei der alle Entitäten einer Anwendung in einer Tabelle liegen und über zusammengesetzte Schlüssel (Partition/Sort Key) nach Zugriffsmustern angeordnet werden | Gegenmodell zu normalisierten SQL-Tabellen mit JOINs |
@@ -109,6 +111,8 @@ immer auf `glossar.md#anker`.
 | Distribution | | eine CloudFront-Konfiguration mit eigener Domain, Ursprüngen und Regeln | eine „Site"/„Zone" bei Cloudflare |
 | Origin | Ursprung | Ziel, von dem CloudFront Inhalte holt (S3-Bucket, API Gateway, Lambda-URL) | Upstream in NGINX |
 | Cache-Behavior | Behavior, Behaviors, Pfad-Routing | Regel in CloudFront: welcher Pfad (`/api/*`, `/mfe/*`) an welchen Origin geht und wie gecacht wird | `location`-Block in NGINX, Page Rule bei Cloudflare |
+| Invalidierung | invalidiert, Cache-Invalidierung | Auftrag an CloudFront, zwischengespeicherte Kopien bestimmter Pfade (z. B. `/widgets/*`) zu verwerfen, damit die nächste Anfrage die neue Datei holt | Purge bei Cloudflare, Fastly oder Varnish |
+| CORS | Cross-Origin Resource Sharing | Browser-Regel: Eine Seite darf Anfragen an eine andere Herkunft (Domain) nur schicken, wenn diese es per Header erlaubt; beim Upload erlaubt der Bucket nur `PUT` von der Portal-Domain | Spring `@CrossOrigin`, CORS-Konfiguration in NGINX |
 | Flat-Rate-Plan | Flat-Rate, Flat-Rate-Pläne, Flat-Rate Free, CloudFront-Free-Plan | seit 11/2025 angebotene CloudFront-Pauschalpakete inkl. WAF, Route 53 und Zertifikat; die Stufe „Free" kostet 0 $ und drosselt bei Überschreitung statt zu berechnen – https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/flat-rate-pricing-plan.html | Cloudflare Free/Pro-Plan |
 | CloudFront Functions | | sehr leichte JavaScript-Funktionen direkt am CDN-Rand (z. B. URL-Umschreiben, Header setzen); 2 Mio. Aufrufe frei | Cloudflare Workers (eingeschränkt), NGINX-`rewrite` |
 | Lambda@Edge | | vollwertige Lambda-Funktionen an CloudFront-Standorten; teurer und immer kostenpflichtig → im Demo vermieden | Cloudflare Workers, Fastly Compute |
@@ -163,10 +167,17 @@ immer auf `glossar.md#anker`.
 | maxReceiveCount | | Zahl der Zustellversuche, nach der SQS eine Nachricht in die DLQ verschiebt | `maxAttempts` im Spring-Retry |
 | Redrive | | Zurückführen von Nachrichten aus der DLQ in die Ursprungs-Queue, nachdem der Fehler behoben ist | Shovel in RabbitMQ, Replay aus dem DLT |
 | Retry | Wiederholung | erneuter Verarbeitungsversuch nach einem Fehler | Spring Retry, Resilience4j Retry |
+| Retry-Policy | Wiederholungsrichtlinie | Einstellung an einem EventBridge-Regelziel: wie oft und wie lange EventBridge die Zustellung wiederholt, bevor das Ereignis in die DLQ geht | Retry-Konfiguration von Kafka-Consumern, Spring Retry |
+| Asynchroner Aufruf | asynchroner Aufruf, asynchroner Lambda-Aufruf, Direktaufruf | Lambda nimmt das Ereignis an, bestätigt sofort und verarbeitet es aus einer internen Warteschlange; bei Fehlern wiederholt Lambda selbst (bis zu 2-mal) | `@Async` in Spring, Fire-and-forget-Aufruf |
+| On-Failure-Destination | On-Failure-DLQ, Lambda-Destination | Ziel (z. B. SQS-Queue), an das Lambda einen asynchronen Aufruf weitergibt, wenn alle Wiederholungen fehlgeschlagen sind | Fehlerkanal in Spring Integration, Dead Letter Topic |
+| Standard-Bus | default-Bus, Default Event Bus | der in jedem Konto vorhandene EventBridge-Bus, auf dem AWS-Dienste (z. B. S3) ihre Ereignisse veröffentlichen; diese Ereignisse sind kostenlos | Systemereignisse einer Plattform, z. B. Azure Event Grid System Topics |
 | SNS | Amazon SNS, SNS-Topic, Topic, Topics | Publish/Subscribe-Dienst: eine Nachricht an ein Topic geht an alle Abonnenten (E-Mail, SQS, Lambda, HTTP, SMS) | RabbitMQ Fanout Exchange, Kafka Topic mit mehreren Consumer Groups, Google Pub/Sub, Azure Service Bus Topic |
 | Fan-out | | Muster, eine Nachricht gleichzeitig an mehrere Empfänger zu verteilen | Fanout Exchange in RabbitMQ |
 | Publish/Subscribe | Pub/Sub, Publishes | Absender veröffentlichen an ein Thema, ohne die Empfänger zu kennen | JMS Topics, Kafka |
 | Domänen-Event | Domänen-Events | fachliches Ereignis in der Vergangenheitsform, z. B. `CustomerRegistered`, `AccountMigrated`, `MeterReadingSubmitted`; andere Dienste reagieren darauf | Spring `ApplicationEvent`, Domain Events im DDD |
+| Idempotenz | idempotent | Eigenschaft einer Verarbeitung, bei mehrfacher Ausführung dasselbe Ergebnis zu liefern wie bei einfacher; nötig, weil Ereignisse doppelt zugestellt werden können | Idempotent Consumer (Enterprise Integration Patterns), Idempotency-Key bei Zahlungs-APIs |
+| Projektion | Projektionen, Vertragsprojektion, Read Model | eigene, aus Ereignissen aufgebaute Kopie fremder Daten, die ein Service zum Lesen hält, statt die Daten eines anderen Service abzufragen | Read Model in CQRS (Axon Framework), materialisierte Sicht |
+| Event-carried State Transfer | | Muster: ein Ereignis trägt den ganzen relevanten Zustand (hier den vollständigen Vertrag), sodass Empfänger nicht beim Absender nachfragen müssen | gleichnamiges Muster bei Kafka-Architekturen (Martin Fowler) |
 | Event-getrieben | eventlastig, event-getriebene | Architektur, in der Dienste über Ereignisse statt direkter Aufrufe zusammenarbeiten | — |
 
 ## Identität und Sicherheit
@@ -219,6 +230,11 @@ immer auf `glossar.md#anker`.
 | Session | serverseitige Session | Anmeldezustand, den der Server (hier die Next.js-Shell) im Cookie verschlüsselt hält | HTTP-Session in Spring |
 | XSS | Cross-Site Scripting | Angriff, bei dem fremdes JavaScript in eine Seite gelangt und dort z. B. Tokens aus dem Browser-Speicher ausliest | OWASP-Top-10-Risiko, Schutz per Content Security Policy |
 | Cookie | httpOnly-Cookie, httpOnly | kleine Datei, die der Browser bei jeder Anfrage mitschickt; `httpOnly` heißt: für JavaScript unsichtbar und damit vor XSS geschützt | `JSESSIONID`-Cookie in Java-Webanwendungen |
+| SameSite | SameSite=Lax | Cookie-Attribut: `Lax` heißt, der Browser schickt das Cookie bei Anfragen von fremden Seiten nicht mit, außer beim einfachen Aufruf eines Links | gleiches Attribut in jeder Webanwendung, z. B. Spring `ResponseCookie.sameSite` |
+| CSRF | Cross-Site Request Forgery, CSRF-Schutz | Angriff, bei dem eine fremde Seite den Browser dazu bringt, mit der Sitzung des Nutzers eine schreibende Anfrage ans Portal zu schicken | CSRF-Token in Spring Security, Django CSRF-Middleware |
+| Origin-Header | Origin-Prüfung | Header, mit dem der Browser bei schreibenden Anfragen die Herkunft der Seite angibt; der Server prüft ihn gegen die eigene Domain | Origin-Prüfung in Spring Security, Rails `forgery_protection_origin_check` |
+| SigV4 | Signature Version 4, AWS-Signatur | Verfahren, mit dem AWS-Anfragen kryptografisch signiert werden; CloudFront signiert so die Anfragen an die Function URLs | HMAC-signierte Anfragen, z. B. bei Google Cloud Storage (V4-Signatur) |
+| Payload-Hash | x-amz-content-sha256, Body-Hash | SHA-256 des Anfrage-Bodys; CloudFront braucht ihn vom Absender, um Anfragen mit Body per SigV4 zu signieren | Content-Digest-Header (RFC 9530) |
 | Refresh Token | Refresh Tokens | langlebiges Token, mit dem eine App neue Access Tokens holt; bei Rotation wird es nach jeder Nutzung ersetzt | — |
 | JWE | JSON Web Encryption | verschlüsseltes (nicht nur signiertes) Token-Format; im Demo steckt die Sitzung als JWE (`dir` + `A256GCM`) im Cookie, damit das Access Token für den Browser unlesbar bleibt | Standard (RFC 7516), in Java: Nimbus JOSE |
 | HKDF | HMAC-based Key Derivation Function | Verfahren, um aus einem vorhandenen Geheimnis weitere Schlüssel für bestimmte Zwecke abzuleiten; im Demo wird der Cookie-Schlüssel aus dem Client-Secret abgeleitet | Standard (RFC 5869), `javax.crypto`/Bouncy Castle |

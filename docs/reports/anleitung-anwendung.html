@@ -8,7 +8,7 @@
 <script src="assets/report.js"></script>
 </head>
 <body>
-<header class="topbar"><a class="brand" href="index.html">kundenportal-demo · Konzept</a><nav class="topnav"><a href="index.html">Übersicht</a><a href="machbarkeit-kosten.html">Machbarkeit &amp; Kosten</a><a href="fachkonzept.html">Fachkonzept</a><a href="demo-pass.html">Demo-Pass</a><a href="kostenfrei.html">Kostenfreier Betrieb</a><a href="anleitung-kontoinhaber.html">Anleitung Kontoinhaber</a><a href="anleitung-fundament.html">Anleitung Fundament</a><a href="anleitung-anwendung.html" aria-current="page">Anleitung Anwendung</a><a href="nextjs-betrieb.html">Next.js-Betrieb</a><a href="architektur.html">Architektur Phase 1</a><a href="glossar.html">Glossar</a></nav>
+<header class="topbar"><a class="brand" href="index.html">kundenportal-demo · Konzept</a><nav class="topnav"><a href="index.html">Übersicht</a><a href="machbarkeit-kosten.html">Machbarkeit &amp; Kosten</a><a href="fachkonzept.html">Fachkonzept</a><a href="demo-pass.html">Demo-Pass</a><a href="kostenfrei.html">Kostenfreier Betrieb</a><a href="anleitung-kontoinhaber.html">Anleitung Kontoinhaber</a><a href="anleitung-fundament.html">Anleitung Fundament</a><a href="anleitung-anwendung.html" aria-current="page">Anleitung Anwendung</a><a href="nextjs-betrieb.html">Next.js-Betrieb</a><a href="architektur.html">Architektur</a><a href="architektur-zonen.html">Zonen &amp; Frontend</a><a href="glossar.html">Glossar</a></nav>
 <button class="theme-toggle" type="button">Dunkel</button></header>
 <div class="layout"><nav class="toc" aria-label="Inhalt"><div class="toc-title">Inhalt</div><div>
 <ul>
@@ -47,7 +47,7 @@
 </ul>
 </div>
 </nav><main><h1 id="anleitung-anwendung-kapitel-610">Anleitung Anwendung (Kapitel 6–10)<a class="anchor" href="#anleitung-anwendung-kapitel-610" title="Permanent link">#</a></h1>
-<p>Stand: 2026-09-29 · Fortsetzung der <a href="anleitung-fundament.html">Anleitung Fundament</a> (Kapitel 4–5); Grundsätze in <a href="anleitung-kontoinhaber.html#0-grundsätze">Kapitel 0</a>. Aufbau der Anwendung: <a href="architektur.html">Architektur Phase 1</a>.</p>
+<p>Stand: 2026-09-29 · Fortsetzung der <a href="anleitung-fundament.html">Anleitung Fundament</a> (Kapitel 4–5); Grundsätze in <a href="anleitung-kontoinhaber.html#0-grundsätze">Kapitel 0</a>. Aufbau der Anwendung: <a href="architektur.html">Architektur</a>.</p>
 <p>Fachbegriffe sind in jedem Abschnitt beim ersten Vorkommen mit dem <a href="glossar.html">Glossar</a> verlinkt (Erklärung und Entsprechung außerhalb von <a class="term" href="glossar.html#aws" title="Cloud-Plattform von Amazon mit über 200 Diensten (Rechenleistung, Datenbanken, Netzwerk, Messaging …), abgerechnet nach Nutzung">AWS</a>).</p>
 <p>Voraussetzung: Kapitel 4–5 erledigt — <code>aws login</code> funktioniert, das
 <a class="term" href="glossar.html#terraform" title="verbreitetes IaC-Werkzeug von HashiCorp: Infrastruktur deklarativ in HCL beschreiben, für viele Anbieter (AWS, Azure, Keycloak, GitHub …) über Provider">Terraform</a>-<a class="term" href="glossar.html#plattform-schicht" title="im Demo: per Terraform aus GitLab CI verwaltete Grundlagen (OIDC-Vertrauensstellungen, Budget + SNS-Grundlage des Kill-Switch, SSM-Grundwerte, ab Phase 3 Keycloak-Konfiguration), a">Fundament</a> steht, die Outputs aus Kapitel 5.4 liegen im privaten
@@ -403,7 +403,7 @@ kann kein <a class="term" href="glossar.html#workflow" title="allgemein: automat
 </table></div>
 <h2 id="8-anwendung-deployen-testen-abbauen">8. Anwendung deployen, testen, abbauen<a class="anchor" href="#8-anwendung-deployen-testen-abbauen" title="Permanent link">#</a></h2>
 <h3 id="81-deploy-starten">8.1 Deploy starten ✎<a class="anchor" href="#81-deploy-starten" title="Permanent link">#</a></h3>
-<p>Ziel: die Anwendung aus <a href="architektur.html">Architektur Phase 1</a> in <a class="term" href="glossar.html#aws" title="Cloud-Plattform von Amazon mit über 200 Diensten (Rechenleistung, Datenbanken, Netzwerk, Messaging …), abgerechnet nach Nutzung">AWS</a>
+<p>Ziel: die Anwendung aus <a href="architektur.html">Architektur</a> in <a class="term" href="glossar.html#aws" title="Cloud-Plattform von Amazon mit über 200 Diensten (Rechenleistung, Datenbanken, Netzwerk, Messaging …), abgerechnet nach Nutzung">AWS</a>
 aufbauen oder nach einer Pause wieder in Betrieb nehmen. Kosten: im <a class="term" href="glossar.html#free-plan" title="AWS-Kontoplan für Neukonten seit 15.07.2025: garantiert keine Kosten, aber nur ausgewählte Dienste und automatische Kontoschließung nach 6 Monaten oder aufgebrauchtem Guthaben">Free Plan</a>
 0 <a class="term" href="glossar.html#usd" title="Währung, in der AWS abrechnet">$</a> (Cent-Bruchteile für <a class="term" href="glossar.html#api-gateway" title="verwalteter Eingangspunkt für APIs: nimmt HTTP-Anfragen an, prüft Authentifizierung, drosselt, leitet an Lambda weiter">API Gateway</a>, <a class="term" href="glossar.html#eventbridge" title="Event-Bus: Dienste veröffentlichen Ereignisse, Regeln leiten sie anhand ihres Inhalts an Ziele (SQS, Lambda, SNS …) weiter">EventBridge</a> und <a class="term" href="glossar.html#s3" title="Objektspeicher für Dateien beliebiger Größe in „Buckets&quot;; Standard für statische Websites, Uploads, Build-Artefakte">S3</a> laufen über das
 <a class="term" href="glossar.html#guthaben" title="Gutschrift in US-Dollar, die mit Rechnungsbeträgen verrechnet wird; bei Neukonten bis 200 $, verfällt nach 12 Monaten">Guthaben</a>; <a href="kostenfrei.html">Kostenfreier Betrieb</a>).</p>
@@ -734,6 +734,6 @@ private Adressen und meldet das Ergebnis. Erst danach umschalten.</p>
 </tr>
 </tbody>
 </table></div></main></div>
-<footer class="site"><a href="../wiki/anleitung-anwendung.md">Markdown-Quelle</a> · Generiert 2026-09-30 07:50 aus <code>docs/wiki</code> mit <code>scripts/build_reports.py</code></footer>
+<footer class="site"><a href="../wiki/anleitung-anwendung.md">Markdown-Quelle</a> · Generiert 2026-09-30 09:00 aus <code>docs/wiki</code> mit <code>scripts/build_reports.py</code></footer>
 </body>
 </html>

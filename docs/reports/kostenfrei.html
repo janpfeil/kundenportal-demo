@@ -8,7 +8,7 @@
 <script src="assets/report.js"></script>
 </head>
 <body>
-<header class="topbar"><a class="brand" href="index.html">kundenportal-demo · Konzept</a><nav class="topnav"><a href="index.html">Übersicht</a><a href="machbarkeit-kosten.html">Machbarkeit &amp; Kosten</a><a href="fachkonzept.html">Fachkonzept</a><a href="demo-pass.html">Demo-Pass</a><a href="kostenfrei.html" aria-current="page">Kostenfreier Betrieb</a><a href="anleitung-kontoinhaber.html">Anleitung Kontoinhaber</a><a href="anleitung-fundament.html">Anleitung Fundament</a><a href="anleitung-anwendung.html">Anleitung Anwendung</a><a href="nextjs-betrieb.html">Next.js-Betrieb</a><a href="architektur.html">Architektur Phase 1</a><a href="glossar.html">Glossar</a></nav>
+<header class="topbar"><a class="brand" href="index.html">kundenportal-demo · Konzept</a><nav class="topnav"><a href="index.html">Übersicht</a><a href="machbarkeit-kosten.html">Machbarkeit &amp; Kosten</a><a href="fachkonzept.html">Fachkonzept</a><a href="demo-pass.html">Demo-Pass</a><a href="kostenfrei.html" aria-current="page">Kostenfreier Betrieb</a><a href="anleitung-kontoinhaber.html">Anleitung Kontoinhaber</a><a href="anleitung-fundament.html">Anleitung Fundament</a><a href="anleitung-anwendung.html">Anleitung Anwendung</a><a href="nextjs-betrieb.html">Next.js-Betrieb</a><a href="architektur.html">Architektur</a><a href="architektur-zonen.html">Zonen &amp; Frontend</a><a href="glossar.html">Glossar</a></nav>
 <button class="theme-toggle" type="button">Dunkel</button></header>
 <div class="layout"><nav class="toc" aria-label="Inhalt"><div class="toc-title">Inhalt</div><div>
 <ul>
@@ -30,7 +30,7 @@
 </ul>
 </div>
 </nav><main><h1 id="kostenfreier-betrieb-aws-nur-im-freikontingent">Kostenfreier Betrieb — AWS nur im Freikontingent<a class="anchor" href="#kostenfreier-betrieb-aws-nur-im-freikontingent" title="Permanent link">#</a></h1>
-<p>Stand: 2026-09-29 · Kennzeichnung: <strong>[B]</strong> belegt (offizielle Quelle), <strong>[D]</strong> Drittquelle, <strong>[A]</strong> Annahme/Schätzung, <strong>[E]</strong> Einschätzung.</p>
+<p>Stand: 2026-09-30 · Kennzeichnung: <strong>[B]</strong> belegt (offizielle Quelle), <strong>[D]</strong> Drittquelle, <strong>[A]</strong> Annahme/Schätzung, <strong>[E]</strong> Einschätzung.</p>
 <p>Fachbegriffe sind in jedem Abschnitt beim ersten Vorkommen mit dem <a href="glossar.html">Glossar</a> verlinkt (Erklärung und Entsprechung außerhalb von <a class="term" href="glossar.html#aws" title="Cloud-Plattform von Amazon mit über 200 Diensten (Rechenleistung, Datenbanken, Netzwerk, Messaging …), abgerechnet nach Nutzung">AWS</a>).</p>
 <h2 id="1-vorgabe-und-ergebnis">1. Vorgabe und Ergebnis<a class="anchor" href="#1-vorgabe-und-ergebnis" title="Permanent link">#</a></h2>
 <p>Vorgabe des Nutzers (29.09.2026): <strong>Auf <a class="term" href="glossar.html#aws" title="Cloud-Plattform von Amazon mit über 200 Diensten (Rechenleistung, Datenbanken, Netzwerk, Messaging …), abgerechnet nach Nutzung">AWS</a> keine Kosten verursachen.</strong>
@@ -111,7 +111,7 @@ dauerhaft laufen (Variante <a class="term" href="glossar.html#demo-modus" title=
 <tr>
 <td><a class="term" href="glossar.html#sqs" title="Nachrichtenwarteschlange: Absender legt Nachrichten ab, Empfänger holt sie ab und bestätigt sie; entkoppelt Dienste und puffert Last">SQS</a></td>
 <td>1 Mio. Anfragen [D]</td>
-<td><a class="term" href="glossar.html#workflow" title="allgemein: automatisierter Ablauf mehrerer Schritte; bei GitHub: eine Pipeline-Datei">Workflows</a> mit <a class="term" href="glossar.html#dlq" title="Ablage für Nachrichten, die nach mehreren Versuchen nicht verarbeitet werden konnten, zur Analyse und Nachverarbeitung">DLQ</a></td>
+<td>eine Queue (notification) mit <a class="term" href="glossar.html#dlq" title="Ablage für Nachrichten, die nach mehreren Versuchen nicht verarbeitet werden konnten, zur Analyse und Nachverarbeitung">DLQ</a>, drei weitere DLQs ohne Abfrager</td>
 <td>0 $</td>
 </tr>
 <tr>
@@ -123,7 +123,7 @@ dauerhaft laufen (Variante <a class="term" href="glossar.html#demo-modus" title=
 <tr>
 <td><a class="term" href="glossar.html#eventbridge-scheduler" title="zeitgesteuertes Auslösen von Zielen (einmalig oder wiederkehrend); 14 Mio. Aufrufe/Monat frei">EventBridge Scheduler</a></td>
 <td>14 Mio. Aufrufe [B]</td>
-<td>zeitgesteuerte Erinnerungen</td>
+<td>tägliche Datenvolumen-Prüfung (≈ 30 Aufrufe/Monat)</td>
 <td>0 $</td>
 </tr>
 <tr>
@@ -168,7 +168,7 @@ dauerhaft laufen (Variante <a class="term" href="glossar.html#demo-modus" title=
 eigenen <a class="term" href="glossar.html#nameserver" title="Server, der die DNS-Einträge einer Domain verwaltet; bei rypox eigene (ns1.rypox.net)">Nameservern</a>), <a class="term" href="glossar.html#nat-gateway" title="ermöglicht Ressourcen in privaten VPC-Subnetzen den Internetzugang; ≈ 32 $/Monat Fixkosten → im Demo vermieden">NAT Gateway</a>, <a class="term" href="glossar.html#alb" title="Lastverteiler für HTTP-Verkehr auf Container/Server; ≈ 16–20 $/Monat Fixkosten → im Demo vermieden">ALB</a>, <a class="term" href="glossar.html#rds" title="verwaltete relationale Datenbanken (PostgreSQL, MySQL …); läuft stundenweise → Fixkosten, im Demo vermieden">RDS</a>, <a class="term" href="glossar.html#secrets-manager" title="AWS-Dienst für Geheimnisse mit automatischer Rotation; 0,40 $/Secret und Monat">Secrets Manager</a>, <a class="term" href="glossar.html#waf" title="Web Application Firewall: filtert Anfragen nach Regeln (IP-Sperren, Rate Limits, bekannte Angriffe)">WAF</a>
 (<a class="term" href="glossar.html#pay-as-you-go" title="Abrechnung nur nach tatsächlicher Nutzung (Aufrufe, GB, Sekunden) ohne Grundgebühr">Pay-as-you-go</a>), <a class="term" href="glossar.html#ipv4-adresse" title="Internetadresse; AWS berechnet öffentliche IPv4-Adressen stundenweise (ca. 3,60 $/Monat)">öffentliche IPv4-Adressen</a>.</p>
 <p><strong>Ergänzungen aus Phase 1 (Stand 29.09.2026)</strong> — was der gebaute Code
-zusätzlich verbraucht (<a href="architektur.html">Architektur Phase 1</a>):</p>
+zusätzlich verbraucht (<a href="architektur.html">Architektur</a>):</p>
 <ul>
 <li><strong>SQS im Leerlauf [A]:</strong> Die Lambda-Ereignisquelle fragt die Queue auch
   ohne Nachrichten dauerhaft ab (<a class="term" href="glossar.html#long-polling" title="Abruf, der bis zu 20 s auf Nachrichten wartet statt sofort leer zurückzukehren; spart Anfragen">Long Polling</a>, 20 s je Abfrage, mehrere
@@ -182,6 +182,36 @@ zusätzlich verbraucht (<a href="architektur.html">Architektur Phase 1</a>):</p>
 <li><strong>CDK-<a class="term" href="glossar.html#cdk-bootstrap" title="einmalig je Konto und Region angelegte CDK-Hilfsressourcen (S3-Bucket für Artefakte, ECR-Repository, Rollen)">Bootstrap</a>:</strong> ein S3-Staging-Bucket je <a class="term" href="glossar.html#region" title="geografischer Standort mit eigenen Rechenzentren; eu-central-1 = Frankfurt, us-east-1 = Nord-Virginia (dort müssen manche globalen Einstellungen, z. B. CloudFront-Zertifikate, lieg">Region</a> (Frankfurt und
   Nord-Virginia) mit wenigen MB Lambda-Code und statischen Dateien; ohne
   <a class="term" href="glossar.html#guthaben" title="Gutschrift in US-Dollar, die mit Rechnungsbeträgen verrechnet wird; bei Neukonten bis 200 $, verfällt nach 12 Monaten">Guthaben</a> Bruchteile eines Cents [A]. Ein leeres <a class="term" href="glossar.html#ecr" title="AWS-Registry für Docker-Images">ECR</a>-<a class="term" href="glossar.html#repository" title="von Git verwaltetes Projektverzeichnis, z. B. auf GitHub">Repository</a> kostet nichts.</li>
+</ul>
+<p><strong>Ergänzungen aus Phase 2 (Stand 30.09.2026)</strong> — neue Services, Uploads und
+<a class="term" href="glossar.html#multi-zones" title="Next.js-Ansatz, mehrere Next.js-Apps unter einer Domain zu betreiben, aufgeteilt nach Pfaden">Zonen</a> (<a href="architektur.html">Architektur</a> §6):</p>
+<ul>
+<li><strong>Nur eine SQS-Queue [E]:</strong> Jede weitere Queue mit Lambda-Ereignisquelle
+  käme im Leerlauf auf weitere ≈ 0,65 Mio. Anfragen im Monat [A]; zusammen
+  mit der notification-Queue wären die 1 Mio. freien Anfragen überschritten.
+  Deshalb ruft EventBridge die Worker von <code>contract</code>, <code>consumption</code> und
+  <code>documents</code> <strong>direkt</strong> auf (<a class="term" href="glossar.html#asynchroner-aufruf" title="Lambda nimmt das Ereignis an, bestätigt sofort und verarbeitet es aus einer internen Warteschlange; bei Fehlern wiederholt Lambda selbst (bis zu 2-mal)">asynchroner Lambda-Aufruf</a>). Zuverlässigkeit
+  kommt von der <a class="term" href="glossar.html#retry-policy" title="Einstellung an einem EventBridge-Regelziel: wie oft und wie lange EventBridge die Zustellung wiederholt, bevor das Ereignis in die DLQ geht">Retry-Policy</a> am Regelziel, zwei Lambda-<a class="term" href="glossar.html#retry" title="erneuter Verarbeitungsversuch nach einem Fehler">Wiederholungen</a> und
+  einer <a class="term" href="glossar.html#on-failure-destination" title="Ziel (z. B. SQS-Queue), an das Lambda einen asynchronen Aufruf weitergibt, wenn alle Wiederholungen fehlgeschlagen sind">On-Failure-DLQ</a> je Service. Die drei DLQs verursachen nur Anfragen,
+  wenn tatsächlich etwas darin landet (kein Abfrager).</li>
+<li><strong>EventBridge (eigene Events):</strong> je Kundenaktion ein bis zwei Ereignisse
+  mehr als in Phase 1 (z. B. Zählerstand → <code>MeterReadingSubmitted</code> →
+  <code>InstallmentAdjusted</code>); weiterhin 1 $ je Mio., also bei <a class="term" href="glossar.html#traffic" title="Menge der Zugriffe/Datenübertragung">Demo-Traffic</a>
+  Bruchteile eines Cents [A]. S3-Ereignisse kommen über den <a class="term" href="glossar.html#standard-bus" title="der in jedem Konto vorhandene EventBridge-Bus, auf dem AWS-Dienste (z. B. S3) ihre Ereignisse veröffentlichen; diese Ereignisse sind kostenlos">Standard-Bus</a>;
+  Ereignisse von AWS-Diensten sind dort kostenlos
+  [B: <a href="https://aws.amazon.com/eventbridge/pricing/">https://aws.amazon.com/eventbridge/pricing/</a>].</li>
+<li><strong>EventBridge Scheduler:</strong> ein täglicher Zeitplan (Datenvolumen-Prüfung
+  07:00) ≈ 30 Aufrufe im Monat von 14 Mio. freien [B].</li>
+<li><strong>S3 für Uploads:</strong> ein Bucket im dauerhaften Base-<a class="term" href="glossar.html#stack" title="Einheit in CloudFormation/CDK: eine Gruppe von Ressourcen, die gemeinsam angelegt und gelöscht wird">Stack</a>; Dateien bis 5 MB,
+  Löschung nach 7 Tagen per <a class="term" href="glossar.html#lifecycle-regel" title="S3-Regel, die alte Objekte automatisch löscht oder in günstigere Klassen verschiebt">Lifecycle-Regel</a>; Speicher und Anfragen bei
+  Demo-Nutzung &lt; 0,01 $ im Monat [A], im <a class="term" href="glossar.html#free-plan" title="AWS-Kontoplan für Neukonten seit 15.07.2025: garantiert keine Kosten, aber nur ausgewählte Dienste und automatische Kontoschließung nach 6 Monaten oder aufgebrauchtem Guthaben">Free Plan</a> über das Guthaben.</li>
+<li><strong>Lambda:</strong> 13 Funktionen statt 5; die Aufrufe bleiben bei Demo-Traffic
+  weit unter 1 Mio. im Monat. Zonen liefern ihre statischen Dateien einmal
+  selbst aus, danach kommen sie aus dem CloudFront-<a class="term" href="glossar.html#cache" title="Zwischenspeicher, der wiederholte Anfragen schneller und billiger beantwortet">Cache</a> [E].</li>
+<li><strong>CloudWatch:</strong> vier Alarme (je eine DLQ für notification, contract,
+  consumption, documents) von 10 freien.</li>
+<li><strong><a class="term" href="glossar.html#storybook" title="Werkzeug, das jede Komponente der Component Library isoliert darstellt und dokumentiert; als statische Seite veröffentlicht">Storybook</a></strong> liegt auf <a class="term" href="glossar.html#github-pages" title="kostenloses Hosting statischer Websites direkt aus einem GitHub-Repository; im Demo für Storybook und Berichte">GitHub Pages</a> (Abschnitt 3), nicht auf S3 oder
+  CloudFront.</li>
 </ul>
 <h2 id="3-was-auf-eigene-infrastruktur-wandert">3. Was auf eigene Infrastruktur wandert<a class="anchor" href="#3-was-auf-eigene-infrastruktur-wandert" title="Permanent link">#</a></h2>
 <p>Eigene, bereits vorhandene Infrastruktur: ein <strong>eigener <a class="term" href="glossar.html#server" title="Rechner oder Prozess, der Anfragen beantwortet">Server</a></strong> mit <a class="term" href="glossar.html#docker" title="Container-Technik; ein Image enthält eine Anwendung mit allen Abhängigkeiten">Docker</a>,
@@ -218,7 +248,7 @@ zusätzlich verbraucht (<a href="architektur.html">Architektur Phase 1</a>):</p>
 <tr>
 <td><a class="term" href="glossar.html#storybook" title="Werkzeug, das jede Komponente der Component Library isoliert darstellt und dokumentiert; als statische Seite veröffentlicht">Storybook</a> (<a class="term" href="glossar.html#component-library" title="gemeinsames Paket wiederverwendbarer UI-Bausteine (Buttons, Formulare, Layouts), das alle Micro-Frontends nutzen und so ein einheitliches Aussehen sichern">Component Library</a>) und diese Berichte</td>
 <td>S3 + <a class="term" href="glossar.html#cloudfront" title="Content Delivery Network (CDN): liefert Inhalte weltweit aus nahen Standorten aus, cacht sie und leitet Pfade an verschiedene Ziele (S3, API Gateway, Lambda) weiter">CloudFront</a></td>
-<td><strong><a class="term" href="glossar.html#github-pages" title="kostenloses Hosting statischer Websites direkt aus einem GitHub-Repository; im Demo für Storybook und Berichte">GitHub Pages</a></strong></td>
+<td><strong><a class="term" href="glossar.html#github-pages" title="kostenloses Hosting statischer Websites direkt aus einem GitHub-Repository; im Demo für Storybook und Berichte">GitHub Pages</a></strong> (umgesetzt 30.09.2026: <a href="https://janpfeil.github.io/kundenportal-demo/storybook/">https://janpfeil.github.io/kundenportal-demo/storybook/</a>)</td>
 <td>kostenlos für öffentliche Repositories, entlastet S3 und CloudFront-<a class="term" href="glossar.html#cache-behavior" title="Regel in CloudFront: welcher Pfad (/api/, /mfe/) an welchen Origin geht und wie gecacht wird">Behaviors</a> [E]</td>
 </tr>
 <tr>
@@ -491,6 +521,6 @@ nötig), Startzeiten messen und dann über Z3 entscheiden. Der Auf-/Abbau-
 <li>GitLab-managed Terraform State: <a href="https://docs.gitlab.com/user/infrastructure/iac/terraform_state/">https://docs.gitlab.com/user/infrastructure/iac/terraform_state/</a></li>
 <li>Drittquelle Always Free [D]: <a href="https://infratally.com/articles/aws-free-tier-2026.html">https://infratally.com/articles/aws-free-tier-2026.html</a></li>
 </ul></main></div>
-<footer class="site"><a href="../wiki/kostenfrei.md">Markdown-Quelle</a> · Generiert 2026-09-30 07:50 aus <code>docs/wiki</code> mit <code>scripts/build_reports.py</code></footer>
+<footer class="site"><a href="../wiki/kostenfrei.md">Markdown-Quelle</a> · Generiert 2026-09-30 09:00 aus <code>docs/wiki</code> mit <code>scripts/build_reports.py</code></footer>
 </body>
 </html>

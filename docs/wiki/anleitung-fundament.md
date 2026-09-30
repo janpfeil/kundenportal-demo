@@ -1,6 +1,6 @@
 # Anleitung Fundament (Kapitel 4–5)
 
-Stand: 2026-09-29 · Fortsetzung der [Anleitung Kontoinhaber](anleitung-kontoinhaber.md) (Kapitel 0–3, Grundsätze). Weiter geht es in der [Anleitung Anwendung](anleitung-anwendung.md) (Kapitel 6–10).
+Stand: 2026-09-30 · Fortsetzung der [Anleitung Kontoinhaber](anleitung-kontoinhaber.md) (Kapitel 0–3, Grundsätze). Weiter geht es in der [Anleitung Anwendung](anleitung-anwendung.md) (Kapitel 6–10).
 
 Fachbegriffe sind in jedem Abschnitt beim ersten Vorkommen mit dem [Glossar](glossar.md) verlinkt (Erklärung und Entsprechung außerhalb von AWS).
 
@@ -138,8 +138,9 @@ Anmeldedaten [B: `aws logout help`]; danach das Profil `kundenportal` aus
 ### 4.5 Lambda-Kontolimit prüfen 👁 und ggf. erhöhen ✎
 
 Ziel: Die Anwendung setzt je Lambda-Funktion eine
-[Reserved Concurrency](glossar.md#reserved-concurrency) von 2 (fünf Funktionen
-= 10) als harte Kostenbremse. AWS lässt aber höchstens „nicht reservierte
+[Reserved Concurrency](glossar.md#reserved-concurrency) von 2 als harte
+Kostenbremse (Stand Phase 2: 13 Funktionen = 26; Phase 1: fünf Funktionen
+= 10; jede weitere Zone oder jeder weitere Service bringt 2 dazu). AWS lässt aber höchstens „nicht reservierte
 Kontokapazität **minus 100**" reservieren; 100 bleiben immer für Funktionen
 ohne Reservierung frei
 [B: https://docs.aws.amazon.com/lambda/latest/dg/configuration-concurrency.html].
@@ -163,10 +164,17 @@ Prüfen 👁 (Kommandozeile, nach 4.4):
 → `AccountLimit.ConcurrentExecutions` (Limit) und
 `UnreservedConcurrentExecutions`.
 
+Nötig ist: **Limit ≥ 100 + 2 × Anzahl Funktionen** mit Reserved
+Concurrency. Die Anzahl steht in der [Architektur](architektur.md) §7
+(Stand Phase 2: 13, also ≥ 126).
+
 | Angezeigtes Limit | Folge |
 |---|---|
-| ≥ 110 | nichts zu tun; Standard `reservedConcurrency=2` passt (10 reserviert, ≥ 100 frei) |
-| < 110 (typisch 10) | Weg A oder B |
+| ≥ 100 + 2 × Anzahl Funktionen (Stand Phase 2: ≥ 126) | nichts zu tun; Standard `reservedConcurrency=2` passt (≥ 100 bleiben frei) |
+| darunter (bei Neukonten typisch 10) | Weg A oder B |
+
+Stand des Kontos: Die Erhöhung auf **1.000** ist genehmigt; das reicht mit
+Abstand für alle geplanten Phasen.
 
 **Weg A — Erhöhung beantragen ✎ (empfohlen):**
 

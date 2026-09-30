@@ -8,7 +8,7 @@
 <script src="assets/report.js"></script>
 </head>
 <body>
-<header class="topbar"><a class="brand" href="index.html">kundenportal-demo · Konzept</a><nav class="topnav"><a href="index.html">Übersicht</a><a href="machbarkeit-kosten.html">Machbarkeit &amp; Kosten</a><a href="fachkonzept.html">Fachkonzept</a><a href="demo-pass.html">Demo-Pass</a><a href="kostenfrei.html">Kostenfreier Betrieb</a><a href="anleitung-kontoinhaber.html">Anleitung Kontoinhaber</a><a href="anleitung-fundament.html" aria-current="page">Anleitung Fundament</a><a href="anleitung-anwendung.html">Anleitung Anwendung</a><a href="nextjs-betrieb.html">Next.js-Betrieb</a><a href="architektur.html">Architektur Phase 1</a><a href="glossar.html">Glossar</a></nav>
+<header class="topbar"><a class="brand" href="index.html">kundenportal-demo · Konzept</a><nav class="topnav"><a href="index.html">Übersicht</a><a href="machbarkeit-kosten.html">Machbarkeit &amp; Kosten</a><a href="fachkonzept.html">Fachkonzept</a><a href="demo-pass.html">Demo-Pass</a><a href="kostenfrei.html">Kostenfreier Betrieb</a><a href="anleitung-kontoinhaber.html">Anleitung Kontoinhaber</a><a href="anleitung-fundament.html" aria-current="page">Anleitung Fundament</a><a href="anleitung-anwendung.html">Anleitung Anwendung</a><a href="nextjs-betrieb.html">Next.js-Betrieb</a><a href="architektur.html">Architektur</a><a href="architektur-zonen.html">Zonen &amp; Frontend</a><a href="glossar.html">Glossar</a></nav>
 <button class="theme-toggle" type="button">Dunkel</button></header>
 <div class="layout"><nav class="toc" aria-label="Inhalt"><div class="toc-title">Inhalt</div><div>
 <ul>
@@ -35,7 +35,7 @@
 </ul>
 </div>
 </nav><main><h1 id="anleitung-fundament-kapitel-45">Anleitung Fundament (Kapitel 4–5)<a class="anchor" href="#anleitung-fundament-kapitel-45" title="Permanent link">#</a></h1>
-<p>Stand: 2026-09-29 · Fortsetzung der <a href="anleitung-kontoinhaber.html">Anleitung Kontoinhaber</a> (Kapitel 0–3, Grundsätze). Weiter geht es in der <a href="anleitung-anwendung.html">Anleitung Anwendung</a> (Kapitel 6–10).</p>
+<p>Stand: 2026-09-30 · Fortsetzung der <a href="anleitung-kontoinhaber.html">Anleitung Kontoinhaber</a> (Kapitel 0–3, Grundsätze). Weiter geht es in der <a href="anleitung-anwendung.html">Anleitung Anwendung</a> (Kapitel 6–10).</p>
 <p>Fachbegriffe sind in jedem Abschnitt beim ersten Vorkommen mit dem <a href="glossar.html">Glossar</a> verlinkt (Erklärung und Entsprechung außerhalb von <a class="term" href="glossar.html#aws" title="Cloud-Plattform von Amazon mit über 200 Diensten (Rechenleistung, Datenbanken, Netzwerk, Messaging …), abgerechnet nach Nutzung">AWS</a>).</p>
 <p>Es gelten die Grundsätze aus <a href="anleitung-kontoinhaber.html#0-grundsätze">Kapitel 0</a>:
 jeder Schritt nennt Ziel, Ort, Ergebnis und Notiz; 👁 = nur lesend,
@@ -208,8 +208,9 @@ Anmeldedaten [B: <code>aws logout help</code>]; danach das Profil <code>kundenpo
 <code>~/.aws/config</code> entfernen.</p>
 <h3 id="45-lambda-kontolimit-prüfen-und-ggf-erhöhen">4.5 Lambda-Kontolimit prüfen 👁 und ggf. erhöhen ✎<a class="anchor" href="#45-lambda-kontolimit-prüfen-und-ggf-erhöhen" title="Permanent link">#</a></h3>
 <p>Ziel: Die Anwendung setzt je Lambda-Funktion eine
-<a href="glossar.html#reserved-concurrency">Reserved Concurrency</a> von 2 (fünf Funktionen
-= 10) als harte Kostenbremse. AWS lässt aber höchstens „nicht reservierte
+<a href="glossar.html#reserved-concurrency">Reserved Concurrency</a> von 2 als harte
+Kostenbremse (Stand Phase 2: 13 Funktionen = 26; Phase 1: fünf Funktionen
+= 10; jede weitere <a class="term" href="glossar.html#multi-zones" title="Next.js-Ansatz, mehrere Next.js-Apps unter einer Domain zu betreiben, aufgeteilt nach Pfaden">Zone</a> oder jeder weitere Service bringt 2 dazu). AWS lässt aber höchstens „nicht reservierte
 Kontokapazität <strong>minus 100</strong>" reservieren; 100 bleiben immer für Funktionen
 ohne Reservierung frei
 [B: <a href="https://docs.aws.amazon.com/lambda/latest/dg/configuration-concurrency.html">https://docs.aws.amazon.com/lambda/latest/dg/configuration-concurrency.html</a>].
@@ -231,6 +232,9 @@ erste Deploy würde scheitern.</p>
 <code>aws lambda get-account-settings --region eu-central-1 --profile kundenportal</code>
 → <code>AccountLimit.ConcurrentExecutions</code> (Limit) und
 <code>UnreservedConcurrentExecutions</code>.</p>
+<p>Nötig ist: <strong>Limit ≥ 100 + 2 × Anzahl Funktionen</strong> mit <a class="term" href="glossar.html#reserved-concurrency" title="feste Obergrenze gleichzeitiger Ausführungen einer Lambda; wirkt im Demo als harte Kostenbremse (0 = Funktion abgeschaltet). Reservieren lässt sich höchstens das Kontolimit minus 1">Reserved
+Concurrency</a>. Die Anzahl steht in der <a href="architektur.html">Architektur</a> §7
+(Stand Phase 2: 13, also ≥ 126).</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -240,15 +244,17 @@ erste Deploy würde scheitern.</p>
 </thead>
 <tbody>
 <tr>
-<td>≥ 110</td>
-<td>nichts zu tun; Standard <code>reservedConcurrency=2</code> passt (10 reserviert, ≥ 100 frei)</td>
+<td>≥ 100 + 2 × Anzahl Funktionen (Stand Phase 2: ≥ 126)</td>
+<td>nichts zu tun; Standard <code>reservedConcurrency=2</code> passt (≥ 100 bleiben frei)</td>
 </tr>
 <tr>
-<td>&lt; 110 (typisch 10)</td>
+<td>darunter (bei <a class="term" href="glossar.html#aws-konto" title="Abrechnungs- und Sicherheitsgrenze bei AWS: alle Ressourcen, Rechnungen und Berechtigungen hängen an einem Konto">Neukonten</a> typisch 10)</td>
 <td>Weg A oder B</td>
 </tr>
 </tbody>
 </table></div>
+<p>Stand des Kontos: Die Erhöhung auf <strong>1.000</strong> ist genehmigt; das reicht mit
+Abstand für alle geplanten Phasen.</p>
 <p><strong>Weg A — Erhöhung beantragen ✎ (empfohlen):</strong></p>
 <ol>
 <li>In der Zeile <strong>Concurrent executions</strong> auf den Namen klicken,
@@ -559,6 +565,6 @@ Anwendung) kommt erst beim ersten Deploy (Kapitel 8).</p>
 </tr>
 </tbody>
 </table></div></main></div>
-<footer class="site"><a href="../wiki/anleitung-fundament.md">Markdown-Quelle</a> · Generiert 2026-09-30 07:50 aus <code>docs/wiki</code> mit <code>scripts/build_reports.py</code></footer>
+<footer class="site"><a href="../wiki/anleitung-fundament.md">Markdown-Quelle</a> · Generiert 2026-09-30 09:00 aus <code>docs/wiki</code> mit <code>scripts/build_reports.py</code></footer>
 </body>
 </html>

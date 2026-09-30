@@ -58,6 +58,12 @@ Generator liest beide Dateien und erzeugt daraus **eine** Glossar-Seite.
 | Bundle | Bundles, MFE-Bundles | vom Build erzeugte, zusammengefasste JavaScript-/CSS-Dateien | JAR-Datei (Analogie) |
 | Component Library | Komponentenbibliothek, Lib | gemeinsames Paket wiederverwendbarer UI-Bausteine (Buttons, Formulare, Layouts), das alle Micro-Frontends nutzen und so ein einheitliches Aussehen sichern | Material UI, Bootstrap; in Java-Welt: gemeinsames Shared-Modul |
 | Storybook | | Werkzeug, das jede Komponente der Component Library isoliert darstellt und dokumentiert; als statische Seite veröffentlicht | Pattern Lab, Ladle |
+| Design-Token | Design-Tokens | benannte Gestaltungswerte (Farben, Abstände, Schriften) als CSS-Variablen, hier `--kp-*` mit Werten für hell und dunkel | Style Dictionary, Tokens in Material Design |
+| Custom Element | Custom Elements, Web Component, Web Components | eigenes HTML-Element (z. B. `<kp-bell>`) nach Browser-Standard — ohne Framework, in jeder Seite nutzbar | Lit, Stencil; in Java-Welt vergleichbar mit einer JSP-Tag-Library, aber im Browser |
+| Shadow DOM | | abgeschotteter DOM-Bereich eines Custom Elements; seine Styles wirken nicht nach außen und fremde Styles nicht hinein | Style-Kapselung in Angular (`ViewEncapsulation`) |
+| basePath | | Next.js-Einstellung: Die App läuft unter einem Pfad-Präfix (z. B. `/vertraege`) statt unter `/`; nötig für Multi-Zones | Spring `server.servlet.context-path`, Kontextpfad in Tomcat |
+| Route Handler | Route Handlers | Datei `route.ts` im Next.js-App-Router, die eine HTTP-Schnittstelle (GET, POST, PATCH …) statt einer Seite bereitstellt | Spring-`@RestController`-Methode |
+| WebCrypto | Web Crypto API, SubtleCrypto | Kryptografie-Schnittstelle des Browsers (Prüfsummen, Signaturen, Verschlüsselung) ohne Zusatzbibliothek | Java Cryptography Architecture (`MessageDigest`) |
 | Monorepo | | ein Git-Repository mit mehreren Paketen/Apps (Frontend, Services, IaC) und gemeinsamen Typen | Maven-Multi-Modul-Projekt |
 | Vercel | @vercel/microfrontends | Hosting-Anbieter und Hersteller von Next.js | Netlify, Cloudflare Pages |
 | WebSocket | | dauerhafte bidirektionale Verbindung zwischen Browser und Server | STOMP über WebSocket in Spring |

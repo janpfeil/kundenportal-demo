@@ -1,6 +1,6 @@
 # Anleitung Anwendung (Kapitel 6–10)
 
-Stand: 2026-09-29 · Fortsetzung der [Anleitung Fundament](anleitung-fundament.md) (Kapitel 4–5); Grundsätze in [Kapitel 0](anleitung-kontoinhaber.md#0-grundsätze). Aufbau der Anwendung: [Architektur Phase 1](architektur.md).
+Stand: 2026-09-29 · Fortsetzung der [Anleitung Fundament](anleitung-fundament.md) (Kapitel 4–5); Grundsätze in [Kapitel 0](anleitung-kontoinhaber.md#0-grundsätze). Aufbau der Anwendung: [Architektur](architektur.md).
 
 Fachbegriffe sind in jedem Abschnitt beim ersten Vorkommen mit dem [Glossar](glossar.md) verlinkt (Erklärung und Entsprechung außerhalb von AWS).
 
@@ -266,7 +266,7 @@ Fehlen in 7.2 die Felder für Reviewer oder Variablen:
 
 ### 8.1 Deploy starten ✎
 
-Ziel: die Anwendung aus [Architektur Phase 1](architektur.md) in AWS
+Ziel: die Anwendung aus [Architektur](architektur.md) in AWS
 aufbauen oder nach einer Pause wieder in Betrieb nehmen. Kosten: im Free Plan
 0 $ (Cent-Bruchteile für API Gateway, EventBridge und S3 laufen über das
 Guthaben; [Kostenfreier Betrieb](kostenfrei.md)).
