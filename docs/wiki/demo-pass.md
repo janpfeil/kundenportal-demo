@@ -112,8 +112,8 @@ Silo bleibt als Option für den **Inhaber-Zugang** (eigener vollständiger
 Stack auf Knopfdruck zeigt „Infrastruktur als Code" am deutlichsten).
 
 Kontingent je Pass [A], als Vorschlag (umgesetzt wie unten, außer den
-E-Mails: nur das Einmal-Passwort; das Upload-Kontingent ist noch nicht
-durchgesetzt — [Architektur: Mandanten und Demo-Pass](architektur-mandanten.md) §5):
+E-Mails: nur das Einmal-Passwort —
+[Architektur: Mandanten und Demo-Pass](architektur-mandanten.md) §5):
 
 | Größe | Grenze | Begründung |
 |---|---|---|

@@ -1,6 +1,6 @@
 # Architektur: Mandanten und Demo-Pass
 
-Stand: 2026-09-30 · Beschreibt den **Ist-Stand** des Codes (Phase 4 abgeschlossen, Release v0.4.0), live geprüft am 30.09.2026. Ergänzt die [Architektur](architektur.md), [Zonen & Frontend](architektur-zonen.md) und [Altsysteme & Migration](architektur-migration.md); Anforderungen und Grundentscheidung (Bridge-Modell) stehen in [Demo-Pass](demo-pass.md). Kennzeichnung: **[B]** belegt, **[A]** Annahme, **[E]** Einschätzung.
+Stand: 2026-09-30 · Beschreibt den **Ist-Stand** des Codes (Phase 4 abgeschlossen, Release v0.4.0, live geprüft am 30.09.2026; danach geschlossen: atomare Obergrenze, Upload-Kontingent, Einstellungen und Angebot im API, Hinweise an den Inhaber — noch nicht live geprüft). Ergänzt die [Architektur](architektur.md), [Zonen & Frontend](architektur-zonen.md) und [Altsysteme & Migration](architektur-migration.md); Anforderungen und Grundentscheidung (Bridge-Modell) stehen in [Demo-Pass](demo-pass.md). Kennzeichnung: **[B]** belegt, **[A]** Annahme, **[E]** Einschätzung.
 
 Fachbegriffe sind in jedem Abschnitt beim ersten Vorkommen mit dem [Glossar](glossar.md) verlinkt (Erklärung und Entsprechung außerhalb von AWS).
 
@@ -20,7 +20,7 @@ Funktionen, Worker), in `packages/service-kit` (`tenantData`,
 Shell und Cockpit ([Zonen & Frontend](architektur-zonen.md) §8).
 
 ```chart
-{"type": "stats", "items": [["≈ 10 s", "vom Einlösen bis zum nutzbaren Mandanten (Ziel < 1 min)"], ["≈ 10 s", "Rückbau nach Ablauf"], ["23/23", "E2E-Schritte grün, inkl. J2/J3/J4/J6 im Pass-Mandanten"], ["3", "gleichzeitige Pass-Mandanten höchstens"]]}
+{"type": "stats", "items": [["≈ 10 s", "vom Einlösen bis zum nutzbaren Mandanten (Ziel < 1 min)"], ["≈ 10 s", "Rückbau nach Ablauf"], ["23/23", "E2E-Schritte grün, inkl. J2/J3/J4/J6 im Pass-Mandanten"], ["3 (bis 4)", "gleichzeitige Pass-Mandanten höchstens, atomar gezählt"]]}
 ```
 
 ```chart
@@ -54,9 +54,9 @@ Mandanten, Kontingente) liegen ebenfalls dort, unter eigenen Präfixen
 |---|---|---|
 | `INVITE#<sha256(token)>` | `META` | E-Mail, erstellt, gültig bis (TTL 14 Tage), eingelöst |
 | `PASS#<passId>` | `META` | Mandant, E-Mail, Status, ausgestellt, gültig bis; bleibt nach dem Rückbau 30 Tage als Nachweis, dann [TTL](glossar.md#dynamodb-ttl) |
-| `TENANT#<kennung>` | `QUOTA#<art>` | Zähler `used` (`api`, `events`, `uploads`) — der Router kennt nur den Mandanten, nicht den Pass |
+| `TENANT#<kennung>` | `QUOTA#<art>` | Zähler `used` (`api`, `events`, `uploads`) — der Router und Documents kennen nur den Mandanten, nicht den Pass; `uploads` trägt zusätzlich `exceededAt` (Merker: `QuotaExceeded` einmal gemeldet) |
 | `PLATFORM` | `TENANT#<kennung>` | Tabelle, Status (`provisioning`, `active`, `quota-exceeded`, `tearing-down`, `deleted`), Pass — Liste für Abgleich und Cockpit |
-| `PLATFORM` | `SETTINGS` | Einlösen offen/gesperrt ([Kill-Switch](glossar.md#kill-switch)), Obergrenze |
+| `PLATFORM` | `SETTINGS` | Einlösen offen/gesperrt ([Kill-Switch](glossar.md#kill-switch)) mit `closedAt`/`closedReason`, Obergrenze `maxTenants` (Vorgabe 3, höchstens 4), Zähler `activeTenants` (Mandanten, die nicht `deleted` sind) |
 | `EMAIL#<sha256(adresse)>` | `PASS` | ein Pass je E-Mail-Adresse |
 | `RATE#<sha256(ip)>` | `REDEEM` | Einlöseversuche je IP, TTL 1 h |
 | `ALTCHA#<sha256(signatur)>` | `USED` | gelöste Rätsel, [Replay-Schutz](glossar.md#replay-schutz), TTL bis zum Ablauf des Rätsels |
@@ -149,9 +149,17 @@ dem Inhaber-Mandanten vorbehalten.
   Widget holt das Rätsel über den [Route Handler](glossar.md#route-handler)
   `/pass/einloesen/challenge`; `/pass/einloesen/api` prüft den
   Origin-Header, reicht die IP des Besuchers als `x-kp-client-ip` weiter
-  und ruft `POST /api/tenancy/redeem`. Die beiden öffentlichen Operationen
-  (`getRedeemChallenge`, `redeemInvitation`) tragen im Vertrag
+  und ruft `POST /api/tenancy/redeem`. Die drei öffentlichen Operationen
+  (`getOffer`, `getRedeemChallenge`, `redeemInvitation`) tragen im Vertrag
   `security: []` und laufen damit **ohne** JWT-Authorizer.
+- **Angebot:** `GET /api/tenancy/offer` liefert Laufzeit, Kontingente,
+  größte Upload-Größe und ob Einlösen gerade möglich ist
+  (`{passDays, quotas: {api, events, uploads}, uploadMaxBytes, redemptionOpen}`,
+  aus Konfiguration und `PLATFORM/SETTINGS`). `redemptionOpen` ist falsch,
+  solange der Kill-Switch sperrt oder alle Plätze belegt sind. Die Antwort
+  ist für alle gleich und darf 60 s zwischengespeichert werden
+  (`Cache-Control: public, max-age=60`); die Einlöse-Seite zeigt damit
+  echte Zahlen statt festen Texts.
 - **[ALTCHA](glossar.md#altcha)** statt Turnstile/hCaptcha: ein
   [Proof-of-Work](glossar.md#proof-of-work)-Rätsel; selbst gehostet, Open
   Source (MIT), keine Daten an Dritte, kein Konto beim Anbieter, 0 $.
@@ -167,11 +175,30 @@ dem Inhaber-Mandanten vorbehalten.
 - Begrenzung: 10 Einlöseversuche je IP und Stunde; höchstens **3
   gleichzeitige Pass-Mandanten** (Abschnitt 6); ein Pass je E-Mail-Adresse
   (`EMAIL#…/PASS`). Ein unbekannter Link ergibt 404.
+- **Obergrenze atomar:** Dieselbe Transaktion, die Einladung, Pass und
+  Mandant schreibt, zählt `activeTenants` in `PLATFORM/SETTINGS` hoch —
+  `ADD activeTenants :one` unter der Bedingung
+  `attribute_not_exists(activeTenants) OR activeTenants < :max`. Zwei
+  gleichzeitige Einlösungen können die Grenze damit nicht überschreiten;
+  die zweite bricht ab und erhält 503. Der Rückbau zählt beim Übergang des
+  Mandanten nach `deleted` in einer Transaktion genau einmal herunter (nie
+  unter 0). Der tägliche Abgleich berechnet den Zähler aus den
+  Mandanten-Einträgen neu und ersetzt ihn nur, wenn ihn seit dem Lesen
+  niemand geändert hat (selbstheilend). Fehlt der Zähler (Bestand vor
+  dieser Änderung), setzt ihn das nächste Einlösen aus den Einträgen.
 - **Kill-Switch:** Der Budget-Alarm (Terraform, Thema
   `kundenportal-budget-alerts`) ruft zusätzlich die Tenancy-Lambda auf, die
   `PLATFORM/SETTINGS` auf „gesperrt" setzt (SNS-Abo auf das Budget-Thema).
   Einlösen antwortet dann mit 503; laufende Pässe bleiben nutzbar
   [B: live 30.09.2026].
+- **Einstellungen:** Der Inhaber (Gruppe `owner`, Scope
+  `kundenportal/tenancy.admin`) liest sie mit `GET /api/tenancy/settings`
+  (`{redemption, closedAt?, closedReason?, maxTenants, activeTenants}`)
+  und ändert sie mit `PUT /api/tenancy/settings`
+  (`{redemption?: "open"|"closed", maxTenants?: 1–4}`). Wieder öffnen
+  entfernt `closedAt` und `closedReason`; Sperren durch den Inhaber
+  behält einen früheren Grund (etwa den des Budget-Alarms), sonst steht
+  dort „Vom Inhaber gesperrt".
 - **Einladungslink:** Das Cockpit zeigt ihn genau einmal; der Inhaber
   schickt ihn selbst. Das System verschickt keine Einladungs-E-Mails.
 
@@ -182,11 +209,12 @@ dem Inhaber-Mandanten vorbehalten.
 | Laufzeit | 7 Tage | Zeitplan + täglicher Abgleich |
 | API-Aufrufe | 5.000 (`QUOTA_API_CALLS`) | `service-kit`-Router vor jeder Route eines Pass-Mandanten: atomares `ADD` auf `TENANT#<kennung>/QUOTA#api` der Base mit Bedingung, an der Grenze 429; Mandant nicht `active` → 403 (`quota-exceeded` → 429), Status 30 s gecacht (`TenantDirectory`). Die Tenancy-Routen selbst umgehen den Wächter, damit Statusseite und Cockpit erreichbar bleiben |
 | Domänen-Ereignisse | 1.000 | **eine** Regel „alle `kundenportal.*`-Ereignisse mit `detail.tenantId` Präfix `p`" an den Tenancy-Worker; der zählt `QUOTA#events`, das erste Ereignis über der Grenze setzt `quota-exceeded` → API 429 |
-| Uploads | 20, je ≤ 5 MB, nur JPEG/PNG/PDF | Größe und Typ prüft Documents; die Zahl 20 wird **noch nicht** durchgesetzt (Offen) |
+| Uploads | 20 (`QUOTA_UPLOADS`), je ≤ 5 MB, nur JPEG/PNG/PDF | Documents vor jeder presignierten Upload-URL eines Pass-Mandanten: atomares `ADD` auf `TENANT#<kennung>/QUOTA#uploads` der Base mit Bedingung `used < 20`, an der Grenze 429 „Kontingent erschöpft" und **einmal** `QuotaExceeded` (Art `uploads`); die übrige Nutzung bleibt möglich. Größe (signierte Länge, Nachprüfung im Worker) und Typ prüft Documents wie bisher; der Inhaber zählt nie |
 | Gleichzeitige Instanzen | 1 je Pass | ein Mandant je Pass |
 | E-Mails | 1 (Einmal-Passwort) | keine weiteren E-Mails an Pass-Inhaber |
 
-Bei Überschreitung erscheint `QuotaExceeded`; die Shell zeigt
+Bei Überschreitung erscheint `QuotaExceeded` (Quelle `kundenportal.tenancy`,
+auch wenn Documents es für die Uploads veröffentlicht); die Shell zeigt
 „Kontingent: … übrig · gültig bis …" aus `GET /api/tenancy/pass` auf der
 Seite `/pass` (Komponente `Meter` aus `packages/ui`).
 
@@ -194,7 +222,7 @@ Seite `/pass` (Komponente `Meter` aus `packages/ui`).
 
 | Baustein | Kosten | Begründung |
 |---|---|---|
-| Tabelle je Mandant, provisioned 5/5 | 0 $ | Always Free: 25 RCU/25 WCU je Konto und Region; Base 5/5 + 3 × 5/5 = 20 [B] |
+| Tabelle je Mandant, provisioned 5/5 | 0 $ | Always Free: 25 RCU/25 WCU je Konto und Region; Base 5/5 + 3 × 5/5 = 20, höchstens 5 + 4 × 5 = 25 [B] |
 | Einmal-Zeitplan je Pass | 0 $ | [EventBridge Scheduler](glossar.md#eventbridge-scheduler), wird nach dem Auslösen gelöscht |
 | STS AssumeRole | 0 $ | STS ist kostenlos [B] |
 | EventBridge Scheduler (Zeitpläne und täglicher Abgleich) | 0 $ | 14 Mio. Aufrufe/Monat frei [B] |
@@ -202,9 +230,13 @@ Seite `/pass` (Komponente `Meter` aus `packages/ui`).
 | ALTCHA | 0 $ | eigene Lambda, kein Drittanbieter |
 | CreateTable/DeleteTable | 0 $ | Steuerungsaufrufe sind kostenlos [B] |
 
-Daraus die **Obergrenze von 3 gleichzeitigen Pass-Mandanten** (änderbar in
-`PLATFORM/SETTINGS`). Mehr Mandanten trüge im Free Plan das Guthaben, danach
-kostete jede weitere Tabelle 5 × (0,00065 + 0,00013) $/h ≈ 2,85 $/Monat [A].
+Daraus die **Obergrenze von 3 gleichzeitigen Pass-Mandanten** (Vorgabe in
+`PLATFORM/SETTINGS`, `maxTenants`). Der Inhaber kann sie über
+`PUT /api/tenancy/settings` auf 1 bis 4 setzen; 4 schöpft die freien 25
+Einheiten genau aus, mehr lässt das API nicht zu. Mehr Mandanten trüge im
+Free Plan das Guthaben, danach kostete jede weitere Tabelle
+5 × (0,00065 + 0,00013) $/h ≈ 2,85 $/Monat [A]. Gezählt wird atomar
+(Abschnitt 4).
 
 ## 7. Ablauf und Rückbau
 
@@ -224,7 +256,8 @@ kostete jede weitere Tabelle 5 × (0,00065 + 0,00013) $/h ≈ 2,85 $/Monat [A].
   Konten mit `custom:tenant_id` = Kennung löschen; Altsysteme
   `DELETE …/mandant` bzw. `…/tenant`; Upload-Präfix löschen; Tabelle
   löschen; Zeitplan löschen; Plattform-Einträge auf „gelöscht" (Pass bleibt
-  30 Tage als Nachweis, dann TTL); `TenantDeleted`.
+  30 Tage als Nachweis, dann TTL) und dabei `activeTenants` genau einmal
+  herunterzählen; `TenantDeleted`; Hinweis an den Inhaber.
 - **Vollabbau:** Pass-Mandanten entstehen zur Laufzeit; CloudFormation
   kennt sie nicht. Deshalb liegt im Base-Stack die
   [Custom Resource](glossar.md#custom-resource) `Custom::PassTenantCleanup`.
@@ -246,9 +279,17 @@ kostete jede weitere Tabelle 5 × (0,00065 + 0,00013) $/h ≈ 2,85 $/Monat [A].
 
 `tenantId` im Umschlag ist bei allen die Kennung des Pass-Mandanten.
 `DemoPassIssued` startet die Einrichtung, `DemoPassExpired` den Rückbau
-(beides im Tenancy-Worker). Geplant war zusätzlich ein Hinweis im Postfach
-des Inhabers zu `DemoPassIssued` und `TenantDeleted`; er ist **nicht**
-gebaut (Offen).
+(beides im Tenancy-Worker).
+
+**Hinweise an den Inhaber:** Der Tenancy-Worker schickt über das
+Inhaber-Thema (SNS, `OWNER_TOPIC_ARN`, dasselbe Thema wie die Hinweise des
+Notification-Service) je eine kurze Nachricht, wenn ein Mandant nutzbar ist
+(„Demo-Pass eingelöst: <E-Mail>, Mandant <kennung>, gültig bis …") und
+wenn er gelöscht ist („Demo-Pass beendet (abgelaufen|widerrufen): <E-Mail>,
+Mandant <kennung> gelöscht, <n> Konten, <m> Uploads"). Beide gehen genau
+einmal hinaus (nur der Lauf, der den Status umstellt), nennen nie das
+Demo-Passwort oder einen Token, und ein Fehler beim Versand bricht
+Einrichtung oder Rückbau nicht ab.
 
 ## 9. Ausblick: Silo für den Inhaber
 
@@ -289,15 +330,12 @@ Drei Fehler fielen erst live auf und sind behoben:
 
 ## Offen
 
-- Die Obergrenze von 3 wird **vor** der Transaktion gezählt; zwei
-  gleichzeitige Einlösungen könnten sie überschreiten.
-- Das Upload-Kontingent (20) setzt Documents noch nicht durch.
-- Hinweise im Postfach des Inhabers zu `DemoPassIssued` und `TenantDeleted`
-  fehlen.
 - Der Demo-Reset des **Inhaber**-Mandanten lässt migrierte Profile in der
   Tabelle der Base stehen. Pass-Mandanten werden vollständig gelöscht; für
   Besucher ist der Hinweis aus Phase 3 damit erledigt.
 - Die Startseite ist nicht im CDN zwischenspeicherbar, weil das gemeinsame
   Layout Cookies liest.
-- Die Kontingent-Zahlen auf der Einlöse-Seite sind fester Text, nicht aus
-  der Konfiguration gelesen.
+- Atomare Obergrenze, Upload-Kontingent, Einstellungen, Angebot und
+  Inhaber-Hinweise sind per Unit-Test geprüft, aber noch nicht live
+  (E2E) — ebenso wenig die Einlöse-Seite mit den Zahlen aus
+  `GET /api/tenancy/offer`.
