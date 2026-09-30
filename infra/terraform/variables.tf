@@ -74,11 +74,13 @@ variable "monthly_budget_usd" {
 }
 
 # --- Phase 3: legacy systems and the telco's Keycloak realm ---------------------------
-# All secrets come from CI/CD variables of the GitLab project platform (TF_VAR_…,
-# masked and protected), never from the repository.
+# The realm "telko" itself is imported by the deploy of the private project legacy-telko
+# (kcadm.sh, secrets in its Ansible vault). Terraform only hands the access data to the
+# portal's Lambdas as SSM parameters. Secrets come from CI/CD variables of the GitLab
+# project platform (TF_VAR_…, masked and protected), never from the repository.
 
 variable "legacy_enabled" {
-  description = "Creates the telco realm in Keycloak and the legacy SSM parameters. Set TF_VAR_legacy_enabled=true once the variables below exist."
+  description = "Writes the legacy SSM parameters. Set TF_VAR_legacy_enabled=true once the variables below exist."
   type        = bool
   default     = false
 }
@@ -89,21 +91,20 @@ variable "keycloak_url" {
   default     = "https://id.rypox.net"
 }
 
-variable "keycloak_client_id" {
-  description = "Service client in the master realm that Terraform signs in with."
+variable "keycloak_realm" {
+  description = "Realm of the telco's legacy sign-in."
   type        = string
-  default     = "terraform-kundenportal"
+  default     = "telko"
 }
 
-variable "keycloak_client_secret" {
-  description = "Secret of that service client (TF_VAR_keycloak_client_secret)."
+variable "keycloak_migration_client_id" {
+  description = "Confidential client of that realm the migrate user trigger uses (password grant)."
   type        = string
-  default     = ""
-  sensitive   = true
+  default     = "kundenportal-migration"
 }
 
-variable "telco_demo_password" {
-  description = "Password of the telco demo persons in the realm; the same as DEMO_PASSWORD of legacy-telko (TF_VAR_telco_demo_password)."
+variable "keycloak_migration_client_secret" {
+  description = "Secret of that client; the same value as vault_keycloak_client_secret in legacy-telko (TF_VAR_keycloak_migration_client_secret)."
   type        = string
   default     = ""
   sensitive   = true
@@ -122,14 +123,14 @@ variable "legacy_telco_url" {
 }
 
 variable "legacy_utility_api_key" {
-  description = "API key of the utility's legacy system; the same as LEGACY_API_KEY of legacy-versorger (TF_VAR_legacy_utility_api_key)."
+  description = "API key of the utility's legacy system; the same as vault_legacy_api_key of legacy-versorger (TF_VAR_legacy_utility_api_key)."
   type        = string
   default     = ""
   sensitive   = true
 }
 
 variable "legacy_telco_api_key" {
-  description = "API key of the telco's legacy system; the same as LEGACY_API_KEY of legacy-telko (TF_VAR_legacy_telco_api_key)."
+  description = "API key of the telco's legacy system; the same as vault_legacy_api_key of legacy-telko (TF_VAR_legacy_telco_api_key)."
   type        = string
   default     = ""
   sensitive   = true

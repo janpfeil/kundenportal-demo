@@ -17,7 +17,7 @@ Generator liest beide Dateien und erzeugt daraus **eine** Glossar-Seite.
 | RemovalPolicy | RemovalPolicy.DESTROY, autoDeleteObjects | CDK-Einstellung, ob eine Datenbank/ein Bucket beim Löschen des Stacks mitgelöscht (DESTROY) oder behalten wird | `force_destroy` in Terraform |
 | Terraform | TF | verbreitetes IaC-Werkzeug von HashiCorp: Infrastruktur deklarativ in HCL beschreiben, für viele Anbieter (AWS, Azure, Keycloak, GitHub …) über Provider | OpenTofu (Open-Source-Fork), Pulumi, Ansible |
 | HCL | | HashiCorp Configuration Language, die Beschreibungssprache von Terraform | YAML/JSON-Konfiguration |
-| Terraform-Provider | Provider, Terraform-Provider für Keycloak | Plug-in, über das Terraform die API eines Anbieters anspricht (AWS, Keycloak, GitHub); im Demo ab Phase 3 auch für die Keycloak-Konfiguration | — |
+| Terraform-Provider | Provider, Terraform-Provider für Keycloak | Plug-in, über das Terraform die API eines Anbieters anspricht (AWS, Keycloak, GitHub); im Demo für AWS (die Keycloak-Konfiguration kommt stattdessen als Realm-Import aus dem Deploy des Telko-Altsystems) | — |
 | Terraform-State | State, State-Bucket | Datei, in der Terraform den tatsächlichen Zustand der verwalteten Ressourcen festhält; liegt im Demo im GitLab-managed Terraform State (kein State-Bucket in S3) | — |
 | State-Locking | Locking, use_lockfile, .tflock | Sperre, damit nicht zwei Terraform-Läufe gleichzeitig den State ändern; seit Terraform 1.10 direkt in S3 möglich (früher DynamoDB) | — |
 | HCP Terraform | Terraform Cloud | von HashiCorp gehosteter Terraform-Dienst mit State-Verwaltung und Läufen | Spacelift, env0, Scalr |
@@ -180,7 +180,7 @@ Generator liest beide Dateien und erzeugt daraus **eine** Glossar-Seite.
 | In-App-Feed | In-App | Benachrichtigungsliste innerhalb der Anwendung (statt E-Mail) | — |
 | Guardrails | Konto-Guardrails, Leitplanken | technische Schutzregeln, die Fehlbedienung und Kosten begrenzen | — |
 | Schema | Schemas, Typen/Schemas | formale Beschreibung einer Datenstruktur, z. B. JSON Schema | Bean Validation, XSD |
-| Plattform-Schicht | Fundament-Schicht, Plattform-/Fundament-Schicht, Fundament, Plattformschicht | im Demo: per Terraform aus GitLab CI verwaltete Grundlagen (OIDC-Vertrauensstellungen, Budget + SNS-Grundlage des Kill-Switch, SSM-Grundwerte, ab Phase 3 Keycloak-Konfiguration), auf denen die Anwendung aufsetzt; Cognito gehört zur Anwendung (CDK) | — |
+| Plattform-Schicht | Fundament-Schicht, Plattform-/Fundament-Schicht, Fundament, Plattformschicht | im Demo: per Terraform aus GitLab CI verwaltete Grundlagen (OIDC-Vertrauensstellungen, Budget + SNS-Grundlage des Kill-Switch, SSM-Grundwerte, ab Phase 3 Zugangsdaten der Altsysteme), auf denen die Anwendung aufsetzt; Cognito gehört zur Anwendung (CDK) | — |
 | End-to-End | End-to-End-Demo | durchgängig über alle Schichten, vom Browser bis zur Datenbank und zurück | — |
 | UI | User Interface, Oberfläche | Benutzeroberfläche | — |
 | E-Commerce | Webshop, Webshop-Domäne | Online-Handel | — |
@@ -246,7 +246,7 @@ Generator liest beide Dateien und erzeugt daraus **eine** Glossar-Seite.
 | Custom Attribute | Custom Attributes, custom:legacy_ref, custom:migration_mode, benutzerdefiniertes Attribut | zusätzliches Feld am Cognito-Nutzer mit Präfix `custom:`; lässt sich hinzufügen, aber nie mehr entfernen | Keycloak User Attribute, Auth0 app_metadata |
 | Cognito-Gruppe | Gruppe owner, User Pool Group, cognito:groups | Gruppe im User Pool; die Mitgliedschaft steht im Access Token (`cognito:groups`), die API prüft sie für das Cockpit | Keycloak-Gruppe oder -Rolle, LDAP-Gruppe |
 | Password Grant | Resource Owner Password Credentials, ROPC, Direct Access Grants | OAuth-2.0-Verfahren, bei dem ein vertrauenswürdiger Server Benutzername und Passwort direkt gegen ein Token tauscht; in OAuth 2.1 gestrichen, hier nur Server-zu-Server bei der Übernahme eines Telko-Kontos | Keycloak „Direct access grants", Spring Security `password`-Grant |
-| Service-Client | Service Account, Dienstkonto, Service accounts roles | Keycloak-Client ohne Person, der sich mit eigenem Secret anmeldet (Client Credentials); hier Terraforms Zugang zum Keycloak | technischer Benutzer, Spring Security `client_credentials` |
+| Service-Client | Service Account, Dienstkonto, Service accounts roles | Keycloak-Client ohne Person, der sich mit eigenem Secret anmeldet (Client Credentials); im Demo nicht verwendet (der Realm wird per `kcadm.sh` importiert) | technischer Benutzer, Spring Security `client_credentials` |
 | bcrypt | $2b$, bcrypt-Hash | verbreitetes Passwort-Hashverfahren mit Salt und einstellbarem Aufwand; das Versorger-Altsystem speichert Passwörter so | Spring Security `BCryptPasswordEncoder`, PHP `password_hash` |
 | Pepper | geheimer Zusatzwert | geheimer Wert, der beim Hashen zusätzlich zum Salt einfließt und nicht bei den Daten liegt; Hashes lassen sich ohne ihn nirgends prüfen — deshalb kann das Portal Telko-Passwörter nicht importieren | HMAC mit Serverschlüssel, Hashing mit HSM |
 | Klärfall | Klärfälle, Clearing-Fall | Altdatensatz, der ohne Rückfrage nicht übernommen werden kann (z. B. ohne oder mit ungültiger E-Mail-Adresse); steht im Cockpit, nicht in der DLQ | Datenpflege-Queue, Clearing-Stelle |

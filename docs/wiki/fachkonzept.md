@@ -210,14 +210,16 @@ Vertrag, TypeScript-Client wird daraus erzeugt [E].
 | `packages/events` | Ereignis-Schemas und Typen |
 | `services/*` | Lambdas je Bereich (`identity` mit den Cognito-Triggern, `customer`, `contract`, `consumption`, `documents`, `notification`, `migration`, `tenancy`) |
 | `infra/cdk` | CDK-Anwendung (Stacks: Edge, Identität mit Cognito User Pool und App-Client, Plattform-Tabelle, Services, Mandanten-Vorlage) |
-| `infra/terraform` | Fundament (OIDC-Vertrauensstellungen für GitHub Actions und GitLab CI, Budget + SNS-Grundlage des Kill-Switch, SSM-Grundwerte; ab Phase 3 Keycloak-Konfiguration) — deployt von GitLab CI |
+| `infra/terraform` | Fundament (OIDC-Vertrauensstellungen für GitHub Actions und GitLab CI, Budget + SNS-Grundlage des Kill-Switch, SSM-Grundwerte; ab Phase 3 Zugangsdaten der Altsysteme als SSM-Parameter) — deployt von GitLab CI |
 | `docs/` | dieses Wiki und die Berichte |
 | `.github/workflows` | CI, Deploy, Teardown |
 
 **Privat (gitlab.rypox.org)**: `legacy-versorger`, `legacy-telko` (je
 Dienst + Beispieldaten-Generator), Pipeline-Projekt für Terraform. Der
-Keycloak der Telko (`id.rypox.net`) läuft auf eigener Infrastruktur; seine
-Konfiguration kommt ab Phase 3 aus `infra/terraform`.
+Keycloak der Telko (`id.rypox.net`) läuft auf eigener Infrastruktur; den Realm
+`telko` importiert das Deploy von `legacy-telko` per `kcadm.sh` (Secrets im
+Ansible-Vault) — Abweichung vom ursprünglichen Plan „per Terraform", Entscheidung
+des Inhabers vom 30.09.2026.
 
 ## 10. Entscheidungen (29.09.2026)
 

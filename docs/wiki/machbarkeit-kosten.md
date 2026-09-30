@@ -27,7 +27,7 @@ haben, nicht nur „auch mal verwendet" sein.
 | SQS | entkoppelte Konsumenten mit DLQ und Retry (z. B. Willkommens-Workflow) |
 | SNS | Fan-out für Benachrichtigungen (E-Mail-Topic, In-App-Feed) |
 | CDK | Anwendungs-Stacks (Lambdas, API, Tabellen, Events) **inklusive Cognito User Pool** — dort, wo Code und Infrastruktur eng gekoppelt sind (Cognito-Trigger sind Anwendungscode) |
-| Terraform | Fundament-Schicht: OIDC-Vertrauensstellungen (GitHub Actions, GitLab CI), Budget + SNS-Grundlage des Kill-Switch, SSM-Grundwerte; ab Phase 3 Keycloak-Konfiguration per Terraform-Provider für Keycloak; State im GitLab-managed Terraform State |
+| Terraform | Fundament-Schicht: OIDC-Vertrauensstellungen (GitHub Actions, GitLab CI), Budget + SNS-Grundlage des Kill-Switch, SSM-Grundwerte; ab Phase 3 die Zugangsdaten der Altsysteme als SSM-Parameter (den Keycloak-Realm der Telko importiert das Deploy des Telko-Altsystems per `kcadm.sh`); State im GitLab-managed Terraform State |
 | GitHub Actions | CI (Lint, Test, Build, Storybook), CD per OIDC ohne Access Keys, Preview/Teardown-Workflow |
 
 **CDK und Terraform gemeinsam** ist in vielen Unternehmen Realität und im Demo

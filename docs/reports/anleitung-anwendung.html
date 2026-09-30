@@ -50,12 +50,12 @@
 <p>Stand: 2026-09-29 · Fortsetzung der <a href="anleitung-fundament.html">Anleitung Fundament</a> (Kapitel 4–5); Grundsätze in <a href="anleitung-kontoinhaber.html#0-grundsätze">Kapitel 0</a>. Aufbau der Anwendung: <a href="architektur.html">Architektur</a>.</p>
 <p>Fachbegriffe sind in jedem Abschnitt beim ersten Vorkommen mit dem <a href="glossar.html">Glossar</a> verlinkt (Erklärung und Entsprechung außerhalb von <a class="term" href="glossar.html#aws" title="Cloud-Plattform von Amazon mit über 200 Diensten (Rechenleistung, Datenbanken, Netzwerk, Messaging …), abgerechnet nach Nutzung">AWS</a>).</p>
 <p>Voraussetzung: Kapitel 4–5 erledigt — <code>aws login</code> funktioniert, das
-<a class="term" href="glossar.html#terraform" title="verbreitetes IaC-Werkzeug von HashiCorp: Infrastruktur deklarativ in HCL beschreiben, für viele Anbieter (AWS, Azure, Keycloak, GitHub …) über Provider">Terraform</a>-<a class="term" href="glossar.html#plattform-schicht" title="im Demo: per Terraform aus GitLab CI verwaltete Grundlagen (OIDC-Vertrauensstellungen, Budget + SNS-Grundlage des Kill-Switch, SSM-Grundwerte, ab Phase 3 Keycloak-Konfiguration), a">Fundament</a> steht, die Outputs aus Kapitel 5.4 liegen im privaten
+<a class="term" href="glossar.html#terraform" title="verbreitetes IaC-Werkzeug von HashiCorp: Infrastruktur deklarativ in HCL beschreiben, für viele Anbieter (AWS, Azure, Keycloak, GitHub …) über Provider">Terraform</a>-<a class="term" href="glossar.html#plattform-schicht" title="im Demo: per Terraform aus GitLab CI verwaltete Grundlagen (OIDC-Vertrauensstellungen, Budget + SNS-Grundlage des Kill-Switch, SSM-Grundwerte, ab Phase 3 Zugangsdaten der Altsystem">Fundament</a> steht, die Outputs aus Kapitel 5.4 liegen im privaten
 Protokoll. Markierungen wie in Kapitel 0: 👁 lesend, ✎ verändernd (mit
 Rückweg); „(Stand 09/2026, nicht selbst geprüft)" bei Klickpfaden ohne
 Beleg in der Hersteller-Dokumentation.</p>
 <h2 id="6-gitlab-pipeline-für-das-fundament">6. GitLab-Pipeline für das Fundament<a class="anchor" href="#6-gitlab-pipeline-für-das-fundament" title="Permanent link">#</a></h2>
-<p>Ziel: Künftige Änderungen am <a class="term" href="glossar.html#plattform-schicht" title="im Demo: per Terraform aus GitLab CI verwaltete Grundlagen (OIDC-Vertrauensstellungen, Budget + SNS-Grundlage des Kill-Switch, SSM-Grundwerte, ab Phase 3 Keycloak-Konfiguration), a">Fundament</a> laufen nicht mehr lokal, sondern
+<p>Ziel: Künftige Änderungen am <a class="term" href="glossar.html#plattform-schicht" title="im Demo: per Terraform aus GitLab CI verwaltete Grundlagen (OIDC-Vertrauensstellungen, Budget + SNS-Grundlage des Kill-Switch, SSM-Grundwerte, ab Phase 3 Zugangsdaten der Altsystem">Fundament</a> laufen nicht mehr lokal, sondern
 über <a href="glossar.html#gitlab-ci">GitLab CI</a> im Projekt
 <code>saas/kundenportal-demo/platform</code>: <code>plan</code> automatisch bei jedem Push auf
 <code>main</code>, <code>apply</code> erst nach Klick. Die <a class="term" href="glossar.html#pipeline" title="automatisierte Abfolge von Schritten (bauen, testen, ausliefern)">Pipeline</a> klont das <a class="term" href="glossar.html#github" title="Plattform für Git-Repositories, Pull Requests und CI">GitHub</a>-<a class="term" href="glossar.html#repository" title="von Git verwaltetes Projektverzeichnis, z. B. auf GitHub">Repository</a> an
@@ -564,7 +564,7 @@ Inhaber davon erfährt (Abnahmekriterium).</p>
 <tr>
 <td>Bleibt</td>
 <td>Zertifikat, Nutzer, Daten, bestätigtes E-Mail-Abo, CloudFront und DNS-Eintrag</td>
-<td>nur <a class="term" href="glossar.html#terraform" title="verbreitetes IaC-Werkzeug von HashiCorp: Infrastruktur deklarativ in HCL beschreiben, für viele Anbieter (AWS, Azure, Keycloak, GitHub …) über Provider">Terraform</a>-<a class="term" href="glossar.html#plattform-schicht" title="im Demo: per Terraform aus GitLab CI verwaltete Grundlagen (OIDC-Vertrauensstellungen, Budget + SNS-Grundlage des Kill-Switch, SSM-Grundwerte, ab Phase 3 Keycloak-Konfiguration), a">Fundament</a> und <a class="term" href="glossar.html#cdk" title="Infrastruktur als Programmcode (TypeScript, Java, Python …): man schreibt Klassen wie new Table(...), CDK erzeugt daraus CloudFormation-Vorlagen und legt die Ressourcen an">CDK</a>-<a class="term" href="glossar.html#cdk-bootstrap" title="einmalig je Konto und Region angelegte CDK-Hilfsressourcen (S3-Bucket für Artefakte, ECR-Repository, Rollen)">Bootstrap</a></td>
+<td>nur <a class="term" href="glossar.html#terraform" title="verbreitetes IaC-Werkzeug von HashiCorp: Infrastruktur deklarativ in HCL beschreiben, für viele Anbieter (AWS, Azure, Keycloak, GitHub …) über Provider">Terraform</a>-<a class="term" href="glossar.html#plattform-schicht" title="im Demo: per Terraform aus GitLab CI verwaltete Grundlagen (OIDC-Vertrauensstellungen, Budget + SNS-Grundlage des Kill-Switch, SSM-Grundwerte, ab Phase 3 Zugangsdaten der Altsystem">Fundament</a> und <a class="term" href="glossar.html#cdk" title="Infrastruktur als Programmcode (TypeScript, Java, Python …): man schreibt Klassen wie new Table(...), CDK erzeugt daraus CloudFormation-Vorlagen und legt die Ressourcen an">CDK</a>-<a class="term" href="glossar.html#cdk-bootstrap" title="einmalig je Konto und Region angelegte CDK-Hilfsressourcen (S3-Bucket für Artefakte, ECR-Repository, Rollen)">Bootstrap</a></td>
 </tr>
 <tr>
 <td><a class="term" href="glossar.html#dns" title="Telefonbuch des Internets: übersetzt Namen wie energie-demo.rypox.com in Adressen">DNS</a></td>
@@ -679,7 +679,7 @@ private Adressen und meldet das Ergebnis. Erst danach umschalten.</p>
 <li>✎ GitLab-Variable löschen: Projekt <code>platform</code> → <strong>Settings</strong> → <strong><a class="term" href="glossar.html#ci" title="automatisches Bauen und Testen bei jeder Änderung">CI</a>/<a class="term" href="glossar.html#cd" title="automatisches Ausliefern geprüfter Änderungen">CD</a></strong> →
    <strong>Variables</strong> → <code>GITHUB_DEPLOY_KEY</code> → <strong>Delete</strong>. Die <a class="term" href="glossar.html#pipeline" title="automatisierte Abfolge von Schritten (bauen, testen, ausliefern)">Pipeline</a> klont dann
    anonym per <a class="term" href="glossar.html#https" title="verschlüsseltes Web-Protokoll; HTTP ohne Verschlüsselung">HTTPS</a> (<code>SOURCE_HTTPS</code>); <code>SOURCE_REF</code> bleibt ein fester <a class="term" href="glossar.html#commit" title="Commit = gespeicherter Änderungsstand in Git; Git-Tag = Name für einen bestimmten Commit, z. B. eine Version v1.2.0 (nicht zu verwechseln mit AWS-Tags)">Commit</a>,
-   den der Agent bei <a class="term" href="glossar.html#plattform-schicht" title="im Demo: per Terraform aus GitLab CI verwaltete Grundlagen (OIDC-Vertrauensstellungen, Budget + SNS-Grundlage des Kill-Switch, SSM-Grundwerte, ab Phase 3 Keycloak-Konfiguration), a">Fundament</a>-Änderungen neu setzt.</li>
+   den der Agent bei <a class="term" href="glossar.html#plattform-schicht" title="im Demo: per Terraform aus GitLab CI verwaltete Grundlagen (OIDC-Vertrauensstellungen, Budget + SNS-Grundlage des Kill-Switch, SSM-Grundwerte, ab Phase 3 Zugangsdaten der Altsystem">Fundament</a>-Änderungen neu setzt.</li>
 <li>👁 Nächste Pipeline im Projekt <code>platform</code> (oder <strong>Run pipeline</strong> auf
    <code>main</code>): Job <strong>plan</strong> grün, im Protokoll „Source: <Commit>".</li>
 <li>✎ Environment <code>production</code> vervollständigen, falls 7.3 galt: Required
@@ -734,6 +734,6 @@ private Adressen und meldet das Ergebnis. Erst danach umschalten.</p>
 </tr>
 </tbody>
 </table></div></main></div>
-<footer class="site"><a href="../wiki/anleitung-anwendung.md">Markdown-Quelle</a> · Generiert 2026-09-30 11:50 aus <code>docs/wiki</code> mit <code>scripts/build_reports.py</code></footer>
+<footer class="site"><a href="../wiki/anleitung-anwendung.md">Markdown-Quelle</a> · Generiert 2026-09-30 17:19 aus <code>docs/wiki</code> mit <code>scripts/build_reports.py</code></footer>
 </body>
 </html>

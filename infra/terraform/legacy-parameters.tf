@@ -8,9 +8,9 @@ locals {
     "utility/api-key"        = { type = "SecureString", value = var.legacy_utility_api_key }
     "telco/url"              = { type = "String", value = var.legacy_telco_url }
     "telco/api-key"          = { type = "SecureString", value = var.legacy_telco_api_key }
-    "keycloak/issuer"        = { type = "String", value = "${var.keycloak_url}/realms/${keycloak_realm.telco[0].realm}" }
-    "keycloak/client-id"     = { type = "String", value = keycloak_openid_client.portal_migration[0].client_id }
-    "keycloak/client-secret" = { type = "SecureString", value = keycloak_openid_client.portal_migration[0].client_secret }
+    "keycloak/issuer"        = { type = "String", value = "${var.keycloak_url}/realms/${var.keycloak_realm}" }
+    "keycloak/client-id"     = { type = "String", value = var.keycloak_migration_client_id }
+    "keycloak/client-secret" = { type = "SecureString", value = var.keycloak_migration_client_secret }
   } : {}
 }
 

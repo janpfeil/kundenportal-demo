@@ -41,30 +41,30 @@ The concept, decisions and research are written in German:
 
 ## Repository layout
 
-| Path                            | Content                                                                                                       |
-| ------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| `apps/shell`                    | Next.js shell zone: start page, OIDC sign-in (BFF), account with profile editing, demo mailbox                |
-| `apps/contracts`                | Next.js zone under `/vertraege` (contracts and invoices), own Lambda, reads the shell's session               |
-| `apps/consumption`              | Next.js zone under `/verbrauch` (meter readings and data volume), own Lambda                                  |
-| `apps/cockpit`                  | Next.js zone under `/cockpit`: migration cockpit for the owner (progress, clarification, DLQ, timeline)       |
-| `packages/api-contract`         | OpenAPI contract, typed client, routes and scopes for the gateway; OpenAPI of both legacy systems (`legacy/`) |
-| `packages/events`               | domain event envelope and schemas (zod)                                                                       |
-| `packages/legacy`               | clients of the two legacy systems and the telco Keycloak, mapping to the migration events                     |
-| `packages/service-kit`          | shared Lambda helpers: routing, problem details, caller from JWT                                              |
-| `packages/ui`                   | component library: React components, design tokens (light/dark), shared DE/EN texts, Storybook                |
-| `packages/web-auth`             | session, API client, sign-in URL and CSRF check for shell and zones; `sendJson` for browser writes            |
-| `packages/widget-notifications` | runtime widget `<kp-bell>` (custom element): unread messages, served from `/widgets/bell.js`                  |
-| `services/customer`             | `GET/PATCH /me`, publishes `CustomerRegistered`                                                               |
-| `services/contract`             | contracts per line of business, installment and tariff option; demo contracts, recalculation after readings   |
-| `services/consumption`          | meter readings with plausibility checks, data volume, daily check via EventBridge Scheduler                   |
-| `services/documents`            | document list, presigned upload URLs, checks uploads from S3 events                                           |
-| `services/notification`         | SQS consumer with DLQ, demo mailbox API (DE/EN), owner hints via SNS                                          |
-| `services/identity`             | Cognito triggers: access token claims, migrate user (lazy migration), post authentication                     |
-| `services/migration`            | bulk import with DLQ and redrive, duplicates and account linking, cockpit status and timeline, demo reset     |
-| `infra/cdk`                     | AWS CDK application in four stacks (certificate, base, app, edge) and the zone registry                       |
-| `infra/terraform`               | foundation: OIDC trust for CI, budget, SSM, the telco's Keycloak realm (run by a private GitLab pipeline)     |
-| `tests/e2e`                     | Playwright run against the live portal                                                                        |
-| `docs/`                         | wiki and reports                                                                                              |
+| Path                            | Content                                                                                                             |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `apps/shell`                    | Next.js shell zone: start page, OIDC sign-in (BFF), account with profile editing, demo mailbox                      |
+| `apps/contracts`                | Next.js zone under `/vertraege` (contracts and invoices), own Lambda, reads the shell's session                     |
+| `apps/consumption`              | Next.js zone under `/verbrauch` (meter readings and data volume), own Lambda                                        |
+| `apps/cockpit`                  | Next.js zone under `/cockpit`: migration cockpit for the owner (progress, clarification, DLQ, timeline)             |
+| `packages/api-contract`         | OpenAPI contract, typed client, routes and scopes for the gateway; OpenAPI of both legacy systems (`legacy/`)       |
+| `packages/events`               | domain event envelope and schemas (zod)                                                                             |
+| `packages/legacy`               | clients of the two legacy systems and the telco Keycloak, mapping to the migration events                           |
+| `packages/service-kit`          | shared Lambda helpers: routing, problem details, caller from JWT                                                    |
+| `packages/ui`                   | component library: React components, design tokens (light/dark), shared DE/EN texts, Storybook                      |
+| `packages/web-auth`             | session, API client, sign-in URL and CSRF check for shell and zones; `sendJson` for browser writes                  |
+| `packages/widget-notifications` | runtime widget `<kp-bell>` (custom element): unread messages, served from `/widgets/bell.js`                        |
+| `services/customer`             | `GET/PATCH /me`, publishes `CustomerRegistered`                                                                     |
+| `services/contract`             | contracts per line of business, installment and tariff option; demo contracts, recalculation after readings         |
+| `services/consumption`          | meter readings with plausibility checks, data volume, daily check via EventBridge Scheduler                         |
+| `services/documents`            | document list, presigned upload URLs, checks uploads from S3 events                                                 |
+| `services/notification`         | SQS consumer with DLQ, demo mailbox API (DE/EN), owner hints via SNS                                                |
+| `services/identity`             | Cognito triggers: access token claims, migrate user (lazy migration), post authentication                           |
+| `services/migration`            | bulk import with DLQ and redrive, duplicates and account linking, cockpit status and timeline, demo reset           |
+| `infra/cdk`                     | AWS CDK application in four stacks (certificate, base, app, edge) and the zone registry                             |
+| `infra/terraform`               | foundation: OIDC trust for CI, budget, SSM incl. the legacy systems' access data (run by a private GitLab pipeline) |
+| `tests/e2e`                     | Playwright run against the live portal                                                                              |
+| `docs/`                         | wiki and reports                                                                                                    |
 
 ## Development
 

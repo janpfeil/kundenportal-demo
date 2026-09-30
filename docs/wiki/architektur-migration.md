@@ -1,6 +1,6 @@
 # Architektur: Altsysteme und Migration
 
-Stand: 2026-09-30 · Phase 3 im Code fertig; die Altsysteme und der Keycloak-Realm gehen nach den Schritten der [Anleitung Altsysteme](anleitung-altsysteme.md) in Betrieb. Ergänzt die [Architektur](architektur.md) (Ist-Stand Phase 1 und 2). Kennzeichnung: **[B]** belegt, **[A]** Annahme, **[E]** Einschätzung.
+Stand: 2026-09-30 · Phase 3 im Code fertig; Altsysteme und Keycloak-Realm laufen ([Anleitung Altsysteme](anleitung-altsysteme.md)). Ergänzt die [Architektur](architektur.md) (Ist-Stand Phase 1 und 2). Kennzeichnung: **[B]** belegt, **[A]** Annahme, **[E]** Einschätzung.
 
 Fachbegriffe sind in jedem Abschnitt beim ersten Vorkommen mit dem [Glossar](glossar.md) verlinkt (Erklärung und Entsprechung außerhalb von AWS).
 
@@ -30,7 +30,13 @@ Keycloak-Client-Secret liest die Anwendung zur Laufzeit aus dem
 [Parameter Store](glossar.md#ssm-parameter-store) (`/kundenportal/legacy/…`,
 drei SecureStrings mit dem AWS-verwalteten Schlüssel); geschrieben werden sie
 von Terraform aus CI-Variablen des GitLab-Projekts `platform`
-([Anleitung Altsysteme](anleitung-altsysteme.md)). Das Paket
+([Anleitung Altsysteme](anleitung-altsysteme.md)). Den Realm `telko` im eigenen
+Keycloak legt das Deploy des Telko-Altsystems an: [Ansible](glossar.md#ansible)
+rendert die Realm-Definition (Einstellungen, User-Profile mit `subscriberId`,
+vertraulicher Client `kundenportal-migration` nur mit Password Grant, Mapper
+`subscriber_id`, Demo-Personen) mit den Secrets aus dem verschlüsselten Vault
+und übergibt sie `kcadm.sh` im Keycloak-Container über stdin, sofern der Realm
+fehlt. Das Paket
 `packages/legacy` kapselt die Clients und die Abbildung auf die Ereignisse
 des Portals.
 

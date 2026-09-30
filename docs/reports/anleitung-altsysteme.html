@@ -12,193 +12,124 @@
 <button class="theme-toggle" type="button">Dunkel</button></header>
 <div class="layout"><nav class="toc" aria-label="Inhalt"><div class="toc-title">Inhalt</div><div>
 <ul>
-<li><a href="#11-keycloak-der-telko-und-zugang-der-altsysteme">11. Keycloak der Telko und Zugang der Altsysteme</a><ul>
-<li><a href="#110-reihenfolge">11.0 Reihenfolge</a></li>
-<li><a href="#111-service-client-im-keycloak-anlegen">11.1 Service-Client im Keycloak anlegen ✎</a></li>
-<li><a href="#112-client-secret-als-cicd-variable-hinterlegen">11.2 Client-Secret als CI/CD-Variable hinterlegen ✎</a></li>
-<li><a href="#113-rechte-für-verschlüsselte-parameter-lokal-anwenden">11.3 Rechte für verschlüsselte Parameter lokal anwenden ✎</a></li>
-<li><a href="#114-pipeline-laufen-lassen">11.4 Pipeline laufen lassen 👁 / ✎</a></li>
-<li><a href="#115-ergebnis-ansehen">11.5 Ergebnis ansehen 👁</a></li>
+<li><a href="#11-altsysteme-keycloak-realm-und-zugangsdaten">11. Altsysteme, Keycloak-Realm und Zugangsdaten</a><ul>
+<li><a href="#111-was-die-pipelines-anlegen">11.1 Was die Pipelines anlegen 👁</a></li>
+<li><a href="#112-passwort-eines-telko-demo-kunden-ändern">11.2 Passwort eines Telko-Demo-Kunden ändern ✎</a></li>
+<li><a href="#113-client-secret-oder-api-schlüssel-ändern">11.3 Client-Secret oder API-Schlüssel ändern ✎</a></li>
+<li><a href="#114-realm-neu-anlegen">11.4 Realm neu anlegen ✎</a></li>
+<li><a href="#115-alles-abschalten">11.5 Alles abschalten ✎</a></li>
 </ul>
 </li>
 </ul>
 </div>
 </nav><main><h1 id="anleitung-altsysteme-kapitel-11">Anleitung Altsysteme (Kapitel 11)<a class="anchor" href="#anleitung-altsysteme-kapitel-11" title="Permanent link">#</a></h1>
-<p>Stand: 2026-09-30 · Fortsetzung der <a href="anleitung-anwendung.html">Anleitung Anwendung</a> (Kapitel 6–10). Gehört zu Phase 3 „<a class="term" href="glossar.html#legacy-system" title="bestehendes Altsystem mit Kundendaten, das abgelöst werden soll; im Demo simuliert">Altsysteme</a> und Migration" (<a href="index.html">Übersicht</a>, <a href="architektur.html">Architektur</a> §9).</p>
+<p>Stand: 2026-09-30 · Fortsetzung der <a href="anleitung-anwendung.html">Anleitung Anwendung</a> (Kapitel 6–10). Gehört zu Phase 3 „<a class="term" href="glossar.html#legacy-system" title="bestehendes Altsystem mit Kundendaten, das abgelöst werden soll; im Demo simuliert">Altsysteme</a> und Migration" (<a href="index.html">Übersicht</a>, <a href="architektur-migration.html">Altsysteme &amp; Migration</a>).</p>
 <p>Fachbegriffe sind in jedem Abschnitt beim ersten Vorkommen mit dem <a href="glossar.html">Glossar</a> verlinkt (Erklärung und Entsprechung außerhalb von <a class="term" href="glossar.html#aws" title="Cloud-Plattform von Amazon mit über 200 Diensten (Rechenleistung, Datenbanken, Netzwerk, Messaging …), abgerechnet nach Nutzung">AWS</a>).</p>
 <p>Es gelten die Grundsätze aus <a href="anleitung-kontoinhaber.html#0-grundsätze">Kapitel 0</a>:
 jeder Schritt nennt Ziel, Ort, Ergebnis und Notiz; 👁 = nur lesend,
-✎ = verändernd (mit Rückweg); keine Geheimnisse ins Protokoll. Klickpfade,
-die nicht anhand der Hersteller-Dokumentation geprüft werden konnten, sind mit
-„(Stand 09/2026, nicht selbst geprüft)" markiert.</p>
-<h2 id="11-keycloak-der-telko-und-zugang-der-altsysteme">11. Keycloak der Telko und Zugang der Altsysteme<a class="anchor" href="#11-keycloak-der-telko-und-zugang-der-altsysteme" title="Permanent link">#</a></h2>
-<p>Das Telko-<a class="term" href="glossar.html#legacy-system" title="bestehendes Altsystem mit Kundendaten, das abgelöst werden soll; im Demo simuliert">Altsystem</a> meldet seine Kunden über den eigenen
-<a href="glossar.html#keycloak">Keycloak</a> unter <code>id.rypox.net</code> an. Den
-<a href="glossar.html#realm">Realm</a> <code>telko</code> mit den Demo-Kunden und dem Client für die
-Passwortprüfung legt <a href="glossar.html#terraform">Terraform</a> an, ausgeführt von der
-<a class="term" href="glossar.html#gitlab" title="Git-Plattform mit CI, auch selbst betreibbar; bei rypox intern auf gitlab.rypox.org im Einsatz">GitLab</a>-<a class="term" href="glossar.html#pipeline" title="automatisierte Abfolge von Schritten (bauen, testen, ausliefern)">Pipeline</a> im Projekt <code>saas/kundenportal-demo/platform</code>
-(<code>infra/terraform/keycloak.tf</code>). <a class="term" href="glossar.html#terraform" title="verbreitetes IaC-Werkzeug von HashiCorp: Infrastruktur deklarativ in HCL beschreiben, für viele Anbieter (AWS, Azure, Keycloak, GitHub …) über Provider">Terraform</a> braucht dafür einmalig einen
-eigenen Zugang zum <a class="term" href="glossar.html#keycloak" title="Open-Source-Identitätsdienst (OIDC, SAML), selbst betrieben; im Demo unter id.rypox.net die Anmeldung des Telko-Altsystems und ab Phase 3 Gegenstelle des Migrate-User-Triggers">Keycloak</a>: einen <strong><a class="term" href="glossar.html#service-client" title="Keycloak-Client ohne Person, der sich mit eigenem Secret anmeldet (Client Credentials); hier Terraforms Zugang zum Keycloak">Service-Client</a></strong> im <a class="term" href="glossar.html#realm" title="abgeschlossener Bereich in Keycloak mit eigenen Nutzern, Clients und Einstellungen">Realm</a> <code>master</code>. Den
-legt der Inhaber an — alles Weitere erledigt die Pipeline.</p>
-<h3 id="110-reihenfolge">11.0 Reihenfolge<a class="anchor" href="#110-reihenfolge" title="Permanent link">#</a></h3>
+✎ = verändernd (mit Rückweg); keine Geheimnisse ins Protokoll.</p>
+<h2 id="11-altsysteme-keycloak-realm-und-zugangsdaten">11. Altsysteme, Keycloak-Realm und Zugangsdaten<a class="anchor" href="#11-altsysteme-keycloak-realm-und-zugangsdaten" title="Permanent link">#</a></h2>
+<p>Für den Betrieb ist <strong>keine Handarbeit nötig</strong>. Dieses Kapitel beschreibt,
+was automatisch entsteht, wo die Einstellungen liegen und wie man Passwörter
+oder Schlüssel ändert.</p>
+<h3 id="111-was-die-pipelines-anlegen">11.1 Was die Pipelines anlegen 👁<a class="anchor" href="#111-was-die-pipelines-anlegen" title="Permanent link">#</a></h3>
 <div class="table-wrap"><table>
 <thead>
 <tr>
-<th>Nr.</th>
-<th>Handlung</th>
-<th>Abschnitt</th>
-<th>Art</th>
+<th>Was</th>
+<th>Wo</th>
+<th>Angelegt von</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td class="num">1</td>
-<td>Service-Client <code>terraform-kundenportal</code> im Keycloak anlegen</td>
-<td class="num">11.1</td>
-<td>✎</td>
+<td><a class="term" href="glossar.html#multi-sparten-versorger" title="Unternehmen, das mehrere Versorgungs- und Kommunikationsprodukte anbietet (Strom, Gas, Wasser, Wärme, Internet, Mobilfunk) – typisch für Stadtwerke">Versorger</a>-<a class="term" href="glossar.html#legacy-system" title="bestehendes Altsystem mit Kundendaten, das abgelöst werden soll; im Demo simuliert">Altsystem</a></td>
+<td><code>&lt;https://kundenportal-versorger.rypox.com</code>&gt;</td>
+<td><a class="term" href="glossar.html#pipeline" title="automatisierte Abfolge von Schritten (bauen, testen, ausliefern)">Pipeline</a> des privaten <a class="term" href="glossar.html#gitlab" title="Git-Plattform mit CI, auch selbst betreibbar; bei rypox intern auf gitlab.rypox.org im Einsatz">GitLab</a>-Projekts <code>saas/kundenportal-demo/legacy-versorger</code> (Branch <code>main</code>): Image nach Nexus, <a href="glossar.html#ansible">Ansible</a>-<a class="term" href="glossar.html#deployment" title="Ausliefern einer neuen Version in eine Umgebung">Deploy</a> auf den eigenen <a class="term" href="glossar.html#server" title="Rechner oder Prozess, der Anfragen beantwortet">Server</a>, <a class="term" href="glossar.html#reverse-proxy" title="Webserver vor einem Dienst, der TLS-Verbindungen annimmt und an den Dienst weiterreicht; die Altsysteme laufen dahinter">nginx</a> mit <a class="term" href="glossar.html#https" title="verschlüsseltes Web-Protokoll; HTTP ohne Verschlüsselung">TLS</a></td>
 </tr>
 <tr>
-<td class="num">2</td>
-<td>Client-Secret als <a class="term" href="glossar.html#ci" title="automatisches Bauen und Testen bei jeder Änderung">CI</a>/<a class="term" href="glossar.html#cd" title="automatisches Ausliefern geprüfter Änderungen">CD</a>-Variable im Projekt <code>platform</code> hinterlegen</td>
-<td class="num">11.2</td>
-<td>✎</td>
+<td>Telko-<a class="term" href="glossar.html#legacy-system" title="bestehendes Altsystem mit Kundendaten, das abgelöst werden soll; im Demo simuliert">Altsystem</a></td>
+<td><code>&lt;https://kundenportal-telko.rypox.com</code>&gt;</td>
+<td>Pipeline von <code>saas/kundenportal-demo/legacy-telko</code>, ebenso</td>
 </tr>
 <tr>
-<td class="num">3</td>
-<td>Rechte der Terraform-Rolle für verschlüsselte Parameter lokal anwenden</td>
-<td class="num">11.3</td>
-<td>✎</td>
+<td><a href="glossar.html#realm">Realm</a> <code>telko</code> im <a href="glossar.html#keycloak">Keycloak</a> <code>&lt;https://id.rypox.net</code>&gt;</td>
+<td>Einstellungen, User-Profile mit <code>subscriberId</code>, Client <code>kundenportal-migration</code> (nur <a class="term" href="glossar.html#password-grant" title="OAuth-2.0-Verfahren, bei dem ein vertrauenswürdiger Server Benutzername und Passwort direkt gegen ein Token tauscht; in OAuth 2.1 gestrichen, hier nur Server-zu-Server bei der Über">Password Grant</a>), Bernd und Carla</td>
+<td>derselbe Deploy von <code>legacy-telko</code>: <code>kcadm.sh</code> im <a class="term" href="glossar.html#keycloak" title="Open-Source-Identitätsdienst (OIDC, SAML), selbst betrieben; im Demo unter id.rypox.net die Anmeldung des Telko-Altsystems und ab Phase 3 Gegenstelle des Migrate-User-Triggers">Keycloak</a>-Container importiert den <a class="term" href="glossar.html#realm" title="abgeschlossener Bereich in Keycloak mit eigenen Nutzern, Clients und Einstellungen">Realm</a>, <strong>wenn er fehlt</strong></td>
 </tr>
 <tr>
-<td class="num">4</td>
-<td>Pipeline laufen lassen: Plan prüfen, <code>apply</code></td>
-<td class="num">11.4</td>
-<td>👁 / ✎</td>
-</tr>
-<tr>
-<td class="num">5</td>
-<td>Ergebnis ansehen: Realm, Client, Demo-Kunden, <a class="term" href="glossar.html#ssm-parameter-store" title="Ablage für Konfigurationswerte und (verschlüsselt als SecureString) Geheimnisse; Standard-Stufe kostenlos. Im Demo auch Übergabestelle zwischen Terraform und CDK">SSM-Parameter</a></td>
-<td class="num">11.5</td>
-<td>👁</td>
+<td>Zugangsdaten für die <a class="term" href="glossar.html#lambda" title="führt eine einzelne Funktion (z. B. einen HTTP-Handler) bei Bedarf aus; Abrechnung pro Aufruf und Laufzeit, skaliert automatisch von 0 auf viele Instanzen">Lambdas</a></td>
+<td><a href="glossar.html#ssm-parameter-store">Parameter Store</a> <code>/kundenportal/legacy/…</code> (drei <a class="term" href="glossar.html#ssm-parameter-store" title="Ablage für Konfigurationswerte und (verschlüsselt als SecureString) Geheimnisse; Standard-Stufe kostenlos. Im Demo auch Übergabestelle zwischen Terraform und CDK">SecureStrings</a>)</td>
+<td><a class="term" href="glossar.html#terraform" title="verbreitetes IaC-Werkzeug von HashiCorp: Infrastruktur deklarativ in HCL beschreiben, für viele Anbieter (AWS, Azure, Keycloak, GitHub …) über Provider">Terraform</a> in der Pipeline des Projekts <code>saas/kundenportal-demo/platform</code> (<code>infra/terraform/legacy-parameters.tf</code>)</td>
 </tr>
 </tbody>
 </table></div>
-<p>Die übrigen Werte (<a class="term" href="glossar.html#api" title="Programmierschnittstelle, über die Programme miteinander sprechen">API</a>-Schlüssel der Altsysteme, Demo-Passwort) erzeugt der
-Agent zufällig und legt sie direkt als CI/CD-Variablen an; sie stehen nirgends
-im <a class="term" href="glossar.html#repository" title="von Git verwaltetes Projektverzeichnis, z. B. auf GitHub">Repository</a>.</p>
-<h3 id="111-service-client-im-keycloak-anlegen">11.1 Service-Client im Keycloak anlegen ✎<a class="anchor" href="#111-service-client-im-keycloak-anlegen" title="Permanent link">#</a></h3>
-<p>Ziel: Terraform darf den Realm <code>telko</code> anlegen und verwalten — sonst nichts.
-Ort: Admin-<a class="term" href="glossar.html#aws-management-console" title="Weboberfläche von AWS; der Bereich Billing zeigt Rechnungen, Guthaben (Credits) und Freikontingent-Verbrauch">Konsole</a> <code>&lt;https://id.rypox.net/admin/</code>&gt;, Realm <code>master</code>.
-Grundlage: <a href="https://www.keycloak.org/docs/latest/server_admin/#_service_accounts">https://www.keycloak.org/docs/latest/server_admin/#_service_accounts</a>
-und <a href="https://registry.terraform.io/providers/keycloak/keycloak/latest/docs">https://registry.terraform.io/providers/keycloak/keycloak/latest/docs</a>
-(Abschnitt „<a class="term" href="glossar.html#client-credentials" title="OAuth2-Ablauf für Dienst-zu-Dienst-Aufrufe mit Client-ID und Geheimnis">Client Credentials</a> Grant Setup").</p>
+<p>Die Secrets der Altsysteme (<a class="term" href="glossar.html#api" title="Programmierschnittstelle, über die Programme miteinander sprechen">API</a>-Schlüssel, Demo-Passwort, <a class="term" href="glossar.html#pepper" title="geheimer Wert, der beim Hashen zusätzlich zum Salt einfließt und nicht bei den Daten liegt; Hashes lassen sich ohne ihn nirgends prüfen — deshalb kann das Portal Telko-Passwörter n">Pepper</a> der Telko,
+Keycloak-Admin, Client-Secret) liegen verschlüsselt im <a class="term" href="glossar.html#ansible" title="Werkzeug, das Server per SSH nach einer Beschreibung einrichtet; die Pipelines der Altsysteme spielen damit Container und Webserver-Konfiguration aus">Ansible</a>-Vault des
+jeweiligen <a class="term" href="glossar.html#repository" title="von Git verwaltetes Projektverzeichnis, z. B. auf GitHub">Repositorys</a>: <code>ansible/inventory/group_vars/legacy/vault.yml</code>
+(Vorlage <code>vault.yml.example</code> daneben, Passwort des gemeinsamen saas-Vaults,
+in der <a class="term" href="glossar.html#ci" title="automatisches Bauen und Testen bei jeder Änderung">CI</a> aus <code>ANSIBLE_VAULT_PASSWORD_B64</code>). Die Pipeline des Projekts
+<code>platform</code> erhält dieselben Werte als CI/<a class="term" href="glossar.html#cd" title="automatisches Ausliefern geprüfter Änderungen">CD</a>-Variablen <code>TF_VAR_legacy_utility_api_key</code>,
+<code>TF_VAR_legacy_telco_api_key</code> und <code>TF_VAR_keycloak_migration_client_secret</code>.</p>
+<h3 id="112-passwort-eines-telko-demo-kunden-ändern">11.2 Passwort eines Telko-Demo-Kunden ändern ✎<a class="anchor" href="#112-passwort-eines-telko-demo-kunden-ändern" title="Permanent link">#</a></h3>
+<p>Ziel: anderes Passwort für Bernd oder Carla im Realm <code>telko</code>.
+Ort: <a href="https://id.rypox.net/admin/">https://id.rypox.net/admin/</a> → Realm <strong>telko</strong> → <strong>Users</strong> → Nutzer →
+Reiter <strong>Credentials</strong> → <strong>Reset password</strong>, <strong>Temporary</strong> aus.</p>
+<p>Ergebnis: Die Anmeldung am Portal mit Telko-Zugang nutzt ab sofort das neue
+Passwort (die <a class="term" href="glossar.html#lazy-migration" title="Konto wird erst beim ersten Login ins neue System übernommen: im Demo ruft Cognito den Migrate-User-Trigger, der das Passwort einmalig beim Altsystem prüft; danach speichert Cognit">Lazy Migration</a> fragt Keycloak).
+Notiz: „Telko-Passwort von … geändert am …" (ohne Passwort).
+Rückweg: Passwort erneut setzen.</p>
+<p>Hinweise:
+- Der Live-Test (<a class="term" href="glossar.html#playwright" title="Werkzeug, das echte Browser fernsteuert; prüft die Journeys am laufenden Portal">E2E</a>) meldet Bernd und Carla mit dem Demo-Passwort an
+  (<a class="term" href="glossar.html#github" title="Plattform für Git-Repositories, Pull Requests und CI">GitHub</a>-<a class="term" href="glossar.html#environment" title="GitHub-Umgebung (z. B. „production&quot;) mit Schutzregeln, etwa Freigabe durch eine Person vor dem Deploy">Environment</a>-Secret <code>LEGACY_DEMO_PASSWORD</code>). Wer das Passwort dauerhaft
+  ändert, ändert es auch dort und im Vault (<code>vault_demo_password</code>), sonst
+  scheitert der Test bzw. setzt ein Neuimport (11.4) das alte Passwort zurück.
+- Die Passwörter im Altsystem selbst (<a class="term" href="glossar.html#rest" title="Architekturstil für HTTP-APIs: Ressourcen unter URLs, Operationen über HTTP-Methoden (GET, POST …)">REST</a>-Prüfung, Export) stammen ebenfalls
+  aus <code>vault_demo_password</code>; der Beispieldaten-Reset des Altsystems erzeugt sie
+  neu.</p>
+<h3 id="113-client-secret-oder-api-schlüssel-ändern">11.3 Client-Secret oder API-Schlüssel ändern ✎<a class="anchor" href="#113-client-secret-oder-api-schlüssel-ändern" title="Permanent link">#</a></h3>
+<p>Ziel: neues Secret für <code>kundenportal-migration</code> oder neuer API-Schlüssel eines
+Altsystems. Der Wert muss an zwei Stellen gleich sein.</p>
 <ol>
-<li>In der Admin-Konsole anmelden; links oben den Realm <strong>master</strong> wählen.</li>
-<li>Links <strong>Clients</strong>, dann <strong>Create client</strong>.</li>
-<li><strong>Client type</strong>: <code>OpenID Connect</code>; <strong><a class="term" href="glossar.html#client-id" title="öffentliche Kennung einer Anwendung bei einem Identitätsdienst wie Cognito oder Keycloak (nicht geheim, im Gegensatz zum Client Secret)">Client ID</a></strong>: <code>terraform-kundenportal</code>;
-   <strong>Name</strong>: <code>Terraform Kundenportal (GitLab CI)</code>. <strong>Next</strong>.</li>
-<li><strong>Client authentication</strong>: an. <strong>Authorization</strong>: aus.
-   <strong>Authentication flow</strong>: nur <strong>Service accounts roles</strong> anhaken; <strong>Standard
-   flow</strong> und <strong>Direct access grants</strong> abhaken. <strong>Next</strong>, dann <strong>Save</strong>.</li>
-<li>Reiter <strong>Service accounts roles</strong> → <strong>Assign role</strong> → Filter <strong>Filter by
-   realm roles</strong> → <code>create-realm</code> auswählen → <strong>Assign</strong>
-   (Stand 09/2026, nicht selbst geprüft: bei manchen Versionen heißt der
-   Filter „Realm roles").
-   Warum nur diese Rolle: Wer einen Realm anlegt, erhält in Keycloak
-   automatisch die Verwaltungsrechte für genau diesen Realm (Client
-   <code>telko-realm</code> im Realm <code>master</code>). Andere Realms bleiben unberührt.</li>
-<li>Reiter <strong>Credentials</strong> → <strong><a class="term" href="glossar.html#app-client" title="Eintrag einer Anwendung im User Pool mit Client-ID, erlaubten Rückkehr-Adressen und Abläufen; ein vertraulicher Client (hier die Next.js-Shell) hat zusätzlich ein Geheimnis, das nu">Client Secret</a></strong> kopieren (Schaltfläche neben dem
-   Feld). Nicht notieren, direkt in Schritt 11.2 einfügen.</li>
+<li>Neuen Zufallswert erzeugen, z. B. <code>openssl rand -base64 32</code>.</li>
+<li>Im Repository des Altsystems: <code>ansible-vault edit
+   ansible/inventory/group_vars/legacy/vault.yml</code> (Passwortdatei
+   <code>~/vault-pw.txt</code>), Wert von <code>vault_keycloak_client_secret</code> bzw.
+   <code>vault_legacy_api_key</code> ersetzen, committen und auf <code>main</code> pushen.</li>
+<li>In <a href="https://gitlab.rypox.org/saas/kundenportal-demo/platform/-/settings/ci_cd">https://gitlab.rypox.org/saas/kundenportal-demo/platform/-/settings/ci_cd</a>
+   unter <strong>Variables</strong> die passende Variable ersetzen
+   (<code>TF_VAR_keycloak_migration_client_secret</code>, <code>TF_VAR_legacy_utility_api_key</code>
+   oder <code>TF_VAR_legacy_telco_api_key</code>) und die Pipeline des Projekts
+   <code>platform</code> laufen lassen (Job <strong>apply</strong> starten).</li>
+<li>Nur beim Client-Secret: Der Realm existiert schon, der Deploy importiert ihn
+   deshalb nicht neu. Entweder das Secret in der Admin-<a class="term" href="glossar.html#aws-management-console" title="Weboberfläche von AWS; der Bereich Billing zeigt Rechnungen, Guthaben (Credits) und Freikontingent-Verbrauch">Konsole</a> setzen (Realm
+   <strong>telko</strong> → <strong>Clients</strong> → <code>kundenportal-migration</code> → <strong>Credentials</strong>) oder
+   den Deploy einmal mit <code>-e keycloak_realm_recreate=true</code> ausführen (legt den
+   Realm neu an; von Hand geänderte Passwörter gehen dabei verloren).</li>
 </ol>
-<p>Ergebnis: Client <code>terraform-kundenportal</code> mit Dienstkonto und der Rolle
-<code>create-realm</code>.
-Notiz: „11.1 erledigt am …" (ohne Secret).
-Rückweg: <strong>Clients</strong> → <code>terraform-kundenportal</code> → <strong>Action</strong> → <strong>Delete</strong>.
-Hat Terraform den Realm schon angelegt, bleibt er bestehen; löschen über
-<strong>Realm settings</strong> → <strong>Action</strong> → <strong>Delete</strong> im Realm <code>telko</code> oder über die
-Pipeline (11.4 mit <code>TF_VAR_legacy_enabled=false</code>).</p>
-<h3 id="112-client-secret-als-cicd-variable-hinterlegen">11.2 Client-Secret als CI/CD-Variable hinterlegen ✎<a class="anchor" href="#112-client-secret-als-cicd-variable-hinterlegen" title="Permanent link">#</a></h3>
-<p>Ziel: Die Pipeline kennt das Secret, das Repository nicht.
-Ort: <a href="https://gitlab.rypox.org/saas/kundenportal-demo/platform">https://gitlab.rypox.org/saas/kundenportal-demo/platform</a> → <strong>Settings</strong> →
-<strong>CI/CD</strong> → <strong>Variables</strong> → <strong>Add variable</strong>.</p>
-<div class="table-wrap"><table>
-<thead>
-<tr>
-<th>Key</th>
-<th>Value</th>
-<th>Einstellungen</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>TF_VAR_keycloak_client_secret</code></td>
-<td>Secret aus 11.1 Schritt 6</td>
-<td><strong>Masked</strong>, <strong>Protected</strong>, Typ <strong>Variable</strong></td>
-</tr>
-</tbody>
-</table></div>
-<p>Ergebnis: Die Variable erscheint in der Liste mit maskiertem Wert.
-Notiz: „11.2 erledigt".
-Rückweg: Variable in derselben Liste löschen (Stift → <strong>Delete variable</strong>).</p>
-<p>Die folgenden Variablen legt der Agent an (zur Kontrolle, 👁): 
-<code>TF_VAR_legacy_enabled</code> (<code>true</code>), <code>TF_VAR_telco_demo_password</code>,
-<code>TF_VAR_legacy_utility_api_key</code>, <code>TF_VAR_legacy_telco_api_key</code> — dieselben
-Werte stehen als <code>DEMO_PASSWORD</code> bzw. <code>LEGACY_API_KEY</code> in den privaten
-Projekten <code>legacy-versorger</code> und <code>legacy-telko</code>.</p>
-<h3 id="113-rechte-für-verschlüsselte-parameter-lokal-anwenden">11.3 Rechte für verschlüsselte Parameter lokal anwenden ✎<a class="anchor" href="#113-rechte-für-verschlüsselte-parameter-lokal-anwenden" title="Permanent link">#</a></h3>
-<p>Ziel: Die Terraform-Rolle der Pipeline darf die API-Schlüssel und das
-Keycloak-Secret als <a href="glossar.html#ssm-parameter-store">SecureString</a> in den
-<a href="glossar.html#ssm-parameter-store">Parameter Store</a> schreiben. Dafür braucht sie
-den <a class="term" href="glossar.html#aws" title="Cloud-Plattform von Amazon mit über 200 Diensten (Rechenleistung, Datenbanken, Netzwerk, Messaging …), abgerechnet nach Nutzung">AWS</a>-eigenen Schlüssel <code>aws/ssm</code> — nur über SSM, sonst nicht. Diese
-Änderung betrifft die <a href="glossar.html#permissions-boundary">Permissions Boundary</a>,
-die nur der Inhaber lokal ändert (Kapitel 5).
-Ort: eigenes Terminal im Repository, Verzeichnis <code>infra/terraform</code>.</p>
-<ol>
-<li><code>aws login --profile kundenportal</code> (Kapitel 4.4), dann
-   <code>export AWS_PROFILE=kundenportal</code>.</li>
-<li><a class="term" href="glossar.html#backend" title="der serverseitige Teil einer Anwendung (Fachlogik, Datenhaltung, APIs)">Backend</a> wie in Kapitel 5.3 initialisieren (GitLab-<a class="term" href="glossar.html#token" title="digitaler Ausweis, den ein Identitätsdienst ausstellt und den eine App bei jedem API-Aufruf mitschickt">Token</a> als
-   <code>TF_HTTP_PASSWORD</code>), dann
-   <code>terraform plan -target=aws_iam_policy.ci_boundary -target=aws_iam_role_policy.gitlab_foundation</code>.</li>
-<li>👁 Der Plan zeigt genau zwei Änderungen: in beiden Richtlinien kommt der
-   Block <code>SecureParametersViaSsm</code> mit <code>kms:Encrypt</code>, <code>kms:Decrypt</code>,
-   <code>kms:GenerateDataKey</code> und der Bedingung <code>kms:ViaService =
-   ssm.eu-central-1.amazonaws.com</code> hinzu. Nichts wird gelöscht.</li>
-<li>Derselbe Befehl mit <code>apply</code>, Bestätigung mit <code>yes</code>.</li>
-</ol>
-<p>Ergebnis: „Apply complete! Resources: 0 added, 2 changed, 0 destroyed."
-Notiz: „11.3 erledigt".
-Rückweg: <a class="term" href="glossar.html#commit" title="Commit = gespeicherter Änderungsstand in Git; Git-Tag = Name für einen bestimmten Commit, z. B. eine Version v1.2.0 (nicht zu verwechseln mit AWS-Tags)">Commit</a> mit dem Block zurücknehmen, Schritt 2–4 wiederholen.</p>
-<h3 id="114-pipeline-laufen-lassen">11.4 Pipeline laufen lassen 👁 / ✎<a class="anchor" href="#114-pipeline-laufen-lassen" title="Permanent link">#</a></h3>
-<p>Ziel: Realm, Client, Demo-Kunden und SSM-Parameter entstehen.
-Ort: <a href="https://gitlab.rypox.org/saas/kundenportal-demo/platform">https://gitlab.rypox.org/saas/kundenportal-demo/platform</a> → <strong><a class="term" href="glossar.html#build" title="Übersetzen und Paketieren des Quellcodes zu auslieferbaren Dateien (Artefakten)">Build</a></strong> →
-<strong>Pipelines</strong>. Der Agent setzt vorher den Pin <code>SOURCE_REF</code> auf den Commit mit
-diesem Stand und startet die Pipeline.</p>
-<ol>
-<li>👁 Job <strong>plan</strong> öffnen, Artefakt <code>plan.txt</code> ansehen: neu sind
-   <code>keycloak_realm.telco[0]</code>, <code>keycloak_realm_user_profile.telco[0]</code>,
-   <code>keycloak_openid_client.portal_migration[0]</code>,
-   <code>keycloak_openid_user_attribute_protocol_mapper.subscriber_id[0]</code>, zwei
-   <code>keycloak_user.telco[…]</code> und sieben <code>aws_ssm_parameter.legacy[…]</code>. Keine
-   Änderung und keine Löschung an Bestehendem (Rollen, <a class="term" href="glossar.html#aws-budgets" title="kostenloser Dienst für Kostengrenzen mit E-Mail-/SNS-Alarm bei Überschreitung; kein harter Stopp, Daten kommen Stunden verzögert">Budget</a>, Parameter).</li>
-<li>✎ Job <strong>apply</strong> starten (Play-Knopf).</li>
-</ol>
-<p>Ergebnis: „Apply complete! Resources: 13 added, 0 changed, 0 destroyed."
-Notiz: „11.4 erledigt, Pipeline #…".
-Rückweg: CI/CD-Variable <code>TF_VAR_legacy_enabled</code> auf <code>false</code>, Pipeline erneut
-laufen lassen und <code>apply</code> starten — Terraform entfernt Realm und Parameter
-wieder (die Portal-Anmeldung für Telko-Kunden funktioniert dann nicht mehr).</p>
-<h3 id="115-ergebnis-ansehen">11.5 Ergebnis ansehen 👁<a class="anchor" href="#115-ergebnis-ansehen" title="Permanent link">#</a></h3>
-<ol>
-<li>Keycloak-Admin-Konsole → Realm <strong>telko</strong> → <strong>Users</strong>: zwei Nutzer
-   (<code>b.yilmaz@example.net</code>, <code>carla.schulz@example.net</code>), Reiter
-   <strong>Attributes</strong> zeigt <code>subscriberId</code>.</li>
-<li><strong>Clients</strong> → <code>kundenportal-migration</code>: Zugriffsart vertraulich, nur
-   „Direct access grants".</li>
-<li>AWS-Konsole → <strong>Systems Manager</strong> → <strong>Parameter Store</strong>, Filter
-   <code>/kundenportal/legacy/</code>: sieben Parameter, davon drei vom Typ
-   <strong>SecureString</strong> (Werte nicht aufdecken).</li>
-</ol>
-<p>Notiz: „Kapitel 11 abgeschlossen am …".</p></main></div>
-<footer class="site"><a href="../wiki/anleitung-altsysteme.md">Markdown-Quelle</a> · Generiert 2026-09-30 11:50 aus <code>docs/wiki</code> mit <code>scripts/build_reports.py</code></footer>
+<p>Ergebnis: Altsystem bzw. Keycloak und SSM-Parameter tragen denselben Wert; die
+Lambdas lesen ihn beim nächsten <a class="term" href="glossar.html#kaltstart" title="Verzögerung, wenn eine Lambda-Instanz erst gestartet werden muss (bei Node.js meist &lt; 1 s)">Kaltstart</a>.
+Rückweg: alten Wert an beiden Stellen wieder eintragen.</p>
+<h3 id="114-realm-neu-anlegen">11.4 Realm neu anlegen ✎<a class="anchor" href="#114-realm-neu-anlegen" title="Permanent link">#</a></h3>
+<p>Ziel: Änderungen an der Realm-Definition
+(<code>ansible/templates/telko-realm.json.j2</code> in <code>legacy-telko</code>) übernehmen oder
+einen verbastelten Realm zurücksetzen.
+Ort: Repository <code>legacy-telko</code>. In <code>ansible/inventory/group_vars/legacy/vars.yml</code>
+vorübergehend <code>keycloak_realm_recreate: true</code> setzen, auf <code>main</code> pushen (die
+Pipeline deployt), danach wieder <code>false</code> committen. Alternativ lokal mit
+SSH-Zugang: <code>cd ansible &amp;&amp; ansible-playbook deploy.yml -e keycloak_realm_recreate=true</code>.</p>
+<p>Ergebnis: Der Realm wird gelöscht und aus der Vorlage neu importiert.
+Rückweg: keiner nötig — die Vorlage ist die Quelle.</p>
+<h3 id="115-alles-abschalten">11.5 Alles abschalten ✎<a class="anchor" href="#115-alles-abschalten" title="Permanent link">#</a></h3>
+<ul>
+<li>Portal-Zugriff: CI/CD-Variable <code>TF_VAR_legacy_enabled</code> im Projekt
+  <code>platform</code> auf <code>false</code>, Pipeline laufen lassen → Terraform entfernt die
+  SSM-Parameter; Anmeldungen von <a class="term" href="glossar.html#altkonto" title="Kundenkonto im Altsystem des Versorgers oder der Telko, das ins neue Portal übernommen wird (nicht zu verwechseln mit einem alten AWS-Konto)">Altkunden</a> scheitern danach.</li>
+<li>Realm: Admin-Konsole → Realm <strong>telko</strong> → <strong>Realm settings</strong> → <strong>Action</strong> →
+  <strong>Delete</strong> (ein erneuter Deploy legt ihn wieder an).</li>
+<li>Altsysteme: auf dem Server <code>docker compose down</code> im Verzeichnis
+  <code>/opt/data/container/kundenportal-demo/legacy-versorger</code> bzw. <code>…/legacy-telko</code>.</li>
+</ul></main></div>
+<footer class="site"><a href="../wiki/anleitung-altsysteme.md">Markdown-Quelle</a> · Generiert 2026-09-30 17:19 aus <code>docs/wiki</code> mit <code>scripts/build_reports.py</code></footer>
 </body>
 </html>
