@@ -1,4 +1,4 @@
-import { DynamoDBClient, TransactionCanceledException } from "@aws-sdk/client-dynamodb";
+import { TransactionCanceledException } from "@aws-sdk/client-dynamodb";
 import { EventBridgeClient, PutEventsCommand } from "@aws-sdk/client-eventbridge";
 import {
   DynamoDBDocumentClient,
@@ -7,7 +7,7 @@ import {
   UpdateCommand,
 } from "@aws-sdk/lib-dynamodb";
 import { CustomerRegistered, customerIdFor, deterministicUuid } from "@kundenportal/events";
-import { apiEvent } from "@kundenportal/service-kit/testing";
+import { apiEvent, fixedTenantData, vendedTenantData } from "@kundenportal/service-kit/testing";
 import { mockClient } from "aws-sdk-client-mock";
 import { beforeEach, describe, expect, it } from "vitest";
 import { createHandler } from "./app.js";
@@ -23,7 +23,7 @@ const SUB = "sub-anna";
 const customerId = customerIdFor("owner", SUB);
 const service = () =>
   new CustomerService(
-    new CustomerRepository(DynamoDBDocumentClient.from(new DynamoDBClient({})), "table"),
+    new CustomerRepository(fixedTenantData()),
     new CustomerEvents(new EventBridgeClient({}), "bus"),
     { now: () => new Date("2026-09-30T12:00:00.000Z") },
     () => "random-id",
@@ -176,5 +176,64 @@ describe("GET /me of a migrated account", () => {
     expect(body).toMatchObject({ origin: "legacy-utility" });
     expect(registered().payload.origin).toBe("legacy-utility");
     expect(registered().eventId).toBe(deterministicUuid(body.customerId, "CustomerRegistered"));
+  });
+});
+
+describe("tenant isolation", () => {
+  const A = "paaaaaaa";
+  const B = "pbbbbbbb";
+  const forTenant = (tenantId: string) => {
+    const event = migrated();
+    return { ...event, detail: { ...event.detail, tenantId } };
+  };
+
+  it("writes each pass tenant's events to its own table with its own client", async () => {
+    dbMock.on(TransactWriteCommand).resolves({});
+    const { data, sessions } = vendedTenantData({ baseTable: "base-table" });
+    const worker = createWorker(
+      new CustomerService(
+        new CustomerRepository(data),
+        new CustomerEvents(new EventBridgeClient({}), "bus"),
+        { now: () => new Date("2026-09-30T12:00:00.000Z") },
+        () => "random-id",
+      ),
+    );
+
+    await worker(forTenant(A));
+    await worker(forTenant(B));
+    await worker(forTenant(A));
+
+    const writes = dbMock.commandCalls(TransactWriteCommand);
+    const tables = writes.map((call) =>
+      call.args[0].input.TransactItems?.map((item) => item.Put?.TableName),
+    );
+    expect(tables).toEqual([
+      [`kp-tenant-${A}`, `kp-tenant-${A}`],
+      [`kp-tenant-${B}`, `kp-tenant-${B}`],
+      [`kp-tenant-${A}`, `kp-tenant-${A}`],
+    ]);
+    expect(tables.flat()).not.toContain("base-table");
+    const keys = writes.map((call) => call.args[0].input.TransactItems?.[1]?.Put?.Item?.PK);
+    expect(keys[1]).toMatch(new RegExp(`^TENANT#${B}#`));
+    // One STS session per tenant; A's cached client serves A again, never B.
+    expect(sessions).toEqual([A, B]);
+    const [a1, b, a2] = await Promise.all([data(A), data(B), data(A)]);
+    expect(a2.db).toBe(a1.db);
+    expect(b.db).not.toBe(a1.db);
+    expect(await b.db.config.credentials()).toMatchObject({
+      accessKeyId: `ASIA${B.toUpperCase()}`,
+    });
+  });
+
+  it("refuses a tenant id that is neither the owner nor a pass", async () => {
+    const { data } = vendedTenantData({ baseTable: "base-table" });
+    const worker = createWorker(
+      new CustomerService(
+        new CustomerRepository(data),
+        new CustomerEvents(new EventBridgeClient({}), "bus"),
+      ),
+    );
+    await expect(worker(forTenant("someone-else"))).rejects.toThrow(/Unknown tenant/);
+    expect(dbMock.calls()).toHaveLength(0);
   });
 });

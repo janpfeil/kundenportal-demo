@@ -5,10 +5,11 @@ import {
   GetCommand,
   PutCommand,
   QueryCommand,
+  UpdateCommand,
 } from "@aws-sdk/lib-dynamodb";
-import { apiEvent } from "@kundenportal/service-kit/testing";
+import { apiEvent, vendedTenantData } from "@kundenportal/service-kit/testing";
 import { mockClient } from "aws-sdk-client-mock";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createApi } from "./app.js";
 import { documentId } from "./model.js";
 import { BUCKET, testService } from "./testing.js";
@@ -136,5 +137,60 @@ describe("POST /documents/upload-url", () => {
       { sub: "sub-new" },
     );
     expect(result.statusCode).toBe(409);
+  });
+});
+
+describe("POST /documents/upload-url for a demo pass", () => {
+  const PASS = "p4k7x2qa";
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("signs with the pass's vended credentials and writes only to the pass's table", async () => {
+    // The router's default quota guard reads the base table from the environment.
+    vi.stubEnv("TABLE_NAME", "base-table");
+    const { data, sessions } = vendedTenantData({
+      baseTable: "base-table",
+      s3Config: { region: "eu-central-1", requestChecksumCalculation: "WHEN_REQUIRED" },
+    });
+    const passApi = createApi(
+      testService(
+        () => new Date("2026-09-30T12:00:00.000Z"),
+        () => uuid,
+        data,
+      ),
+    );
+    dbMock
+      .on(GetCommand, { Key: { PK: "PLATFORM", SK: `TENANT#${PASS}` } })
+      .resolves({ Item: { status: "active" } })
+      .on(GetCommand, { Key: { PK: `TENANT#${PASS}#SUBJ#sub-1`, SK: "DOCUMENTS" } })
+      .resolves({ Item: { customerId: "c-1" } });
+    dbMock.on(UpdateCommand).resolves({});
+
+    const result = await passApi(
+      apiEvent("POST /documents/upload-url", {
+        body: { fileName: "a.pdf", contentType: "application/pdf", sizeBytes: 10 },
+        claims: { tenant_id: PASS },
+      }),
+    );
+
+    expect(result.statusCode).toBe(201);
+    const url = new URL(body(result).uploadUrl);
+    expect(url.pathname).toBe(`/uploads/${PASS}/c-1/${id}`);
+    expect(url.searchParams.get("X-Amz-Credential")).toMatch(/^ASIAP4K7X2QA\//);
+    expect(url.searchParams.get("X-Amz-Security-Token")).toBe(`token-${PASS}`);
+    expect(sessions).toEqual([PASS]);
+    const tables = dbMock
+      .commandCalls(GetCommand)
+      .filter((call) => call.args[0].input.Key?.PK !== "PLATFORM")
+      .map((call) => call.args[0].input.TableName);
+    expect(tables).toEqual([`kp-tenant-${PASS}`]);
+    expect(dbMock.commandCalls(PutCommand)[0]?.args[0].input.TableName).toBe(`kp-tenant-${PASS}`);
+    // The call is counted in the base table, never in the pass's own table.
+    expect(dbMock.commandCalls(UpdateCommand)[0]?.args[0].input).toMatchObject({
+      TableName: "base-table",
+      Key: { PK: `TENANT#${PASS}`, SK: "QUOTA#api" },
+    });
   });
 });

@@ -1,4 +1,4 @@
-import { ConditionalCheckFailedException, DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import { ConditionalCheckFailedException } from "@aws-sdk/client-dynamodb";
 import { EventBridgeClient, PutEventsCommand } from "@aws-sdk/client-eventbridge";
 import {
   DynamoDBDocumentClient,
@@ -7,7 +7,7 @@ import {
   QueryCommand,
 } from "@aws-sdk/lib-dynamodb";
 import { ContractChanged } from "@kundenportal/events";
-import { apiEvent } from "@kundenportal/service-kit/testing";
+import { apiEvent, fixedTenantData } from "@kundenportal/service-kit/testing";
 import { mockClient } from "aws-sdk-client-mock";
 import { beforeEach, describe, expect, it } from "vitest";
 import { createApi } from "./app.js";
@@ -21,7 +21,7 @@ const ebMock = mockClient(EventBridgeClient);
 
 const api = createApi(
   new ContractService(
-    new ContractRepository(DynamoDBDocumentClient.from(new DynamoDBClient({})), "table"),
+    new ContractRepository(fixedTenantData()),
     new ContractEvents(new EventBridgeClient({}), "bus"),
     { now: () => new Date("2026-09-30T13:00:00.000Z") },
   ),

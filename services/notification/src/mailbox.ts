@@ -1,13 +1,7 @@
 import { ConditionalCheckFailedException } from "@aws-sdk/client-dynamodb";
-import {
-  type DynamoDBDocumentClient,
-  GetCommand,
-  PutCommand,
-  QueryCommand,
-  UpdateCommand,
-} from "@aws-sdk/lib-dynamodb";
+import { GetCommand, PutCommand, QueryCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
 import { Locale } from "@kundenportal/events";
-import { tenantKey } from "@kundenportal/service-kit";
+import { tenantKey, type TenantDataSource } from "@kundenportal/service-kit";
 import { z } from "zod";
 
 export const Notification = z.object({
@@ -44,15 +38,13 @@ export function isNotificationId(value: string): boolean {
  *   the language the mailbox writes in (events of other domains carry no language)
  */
 export class Mailbox {
-  constructor(
-    private readonly db: DynamoDBDocumentClient,
-    private readonly table: string,
-  ) {}
+  constructor(private readonly data: TenantDataSource) {}
 
   async rememberLocale(tenantId: string, customerId: string, locale: Locale): Promise<void> {
-    await this.db.send(
+    const { db, tableName } = await this.data(tenantId);
+    await db.send(
       new PutCommand({
-        TableName: this.table,
+        TableName: tableName,
         Item: { PK: tenantKey(tenantId, "CUST", customerId), SK: "MAILBOX", locale },
       }),
     );
@@ -60,9 +52,10 @@ export class Mailbox {
 
   /** Language of the customer's mailbox; German if the customer is not known (yet). */
   async localeOf(tenantId: string, customerId: string): Promise<Locale> {
-    const result = await this.db.send(
+    const { db, tableName } = await this.data(tenantId);
+    const result = await db.send(
       new GetCommand({
-        TableName: this.table,
+        TableName: tableName,
         Key: { PK: tenantKey(tenantId, "CUST", customerId), SK: "MAILBOX" },
       }),
     );
@@ -71,18 +64,20 @@ export class Mailbox {
   }
 
   async linkSubject(tenantId: string, subject: string, customerId: string): Promise<void> {
-    await this.db.send(
+    const { db, tableName } = await this.data(tenantId);
+    await db.send(
       new PutCommand({
-        TableName: this.table,
+        TableName: tableName,
         Item: { PK: tenantKey(tenantId, "SUBJ", subject), SK: "MAILBOX", customerId },
       }),
     );
   }
 
   async customerOf(tenantId: string, subject: string): Promise<string | undefined> {
-    const result = await this.db.send(
+    const { db, tableName } = await this.data(tenantId);
+    const result = await db.send(
       new GetCommand({
-        TableName: this.table,
+        TableName: tableName,
         Key: { PK: tenantKey(tenantId, "SUBJ", subject), SK: "MAILBOX" },
       }),
     );
@@ -91,10 +86,11 @@ export class Mailbox {
 
   /** Stores a notification once; returns `false` if it already existed (redelivery). */
   async add(tenantId: string, customerId: string, notification: Notification): Promise<boolean> {
+    const { db, tableName } = await this.data(tenantId);
     try {
-      await this.db.send(
+      await db.send(
         new PutCommand({
-          TableName: this.table,
+          TableName: tableName,
           Item: {
             PK: tenantKey(tenantId, "CUST", customerId),
             SK: `NOTE#${notification.notificationId}`,
@@ -111,9 +107,10 @@ export class Mailbox {
   }
 
   async list(tenantId: string, customerId: string): Promise<Notification[]> {
-    const result = await this.db.send(
+    const { db, tableName } = await this.data(tenantId);
+    const result = await db.send(
       new QueryCommand({
-        TableName: this.table,
+        TableName: tableName,
         KeyConditionExpression: "PK = :pk AND begins_with(SK, :note)",
         ExpressionAttributeValues: {
           ":pk": tenantKey(tenantId, "CUST", customerId),
@@ -128,10 +125,11 @@ export class Mailbox {
 
   /** Marks a notification as read; returns `false` if it does not exist for this customer. */
   async markRead(tenantId: string, customerId: string, id: string): Promise<boolean> {
+    const { db, tableName } = await this.data(tenantId);
     try {
-      await this.db.send(
+      await db.send(
         new UpdateCommand({
-          TableName: this.table,
+          TableName: tableName,
           Key: { PK: tenantKey(tenantId, "CUST", customerId), SK: `NOTE#${id}` },
           UpdateExpression: "SET #read = :true",
           ExpressionAttributeNames: { "#read": "read" },

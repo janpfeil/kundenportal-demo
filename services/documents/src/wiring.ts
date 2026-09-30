@@ -1,25 +1,25 @@
-import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { EventBridgeClient } from "@aws-sdk/client-eventbridge";
-import { S3Client } from "@aws-sdk/client-s3";
-import { DynamoDBDocumentClient } from "@aws-sdk/lib-dynamodb";
-import { requireEnv } from "@kundenportal/service-kit";
+import { createTenantDataSource, requireEnv } from "@kundenportal/service-kit";
+import { UPLOAD_URL_SECONDS } from "./model.js";
 import { DocumentEvents } from "./publisher.js";
 import { DocumentRepository } from "./repository.js";
 import { DocumentService } from "./service.js";
 import { UploadStorage } from "./storage.js";
 
-/** Builds the service with real AWS clients, once per execution environment. */
+/**
+ * Builds the service with real AWS clients, once per execution environment; repository
+ * and storage resolve each tenant's table, S3 client and credentials per call.
+ */
 export function createService(): DocumentService {
-  const db = DynamoDBDocumentClient.from(new DynamoDBClient({}), {
-    marshallOptions: { removeUndefinedValues: true },
+  const data = createTenantDataSource({
+    // Without this the presigned URL carries a checksum of an empty body (see UploadStorage).
+    s3Config: { requestChecksumCalculation: "WHEN_REQUIRED" },
+    // A presigned URL dies with its credentials: keep them valid for the URL's lifetime.
+    minValiditySeconds: UPLOAD_URL_SECONDS + 60,
   });
   return new DocumentService(
-    new DocumentRepository(db, requireEnv("TABLE_NAME")),
-    new UploadStorage(
-      // Without this the presigned URL carries a checksum of an empty body (see UploadStorage).
-      new S3Client({ requestChecksumCalculation: "WHEN_REQUIRED" }),
-      requireEnv("UPLOAD_BUCKET"),
-    ),
+    new DocumentRepository(data),
+    new UploadStorage(data, requireEnv("UPLOAD_BUCKET")),
     new DocumentEvents(new EventBridgeClient({}), requireEnv("EVENT_BUS_NAME")),
   );
 }

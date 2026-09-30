@@ -1,18 +1,18 @@
-import { ConditionalCheckFailedException, DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import { ConditionalCheckFailedException } from "@aws-sdk/client-dynamodb";
 import {
   DynamoDBDocumentClient,
   GetCommand,
   QueryCommand,
   UpdateCommand,
 } from "@aws-sdk/lib-dynamodb";
-import { apiEvent } from "@kundenportal/service-kit/testing";
+import { apiEvent, fixedTenantData } from "@kundenportal/service-kit/testing";
 import { mockClient } from "aws-sdk-client-mock";
 import { beforeEach, describe, expect, it } from "vitest";
 import { createApi } from "./api.js";
 import { Mailbox, notificationId } from "./mailbox.js";
 
 const dbMock = mockClient(DynamoDBDocumentClient);
-const api = createApi(new Mailbox(DynamoDBDocumentClient.from(new DynamoDBClient({})), "table"));
+const api = createApi(new Mailbox(fixedTenantData()));
 
 const id = notificationId("2026-09-29T12:00:00.000Z", "6f1c1f64-8a4c-4c55-9a39-5d8a4a0f2c11");
 const note = {

@@ -1,12 +1,7 @@
 import { ConditionalCheckFailedException } from "@aws-sdk/client-dynamodb";
-import {
-  type DynamoDBDocumentClient,
-  GetCommand,
-  PutCommand,
-  QueryCommand,
-} from "@aws-sdk/lib-dynamodb";
+import { GetCommand, PutCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
 import type { Division } from "@kundenportal/events";
-import { tenantKey } from "@kundenportal/service-kit";
+import { tenantKey, type TenantDataSource } from "@kundenportal/service-kit";
 import { ContractRecord } from "./contract.js";
 
 const contractKey = (tenantId: string, customerId: string, division: Division, id: string) => ({
@@ -21,24 +16,23 @@ const contractKey = (tenantId: string, customerId: string, division: Division, i
  *   which customer a sign-in identity belongs to (never the customer domain's items)
  */
 export class ContractRepository {
-  constructor(
-    private readonly db: DynamoDBDocumentClient,
-    private readonly table: string,
-  ) {}
+  constructor(private readonly data: TenantDataSource) {}
 
   async linkSubject(tenantId: string, subject: string, customerId: string): Promise<void> {
-    await this.db.send(
+    const { db, tableName } = await this.data(tenantId);
+    await db.send(
       new PutCommand({
-        TableName: this.table,
+        TableName: tableName,
         Item: { PK: tenantKey(tenantId, "SUBJ", subject), SK: "CONTRACTS", customerId },
       }),
     );
   }
 
   async customerOf(tenantId: string, subject: string): Promise<string | undefined> {
-    const result = await this.db.send(
+    const { db, tableName } = await this.data(tenantId);
+    const result = await db.send(
       new GetCommand({
-        TableName: this.table,
+        TableName: tableName,
         Key: { PK: tenantKey(tenantId, "SUBJ", subject), SK: "CONTRACTS" },
       }),
     );
@@ -46,9 +40,10 @@ export class ContractRepository {
   }
 
   async list(tenantId: string, customerId: string): Promise<ContractRecord[]> {
-    const result = await this.db.send(
+    const { db, tableName } = await this.data(tenantId);
+    const result = await db.send(
       new QueryCommand({
-        TableName: this.table,
+        TableName: tableName,
         KeyConditionExpression: "PK = :pk AND begins_with(SK, :contract)",
         ExpressionAttributeValues: {
           ":pk": tenantKey(tenantId, "CUST", customerId),
@@ -75,9 +70,10 @@ export class ContractRepository {
     division: Division,
     contractId: string,
   ): Promise<ContractRecord | undefined> {
-    const result = await this.db.send(
+    const { db, tableName } = await this.data(tenantId);
+    const result = await db.send(
       new GetCommand({
-        TableName: this.table,
+        TableName: tableName,
         Key: contractKey(tenantId, customerId, division, contractId),
         ConsistentRead: true,
       }),
@@ -87,10 +83,11 @@ export class ContractRepository {
 
   /** Creates a contract once; returns `false` if it already exists (redelivered event). */
   async create(tenantId: string, record: ContractRecord): Promise<boolean> {
+    const { db, tableName } = await this.data(tenantId);
     try {
-      await this.db.send(
+      await db.send(
         new PutCommand({
-          TableName: this.table,
+          TableName: tableName,
           Item: {
             ...contractKey(tenantId, record.customerId, record.division, record.contractId),
             ...record,
@@ -114,10 +111,11 @@ export class ContractRepository {
     record: ContractRecord,
     expectedVersion: number,
   ): Promise<boolean> {
+    const { db, tableName } = await this.data(tenantId);
     try {
-      await this.db.send(
+      await db.send(
         new PutCommand({
-          TableName: this.table,
+          TableName: tableName,
           Item: {
             ...contractKey(tenantId, record.customerId, record.division, record.contractId),
             ...record,

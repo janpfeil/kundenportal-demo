@@ -1,4 +1,4 @@
-import { ConditionalCheckFailedException, DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import { ConditionalCheckFailedException } from "@aws-sdk/client-dynamodb";
 import { EventBridgeClient, PutEventsCommand } from "@aws-sdk/client-eventbridge";
 import {
   DeleteCommand,
@@ -8,6 +8,11 @@ import {
   QueryCommand,
 } from "@aws-sdk/lib-dynamodb";
 import { DataVolumeThresholdReached } from "@kundenportal/events";
+import {
+  fixedTenantData,
+  fixedTenantStatus,
+  vendedTenantData,
+} from "@kundenportal/service-kit/testing";
 import { mockClient } from "aws-sdk-client-mock";
 import { beforeEach, describe, expect, it } from "vitest";
 import { ConsumptionEvents } from "./publisher.js";
@@ -21,7 +26,7 @@ const ebMock = mockClient(EventBridgeClient);
 let now = new Date("2026-09-30T06:00:00.000Z");
 const worker = createWorker(
   new ConsumptionService(
-    new ConsumptionRepository(DynamoDBDocumentClient.from(new DynamoDBClient({})), "table"),
+    new ConsumptionRepository(fixedTenantData()),
     new ConsumptionEvents(new EventBridgeClient({}), "bus"),
     { now: () => now },
   ),
@@ -209,6 +214,54 @@ describe("scheduled data volume check", () => {
       .map((call) => JSON.parse(call.args[0].input.Entries?.[0]?.Detail ?? "{}").eventId);
     expect(ids).toHaveLength(2);
     expect(ids[0]).toBe(ids[1]);
+  });
+});
+
+describe("scheduled data volume check across tenants", () => {
+  const ACTIVE = "paaaaaaa";
+  const GONE = "pbbbbbbb";
+  const PAUSED = "pccccccc";
+
+  it("reads the watch list from the base table and each contract from its tenant's table", async () => {
+    const { data, sessions } = vendedTenantData({ baseTable: "base-table" });
+    const tenantWorker = createWorker(
+      new ConsumptionService(
+        new ConsumptionRepository(data),
+        new ConsumptionEvents(new EventBridgeClient({}), "bus"),
+        { now: () => new Date("2026-09-30T06:00:00.000Z") },
+        () => "id-x",
+        fixedTenantStatus({ [ACTIVE]: "active", [PAUSED]: "quota-exceeded" }),
+      ),
+    );
+    const watched = (tenantId: string) => ({
+      tenantId,
+      contractId: mobileId,
+      customerId: "c-1",
+      dataVolumeMb: 20480,
+    });
+    dbMock.on(QueryCommand).resolves({
+      Items: [watched("owner"), watched(ACTIVE), watched(GONE), watched(PAUSED)],
+    });
+
+    await tenantWorker(SCHEDULED_CHECK);
+
+    expect(dbMock.commandCalls(QueryCommand)[0]?.args[0].input.TableName).toBe("base-table");
+    const reads = dbMock.commandCalls(GetCommand).map((call) => call.args[0].input);
+    expect(reads.map((input) => [input.TableName, input.Key?.PK])).toEqual([
+      ["base-table", `TENANT#owner#CONTRACT#${mobileId}`],
+      [`kp-tenant-${ACTIVE}`, `TENANT#${ACTIVE}#CONTRACT#${mobileId}`],
+    ]);
+    const marks = puts().map((put) => [put.TableName, put.Item?.PK]);
+    expect(marks).toEqual([
+      ["base-table", `TENANT#owner#CONTRACT#${mobileId}`],
+      [`kp-tenant-${ACTIVE}`, `TENANT#${ACTIVE}#CONTRACT#${mobileId}`],
+    ]);
+    // The deleted tenant leaves the (base table's) watch list; the paused one stays.
+    expect(dbMock.commandCalls(DeleteCommand).map((call) => call.args[0].input)).toEqual([
+      { TableName: "base-table", Key: { PK: WATCH_PK, SK: `TENANT#${GONE}#CONTRACT#${mobileId}` } },
+    ]);
+    expect(sessions).toEqual([ACTIVE]);
+    expect(ebMock.commandCalls(PutEventsCommand)).toHaveLength(2);
   });
 });
 

@@ -1,10 +1,5 @@
-import {
-  type DynamoDBDocumentClient,
-  GetCommand,
-  PutCommand,
-  QueryCommand,
-} from "@aws-sdk/lib-dynamodb";
-import { tenantKey } from "@kundenportal/service-kit";
+import { GetCommand, PutCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
+import { tenantKey, type TenantDataSource } from "@kundenportal/service-kit";
 import { Document } from "./model.js";
 
 const PAGE_SIZE = 50;
@@ -21,24 +16,23 @@ const documentKey = (tenantId: string, customerId: string, id: string) => ({
  * - `TENANT#<t>#SUBJ#<subject>` / `DOCUMENTS` — own projection of `CustomerRegistered`
  */
 export class DocumentRepository {
-  constructor(
-    private readonly db: DynamoDBDocumentClient,
-    private readonly table: string,
-  ) {}
+  constructor(private readonly data: TenantDataSource) {}
 
   async linkSubject(tenantId: string, subject: string, customerId: string): Promise<void> {
-    await this.db.send(
+    const { db, tableName } = await this.data(tenantId);
+    await db.send(
       new PutCommand({
-        TableName: this.table,
+        TableName: tableName,
         Item: { PK: tenantKey(tenantId, "SUBJ", subject), SK: "DOCUMENTS", customerId },
       }),
     );
   }
 
   async customerOf(tenantId: string, subject: string): Promise<string | undefined> {
-    const result = await this.db.send(
+    const { db, tableName } = await this.data(tenantId);
+    const result = await db.send(
       new GetCommand({
-        TableName: this.table,
+        TableName: tableName,
         Key: { PK: tenantKey(tenantId, "SUBJ", subject), SK: "DOCUMENTS" },
       }),
     );
@@ -46,9 +40,10 @@ export class DocumentRepository {
   }
 
   async list(tenantId: string, customerId: string): Promise<Document[]> {
-    const result = await this.db.send(
+    const { db, tableName } = await this.data(tenantId);
+    const result = await db.send(
       new QueryCommand({
-        TableName: this.table,
+        TableName: tableName,
         KeyConditionExpression: "PK = :pk AND begins_with(SK, :doc)",
         ExpressionAttributeValues: {
           ":pk": tenantKey(tenantId, "CUST", customerId),
@@ -62,9 +57,10 @@ export class DocumentRepository {
   }
 
   async get(tenantId: string, customerId: string, id: string): Promise<Document | undefined> {
-    const result = await this.db.send(
+    const { db, tableName } = await this.data(tenantId);
+    const result = await db.send(
       new GetCommand({
-        TableName: this.table,
+        TableName: tableName,
         Key: documentKey(tenantId, customerId, id),
         ConsistentRead: true,
       }),
@@ -73,9 +69,10 @@ export class DocumentRepository {
   }
 
   async save(tenantId: string, customerId: string, document: Document): Promise<void> {
-    await this.db.send(
+    const { db, tableName } = await this.data(tenantId);
+    await db.send(
       new PutCommand({
-        TableName: this.table,
+        TableName: tableName,
         Item: { ...documentKey(tenantId, customerId, document.documentId), ...document },
       }),
     );

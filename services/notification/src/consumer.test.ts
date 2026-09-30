@@ -1,6 +1,7 @@
-import { ConditionalCheckFailedException, DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import { ConditionalCheckFailedException } from "@aws-sdk/client-dynamodb";
 import { PublishCommand, SNSClient } from "@aws-sdk/client-sns";
 import { DynamoDBDocumentClient, GetCommand, PutCommand } from "@aws-sdk/lib-dynamodb";
+import { fixedTenantData } from "@kundenportal/service-kit/testing";
 import type { SQSEvent, SQSRecord } from "aws-lambda";
 import { mockClient } from "aws-sdk-client-mock";
 import { beforeEach, describe, expect, it } from "vitest";
@@ -12,7 +13,7 @@ const dbMock = mockClient(DynamoDBDocumentClient);
 const snsMock = mockClient(SNSClient);
 
 const consumer = createConsumer(
-  new Mailbox(DynamoDBDocumentClient.from(new DynamoDBClient({})), "table"),
+  new Mailbox(fixedTenantData()),
   new OwnerHints(new SNSClient({}), "arn:aws:sns:eu-central-1:123456789012:hints"),
 );
 

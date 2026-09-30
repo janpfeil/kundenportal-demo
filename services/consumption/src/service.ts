@@ -4,7 +4,14 @@ import {
   type CustomerRegisteredDetail,
   deterministicUuid,
 } from "@kundenportal/events";
-import { type Caller, HttpError, log, notFound } from "@kundenportal/service-kit";
+import {
+  type Caller,
+  HttpError,
+  log,
+  notFound,
+  TenantDirectory,
+  type TenantStatusLookup,
+} from "@kundenportal/service-kit";
 import {
   type ContractProjection,
   type DataUsage,
@@ -30,6 +37,7 @@ export class ConsumptionService {
     private readonly events: ConsumptionEvents,
     private readonly clock: Clock = { now: () => new Date() },
     private readonly newId: () => string = randomUUID,
+    private readonly tenants: TenantStatusLookup = new TenantDirectory(),
   ) {}
 
   async readings(caller: Caller, contractId: string): Promise<MeterReading[]> {
@@ -155,6 +163,10 @@ export class ConsumptionService {
    * contract and month when the demo usage reaches 80 %. The event id derives from
    * contract and month, and the marker is written only after publishing, so a failed or
    * repeated run neither loses nor duplicates a warning.
+   *
+   * The watch list is a platform item in the base table; each contract is read through
+   * the data of its own tenant. Contracts of a pass that is not active are skipped, those
+   * of a deleted tenant leave the list.
    */
   async checkDataVolumes(): Promise<{ checked: number; notified: number; failed: number }> {
     const now = this.clock.now();
@@ -165,6 +177,13 @@ export class ConsumptionService {
     for await (const watched of this.repository.watched()) {
       checked += 1;
       try {
+        const status = await this.tenants.status(watched.tenantId);
+        if (status !== "active") {
+          if (status === undefined || status === "deleted") {
+            await this.repository.unwatch(watched.tenantId, watched.contractId);
+          }
+          continue;
+        }
         const usage = demoUsage(watched.contractId, watched.dataVolumeMb, now);
         if (usage.usedPercent < usage.thresholdPercent) continue;
         const { tenantId, contractId } = watched;

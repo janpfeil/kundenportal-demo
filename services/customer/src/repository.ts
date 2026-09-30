@@ -2,13 +2,8 @@ import {
   ConditionalCheckFailedException,
   TransactionCanceledException,
 } from "@aws-sdk/client-dynamodb";
-import {
-  type DynamoDBDocumentClient,
-  GetCommand,
-  TransactWriteCommand,
-  UpdateCommand,
-} from "@aws-sdk/lib-dynamodb";
-import { tenantKey } from "@kundenportal/service-kit";
+import { GetCommand, TransactWriteCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
+import { tenantKey, type TenantDataSource } from "@kundenportal/service-kit";
 import type { PostalAddress } from "@kundenportal/events";
 import { Customer, type CustomerUpdate } from "./customer.js";
 
@@ -18,15 +13,13 @@ import { Customer, type CustomerUpdate } from "./customer.js";
  * - `TENANT#<t>#SUBJ#<subject>` / `CUSTOMER` — which customer a sign-in identity belongs to
  */
 export class CustomerRepository {
-  constructor(
-    private readonly db: DynamoDBDocumentClient,
-    private readonly table: string,
-  ) {}
+  constructor(private readonly data: TenantDataSource) {}
 
   async findBySubject(tenantId: string, subject: string): Promise<Customer | undefined> {
-    const link = await this.db.send(
+    const { db, tableName } = await this.data(tenantId);
+    const link = await db.send(
       new GetCommand({
-        TableName: this.table,
+        TableName: tableName,
         Key: { PK: tenantKey(tenantId, "SUBJ", subject), SK: "CUSTOMER" },
         ConsistentRead: true,
       }),
@@ -36,9 +29,10 @@ export class CustomerRepository {
   }
 
   async get(tenantId: string, customerId: string): Promise<Customer | undefined> {
-    const result = await this.db.send(
+    const { db, tableName } = await this.data(tenantId);
+    const result = await db.send(
       new GetCommand({
-        TableName: this.table,
+        TableName: tableName,
         Key: { PK: tenantKey(tenantId, "CUST", customerId), SK: "PROFILE" },
         ConsistentRead: true,
       }),
@@ -51,13 +45,14 @@ export class CustomerRepository {
    * created the link first (concurrent first sign-in); nothing is written then.
    */
   async create(tenantId: string, subject: string, customer: Customer): Promise<boolean> {
+    const { db, tableName } = await this.data(tenantId);
     try {
-      await this.db.send(
+      await db.send(
         new TransactWriteCommand({
           TransactItems: [
             {
               Put: {
-                TableName: this.table,
+                TableName: tableName,
                 Item: {
                   PK: tenantKey(tenantId, "SUBJ", subject),
                   SK: "CUSTOMER",
@@ -68,7 +63,7 @@ export class CustomerRepository {
             },
             {
               Put: {
-                TableName: this.table,
+                TableName: tableName,
                 Item: {
                   PK: tenantKey(tenantId, "CUST", customer.customerId),
                   SK: "PROFILE",
@@ -91,11 +86,12 @@ export class CustomerRepository {
   }
 
   async update(tenantId: string, customerId: string, update: CustomerUpdate): Promise<Customer> {
+    const { db, tableName } = await this.data(tenantId);
     const fields = Object.entries(update).filter(([, value]) => value !== undefined);
     try {
-      const result = await this.db.send(
+      const result = await db.send(
         new UpdateCommand({
-          TableName: this.table,
+          TableName: tableName,
           Key: { PK: tenantKey(tenantId, "CUST", customerId), SK: "PROFILE" },
           UpdateExpression: `SET ${fields.map(([name]) => `#${name} = :${name}`).join(", ")}`,
           ExpressionAttributeNames: Object.fromEntries(fields.map(([name]) => [`#${name}`, name])),
@@ -124,13 +120,14 @@ export class CustomerRepository {
     customerId: string,
     data: { address?: PostalAddress; phone?: string; legacyAccount: string },
   ): Promise<void> {
+    const { db, tableName } = await this.data(tenantId);
     const sets = [
       ...(data.address ? ["#address = if_not_exists(#address, :address)"] : []),
       ...(data.phone ? ["#phone = if_not_exists(#phone, :phone)"] : []),
     ];
-    await this.db.send(
+    await db.send(
       new UpdateCommand({
-        TableName: this.table,
+        TableName: tableName,
         Key: { PK: tenantKey(tenantId, "CUST", customerId), SK: "PROFILE" },
         UpdateExpression: [
           ...(sets.length ? [`SET ${sets.join(", ")}`] : []),

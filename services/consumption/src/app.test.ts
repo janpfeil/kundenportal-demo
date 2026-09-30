@@ -1,4 +1,3 @@
-import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { EventBridgeClient, PutEventsCommand } from "@aws-sdk/client-eventbridge";
 import {
   DynamoDBDocumentClient,
@@ -7,7 +6,7 @@ import {
   QueryCommand,
 } from "@aws-sdk/lib-dynamodb";
 import { MeterReadingSubmitted } from "@kundenportal/events";
-import { apiEvent } from "@kundenportal/service-kit/testing";
+import { apiEvent, fixedTenantData } from "@kundenportal/service-kit/testing";
 import { mockClient } from "aws-sdk-client-mock";
 import { beforeEach, describe, expect, it } from "vitest";
 import { createApi } from "./app.js";
@@ -23,7 +22,7 @@ const ids = ["6f1c1f64-8a4c-4c55-9a39-5d8a4a0f2c11", "7a2d2e75-9b5d-4d66-8b4a-6e
 let nextIds: string[];
 const api = createApi(
   new ConsumptionService(
-    new ConsumptionRepository(DynamoDBDocumentClient.from(new DynamoDBClient({})), "table"),
+    new ConsumptionRepository(fixedTenantData()),
     new ConsumptionEvents(new EventBridgeClient({}), "bus"),
     { now: () => now },
     () => nextIds.shift() ?? "id-x",

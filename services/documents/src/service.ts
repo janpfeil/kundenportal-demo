@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { type CustomerRegisteredDetail, deterministicUuid } from "@kundenportal/events";
-import { type Caller, HttpError, log } from "@kundenportal/service-kit";
+import { type Caller, HttpError, isPassTenant, log, OWNER_TENANT } from "@kundenportal/service-kit";
 import {
   type Document,
   documentId,
@@ -67,6 +67,7 @@ export class DocumentService {
     };
     await this.repository.save(caller.tenantId, customerId, document);
     const uploadUrl = await this.storage.uploadUrl(
+      caller.tenantId,
       uploadKey(caller.tenantId, customerId, document.documentId),
       request.contentType,
       request.sizeBytes,
@@ -100,13 +101,18 @@ export class DocumentService {
       log("warn", "Event for a foreign bucket ignored", { bucket: object.bucket });
       return;
     }
-    const target = parseUploadKey(object.key);
+    const parsed = parseUploadKey(object.key);
+    // A key naming no known tenant is foreign; the owner's (Lambda's own) rights delete it.
+    const target =
+      parsed && (parsed.tenantId === OWNER_TENANT || isPassTenant(parsed.tenantId))
+        ? parsed
+        : undefined;
     const document = target
       ? await this.repository.get(target.tenantId, target.customerId, target.documentId)
       : undefined;
     if (!target || !document) {
       log("warn", "Unannounced upload deleted", { key: object.key });
-      await this.storage.delete(object.key);
+      await this.storage.delete(target?.tenantId ?? OWNER_TENANT, object.key);
       return;
     }
     if (document.status === "rejected") return;
@@ -115,7 +121,7 @@ export class DocumentService {
     if (document.status === "pending") {
       if (object.size > MAX_UPLOAD_BYTES || object.size !== document.sizeBytes) {
         log("warn", "Upload rejected", { key: object.key, size: object.size });
-        await this.storage.delete(object.key);
+        await this.storage.delete(tenantId, object.key);
         await this.repository.save(tenantId, customerId, { ...document, status: "rejected" });
         return;
       }

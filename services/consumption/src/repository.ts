@@ -1,12 +1,6 @@
 import { ConditionalCheckFailedException } from "@aws-sdk/client-dynamodb";
-import {
-  DeleteCommand,
-  type DynamoDBDocumentClient,
-  GetCommand,
-  PutCommand,
-  QueryCommand,
-} from "@aws-sdk/lib-dynamodb";
-import { tenantKey } from "@kundenportal/service-kit";
+import { DeleteCommand, GetCommand, PutCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
+import { OWNER_TENANT, tenantKey, type TenantDataSource } from "@kundenportal/service-kit";
 import { ContractProjection, MeterReading } from "./model.js";
 
 const PAGE_SIZE = 50;
@@ -35,24 +29,23 @@ const contractPk = (tenantId: string, contractId: string) =>
  *   across tenants (the tenant still leads the sort key)
  */
 export class ConsumptionRepository {
-  constructor(
-    private readonly db: DynamoDBDocumentClient,
-    private readonly table: string,
-  ) {}
+  constructor(private readonly data: TenantDataSource) {}
 
   async linkSubject(tenantId: string, subject: string, customerId: string): Promise<void> {
-    await this.db.send(
+    const { db, tableName } = await this.data(tenantId);
+    await db.send(
       new PutCommand({
-        TableName: this.table,
+        TableName: tableName,
         Item: { PK: tenantKey(tenantId, "SUBJ", subject), SK: "CONSUMPTION", customerId },
       }),
     );
   }
 
   async customerOf(tenantId: string, subject: string): Promise<string | undefined> {
-    const result = await this.db.send(
+    const { db, tableName } = await this.data(tenantId);
+    const result = await db.send(
       new GetCommand({
-        TableName: this.table,
+        TableName: tableName,
         Key: { PK: tenantKey(tenantId, "SUBJ", subject), SK: "CONSUMPTION" },
       }),
     );
@@ -60,9 +53,10 @@ export class ConsumptionRepository {
   }
 
   async contract(tenantId: string, contractId: string): Promise<ContractProjection | undefined> {
-    const result = await this.db.send(
+    const { db, tableName } = await this.data(tenantId);
+    const result = await db.send(
       new GetCommand({
-        TableName: this.table,
+        TableName: tableName,
         Key: { PK: contractPk(tenantId, contractId), SK: "CONSUMPTION" },
       }),
     );
@@ -74,10 +68,11 @@ export class ConsumptionRepository {
    * of order); returns `false` for a stale snapshot.
    */
   async saveContract(tenantId: string, contract: ContractProjection): Promise<boolean> {
+    const { db, tableName } = await this.data(tenantId);
     try {
-      await this.db.send(
+      await db.send(
         new PutCommand({
-          TableName: this.table,
+          TableName: tableName,
           Item: { PK: contractPk(tenantId, contract.contractId), SK: "CONSUMPTION", ...contract },
           ConditionExpression: "attribute_not_exists(PK) OR #version < :version",
           ExpressionAttributeNames: { "#version": "version" },
@@ -92,9 +87,10 @@ export class ConsumptionRepository {
   }
 
   async watch(contract: WatchedContract): Promise<void> {
-    await this.db.send(
+    const { db, tableName } = await this.data(OWNER_TENANT);
+    await db.send(
       new PutCommand({
-        TableName: this.table,
+        TableName: tableName,
         Item: {
           PK: WATCH_PK,
           SK: contractPk(contract.tenantId, contract.contractId),
@@ -105,20 +101,22 @@ export class ConsumptionRepository {
   }
 
   async unwatch(tenantId: string, contractId: string): Promise<void> {
-    await this.db.send(
+    const { db, tableName } = await this.data(OWNER_TENANT);
+    await db.send(
       new DeleteCommand({
-        TableName: this.table,
+        TableName: tableName,
         Key: { PK: WATCH_PK, SK: contractPk(tenantId, contractId) },
       }),
     );
   }
 
   async *watched(): AsyncGenerator<WatchedContract> {
+    const { db, tableName } = await this.data(OWNER_TENANT);
     let startKey: Record<string, unknown> | undefined;
     do {
-      const result = await this.db.send(
+      const result = await db.send(
         new QueryCommand({
-          TableName: this.table,
+          TableName: tableName,
           KeyConditionExpression: "PK = :pk",
           ExpressionAttributeValues: { ":pk": WATCH_PK },
           ExclusiveStartKey: startKey,
@@ -131,9 +129,10 @@ export class ConsumptionRepository {
   }
 
   async readings(tenantId: string, contractId: string, limit = PAGE_SIZE): Promise<MeterReading[]> {
-    const result = await this.db.send(
+    const { db, tableName } = await this.data(tenantId);
+    const result = await db.send(
       new QueryCommand({
-        TableName: this.table,
+        TableName: tableName,
         KeyConditionExpression: "PK = :pk AND begins_with(SK, :reading)",
         ExpressionAttributeValues: {
           ":pk": contractPk(tenantId, contractId),
@@ -149,10 +148,11 @@ export class ConsumptionRepository {
 
   /** Stores a reading once; returns `false` if it already exists (redelivered event). */
   async addReading(tenantId: string, contractId: string, reading: MeterReading): Promise<boolean> {
+    const { db, tableName } = await this.data(tenantId);
     try {
-      await this.db.send(
+      await db.send(
         new PutCommand({
-          TableName: this.table,
+          TableName: tableName,
           Item: {
             PK: contractPk(tenantId, contractId),
             SK: `READING#${reading.readAt}#${reading.readingId}`,
@@ -169,9 +169,10 @@ export class ConsumptionRepository {
   }
 
   async thresholdNotified(tenantId: string, contractId: string, month: string): Promise<boolean> {
-    const result = await this.db.send(
+    const { db, tableName } = await this.data(tenantId);
+    const result = await db.send(
       new GetCommand({
-        TableName: this.table,
+        TableName: tableName,
         Key: { PK: contractPk(tenantId, contractId), SK: `USAGE#${month}` },
       }),
     );
@@ -185,9 +186,10 @@ export class ConsumptionRepository {
     usedMb: number,
     at: string,
   ): Promise<void> {
-    await this.db.send(
+    const { db, tableName } = await this.data(tenantId);
+    await db.send(
       new PutCommand({
-        TableName: this.table,
+        TableName: tableName,
         Item: {
           PK: contractPk(tenantId, contractId),
           SK: `USAGE#${month}`,

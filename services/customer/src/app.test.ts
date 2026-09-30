@@ -1,6 +1,5 @@
 import {
   ConditionalCheckFailedException,
-  DynamoDBClient,
   TransactionCanceledException,
 } from "@aws-sdk/client-dynamodb";
 import { EventBridgeClient, PutEventsCommand } from "@aws-sdk/client-eventbridge";
@@ -11,7 +10,7 @@ import {
   UpdateCommand,
 } from "@aws-sdk/lib-dynamodb";
 import { CustomerRegistered } from "@kundenportal/events";
-import { apiEvent } from "@kundenportal/service-kit/testing";
+import { apiEvent, fixedTenantData } from "@kundenportal/service-kit/testing";
 import { mockClient } from "aws-sdk-client-mock";
 import { beforeEach, describe, expect, it } from "vitest";
 import { createHandler } from "./app.js";
@@ -37,7 +36,7 @@ let ids: string[];
 const handler = () =>
   createHandler(
     new CustomerService(
-      new CustomerRepository(DynamoDBDocumentClient.from(new DynamoDBClient({})), "table"),
+      new CustomerRepository(fixedTenantData()),
       new CustomerEvents(new EventBridgeClient({}), "bus"),
       { now: () => new Date("2026-09-29T12:00:00.000Z") },
       () => ids.shift() ?? "id-x",
