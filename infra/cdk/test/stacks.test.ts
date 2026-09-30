@@ -8,6 +8,7 @@ import { loadConfig } from "../lib/config.js";
 import { EdgeStack } from "../lib/edge-stack.js";
 import { PARAM } from "../lib/parameters.js";
 import { ZONES, zoneParams } from "../lib/zones.js";
+import { loadApiRoutes } from "@kundenportal/api-contract/routes";
 
 let base: Template;
 let application: Template;
@@ -85,7 +86,9 @@ describe("guard rails", () => {
         }),
       ).length;
     expect(own(base)).toBe(1);
-    expect(own(application)).toBe(6);
+    // customer, notification API + consumer, shell, the zones, and API + worker for
+    // contract, consumption and documents
+    expect(own(application)).toBe(10 + ZONES.length);
     for (const template of all())
       template.allResourcesProperties("AWS::Logs::LogGroup", { RetentionInDays: 3 });
   });
@@ -145,7 +148,7 @@ describe("identity", () => {
 describe("api and events", () => {
   it("protects every route with the JWT authorizer and the contract's scopes", () => {
     const routes = Object.values(application.findResources("AWS::ApiGatewayV2::Route"));
-    expect(routes).toHaveLength(4);
+    expect(routes).toHaveLength(loadApiRoutes().length);
     for (const route of routes) {
       expect(route.Properties.AuthorizationType).toBe("JWT");
       expect(route.Properties.AuthorizationScopes.length).toBeGreaterThan(0);
@@ -163,6 +166,172 @@ describe("api and events", () => {
     application.hasResourceProperties("AWS::SQS::Queue", { RedrivePolicy: { maxReceiveCount: 3 } });
     application.hasResourceProperties("AWS::Lambda::EventSourceMapping", {
       FunctionResponseTypes: ["ReportBatchItemFailures"],
+    });
+  });
+});
+
+describe("domain services", () => {
+  const routeScopes = () =>
+    Object.values(application.findResources("AWS::ApiGatewayV2::Route")).map(
+      (route) => `${route.Properties.RouteKey} ${route.Properties.AuthorizationScopes.join(",")}`,
+    );
+
+  it("serves contracts, readings and documents with their scopes", () => {
+    expect(routeScopes()).toEqual(
+      expect.arrayContaining([
+        "GET /contracts kundenportal/contracts.read",
+        "GET /contracts/{contractId} kundenportal/contracts.read",
+        "PATCH /contracts/{contractId} kundenportal/contracts.write",
+        "GET /contracts/{contractId}/readings kundenportal/readings.read",
+        "POST /contracts/{contractId}/readings kundenportal/readings.write",
+        "GET /contracts/{contractId}/usage kundenportal/readings.read",
+        "GET /documents kundenportal/documents.read",
+        "POST /documents/upload-url kundenportal/documents.write",
+      ]),
+    );
+  });
+
+  it("offers the new scopes on the Cognito resource server", () => {
+    base.hasResourceProperties("AWS::Cognito::UserPoolResourceServer", {
+      Identifier: "kundenportal",
+      Scopes: Match.arrayWith(
+        ["contracts.read", "documents.write", "readings.write"].map((name) =>
+          Match.objectLike({ ScopeName: name }),
+        ),
+      ),
+    });
+  });
+
+  it("gives every queue with a consumer a DLQ and every DLQ an alarm", () => {
+    const queues = Object.values(application.findResources("AWS::SQS::Queue"));
+    const sources = queues.filter((queue) => queue.Properties.RedrivePolicy);
+    expect(sources).toHaveLength(2); // notification, contract
+    for (const queue of sources) expect(queue.Properties.RedrivePolicy.maxReceiveCount).toBe(3);
+    expect(Object.keys(application.findResources("AWS::CloudWatch::Alarm"))).toHaveLength(
+      queues.length - sources.length,
+    );
+    const mappings = Object.values(application.findResources("AWS::Lambda::EventSourceMapping"));
+    expect(mappings).toHaveLength(2);
+    for (const mapping of mappings)
+      expect(mapping.Properties.FunctionResponseTypes).toEqual(["ReportBatchItemFailures"]);
+  });
+
+  it("routes each event only to the domains that react to it", () => {
+    const rules = Object.values(application.findResources("AWS::Events::Rule")).map((rule) =>
+      [rule.Properties.EventPattern.source[0], rule.Properties.EventPattern["detail-type"][0]].join(
+        " ",
+      ),
+    );
+    const count = (pattern: string) => rules.filter((rule) => rule === pattern).length;
+    // notification, contract, consumption, documents
+    expect(count("kundenportal.customer CustomerRegistered")).toBe(4);
+    // notification, contract
+    expect(count("kundenportal.consumption MeterReadingSubmitted")).toBe(2);
+    // notification, consumption (projection)
+    expect(count("kundenportal.contract ContractChanged")).toBe(2);
+    for (const pattern of [
+      "kundenportal.contract InstallmentAdjusted",
+      "kundenportal.consumption DataVolumeThresholdReached",
+      "kundenportal.documents DocumentUploaded",
+      "aws.s3 Object Created",
+    ])
+      expect(count(pattern)).toBe(1);
+  });
+
+  it("hands failed asynchronous invocations of the workers to a DLQ", () => {
+    const configs = Object.values(application.findResources("AWS::Lambda::EventInvokeConfig"));
+    expect(configs).toHaveLength(2);
+    for (const config of configs) {
+      expect(config.Properties.MaximumRetryAttempts).toBe(2);
+      expect(config.Properties.DestinationConfig.OnFailure.Destination).toBeDefined();
+    }
+  });
+
+  it("checks data volumes daily with EventBridge Scheduler", () => {
+    application.hasResourceProperties("AWS::Scheduler::Schedule", {
+      ScheduleExpression: "cron(0 7 * * ? *)",
+      ScheduleExpressionTimezone: "Europe/Berlin",
+      State: "ENABLED",
+      Target: Match.objectLike({
+        Input: JSON.stringify({ task: "checkDataVolumes" }),
+        RetryPolicy: { MaximumRetryAttempts: 2, MaximumEventAgeInSeconds: 3600 },
+        DeadLetterConfig: Match.objectLike({ Arn: Match.anyValue() }),
+      }),
+    });
+  });
+
+  it("lets the documents API only put and the worker only delete uploads", () => {
+    const statements = Object.values(application.findResources("AWS::IAM::Policy")).flatMap(
+      (policy) => policy.Properties.PolicyDocument.Statement as { Action: string | string[] }[],
+    );
+    const s3Actions = statements
+      .flatMap((statement) => [statement.Action].flat())
+      .filter((action) => action.startsWith("s3:"));
+    expect(new Set(s3Actions)).toEqual(
+      new Set([
+        "s3:PutObject",
+        "s3:PutObjectLegalHold",
+        "s3:PutObjectRetention",
+        "s3:PutObjectTagging",
+        "s3:PutObjectVersionTagging",
+        "s3:Abort*",
+        "s3:DeleteObject*",
+      ]),
+    );
+  });
+});
+
+describe("uploads", () => {
+  it("keeps the upload bucket in the long-lived base: private, encrypted, TLS only", () => {
+    expect(resourceTypes(application)).not.toContain("AWS::S3::Bucket");
+    base.hasResourceProperties("AWS::S3::Bucket", {
+      PublicAccessBlockConfiguration: {
+        BlockPublicAcls: true,
+        BlockPublicPolicy: true,
+        IgnorePublicAcls: true,
+        RestrictPublicBuckets: true,
+      },
+      BucketEncryption: {
+        ServerSideEncryptionConfiguration: [
+          { ServerSideEncryptionByDefault: { SSEAlgorithm: "AES256" } },
+        ],
+      },
+      NotificationConfiguration: { EventBridgeConfiguration: { EventBridgeEnabled: true } },
+      Tags: Match.arrayWith([{ Key: "project", Value: "kundenportal-demo" }]),
+    });
+    base.hasResourceProperties("AWS::S3::BucketPolicy", {
+      PolicyDocument: {
+        Statement: Match.arrayWith([
+          Match.objectLike({
+            Effect: "Deny",
+            Condition: { Bool: { "aws:SecureTransport": "false" } },
+          }),
+        ]),
+      },
+    });
+    expect(resourceTypes(base)).toContain("Custom::S3AutoDeleteObjects");
+  });
+
+  it("allows only PUT from the portal and localhost and deletes uploads after 7 days", () => {
+    base.hasResourceProperties("AWS::S3::Bucket", {
+      CorsConfiguration: {
+        CorsRules: [
+          Match.objectLike({
+            AllowedMethods: ["PUT"],
+            AllowedOrigins: ["https://kundenportal-demo.rypox.com", "http://localhost:3000"],
+            AllowedHeaders: ["content-type"],
+          }),
+        ],
+      },
+      LifecycleConfiguration: {
+        Rules: [
+          Match.objectLike({
+            ExpirationInDays: 7,
+            AbortIncompleteMultipartUpload: { DaysAfterInitiation: 1 },
+            Status: "Enabled",
+          }),
+        ],
+      },
     });
   });
 });

@@ -1,12 +1,14 @@
 import { Duration, Fn, Stack, type StackProps } from "aws-cdk-lib";
 import { Table } from "aws-cdk-lib/aws-dynamodb";
 import { SqsEventSource } from "aws-cdk-lib/aws-lambda-event-sources";
+import { Bucket } from "aws-cdk-lib/aws-s3";
 import { Topic } from "aws-cdk-lib/aws-sns";
 import { StringParameter } from "aws-cdk-lib/aws-ssm";
 import { loadApiRoutes } from "@kundenportal/api-contract/routes";
 import type { Construct } from "constructs";
 import { Api } from "./api.js";
 import type { PortalConfig } from "./config.js";
+import { DomainServices } from "./domain-services.js";
 import { Events } from "./events.js";
 import { ServiceFunction } from "./functions.js";
 import { PARAM } from "./parameters.js";
@@ -68,6 +70,14 @@ export class AppStack extends Stack {
       }),
     );
 
+    const domains = new DomainServices(this, "Domains", {
+      table,
+      bus: events.bus,
+      ownerTopic,
+      uploadBucket: Bucket.fromBucketName(this, "Uploads", param(PARAM.base.uploadBucketName)),
+      reservedConcurrency,
+    });
+
     const api = new Api(this, "Api", {
       routes: loadApiRoutes(),
       handlers: {
@@ -75,6 +85,14 @@ export class AppStack extends Stack {
         updateMe: customer,
         listNotifications: notificationApi,
         markNotificationRead: notificationApi,
+        listContracts: domains.contractApi,
+        getContract: domains.contractApi,
+        updateContract: domains.contractApi,
+        listMeterReadings: domains.consumptionApi,
+        submitMeterReading: domains.consumptionApi,
+        getDataUsage: domains.consumptionApi,
+        listDocuments: domains.documentsApi,
+        createUploadUrl: domains.documentsApi,
       },
       issuer,
       audience: [clientId],

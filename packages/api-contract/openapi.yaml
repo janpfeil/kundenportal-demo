@@ -88,7 +88,189 @@ paths:
         "204": { description: Marked as read }
         "401": { $ref: "#/components/responses/Problem" }
         "404": { $ref: "#/components/responses/Problem" }
+  /contracts:
+    get:
+      operationId: listContracts
+      summary: Contracts of the signed-in customer across all divisions
+      description: >-
+        A newly registered customer receives demo contracts (electricity, gas, mobile)
+        a moment after the first sign-in; until then the list is empty.
+      security:
+        - oidc: [kundenportal/contracts.read]
+      responses:
+        "200":
+          description: Contracts
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/Contract" }
+        "401": { $ref: "#/components/responses/Problem" }
+        "403": { $ref: "#/components/responses/Problem" }
+  /contracts/{contractId}:
+    parameters:
+      - $ref: "#/components/parameters/ContractId"
+    get:
+      operationId: getContract
+      summary: One contract of the signed-in customer
+      security:
+        - oidc: [kundenportal/contracts.read]
+      responses:
+        "200":
+          description: Contract
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Contract" }
+        "400": { $ref: "#/components/responses/Problem" }
+        "401": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+    patch:
+      operationId: updateContract
+      summary: Change the monthly installment or the tariff option
+      description: >-
+        The installment of a metered contract (electricity, gas, water) may be set in
+        whole euros between `installmentMinCent` and `installmentMaxCent`. A new tariff
+        option moves that range and keeps the installment inside it; for internet and
+        mobile the monthly price follows the option. Publishes `ContractChanged`.
+      security:
+        - oidc: [kundenportal/contracts.write]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ContractUpdate" }
+      responses:
+        "200":
+          description: Updated contract
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Contract" }
+        "400": { $ref: "#/components/responses/Problem" }
+        "401": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+        "409": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/Problem" }
+  /contracts/{contractId}/readings:
+    parameters:
+      - $ref: "#/components/parameters/ContractId"
+    get:
+      operationId: listMeterReadings
+      summary: Meter readings of a contract, newest first
+      description: The first entry is the reading at contract start.
+      security:
+        - oidc: [kundenportal/readings.read]
+      responses:
+        "200":
+          description: Meter readings
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/MeterReading" }
+        "400": { $ref: "#/components/responses/Problem" }
+        "401": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+    post:
+      operationId: submitMeterReading
+      summary: Submit a meter reading
+      description: >-
+        Plausibility: the contract has a meter, the date is not in the future (German
+        time) and neither value nor date are below the latest reading. Publishes
+        `MeterReadingSubmitted`; the contract domain then recalculates the installment.
+      security:
+        - oidc: [kundenportal/readings.write]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/NewMeterReading" }
+      responses:
+        "201":
+          description: Stored reading
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MeterReading" }
+        "400": { $ref: "#/components/responses/Problem" }
+        "401": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/Problem" }
+  /contracts/{contractId}/usage:
+    parameters:
+      - $ref: "#/components/parameters/ContractId"
+    get:
+      operationId: getDataUsage
+      summary: Data volume used this month (mobile contracts, demo values)
+      security:
+        - oidc: [kundenportal/readings.read]
+      responses:
+        "200":
+          description: Data usage
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DataUsage" }
+        "400": { $ref: "#/components/responses/Problem" }
+        "401": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/Problem" }
+  /documents:
+    get:
+      operationId: listDocuments
+      summary: Documents of the signed-in customer, newest first
+      security:
+        - oidc: [kundenportal/documents.read]
+      responses:
+        "200":
+          description: Documents
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/Document" }
+        "401": { $ref: "#/components/responses/Problem" }
+  /documents/upload-url:
+    post:
+      operationId: createUploadUrl
+      summary: Announce an upload and get a presigned PUT URL
+      description: >-
+        The URL is valid for five minutes and accepts exactly the announced content type
+        and size (both are signed): send `PUT` with the returned headers and the file as
+        body. After the upload arrives the document becomes `uploaded` and
+        `DocumentUploaded` is published. Files are deleted after seven days.
+      security:
+        - oidc: [kundenportal/documents.write]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UploadUrlRequest" }
+      responses:
+        "201":
+          description: Upload ticket
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/UploadTicket" }
+        "400": { $ref: "#/components/responses/Problem" }
+        "401": { $ref: "#/components/responses/Problem" }
+        "409": { $ref: "#/components/responses/Problem" }
 components:
+  parameters:
+    ContractId:
+      name: contractId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
   securitySchemes:
     oidc:
       type: http
@@ -137,6 +319,148 @@ components:
         body: { type: string }
         createdAt: { type: string, format: date-time }
         read: { type: boolean }
+    Division:
+      type: string
+      enum: [electricity, gas, water, internet, mobile]
+    MeterUnit:
+      type: string
+      enum: [kWh, m3]
+    Contract:
+      type: object
+      description: Amounts are integer euro cents.
+      required:
+        - contractId
+        - division
+        - tariffName
+        - tariffOption
+        - tariffOptions
+        - monthlyInstallmentCent
+        - installmentAdjustable
+        - monthlyPriceCent
+        - startDate
+        - minimumTermMonths
+        - minimumTermEndDate
+        - status
+        - updatedAt
+      properties:
+        contractId: { type: string, format: uuid }
+        division: { $ref: "#/components/schemas/Division" }
+        tariffName: { type: string }
+        tariffOption: { type: string }
+        tariffOptions:
+          type: array
+          description: Options the customer may switch to
+          items: { type: string }
+        monthlyInstallmentCent:
+          type: integer
+          minimum: 0
+          description: Installment (metered) or fixed monthly price (internet, mobile)
+        installmentAdjustable: { type: boolean }
+        installmentMinCent: { type: integer, minimum: 0 }
+        installmentMaxCent: { type: integer, minimum: 0 }
+        meterNumber: { type: string }
+        unit: { $ref: "#/components/schemas/MeterUnit" }
+        workPriceCent: { type: integer, minimum: 0, description: Price per kWh or m³ }
+        monthlyPriceCent:
+          type: integer
+          minimum: 0
+          description: Monthly base price (metered) or monthly price of the option
+        estimatedAnnualConsumption: { type: number, minimum: 0 }
+        dataVolumeMb: { type: integer, minimum: 1 }
+        startDate: { type: string, format: date }
+        minimumTermMonths: { type: integer, minimum: 1 }
+        minimumTermEndDate: { type: string, format: date }
+        status: { type: string, enum: [active, terminated] }
+        updatedAt: { type: string, format: date-time }
+    ContractUpdate:
+      type: object
+      minProperties: 1
+      additionalProperties: false
+      properties:
+        monthlyInstallmentCent:
+          type: integer
+          minimum: 1
+          description: Whole euros (multiple of 100) within the contract's allowed range
+        tariffOption: { type: string, minLength: 1, maxLength: 40 }
+    MeterReading:
+      type: object
+      required: [readingId, value, unit, readAt, source, submittedAt]
+      properties:
+        readingId: { type: string }
+        value: { type: number, minimum: 0 }
+        unit: { $ref: "#/components/schemas/MeterUnit" }
+        readAt: { type: string, format: date }
+        source: { type: string, enum: [contract-start, customer] }
+        submittedAt: { type: string, format: date-time }
+    NewMeterReading:
+      type: object
+      required: [value, readAt]
+      additionalProperties: false
+      properties:
+        value: { type: number, minimum: 0, maximum: 1000000000 }
+        readAt: { type: string, format: date }
+    DataUsage:
+      type: object
+      required: [contractId, month, includedMb, usedMb, usedPercent, thresholdPercent, asOf]
+      properties:
+        contractId: { type: string, format: uuid }
+        month: { type: string, pattern: "^\\d{4}-\\d{2}$" }
+        includedMb: { type: integer, minimum: 1 }
+        usedMb: { type: integer, minimum: 0 }
+        usedPercent: { type: integer, minimum: 0 }
+        thresholdPercent: { type: integer, description: Warning threshold (80) }
+        asOf: { type: string, format: date-time }
+    UploadContentType:
+      type: string
+      enum: [image/jpeg, image/png, application/pdf]
+    DocumentCategory:
+      type: string
+      enum: [meter-photo, other]
+    Document:
+      type: object
+      required:
+        - documentId
+        - fileName
+        - contentType
+        - category
+        - sizeBytes
+        - status
+        - createdAt
+        - expiresAt
+      properties:
+        documentId: { type: string }
+        fileName: { type: string }
+        contentType: { $ref: "#/components/schemas/UploadContentType" }
+        category: { $ref: "#/components/schemas/DocumentCategory" }
+        sizeBytes: { type: integer, minimum: 1 }
+        status:
+          type: string
+          enum: [pending, uploaded, rejected]
+          description: pending until the file arrives; rejected if it failed the checks
+        createdAt: { type: string, format: date-time }
+        uploadedAt: { type: string, format: date-time }
+        expiresAt: { type: string, format: date-time }
+    UploadUrlRequest:
+      type: object
+      required: [fileName, contentType, sizeBytes]
+      additionalProperties: false
+      properties:
+        fileName: { type: string, minLength: 1, maxLength: 120 }
+        contentType: { $ref: "#/components/schemas/UploadContentType" }
+        sizeBytes: { type: integer, minimum: 1, maximum: 5242880 }
+        category: { $ref: "#/components/schemas/DocumentCategory" }
+    UploadTicket:
+      type: object
+      required: [documentId, uploadUrl, method, headers, expiresAt]
+      properties:
+        documentId: { type: string }
+        uploadUrl: { type: string, format: uri }
+        method: { type: string, const: PUT }
+        headers:
+          type: object
+          description: Headers the upload must send unchanged (part of the signature)
+          additionalProperties: { type: string }
+        expiresAt: { type: string, format: date-time }
     Problem:
       type: object
       required: [title, status]

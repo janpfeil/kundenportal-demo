@@ -1,4 +1,6 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { parse } from "yaml";
 import { apiScopes, loadApiRoutes, SECURITY_SCHEME } from "./routes.js";
 
 const routes = loadApiRoutes();
@@ -20,7 +22,7 @@ describe("OpenAPI contract", () => {
     expect(scopes.every((scope) => /^[a-z]+(\.[a-z]+)*$/.test(scope.name))).toBe(true);
   });
 
-  it("maps the phase 1 routes with their scopes", () => {
+  it("maps the routes with their scopes", () => {
     expect(
       routes.map(({ method, path, scopes }) => `${method} ${path} ${scopes.join(",")}`),
     ).toEqual([
@@ -28,7 +30,44 @@ describe("OpenAPI contract", () => {
       "PATCH /me kundenportal/profile.write",
       "GET /notifications kundenportal/notifications.read",
       "PATCH /notifications/{notificationId} kundenportal/notifications.write",
+      "GET /contracts kundenportal/contracts.read",
+      "GET /contracts/{contractId} kundenportal/contracts.read",
+      "PATCH /contracts/{contractId} kundenportal/contracts.write",
+      "GET /contracts/{contractId}/readings kundenportal/readings.read",
+      "POST /contracts/{contractId}/readings kundenportal/readings.write",
+      "GET /contracts/{contractId}/usage kundenportal/readings.read",
+      "GET /documents kundenportal/documents.read",
+      "POST /documents/upload-url kundenportal/documents.write",
     ]);
+  });
+
+  it("derives one read and one write scope per domain", () => {
+    expect(apiScopes(routes).map((scope) => scope.name)).toEqual([
+      "contracts.read",
+      "contracts.write",
+      "documents.read",
+      "documents.write",
+      "notifications.read",
+      "notifications.write",
+      "profile.read",
+      "profile.write",
+      "readings.read",
+      "readings.write",
+    ]);
+  });
+
+  it("answers every operation's errors as problem details", () => {
+    const spec = parse(readFileSync(new URL("../openapi.yaml", import.meta.url), "utf8")) as {
+      paths: Record<string, Record<string, { responses?: Record<string, { $ref?: string }> }>>;
+    };
+    for (const item of Object.values(spec.paths)) {
+      for (const [method, operation] of Object.entries(item)) {
+        if (method === "parameters") continue;
+        for (const [status, response] of Object.entries(operation.responses ?? {})) {
+          if (Number(status) >= 400) expect(response.$ref).toBe("#/components/responses/Problem");
+        }
+      }
+    }
   });
 
   it("never takes the tenant from the URL", () => {

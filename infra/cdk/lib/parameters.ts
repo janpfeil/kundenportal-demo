@@ -14,6 +14,7 @@ export const PARAM = {
     logoutUrl: "/kundenportal/base/oidc-logout-url",
     tableName: "/kundenportal/base/table-name",
     ownerTopicArn: "/kundenportal/base/owner-topic-arn",
+    uploadBucketName: "/kundenportal/base/upload-bucket-name",
   },
   app: {
     shellFunctionArn: "/kundenportal/app/shell-function-arn",

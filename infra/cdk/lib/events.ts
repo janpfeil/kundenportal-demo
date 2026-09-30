@@ -5,6 +5,13 @@ import { EventBus, Rule } from "aws-cdk-lib/aws-events";
 import { SqsQueue } from "aws-cdk-lib/aws-events-targets";
 import type { ITopic } from "aws-cdk-lib/aws-sns";
 import { Queue, QueueEncryption } from "aws-cdk-lib/aws-sqs";
+import {
+  ContractChanged,
+  DataVolumeThresholdReached,
+  DocumentUploaded,
+  InstallmentAdjusted,
+  MeterReadingSubmitted,
+} from "@kundenportal/events";
 import { Construct } from "constructs";
 
 /**
@@ -51,6 +58,27 @@ export class Events extends Construct {
         }),
       ],
     });
+
+    // Events of the other domains that leave a message in the customer's mailbox.
+    for (const event of [
+      MeterReadingSubmitted,
+      InstallmentAdjusted,
+      ContractChanged,
+      DataVolumeThresholdReached,
+      DocumentUploaded,
+    ]) {
+      new Rule(this, `${event.detailType}ToNotification`, {
+        eventBus: this.bus,
+        description: `${event.detailType} → notification (mailbox)`,
+        eventPattern: { source: [event.source], detailType: [event.detailType] },
+        targets: [
+          new SqsQueue(this.notificationQueue, {
+            deadLetterQueue: this.deadLetterQueue,
+            retryAttempts: 8,
+          }),
+        ],
+      });
+    }
 
     new Alarm(this, "DlqNotEmpty", {
       alarmDescription: "A domain event could not be processed and waits in the notification DLQ",
