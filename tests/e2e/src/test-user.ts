@@ -97,3 +97,33 @@ export async function completePasswordReset(poolId: string, email: string, passw
     }),
   );
 }
+
+/**
+ * Sets a permanent password for a user the system created (e.g. a demo-pass holder, whose
+ * Cognito mail with the temporary password is suppressed for test passes). Retries until
+ * the user exists, because the account is created asynchronously after redemption.
+ */
+export async function setPassword(
+  poolId: string,
+  email: string,
+  password: string,
+  timeoutMs = 90_000,
+): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    try {
+      await cognito.send(
+        new AdminSetUserPasswordCommand({
+          UserPoolId: poolId,
+          Username: email,
+          Password: password,
+          Permanent: true,
+        }),
+      );
+      return;
+    } catch (error) {
+      if (!(error instanceof UserNotFoundException) || Date.now() > deadline) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 3_000));
+    }
+  }
+}
