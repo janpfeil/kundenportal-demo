@@ -11,7 +11,12 @@ import { Schedule, ScheduleExpression, ScheduleTargetInput } from "aws-cdk-lib/a
 import { LambdaInvoke } from "aws-cdk-lib/aws-scheduler-targets";
 import type { ITopic } from "aws-cdk-lib/aws-sns";
 import { Queue, QueueEncryption } from "aws-cdk-lib/aws-sqs";
-import { ContractChanged, CustomerRegistered, MeterReadingSubmitted } from "@kundenportal/events";
+import {
+  ContractChanged,
+  CustomerRegistered,
+  MeterReadingSubmitted,
+  MigratedAccountsRemoved,
+} from "@kundenportal/events";
 import { Construct } from "constructs";
 import { ServiceFunction } from "./functions.js";
 
@@ -79,7 +84,8 @@ export class DomainServices extends Construct {
     bus.grantPutEventsTo(contractWorker);
     this.contractWorker = contractWorker;
     this.contractDlq = contractDlq;
-    for (const event of [CustomerRegistered, MeterReadingSubmitted]) {
+    // MigratedAccountsRemoved: a demo reset removed these customers; each domain deletes its data.
+    for (const event of [CustomerRegistered, MeterReadingSubmitted, MigratedAccountsRemoved]) {
       this.route(`${event.detailType}ToContract`, event, "contract", [
         this.invoke(contractWorker, contractDlq),
       ]);
@@ -106,7 +112,7 @@ export class DomainServices extends Construct {
     });
     table.grantReadWriteData(consumptionWorker);
     bus.grantPutEventsTo(consumptionWorker);
-    for (const event of [CustomerRegistered, ContractChanged]) {
+    for (const event of [CustomerRegistered, ContractChanged, MigratedAccountsRemoved]) {
       this.route(`${event.detailType}ToConsumption`, event, "consumption", [
         this.invoke(consumptionWorker, consumptionDlq),
       ]);
@@ -136,6 +142,8 @@ export class DomainServices extends Construct {
       environment: documentsEnvironment,
     });
     table.grantReadWriteData(documentsApi);
+    // Phase 4: QuotaExceeded when a pass has used its uploads.
+    bus.grantPutEventsTo(documentsApi);
     // Presigned URLs carry the function's permissions: PUT below uploads/ only.
     uploadBucket.grantPut(documentsApi, "uploads/*");
     this.documentsApi = documentsApi;
@@ -149,9 +157,11 @@ export class DomainServices extends Construct {
     table.grantReadWriteData(documentsWorker);
     bus.grantPutEventsTo(documentsWorker);
     uploadBucket.grantDelete(documentsWorker, "uploads/*");
-    this.route(`${CustomerRegistered.detailType}ToDocuments`, CustomerRegistered, "documents", [
-      this.invoke(documentsWorker, documentsDlq),
-    ]);
+    for (const event of [CustomerRegistered, MigratedAccountsRemoved]) {
+      this.route(`${event.detailType}ToDocuments`, event, "documents", [
+        this.invoke(documentsWorker, documentsDlq),
+      ]);
+    }
     // S3 publishes to the account's default bus (AWS service events there are free).
     new Rule(this, "UploadToDocuments", {
       eventBus: EventBus.fromEventBusName(this, "DefaultBus", "default"),

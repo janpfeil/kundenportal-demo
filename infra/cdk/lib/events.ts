@@ -7,6 +7,7 @@ import type { ITopic } from "aws-cdk-lib/aws-sns";
 import { Queue, QueueEncryption } from "aws-cdk-lib/aws-sqs";
 import {
   AccountsLinked,
+  MigratedAccountsRemoved,
   ContractChanged,
   DataVolumeThresholdReached,
   DocumentUploaded,
@@ -73,6 +74,8 @@ export class Events extends Construct {
       PasswordResetRequired,
       DuplicateCandidateFound,
       AccountsLinked,
+      // Demo reset: the mailbox of removed customers goes.
+      MigratedAccountsRemoved,
     ]) {
       new Rule(this, `${event.detailType}ToNotification`, {
         eventBus: this.bus,

@@ -9,7 +9,11 @@ import type { IFunction } from "aws-cdk-lib/aws-lambda";
 import { SqsDestination } from "aws-cdk-lib/aws-lambda-destinations";
 import type { ITopic } from "aws-cdk-lib/aws-sns";
 import { Queue, QueueEncryption } from "aws-cdk-lib/aws-sqs";
-import { AccountsLinked, LegacyAccountMigrated } from "@kundenportal/events";
+import {
+  AccountsLinked,
+  LegacyAccountMigrated,
+  MigratedAccountsRemoved,
+} from "@kundenportal/events";
 import { Construct } from "constructs";
 import { ServiceFunction } from "./functions.js";
 import { grantLegacyAccess } from "./legacy-access.js";
@@ -77,6 +81,16 @@ export class Migration extends Construct {
       });
     }
 
+    new Rule(this, "MigratedAccountsRemovedToCustomer", {
+      eventBus: bus,
+      description: "MigratedAccountsRemoved → customer (demo reset deletes profiles)",
+      eventPattern: {
+        source: [MigratedAccountsRemoved.source],
+        detailType: [MigratedAccountsRemoved.detailType],
+      },
+      targets: [this.invoke(customerWorker, customerDlq)],
+    });
+
     // --- migration ----------------------------------------------------------------
     // Failed record tasks wait here for a redrive from the cockpit. Failures are part of
     // the demo (one defective record), so there is no alarm; the cockpit shows them.
@@ -128,8 +142,9 @@ export class Migration extends Construct {
       entry: "services/migration/src/api-handler.ts",
       description: "migration: /me/links, /migration/status, bulk, redrive, demo reset",
       reservedConcurrency,
-      // The redrive looks for the task in the DLQ with a few long polls.
-      timeout: Duration.seconds(20),
+      // The redrive looks for the task in the DLQ with a few long polls; the demo reset
+      // deletes accounts, links and the timeline before it announces the removal.
+      timeout: Duration.seconds(30),
       environment: { ...migrationEnvironment, PROCESSOR_FUNCTION_NAME: processor.functionName },
     });
     this.api = api;

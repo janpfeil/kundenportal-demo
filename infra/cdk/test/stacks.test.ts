@@ -159,6 +159,7 @@ describe("api and events", () => {
     const open = routes.filter((route) => route.Properties.AuthorizationType === "NONE");
     expect(open.map((route) => route.Properties.RouteKey).sort()).toEqual([
       "GET /tenancy/challenge",
+      "GET /tenancy/offer",
       "POST /tenancy/redeem",
     ]);
     for (const route of routes.filter((r) => !open.includes(r))) {
@@ -240,8 +241,9 @@ describe("domain services", () => {
     // contract 4 (CustomerRegistered, MeterReadingSubmitted, LegacyAccountMigrated,
     // AccountsLinked), consumption 2, documents 2 (CustomerRegistered, S3 upload),
     // customer 2 (LegacyAccountMigrated, AccountsLinked), migration 1 (all events),
-    // tenancy 1 (all events of pass tenants)
-    expect(lambdaTargets).toHaveLength(12);
+    // tenancy 1 (all events of pass tenants); MigratedAccountsRemoved (demo reset) to
+    // customer, contract, consumption and documents
+    expect(lambdaTargets).toHaveLength(16);
     for (const target of lambdaTargets) {
       expect(target.RetryPolicy).toEqual({
         MaximumRetryAttempts: 8,
@@ -271,6 +273,9 @@ describe("domain services", () => {
     expect(count(`${bothSources} LegacyAccountMigrated`)).toBe(2);
     // notification, customer, contract
     expect(count(`${one("kundenportal.migration")} AccountsLinked`)).toBe(3);
+    // demo reset: every domain holding customer data deletes it
+    // (customer, contract, consumption, documents, notification)
+    expect(count(`${one("kundenportal.migration")} MigratedAccountsRemoved`)).toBe(5);
     for (const pattern of [
       `${one("kundenportal.contract")} InstallmentAdjusted`,
       `${one("kundenportal.consumption")} DataVolumeThresholdReached`,

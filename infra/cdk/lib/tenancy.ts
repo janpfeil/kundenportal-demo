@@ -117,6 +117,9 @@ export class Tenancy extends Construct {
 
     table.grantReadWriteData(worker);
     bus.grantPutEventsTo(worker);
+    // Owner hints: a pass was redeemed, a tenant was deleted (e-mail to the owner only).
+    worker.addEnvironment("OWNER_TOPIC_ARN", props.ownerTopic.topicArn);
+    props.ownerTopic.grantPublish(worker);
     grantLegacyAccess(worker);
     worker.addToRolePolicy(
       new PolicyStatement({
