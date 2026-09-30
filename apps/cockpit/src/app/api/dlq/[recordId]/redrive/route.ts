@@ -1,4 +1,4 @@
-import { forwardWrite } from "@/lib/forward";
+import { forwardWrite } from "@kundenportal/web-auth";
 import { parseRedrive } from "@/lib/redrive";
 
 /** J8: redrives a failed record (POST /migration/dlq/{recordId}/redrive) with corrections. */

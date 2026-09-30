@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { redeemError, tokenFromHash } from "./redeem";
-import { clientIp, fill, timeLeft, toPassLookup } from "./tenancy";
+import { fill } from "@kundenportal/ui/i18n";
+import { clientIp, timeLeft, toPassLookup } from "./tenancy";
 
 vi.mock("next/headers", () => ({ cookies: vi.fn() }));
 vi.mock("./config", () => ({

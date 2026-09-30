@@ -1,4 +1,4 @@
-import { forwardWrite } from "@/lib/forward";
+import { forwardWrite } from "@kundenportal/web-auth";
 import { isContractId, parseNewReading } from "@/lib/reading";
 
 /** J4: submits a meter reading (POST /contracts/{id}/readings). */

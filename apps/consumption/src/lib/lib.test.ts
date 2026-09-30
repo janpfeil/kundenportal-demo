@@ -1,11 +1,7 @@
 import { commonTexts } from "@kundenportal/ui/i18n";
 import { describe, expect, it } from "vitest";
-import { formatDataVolume, formatDate, formatQuantity } from "./format";
 import { checkReading, parseNewReading, readingProblem, todayInGermany } from "./reading";
-import { checkFile, parseUploadRequest } from "./upload";
 import { BASE_PATH, navigation, zonePath } from "./zone";
-
-const plain = (text: string) => text.replace(/[\u00a0\u202f]/g, " ");
 
 describe("todayInGermany", () => {
   it("uses German time, not UTC", () => {
@@ -79,31 +75,6 @@ describe("readingProblem", () => {
     expect(readingProblem(422, "Something else")).toEqual({ kind: "implausible" });
     expect(readingProblem(401, undefined)).toEqual({ kind: "session" });
     expect(readingProblem(500, undefined)).toEqual({ kind: "generic" });
-  });
-});
-
-describe("formatting", () => {
-  it("formats readings, dates and data volumes per locale", () => {
-    expect(plain(formatQuantity(12345.678, "kWh", "de"))).toBe("12.345,678 kWh");
-    expect(plain(formatQuantity(812.4, "m3", "en"))).toBe("812.4 m³");
-    expect(formatDate("2026-06-01", "de")).toBe("01.06.2026");
-    expect(plain(formatDataVolume(8192, "de"))).toBe("8 GB");
-    expect(plain(formatDataVolume(10240 * 0.83, "en"))).toBe("8.3 GB");
-  });
-});
-
-describe("upload of meter photos", () => {
-  it("uses the same checks as the documents service", () => {
-    expect(checkFile({ type: "image/jpeg", size: 1000 })).toBeUndefined();
-    expect(checkFile({ type: "image/heic", size: 1000 })).toBe("type");
-    expect(
-      parseUploadRequest({
-        fileName: "z.jpg",
-        contentType: "image/jpeg",
-        sizeBytes: 1,
-        category: "meter-photo",
-      }),
-    ).toMatchObject({ category: "meter-photo" });
   });
 });
 

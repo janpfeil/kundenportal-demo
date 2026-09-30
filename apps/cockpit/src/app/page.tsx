@@ -8,17 +8,19 @@ import {
   EmptyState,
   Notice,
   Page,
+  formatDateTime,
+  percent,
 } from "@kundenportal/ui";
 import { apiFor, tenantOf } from "@kundenportal/web-auth";
+import { requireSession } from "@kundenportal/web-auth/pages";
 import { AutoRefresh } from "@/components/auto-refresh";
 import { BulkStart } from "@/components/bulk-start";
 import { DemoReset } from "@/components/demo-reset";
 import { RedriveForm } from "@/components/redrive-form";
 import { dictionary } from "@/i18n";
-import { formatDateTime, percent } from "@/lib/format";
-import { requireSession } from "@/lib/session";
 import { accessOf } from "@/lib/tenancy";
-import { fill, zonePath } from "@/lib/zone";
+import { fill } from "@kundenportal/ui/i18n";
+import { zonePath } from "@/lib/zone";
 import { ZoneLink } from "@/lib/zone-link";
 
 export const dynamic = "force-dynamic";
@@ -91,7 +93,7 @@ export default async function CockpitPage() {
     {
       key: "updatedAt",
       header: t.columns.updatedAt,
-      render: (row) => formatDateTime(row.updatedAt, locale),
+      render: (row) => formatDateTime(row.updatedAt, locale, "medium"),
     },
   ];
   const deadLetterColumns: Column<RecordView>[] = [
@@ -115,7 +117,7 @@ export default async function CockpitPage() {
     {
       key: "startedAt",
       header: t.bulk.startedAt,
-      render: (run) => formatDateTime(run.startedAt, locale),
+      render: (run) => formatDateTime(run.startedAt, locale, "medium"),
     },
     {
       key: "status",
@@ -231,7 +233,9 @@ export default async function CockpitPage() {
           <ol className="cockpit-timeline" data-testid="timeline">
             {status.timeline.map((entry: Entry) => (
               <li key={entry.eventId} data-type={entry.detailType}>
-                <time dateTime={entry.occurredAt}>{formatDateTime(entry.occurredAt, locale)}</time>{" "}
+                <time dateTime={entry.occurredAt}>
+                  {formatDateTime(entry.occurredAt, locale, "medium")}
+                </time>{" "}
                 <strong>{entry.detailType}</strong>{" "}
                 <span className="kp-muted zone-break">{entry.summary}</span>
               </li>

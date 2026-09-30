@@ -1,12 +1,12 @@
 "use client";
 
-import { Button, Notice, NumberField, TextField } from "@kundenportal/ui";
+import { Button, Notice, NumberField, TextField, formatDateTime } from "@kundenportal/ui";
 import { sendJson } from "@kundenportal/web-auth/browser";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
 import type { Dictionary, Locale } from "@/i18n";
-import { formatDateTime } from "@/lib/format";
-import { fill, zonePath } from "@/lib/zone";
+import { fill } from "@kundenportal/ui/i18n";
+import { zonePath } from "@/lib/zone";
 
 type Created = { link: string; expiresAt: string };
 type Failure = "invalid" | "conflict" | "failed";
@@ -92,7 +92,7 @@ export function InvitationForm({
           </p>
           <p className="kp-muted">
             {fill(texts.expiresAt, {
-              date: formatDateTime(created.expiresAt, locale),
+              date: formatDateTime(created.expiresAt, locale, "medium"),
             })}
           </p>
           <p className="cockpit-actions">

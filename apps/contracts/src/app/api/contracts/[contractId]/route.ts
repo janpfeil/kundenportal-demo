@@ -1,5 +1,5 @@
 import { isContractId, parseContractUpdate } from "@/lib/contract-update";
-import { forwardWrite } from "@/lib/forward";
+import { forwardWrite } from "@kundenportal/web-auth";
 
 /** J6: changes the installment and/or tariff option of a contract (PATCH /contracts/{id}). */
 export async function PATCH(

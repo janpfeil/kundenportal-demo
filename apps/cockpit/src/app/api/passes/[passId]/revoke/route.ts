@@ -1,4 +1,4 @@
-import { forwardWrite } from "@/lib/forward";
+import { forwardWrite } from "@kundenportal/web-auth";
 import { tenancyCall } from "@/lib/tenancy";
 
 /** Revokes a demo pass (POST /tenancy/passes/{passId}/revoke); the API checks the owner group. */

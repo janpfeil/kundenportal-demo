@@ -1,4 +1,8 @@
-import type { Locale } from "@kundenportal/ui/i18n";
+/**
+ * Number and date formatting shared by all zones, so amounts, dates and sizes look the same
+ * everywhere in the portal.
+ */
+import type { Locale } from "./i18n/index.js";
 
 /** An amount in euro cents as a localised euro amount, e.g. 8500 → "85,00 €" (de). */
 export function formatEuro(cents: number, locale: Locale): string {
@@ -22,13 +26,20 @@ export function formatDate(isoDate: string, locale: Locale): string {
   return new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeZone: "UTC" }).format(date);
 }
 
-/** A point in time in German time, e.g. for upload timestamps. */
-export function formatDateTime(isoDateTime: string, locale: Locale): string {
+/**
+ * A point in time in German time, e.g. `30.09.2026, 11:20` for upload timestamps;
+ * `timeStyle: "medium"` adds seconds (`11:20:05`), as the migration cockpit shows them.
+ */
+export function formatDateTime(
+  isoDateTime: string,
+  locale: Locale,
+  timeStyle: "short" | "medium" = "short",
+): string {
   const date = new Date(isoDateTime);
   if (Number.isNaN(date.getTime())) return isoDateTime;
   return new Intl.DateTimeFormat(locale, {
     dateStyle: "medium",
-    timeStyle: "short",
+    timeStyle,
     timeZone: "Europe/Berlin",
   }).format(date);
 }
@@ -51,6 +62,17 @@ export function formatDataVolume(megabytes: number, locale: Locale): string {
   return megabytes >= 1024
     ? formatUnit(megabytes / 1024, "gigabyte", locale)
     : formatUnit(megabytes, "megabyte", locale);
+}
+
+/** A plain number with the locale's grouping, e.g. 5000 → "5.000" (de). */
+export function formatNumber(value: number, locale: Locale): string {
+  return new Intl.NumberFormat(locale).format(value);
+}
+
+/** Share of `part` in `total` as whole percent (at most 100); 0 without a total. */
+export function percent(part: number, total: number | undefined): number {
+  if (!total) return 0;
+  return Math.min(100, Math.round((part / total) * 100));
 }
 
 function formatUnit(value: number, unit: string, locale: Locale): string {

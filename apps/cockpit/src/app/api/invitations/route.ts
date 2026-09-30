@@ -1,4 +1,4 @@
-import { forwardWrite } from "@/lib/forward";
+import { forwardWrite } from "@kundenportal/web-auth";
 import { parseInvitation, tenancyCall } from "@/lib/tenancy";
 
 /** Creates a demo-pass invitation (POST /tenancy/invitations); the API checks the owner group. */

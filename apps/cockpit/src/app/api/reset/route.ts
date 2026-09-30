@@ -1,4 +1,4 @@
-import { forwardWrite } from "@/lib/forward";
+import { forwardWrite } from "@kundenportal/web-auth";
 
 /** Demo reset (POST /migration/reset); the API checks the owner group. */
 export async function POST(request: Request) {

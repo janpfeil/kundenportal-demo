@@ -126,13 +126,6 @@ export function clientIp(headers: Headers): string | undefined {
   return forwarded ? validIp(forwarded) : undefined;
 }
 
-/** Replaces `{name}` placeholders in a translated text. */
-export function fill(template: string, values: Record<string, string | number>): string {
-  return template.replace(/\{(\w+)\}/g, (match, key: string) =>
-    key in values ? String(values[key]) : match,
-  );
-}
-
 /**
  * Time left until `validUntil` in the largest sensible unit, rounded up: days while more
  * than a day is left, then hours, then minutes (short test passes run for minutes).

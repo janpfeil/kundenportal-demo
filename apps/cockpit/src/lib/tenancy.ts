@@ -5,7 +5,7 @@ import {
   groupsOf,
   zoneConfig,
 } from "@kundenportal/web-auth";
-import type { ApiResult } from "./forward";
+import type { ApiResult } from "@kundenportal/web-auth";
 
 /*
  * Demo-pass administration of the tenancy service. The typed client

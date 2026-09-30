@@ -1,6 +1,6 @@
-import { type Session, loginUrl, readSession } from "@kundenportal/web-auth";
-import { redirect } from "next/navigation";
+import { redirect } from "next/navigation.js";
 import { cache } from "react";
+import { type Session, loginUrl, readSession } from "./session.js";
 
 /** The session of the current request, read once per render (layout and page share it). */
 export const currentSession = cache(readSession);

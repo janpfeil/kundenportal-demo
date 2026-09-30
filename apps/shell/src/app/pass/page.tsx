@@ -14,7 +14,8 @@ import { AutoRefresh } from "@/components/auto-refresh";
 import { CopyButton } from "@/components/copy-button";
 import { dictionary } from "@/i18n";
 import { readSession } from "@/lib/session";
-import { type PassStatus, QUOTA_KINDS, fetchPass, fill, timeLeft } from "@/lib/tenancy";
+import { fill } from "@kundenportal/ui/i18n";
+import { type PassStatus, QUOTA_KINDS, fetchPass, timeLeft } from "@/lib/tenancy";
 
 export const dynamic = "force-dynamic";
 

@@ -5,7 +5,8 @@ import { sendJson } from "@kundenportal/web-auth/browser";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { Dictionary } from "@/i18n";
-import { fill, zonePath } from "@/lib/zone";
+import { fill } from "@kundenportal/ui/i18n";
+import { zonePath } from "@/lib/zone";
 
 type State = "idle" | "confirm" | "busy" | "done" | "failed";
 

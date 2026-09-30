@@ -7,16 +7,20 @@ import {
   EmptyState,
   Notice,
   Page,
+  formatDataVolume,
+  formatDate,
+  formatDateTime,
+  formatQuantity,
 } from "@kundenportal/ui";
 import type { Locale } from "@kundenportal/ui/i18n";
 import { apiFor, loginUrl } from "@kundenportal/web-auth";
+import { requireSession } from "@kundenportal/web-auth/pages";
 import { ReadingForm } from "@/components/reading-form";
 import { UploadForm } from "@/components/upload-form";
 import { type Dictionary, dictionary } from "@/i18n";
-import { formatDataVolume, formatDate, formatDateTime, formatQuantity } from "@/lib/format";
 import { todayInGermany } from "@/lib/reading";
-import { requireSession } from "@/lib/session";
-import { fill, zonePath } from "@/lib/zone";
+import { fill } from "@kundenportal/ui/i18n";
+import { zonePath } from "@/lib/zone";
 import { ZoneLink } from "@/lib/zone-link";
 
 export const dynamic = "force-dynamic";

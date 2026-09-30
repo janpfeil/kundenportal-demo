@@ -8,15 +8,18 @@ import {
   EmptyState,
   Notice,
   Page,
+  formatDate,
+  formatDateTime,
+  formatEuro,
+  formatFileSize,
 } from "@kundenportal/ui";
 import { apiFor, loginUrl } from "@kundenportal/web-auth";
-import Link from "next/link";
+import { requireSession } from "@kundenportal/web-auth/pages";
 import { UploadForm } from "@/components/upload-form";
 import { dictionary } from "@/i18n";
-import { formatDate, formatDateTime, formatEuro, formatFileSize } from "@/lib/format";
-import { requireSession } from "@/lib/session";
 import { ZoneLink } from "@/lib/zone-link";
 import { zonePath } from "@/lib/zone";
+import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 

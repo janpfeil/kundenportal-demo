@@ -1,5 +1,5 @@
-import { forwardWrite } from "@/lib/forward";
-import { parseUploadRequest } from "@/lib/upload";
+import { forwardWrite } from "@kundenportal/web-auth";
+import { parseUploadRequest } from "@kundenportal/web-auth/upload";
 
 /** Announces an upload and returns the presigned PUT (POST /documents/upload-url). */
 export async function POST(request: Request) {

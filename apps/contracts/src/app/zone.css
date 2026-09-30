@@ -11,10 +11,6 @@
   margin-top: 16px;
 }
 
-.zone-file {
-  max-width: 100%;
-}
-
 /* Long file names and ids must wrap on 360 px wide screens. */
 .zone-break {
   overflow-wrap: anywhere;

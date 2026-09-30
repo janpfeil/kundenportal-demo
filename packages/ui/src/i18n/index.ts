@@ -25,6 +25,13 @@ export function otherLocale(locale: Locale): Locale {
   return locale === "de" ? "en" : "de";
 }
 
+/** Replaces `{name}` placeholders in a translated text; unknown placeholders stay visible. */
+export function fill(template: string, values: Record<string, string | number>): string {
+  return template.replace(/\{(\w+)\}/g, (match, key: string) =>
+    key in values ? String(values[key]) : match,
+  );
+}
+
 /** Picks the UI language: explicit choice (cookie) first, then the browser's preference, else German. */
 export function negotiateLocale(
   cookieValue: string | undefined,

@@ -476,6 +476,13 @@ importers:
         version: 4.1.0
 
   packages/ui:
+    dependencies:
+      '@kundenportal/api-contract':
+        specifier: workspace:*
+        version: link:../api-contract
+      '@kundenportal/web-auth':
+        specifier: workspace:*
+        version: link:../web-auth
     devDependencies:
       '@storybook/addon-a11y':
         specifier: ^10.6.1
@@ -529,9 +536,18 @@ importers:
         specifier: ^6.2.12
         version: 6.2.12
     devDependencies:
+      '@types/react':
+        specifier: ^19.3.0
+        version: 19.3.0
       next:
         specifier: ^16.3.7
         version: 16.3.7(@babel/core@7.29.7(supports-color@10.2.2))(@playwright/test@1.63.0)(@types/node@26.6.3)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      react:
+        specifier: ^19.3.0
+        version: 19.3.0
+      react-dom:
+        specifier: ^19.3.0
+        version: 19.3.0(react@19.3.0)
 
   packages/widget-notifications:
     devDependencies:

@@ -144,9 +144,15 @@ a {
   list-style: none;
 }
 
+/* Current section: bold text plus a thick accent underline (not colour alone, and it
+   survives forced-colors mode, where the underline takes the link colour). */
 .kp-nav a[aria-current="page"] {
   font-weight: 700;
-  text-decoration-thickness: 2px;
+  color: var(--kp-text);
+  text-decoration-line: underline;
+  text-decoration-color: var(--kp-accent);
+  text-decoration-thickness: 3px;
+  text-underline-offset: 0.35em;
 }
 
 .kp-actions {
@@ -533,4 +539,17 @@ a {
   .kp-meter-bar {
     background: Highlight;
   }
+}
+
+/* Upload form (announce, then PUT to the presigned URL) */
+
+.kp-upload {
+  display: grid;
+  gap: 16px;
+  max-width: 32rem;
+  margin-top: 16px;
+}
+
+.kp-upload-file {
+  max-width: 100%;
 }

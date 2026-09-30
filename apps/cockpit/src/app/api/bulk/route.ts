@@ -1,4 +1,4 @@
-import { forwardWrite } from "@/lib/forward";
+import { forwardWrite } from "@kundenportal/web-auth";
 
 /** J7: starts a bulk import (POST /migration/bulk); the API checks the owner group. */
 export async function POST(request: Request) {

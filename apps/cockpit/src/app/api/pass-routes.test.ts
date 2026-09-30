@@ -3,16 +3,25 @@ import { accessOf, isRevocable, parseInvitation } from "@/lib/tenancy";
 
 const readSession = vi.fn();
 
-vi.mock("@kundenportal/web-auth", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@kundenportal/web-auth")>()),
-  zoneConfig: () => ({
-    appUrl: new URL("https://portal.example"),
-    apiUrl: "https://api.example/api",
-    clientId: "c",
-  }),
-  readSession: () => readSession(),
-  apiFor: vi.fn(() => ({})),
-}));
+vi.mock("@kundenportal/web-auth", async (importOriginal) => {
+  const original = await importOriginal<typeof import("@kundenportal/web-auth")>();
+  const mocked = {
+    zoneConfig: () => ({
+      appUrl: new URL("https://portal.example"),
+      apiUrl: "https://api.example/api",
+      clientId: "c",
+    }),
+    readSession: () => readSession(),
+    apiFor: vi.fn((_session: unknown) => ({})),
+  };
+  // The shared write path, wired to the mocked session, configuration and API client.
+  const forwardWrite = original.writePath({
+    readSession: mocked.readSession,
+    appUrl: () => mocked.zoneConfig().appUrl,
+    apiFor: (session) => mocked.apiFor(session) as never,
+  });
+  return { ...original, ...mocked, forwardWrite };
+});
 
 const { POST: invite } = await import("./invitations/route");
 const { POST: revoke } = await import("./passes/[passId]/revoke/route");

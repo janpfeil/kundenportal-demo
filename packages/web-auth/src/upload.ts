@@ -1,3 +1,8 @@
+/*
+ * Upload rules shared by the browser (checks before announcing a file) and the zones' route
+ * handlers (validation of the announcement). Free of server APIs, so client components may
+ * import it (`@kundenportal/web-auth/upload`).
+ */
 import type {
   DocumentCategory,
   UploadContentType,

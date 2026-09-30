@@ -3,16 +3,25 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const api = { POST: vi.fn() };
 const readSession = vi.fn();
 
-vi.mock("@kundenportal/web-auth", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@kundenportal/web-auth")>()),
-  zoneConfig: () => ({
-    appUrl: new URL("https://portal.example"),
-    apiUrl: "https://api.example",
-    clientId: "c",
-  }),
-  readSession: () => readSession(),
-  apiFor: vi.fn(() => api),
-}));
+vi.mock("@kundenportal/web-auth", async (importOriginal) => {
+  const original = await importOriginal<typeof import("@kundenportal/web-auth")>();
+  const mocked = {
+    zoneConfig: () => ({
+      appUrl: new URL("https://portal.example"),
+      apiUrl: "https://api.example",
+      clientId: "c",
+    }),
+    readSession: () => readSession(),
+    apiFor: vi.fn((_session: unknown) => api),
+  };
+  // The shared write path, wired to the mocked session, configuration and API client.
+  const forwardWrite = original.writePath({
+    readSession: mocked.readSession,
+    appUrl: () => mocked.zoneConfig().appUrl,
+    apiFor: (session) => mocked.apiFor(session) as never,
+  });
+  return { ...original, ...mocked, forwardWrite };
+});
 
 const { POST: bulk } = await import("./bulk/route");
 const { POST: redrive } = await import("./dlq/[recordId]/redrive/route");

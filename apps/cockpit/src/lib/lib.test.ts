@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { de } from "@/i18n/de";
 import { en } from "@/i18n/en";
-import { formatDateTime, percent } from "./format";
 import { parseRedrive } from "./redrive";
 import { navigation, zonePath } from "./zone";
 
@@ -14,12 +13,6 @@ describe("cockpit helpers", () => {
     expect(parseRedrive({ corrections: { postalCode: "4229" } })).toBeUndefined();
     expect(parseRedrive({ corrections: { email: "helga.kraus@example" } })).toBeUndefined();
     expect(parseRedrive({ corrections: { street: "x" } })).toBeUndefined();
-  });
-
-  it("computes progress in whole percent and formats times in German time", () => {
-    expect(percent(1, 3)).toBe(33);
-    expect(percent(5, undefined)).toBe(0);
-    expect(formatDateTime("2026-09-30T10:00:00.000Z", "de")).toContain("12:00:00");
   });
 
   it("lives under /cockpit and marks itself in the navigation", () => {

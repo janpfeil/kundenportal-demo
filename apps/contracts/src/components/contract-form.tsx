@@ -1,7 +1,7 @@
 "use client";
 
 import type { Contract, ContractUpdate, Problem } from "@kundenportal/api-contract";
-import { Button, Notice, NumberField, Select } from "@kundenportal/ui";
+import { Button, Notice, NumberField, Select, formatEuro } from "@kundenportal/ui";
 import type { Locale } from "@kundenportal/ui/i18n";
 import { sendJson } from "@kundenportal/web-auth/browser";
 import { useRouter } from "next/navigation";
@@ -12,8 +12,8 @@ import {
   contractProblem,
   parseInstallmentEuros,
 } from "@/lib/contract-update";
-import { formatEuro } from "@/lib/format";
-import { fill, zonePath } from "@/lib/zone";
+import { fill } from "@kundenportal/ui/i18n";
+import { zonePath } from "@/lib/zone";
 
 export type ContractFormTexts = Dictionary["form"];
 

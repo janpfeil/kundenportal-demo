@@ -1,15 +1,22 @@
 "use client";
 
 import type { MeterReading, MeterUnit, Problem } from "@kundenportal/api-contract";
-import { Button, Notice, NumberField, TextField } from "@kundenportal/ui";
+import {
+  Button,
+  Notice,
+  NumberField,
+  TextField,
+  formatDate,
+  formatQuantity,
+} from "@kundenportal/ui";
 import type { Locale } from "@kundenportal/ui/i18n";
 import { sendJson } from "@kundenportal/web-auth/browser";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useId, useState } from "react";
 import type { Dictionary } from "@/i18n";
-import { formatDate, formatQuantity } from "@/lib/format";
 import { type ReadingField, checkReading, readingProblem } from "@/lib/reading";
-import { fill, zonePath } from "@/lib/zone";
+import { fill } from "@kundenportal/ui/i18n";
+import { zonePath } from "@/lib/zone";
 
 export type ReadingTexts = Dictionary["reading"];
 

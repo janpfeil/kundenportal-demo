@@ -13,6 +13,14 @@
     "./browser": {
       "types": "./dist/browser.d.ts",
       "default": "./dist/browser.js"
+    },
+    "./pages": {
+      "types": "./dist/pages.d.ts",
+      "default": "./dist/pages.js"
+    },
+    "./upload": {
+      "types": "./dist/upload.d.ts",
+      "default": "./dist/upload.js"
     }
   },
   "files": [
@@ -30,9 +38,13 @@
     "jose": "^6.2.12"
   },
   "peerDependencies": {
-    "next": "^16.3.7"
+    "next": "^16.3.7",
+    "react": "^19.3.0"
   },
   "devDependencies": {
-    "next": "^16.3.7"
+    "@types/react": "^19.3.0",
+    "next": "^16.3.7",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
   }
 }

@@ -7,12 +7,12 @@ import {
   DataTable,
   Notice,
   Page,
+  formatDateTime,
 } from "@kundenportal/ui";
 import { InvitationForm } from "@/components/invitation-form";
 import { RevokeButton } from "@/components/revoke-button";
 import { dictionary } from "@/i18n";
-import { formatDateTime } from "@/lib/format";
-import { requireSession } from "@/lib/session";
+import { requireSession } from "@kundenportal/web-auth/pages";
 import {
   type PassStatus,
   type PassSummary,
@@ -20,7 +20,8 @@ import {
   isRevocable,
   listPasses,
 } from "@/lib/tenancy";
-import { fill, zonePath } from "@/lib/zone";
+import { fill } from "@kundenportal/ui/i18n";
+import { zonePath } from "@/lib/zone";
 import { ZoneLink } from "@/lib/zone-link";
 
 export const dynamic = "force-dynamic";
@@ -89,7 +90,7 @@ export default async function PassesPage() {
     {
       key: "validUntil",
       header: texts.list.validUntil,
-      render: (pass) => formatDateTime(pass.validUntil, locale),
+      render: (pass) => formatDateTime(pass.validUntil, locale, "medium"),
     },
     {
       key: "action",

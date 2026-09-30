@@ -3,7 +3,7 @@ import { otherLocale } from "@kundenportal/ui/i18n";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { dictionary } from "@/i18n";
-import { currentSession } from "@/lib/session";
+import { currentSession } from "@kundenportal/web-auth/pages";
 import { navigation } from "@/lib/zone";
 import { ZoneLink } from "@/lib/zone-link";
 import "@kundenportal/ui/styles.css";

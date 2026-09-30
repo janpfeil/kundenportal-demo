@@ -30,6 +30,10 @@
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build -o storybook-static --quiet"
   },
+  "dependencies": {
+    "@kundenportal/api-contract": "workspace:*",
+    "@kundenportal/web-auth": "workspace:*"
+  },
   "peerDependencies": {
     "react": "^19.3.0"
   },

@@ -6,44 +6,7 @@ import {
   parseContractUpdate,
   parseInstallmentEuros,
 } from "./contract-update";
-import {
-  formatDataVolume,
-  formatDate,
-  formatEuro,
-  formatFileSize,
-  formatQuantity,
-  formatUnitPrice,
-} from "./format";
-import { checkFile, parseUploadRequest, uploadFileName, uploadRequest } from "./upload";
-import { BASE_PATH, fill, navigation, zonePath } from "./zone";
-
-// Intl uses narrow no-break spaces in some locales; compare with plain spaces.
-const plain = (text: string) => text.replace(/[\u00a0\u202f]/g, " ");
-
-describe("formatting", () => {
-  it("formats cents as euros per locale", () => {
-    expect(plain(formatEuro(8500, "de"))).toBe("85,00 €");
-    expect(plain(formatEuro(123456, "de"))).toBe("1.234,56 €");
-    expect(formatEuro(8500, "en")).toBe("€85.00");
-    expect(plain(formatUnitPrice(32, "de"))).toBe("0,32 €");
-    expect(plain(formatUnitPrice(113.5, "de"))).toBe("1,135 €");
-  });
-
-  it("formats calendar dates without shifting them across time zones", () => {
-    expect(formatDate("2026-12-31", "de")).toBe("31.12.2026");
-    expect(formatDate("2026-12-31", "en")).toBe("Dec 31, 2026");
-    expect(formatDate("kaputt", "de")).toBe("kaputt");
-  });
-
-  it("formats sizes, quantities and data volumes", () => {
-    expect(plain(formatFileSize(2_500_000, "de"))).toBe("2,4 MB");
-    expect(plain(formatFileSize(1000, "en"))).toBe("1 kB");
-    expect(plain(formatQuantity(3500.5, "kWh", "de"))).toBe("3.500,5 kWh");
-    expect(plain(formatQuantity(12, "m3", "en"))).toBe("12 m³");
-    expect(plain(formatDataVolume(20480, "de"))).toBe("20 GB");
-    expect(plain(formatDataVolume(512, "en"))).toBe("512 MB");
-  });
-});
+import { BASE_PATH, navigation, zonePath } from "./zone";
 
 describe("installment input", () => {
   it("accepts whole euros within the range", () => {
@@ -102,48 +65,6 @@ describe("contract update body", () => {
   });
 });
 
-describe("upload", () => {
-  it("checks type and size before announcing a file", () => {
-    expect(checkFile(undefined)).toBe("missing");
-    expect(checkFile({ type: "image/gif", size: 10 })).toBe("type");
-    expect(checkFile({ type: "image/png", size: 0 })).toBe("empty");
-    expect(checkFile({ type: "application/pdf", size: 5 * 1024 * 1024 + 1 })).toBe("size");
-    expect(checkFile({ type: "image/jpeg", size: 5 * 1024 * 1024 })).toBeUndefined();
-  });
-
-  it("cleans file names the way the documents service accepts them", () => {
-    expect(uploadFileName("zähler foto.jpg")).toBe("zähler foto.jpg");
-    expect(uploadFileName("a/b\\c\u0001.pdf")).toBe("a_b_c_.pdf");
-    const long = uploadFileName(`${"x".repeat(200)}.pdf`);
-    expect(long).toHaveLength(120);
-    expect(long.endsWith(".pdf")).toBe(true);
-    expect(uploadRequest({ name: "a.png", type: "image/png", size: 3 }, "meter-photo")).toEqual({
-      fileName: "a.png",
-      contentType: "image/png",
-      sizeBytes: 3,
-      category: "meter-photo",
-    });
-  });
-
-  it("validates the announcement at the zone's boundary", () => {
-    const valid = { fileName: "a.pdf", contentType: "application/pdf", sizeBytes: 1 };
-    expect(parseUploadRequest(valid)).toEqual(valid);
-    expect(parseUploadRequest({ ...valid, category: "meter-photo" })).toMatchObject({
-      category: "meter-photo",
-    });
-    for (const body of [
-      null,
-      { ...valid, contentType: "text/html" },
-      { ...valid, sizeBytes: 0 },
-      { ...valid, sizeBytes: 5 * 1024 * 1024 + 1 },
-      { ...valid, fileName: " " },
-      { ...valid, category: "invoice" },
-      { ...valid, key: "uploads/other" },
-    ])
-      expect(parseUploadRequest(body)).toBeUndefined();
-  });
-});
-
 describe("zone", () => {
   it("builds paths below the basePath", () => {
     expect(BASE_PATH).toBe("/vertraege");
@@ -162,10 +83,5 @@ describe("zone", () => {
     ]);
     expect(nav.filter((item) => item.active).map((item) => item.href)).toEqual(["/vertraege"]);
     expect(navigation(commonTexts.en, false)).toEqual([{ href: "/", label: "Home" }]);
-  });
-
-  it("fills placeholders", () => {
-    expect(fill("{min} bis {max}", { min: "1 €", max: 2 })).toBe("1 € bis 2");
-    expect(fill("{unknown}", {})).toBe("{unknown}");
   });
 });

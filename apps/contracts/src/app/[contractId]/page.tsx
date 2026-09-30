@@ -1,20 +1,27 @@
 import type { Contract } from "@kundenportal/api-contract";
-import { Badge, ButtonLink, Card, type Fact, Facts, Notice, Page } from "@kundenportal/ui";
-import type { Locale } from "@kundenportal/ui/i18n";
-import { apiFor, loginUrl } from "@kundenportal/web-auth";
-import { notFound } from "next/navigation";
-import { ContractForm } from "@/components/contract-form";
-import { type Dictionary, dictionary } from "@/i18n";
-import { isContractId } from "@/lib/contract-update";
 import {
+  Badge,
+  ButtonLink,
+  Card,
+  type Fact,
+  Facts,
+  Notice,
+  Page,
   formatDataVolume,
   formatDate,
   formatEuro,
   formatQuantity,
   formatUnitPrice,
-} from "@/lib/format";
-import { requireSession } from "@/lib/session";
-import { fill, zonePath } from "@/lib/zone";
+} from "@kundenportal/ui";
+import type { Locale } from "@kundenportal/ui/i18n";
+import { apiFor, loginUrl } from "@kundenportal/web-auth";
+import { requireSession } from "@kundenportal/web-auth/pages";
+import { notFound } from "next/navigation";
+import { ContractForm } from "@/components/contract-form";
+import { type Dictionary, dictionary } from "@/i18n";
+import { isContractId } from "@/lib/contract-update";
+import { fill } from "@kundenportal/ui/i18n";
+import { zonePath } from "@/lib/zone";
 import { ZoneLink } from "@/lib/zone-link";
 
 export const dynamic = "force-dynamic";
