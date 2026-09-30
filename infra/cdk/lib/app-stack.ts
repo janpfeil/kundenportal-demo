@@ -1,4 +1,5 @@
 import { Duration, Fn, Stack, type StackProps } from "aws-cdk-lib";
+import { PolicyStatement } from "aws-cdk-lib/aws-iam";
 import { Table } from "aws-cdk-lib/aws-dynamodb";
 import { SqsEventSource } from "aws-cdk-lib/aws-lambda-event-sources";
 import { Bucket } from "aws-cdk-lib/aws-s3";
@@ -11,6 +12,7 @@ import type { PortalConfig } from "./config.js";
 import { DomainServices } from "./domain-services.js";
 import { Events } from "./events.js";
 import { Migration } from "./migration.js";
+import { Tenancy } from "./tenancy.js";
 import { ServiceFunction } from "./functions.js";
 import { PARAM } from "./parameters.js";
 import { NextLambda } from "./next-lambda.js";
@@ -71,11 +73,12 @@ export class AppStack extends Stack {
       }),
     );
 
+    const uploadBucket = Bucket.fromBucketName(this, "Uploads", param(PARAM.base.uploadBucketName));
     const domains = new DomainServices(this, "Domains", {
       table,
       bus: events.bus,
       ownerTopic,
-      uploadBucket: Bucket.fromBucketName(this, "Uploads", param(PARAM.base.uploadBucketName)),
+      uploadBucket,
       reservedConcurrency,
     });
 
@@ -86,6 +89,31 @@ export class AppStack extends Stack {
       userPoolId,
       contractWorker: domains.contractWorker,
       contractDlq: domains.contractDlq,
+      reservedConcurrency,
+    });
+
+    // Token vending (phase 4): every service built so far reaches pass tenants' tables only
+    // through the tenant role, with the tenant as session tag.
+    const tenantDataRoleArn = param(PARAM.base.tenantDataRoleArn);
+    for (const fn of this.node.findAll().filter((c) => c instanceof ServiceFunction)) {
+      fn.addEnvironment("TENANT_DATA_ROLE_ARN", tenantDataRoleArn);
+      fn.addToRolePolicy(
+        new PolicyStatement({
+          actions: ["sts:AssumeRole", "sts:TagSession"],
+          resources: [tenantDataRoleArn],
+        }),
+      );
+    }
+
+    // The tenancy service manages tenants itself and needs no vended access.
+    const tenancy = new Tenancy(this, "Tenancy", {
+      table,
+      bus: events.bus,
+      ownerTopic,
+      uploadBucket,
+      userPoolId,
+      scheduleGroup: param(PARAM.base.passScheduleGroup),
+      portalUrl: `https://${config.domainName}`,
       reservedConcurrency,
     });
 
@@ -110,6 +138,12 @@ export class AppStack extends Stack {
         startBulkMigration: migration.api,
         resetMigration: migration.api,
         redriveMigrationRecord: migration.api,
+        createInvitation: tenancy.api,
+        listPasses: tenancy.api,
+        revokePass: tenancy.api,
+        getOwnPass: tenancy.api,
+        getRedeemChallenge: tenancy.publicApi,
+        redeemInvitation: tenancy.publicApi,
       },
       issuer,
       audience: [clientId],

@@ -8,6 +8,7 @@ import type { Construct } from "constructs";
 import type { PortalConfig } from "./config.js";
 import { Identity } from "./identity.js";
 import { PARAM } from "./parameters.js";
+import { TenantCleanup } from "./tenant-cleanup.js";
 import { TenantData } from "./tenant-data.js";
 import { Uploads } from "./uploads.js";
 
@@ -34,15 +35,6 @@ export class BaseStack extends Stack {
       removalPolicy: RemovalPolicy.DESTROY,
     });
 
-    const identity = new Identity(this, "Identity", {
-      domainName: config.domainName,
-      cognitoDomainPrefix: config.cognitoDomainPrefix,
-      allowLocalhostCallback: config.allowLocalhostCallback,
-      reservedConcurrency: config.reservedConcurrency,
-      apiScopes: apiScopes(loadApiRoutes()),
-      table,
-    });
-
     // Uploads outlive an app teardown like the table; the lifecycle rule empties the bucket.
     const uploads = new Uploads(this, "Uploads", {
       domainName: config.domainName,
@@ -51,6 +43,25 @@ export class BaseStack extends Stack {
 
     // Phase 4: token vending role and expiry schedules of the demo-pass tenants.
     const tenantData = new TenantData(this, "TenantData", { uploadBucket: uploads.bucket });
+
+    const identity = new Identity(this, "Identity", {
+      domainName: config.domainName,
+      cognitoDomainPrefix: config.cognitoDomainPrefix,
+      allowLocalhostCallback: config.allowLocalhostCallback,
+      reservedConcurrency: config.reservedConcurrency,
+      apiScopes: apiScopes(loadApiRoutes()),
+      table,
+      tenantDataRoleArn: tenantData.role.roleArn,
+    });
+
+    new TenantCleanup(this, "TenantCleanup", {
+      table,
+      uploadBucket: uploads.bucket,
+      userPoolId: identity.userPool.userPoolId,
+      portalUrl: `https://${config.domainName}`,
+      reservedConcurrency: config.reservedConcurrency,
+      dependsOn: [table, identity.userPool, uploads.bucket, tenantData.scheduleGroup],
+    });
 
     const ownerTopic = new Topic(this, "OwnerHints", { displayName: "Kundenportal" });
     ownerTopic.addSubscription(

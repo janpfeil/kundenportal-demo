@@ -85,11 +85,13 @@ describe("guard rails", () => {
           },
         }),
       ).length;
-    // Cognito triggers: pre token generation, migrate user, post authentication.
-    expect(own(base, 2)).toBe(3);
+    // Cognito triggers: pre token generation, migrate user, post authentication; the
+    // cleanup of the pass tenants (custom resource).
+    expect(own(base, 2)).toBe(4);
     // Services: customer API + worker, notification API + consumer, API + worker for
-    // contract, consumption and documents, migration API + worker + record processor.
-    expect(own(application, 2)).toBe(13);
+    // contract, consumption and documents, migration API + worker + record processor,
+    // tenancy API + public + worker.
+    expect(own(application, 2)).toBe(16);
     // Next.js functions (shell and zones) get more headroom for bursty page loads.
     expect(own(application, 5)).toBe(1 + ZONES.length);
     for (const template of all())
@@ -152,7 +154,13 @@ describe("api and events", () => {
   it("protects every route with the JWT authorizer and the contract's scopes", () => {
     const routes = Object.values(application.findResources("AWS::ApiGatewayV2::Route"));
     expect(routes).toHaveLength(loadApiRoutes().length);
-    for (const route of routes) {
+    // Only redeeming an invitation works before the visitor has an account (ALTCHA instead).
+    const open = routes.filter((route) => route.Properties.AuthorizationType === "NONE");
+    expect(open.map((route) => route.Properties.RouteKey).sort()).toEqual([
+      "GET /tenancy/challenge",
+      "POST /tenancy/redeem",
+    ]);
+    for (const route of routes.filter((r) => !open.includes(r))) {
       expect(route.Properties.AuthorizationType).toBe("JWT");
       expect(route.Properties.AuthorizationScopes.length).toBeGreaterThan(0);
     }
@@ -176,7 +184,8 @@ describe("api and events", () => {
 describe("domain services", () => {
   const routeScopes = () =>
     Object.values(application.findResources("AWS::ApiGatewayV2::Route")).map(
-      (route) => `${route.Properties.RouteKey} ${route.Properties.AuthorizationScopes.join(",")}`,
+      (route) =>
+        `${route.Properties.RouteKey} ${(route.Properties.AuthorizationScopes ?? []).join(",")}`,
     );
 
   it("serves contracts, readings and documents with their scopes", () => {
@@ -212,11 +221,11 @@ describe("domain services", () => {
     const sources = queues.filter((queue) => queue.Properties.RedrivePolicy);
     expect(sources).toHaveLength(1);
     expect(sources[0]?.Properties.RedrivePolicy.maxReceiveCount).toBe(3);
-    // DLQs of notification, contract, consumption, documents, customer, migration worker
-    // and the migration record DLQ (expected failures of the demo, shown in the cockpit,
-    // therefore without alarm)
-    expect(queues.length - sources.length).toBe(7);
-    expect(Object.keys(application.findResources("AWS::CloudWatch::Alarm"))).toHaveLength(6);
+    // DLQs of notification, contract, consumption, documents, customer, migration worker,
+    // tenancy worker and the migration record DLQ (expected failures of the demo, shown in
+    // the cockpit, therefore without alarm)
+    expect(queues.length - sources.length).toBe(8);
+    expect(Object.keys(application.findResources("AWS::CloudWatch::Alarm"))).toHaveLength(7);
     const mappings = Object.values(application.findResources("AWS::Lambda::EventSourceMapping"));
     expect(mappings).toHaveLength(1);
     expect(mappings[0]?.Properties.FunctionResponseTypes).toEqual(["ReportBatchItemFailures"]);
@@ -229,8 +238,9 @@ describe("domain services", () => {
       .filter((target) => !JSON.stringify(target.Arn).includes("NotificationQueue"));
     // contract 4 (CustomerRegistered, MeterReadingSubmitted, LegacyAccountMigrated,
     // AccountsLinked), consumption 2, documents 2 (CustomerRegistered, S3 upload),
-    // customer 2 (LegacyAccountMigrated, AccountsLinked), migration 1 (all events)
-    expect(lambdaTargets).toHaveLength(11);
+    // customer 2 (LegacyAccountMigrated, AccountsLinked), migration 1 (all events),
+    // tenancy 1 (all events of pass tenants)
+    expect(lambdaTargets).toHaveLength(12);
     for (const target of lambdaTargets) {
       expect(target.RetryPolicy).toEqual({
         MaximumRetryAttempts: 8,
@@ -267,19 +277,26 @@ describe("domain services", () => {
       `${one("kundenportal.migration")} PasswordResetRequired`,
       `${one("kundenportal.migration")} DuplicateCandidateFound`,
       `${one("aws.s3")} Object Created`,
-      // the migration worker sees every event of the portal (timeline)
-      `${JSON.stringify([{ prefix: "kundenportal." }])} *`,
     ])
       expect(count(pattern)).toBe(1);
+    // the migration worker sees every event of the portal (timeline), the tenancy worker
+    // every event of a pass tenant (set-up, teardown, events quota)
+    expect(count(`${JSON.stringify([{ prefix: "kundenportal." }])} *`)).toBe(2);
+    application.hasResourceProperties("AWS::Events::Rule", {
+      EventPattern: {
+        source: [{ prefix: "kundenportal." }],
+        detail: { tenantId: [{ prefix: "p" }] },
+      },
+    });
   });
 
   it("hands failed asynchronous invocations of the workers to a DLQ", () => {
     const configs = Object.values(application.findResources("AWS::Lambda::EventInvokeConfig"));
-    // contract, consumption, documents, customer, migration worker; plus the record
-    // processor, which does not retry (see the migration tests)
-    expect(configs).toHaveLength(6);
+    // contract, consumption, documents, customer, migration worker, tenancy worker; plus
+    // the record processor, which does not retry (see the migration tests)
+    expect(configs).toHaveLength(7);
     const workers = configs.filter((c) => c.Properties.MaximumRetryAttempts !== 0);
-    expect(workers).toHaveLength(5);
+    expect(workers).toHaveLength(6);
     for (const config of workers) {
       expect(config.Properties.MaximumRetryAttempts).toBe(2);
       expect(config.Properties.DestinationConfig.OnFailure.Destination).toBeDefined();
@@ -315,6 +332,8 @@ describe("domain services", () => {
         "s3:PutObjectVersionTagging",
         "s3:Abort*",
         "s3:DeleteObject*",
+        // tenancy worker: find a pass tenant's uploads to delete them
+        "s3:ListBucket",
       ]),
     );
   });
@@ -526,13 +545,14 @@ describe("migration (phase 3)", () => {
         );
       }
     }
-    // user migration, post authentication, pre token; migration API, worker and processor
+    // user migration, post authentication, pre token, tenant cleanup; migration API,
+    // worker and processor, tenancy worker
     const count = (template: Template) =>
       Object.values(template.findResources("AWS::Lambda::Function")).filter(
         (fn) => fn.Properties.Environment?.Variables?.LEGACY_TELCO_URL_PARAM,
       ).length;
-    expect(count(base)).toBe(3);
-    expect(count(application)).toBe(3);
+    expect(count(base)).toBe(4);
+    expect(count(application)).toBe(4);
   });
 
   it("hands failed record tasks to the migration DLQ without retries", () => {
@@ -542,18 +562,21 @@ describe("migration (phase 3)", () => {
     });
   });
 
-  it("lets only the record processor create Cognito users", () => {
+  it("lets only the record processor and the tenancy worker create Cognito users", () => {
     const policies = Object.values(application.findResources("AWS::IAM::Policy"));
     const creating = policies.filter((policy) =>
       JSON.stringify(policy.Properties.PolicyDocument).includes("cognito-idp:AdminCreateUser"),
     );
-    expect(creating).toHaveLength(1);
-    expect(JSON.stringify(creating[0]?.Properties.Roles)).toContain("MigrationProcessor");
+    expect(creating).toHaveLength(2);
+    const roles = JSON.stringify(creating.map((policy) => policy.Properties.Roles));
+    expect(roles).toContain("MigrationProcessor");
+    expect(roles).toContain("TenancyWorker");
   });
 
   it("serves the links and the cockpit with their scopes", () => {
     const routes = Object.values(application.findResources("AWS::ApiGatewayV2::Route")).map(
-      (route) => `${route.Properties.RouteKey} ${route.Properties.AuthorizationScopes.join(",")}`,
+      (route) =>
+        `${route.Properties.RouteKey} ${(route.Properties.AuthorizationScopes ?? []).join(",")}`,
     );
     expect(routes).toEqual(
       expect.arrayContaining([

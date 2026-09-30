@@ -39,6 +39,8 @@ export interface IdentityProps {
   apiScopes: { resourceServer: string; name: string }[];
   /** Single table; the post authentication trigger keeps its marker there. */
   table: ITable;
+  /** Phase 4: role the triggers assume for a pass tenant's own table (token vending). */
+  tenantDataRoleArn: string;
 }
 
 /**
@@ -87,8 +89,11 @@ export class Identity extends Construct {
       reservedConcurrency: props.reservedConcurrency,
       // Cognito waits at most 5 seconds for a trigger.
       timeout: Duration.seconds(5),
+      // Reads the pass tenant of a plus address (`anna.becker+<tenant>@…`) in the base table.
+      environment: { TABLE_NAME: props.table.tableName },
     });
     grantLegacyAccess(migrateUser);
+    props.table.grantReadData(migrateUser);
     this.userPool.addTrigger(UserPoolOperation.USER_MIGRATION, migrateUser);
 
     // After the first sign-in of a migrated user: publish LegacyAccountMigrated. Both
@@ -100,10 +105,20 @@ export class Identity extends Construct {
         description,
         reservedConcurrency: props.reservedConcurrency,
         timeout: Duration.seconds(5),
-        environment: { TABLE_NAME: props.table.tableName, EVENT_BUS_NAME },
+        environment: {
+          TABLE_NAME: props.table.tableName,
+          EVENT_BUS_NAME,
+          TENANT_DATA_ROLE_ARN: props.tenantDataRoleArn,
+        },
       });
       grantLegacyAccess(fn);
       props.table.grantReadWriteData(fn);
+      fn.addToRolePolicy(
+        new PolicyStatement({
+          actions: ["sts:AssumeRole", "sts:TagSession"],
+          resources: [props.tenantDataRoleArn],
+        }),
+      );
       // The bus lives in the app stack; the name is fixed, so no reference between the stacks.
       fn.addToRolePolicy(
         new PolicyStatement({

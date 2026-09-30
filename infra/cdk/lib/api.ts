@@ -1,4 +1,4 @@
-import { HttpApi, HttpMethod, HttpStage } from "aws-cdk-lib/aws-apigatewayv2";
+import { HttpApi, HttpMethod, HttpNoneAuthorizer, HttpStage } from "aws-cdk-lib/aws-apigatewayv2";
 import { HttpJwtAuthorizer } from "aws-cdk-lib/aws-apigatewayv2-authorizers";
 import { HttpLambdaIntegration } from "aws-cdk-lib/aws-apigatewayv2-integrations";
 import type { IFunction } from "aws-cdk-lib/aws-lambda";
@@ -39,6 +39,9 @@ export class Api extends Construct {
     });
 
     const authorizer = new HttpJwtAuthorizer("Jwt", props.issuer, { jwtAudience: props.audience });
+    // Only operations the contract declares with `security: []` (redeeming an invitation
+    // before the visitor has an account) go without; they check an ALTCHA proof instead.
+    const open = new HttpNoneAuthorizer();
     const integrations = new Map<IFunction, HttpLambdaIntegration>();
     for (const route of props.routes) {
       const handler = props.handlers[route.operationId];
@@ -51,8 +54,9 @@ export class Api extends Construct {
         path: route.path,
         methods: [HttpMethod[route.method]],
         integration,
-        authorizer,
-        authorizationScopes: route.scopes,
+        ...(route.public
+          ? { authorizer: open }
+          : { authorizer, authorizationScopes: route.scopes }),
       });
     }
 
