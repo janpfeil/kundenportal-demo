@@ -108,6 +108,7 @@ export class AppStack extends Stack {
         confirmLink: migration.api,
         getMigrationStatus: migration.api,
         startBulkMigration: migration.api,
+        resetMigration: migration.api,
         redriveMigrationRecord: migration.api,
       },
       issuer,

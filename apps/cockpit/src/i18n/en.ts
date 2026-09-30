@@ -68,6 +68,16 @@ export const en: Dictionary = {
     problem: "Problem",
     updatedAt: "Updated",
   },
+  reset: {
+    title: "Reset the demo",
+    intro:
+      "Removes the portal accounts the migration created, the runs, record states and the dead-letter queue. The legacy systems keep their data; afterwards all journeys can be shown again.",
+    start: "Reset the demo …",
+    confirm: "Yes, reset",
+    cancel: "Cancel",
+    done: "Reset: {accountsRemoved} accounts and {recordsRemoved} entries removed.",
+    failed: "The reset failed.",
+  },
   timeline: {
     title: "Event timeline",
     intro: "All events of the portal in the last seven days, newest first.",

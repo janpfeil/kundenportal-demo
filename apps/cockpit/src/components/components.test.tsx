@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { de } from "@/i18n/de";
 import { BulkStart } from "./bulk-start";
+import { DemoReset } from "./demo-reset";
 import { RedriveForm } from "./redrive-form";
 
 const sendJson = vi.fn();
@@ -52,5 +53,23 @@ describe("redrive form", () => {
     expect(sendJson).toHaveBeenCalledWith("POST", "/cockpit/api/dlq/x/redrive", {
       corrections: {},
     });
+  });
+});
+
+describe("demo reset", () => {
+  it("asks for a second click and reports what was removed", async () => {
+    sendJson.mockResolvedValue({
+      ok: true,
+      status: 200,
+      data: { accountsRemoved: 3, recordsRemoved: 12 },
+    });
+    render(<DemoReset texts={de.reset} />);
+    fireEvent.click(screen.getByRole("button", { name: de.reset.start }));
+    expect(sendJson).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: de.reset.confirm }));
+    await waitFor(() =>
+      expect(screen.getByText("Zurückgesetzt: 3 Konten und 12 Einträge entfernt.")).toBeDefined(),
+    );
+    expect(sendJson).toHaveBeenCalledWith("POST", "/cockpit/api/reset", {});
   });
 });

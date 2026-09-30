@@ -126,7 +126,7 @@ export class Migration extends Construct {
 
     const api = new ServiceFunction(this, "MigrationApi", {
       entry: "services/migration/src/api-handler.ts",
-      description: "migration: /me/links, /migration/status, /migration/bulk, redrive",
+      description: "migration: /me/links, /migration/status, bulk, redrive, demo reset",
       reservedConcurrency,
       // The redrive looks for the task in the DLQ with a few long polls.
       timeout: Duration.seconds(20),
@@ -141,6 +141,11 @@ export class Migration extends Construct {
     }
     for (const fn of [worker, api]) processor.grantInvoke(fn);
     recordDlq.grantConsumeMessages(api);
+    recordDlq.grantPurge(api);
+    // Demo reset: the API removes the accounts the migration created.
+    api.addToRolePolicy(
+      new PolicyStatement({ actions: ["cognito-idp:AdminDeleteUser"], resources: [userPoolArn] }),
+    );
     processor.addToRolePolicy(
       new PolicyStatement({
         actions: [

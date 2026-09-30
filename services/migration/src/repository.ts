@@ -1,5 +1,6 @@
 import { ConditionalCheckFailedException } from "@aws-sdk/client-dynamodb";
 import {
+  BatchWriteCommand,
   type DynamoDBDocumentClient,
   GetCommand,
   PutCommand,
@@ -85,6 +86,28 @@ export class MigrationRepository {
     return (await this.queryAll(this.migration(tenantId), "REC#")).map((item) =>
       MigrationRecord.parse(item),
     );
+  }
+
+  /** Deletes all records and runs of a tenant (demo reset); returns how many items. */
+  async clearTenant(tenantId: string): Promise<number> {
+    const pk = this.migration(tenantId);
+    const keys = [...(await this.queryAll(pk, "REC#")), ...(await this.queryAll(pk, "RUN#"))].map(
+      (item) => ({ PK: item.PK, SK: item.SK }),
+    );
+    for (let i = 0; i < keys.length; i += 25) {
+      let requests = keys.slice(i, i + 25).map((Key) => ({ DeleteRequest: { Key } }));
+      // Provisioned capacity is small; unprocessed deletes are retried with a pause.
+      for (let attempt = 0; requests.length > 0 && attempt < 8; attempt++) {
+        const result = await this.db.send(
+          new BatchWriteCommand({ RequestItems: { [this.table]: requests } }),
+        );
+        requests = (result.UnprocessedItems?.[this.table] ?? []) as typeof requests;
+        if (requests.length > 0)
+          await new Promise((resolve) => setTimeout(resolve, 200 * 2 ** attempt));
+      }
+      if (requests.length > 0) throw new Error("Demo reset: deletes were throttled; try again");
+    }
+    return keys.length;
   }
 
   async createRun(tenantId: string, run: MigrationRun): Promise<void> {

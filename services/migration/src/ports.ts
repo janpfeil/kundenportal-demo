@@ -2,6 +2,7 @@ import { InvokeCommand, type LambdaClient } from "@aws-sdk/client-lambda";
 import {
   ChangeMessageVisibilityCommand,
   DeleteMessageCommand,
+  PurgeQueueCommand,
   ReceiveMessageCommand,
   type SQSClient,
 } from "@aws-sdk/client-sqs";
@@ -34,6 +35,8 @@ export class LambdaDispatcher implements RecordDispatcher {
 export interface DeadLetters {
   /** Removes the failed task of this account from the queue; false if it is not there. */
   remove(tenantId: string, account: LegacyAccountRef): Promise<boolean>;
+  /** Empties the queue (demo reset; SQS allows one purge a minute). */
+  purge(): Promise<void>;
 }
 
 /**
@@ -46,6 +49,10 @@ export class SqsDeadLetters implements DeadLetters {
     private readonly sqs: SQSClient,
     private readonly queueUrl: string,
   ) {}
+
+  purge(): Promise<void> {
+    return purgeQuietly(this.sqs, this.queueUrl);
+  }
 
   async remove(tenantId: string, account: LegacyAccountRef): Promise<boolean> {
     const wanted = refString(account);
@@ -90,6 +97,15 @@ export class SqsDeadLetters implements DeadLetters {
       if (found) return true;
     }
     return false;
+  }
+}
+
+export async function purgeQuietly(sqs: SQSClient, queueUrl: string): Promise<void> {
+  try {
+    await sqs.send(new PurgeQueueCommand({ QueueUrl: queueUrl }));
+  } catch (error) {
+    // A second purge within 60 seconds fails; the queue is being emptied anyway.
+    if ((error as Error).name !== "PurgeQueueInProgress") throw error;
   }
 }
 

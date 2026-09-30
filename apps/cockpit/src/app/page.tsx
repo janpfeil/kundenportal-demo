@@ -12,6 +12,7 @@ import {
 import { apiFor } from "@kundenportal/web-auth";
 import { AutoRefresh } from "@/components/auto-refresh";
 import { BulkStart } from "@/components/bulk-start";
+import { DemoReset } from "@/components/demo-reset";
 import { RedriveForm } from "@/components/redrive-form";
 import { dictionary } from "@/i18n";
 import { formatDateTime, percent } from "@/lib/format";
@@ -201,6 +202,11 @@ export default async function CockpitPage() {
             ))}
           </ol>
         )}
+      </Card>
+
+      <Card title={t.reset.title} className="zone-section">
+        <p className="kp-muted">{t.reset.intro}</p>
+        <DemoReset texts={t.reset} />
       </Card>
     </Page>
   );

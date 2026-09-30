@@ -171,6 +171,13 @@ export class MemoryRepository {
   async listRecords(t: string) {
     return [...this.records.entries()].filter(([k]) => k.startsWith(`${t}|`)).map(([, r]) => r);
   }
+  async clearTenant(t: string) {
+    const before = this.records.size + this.runs.size;
+    for (const key of [...this.records.keys()])
+      if (key.startsWith(`${t}|`)) this.records.delete(key);
+    this.runs.clear();
+    return before - this.records.size;
+  }
   async createRun(_t: string, run: MigrationRun) {
     this.runs.set(run.runId, structuredClone(run));
   }
@@ -242,6 +249,8 @@ export function testContext() {
   const dispatched: RecordTask[] = [];
   const removed: LegacyAccountRef[] = [];
   const provisioned: string[] = [];
+  const removedAccounts: string[] = [];
+  let purged = 0;
   let provisionResult: (email: string) => ProvisionResult = (email) => ({
     ok: true,
     subject: `sub-${email}`,
@@ -267,12 +276,19 @@ export function testContext() {
         provisioned.push(email);
         return provisionResult(email);
       },
+      remove: async (subject: string) => {
+        removedAccounts.push(subject);
+        return true;
+      },
     } as unknown as AccountProvisioner,
     dispatcher: { dispatch: async (task) => void dispatched.push(task) },
     deadLetters: {
       remove: async (_t, account) => {
         removed.push(account);
         return true;
+      },
+      purge: async () => {
+        purged++;
       },
     },
     now: () => NOW,
@@ -285,6 +301,8 @@ export function testContext() {
     dispatched,
     removed,
     provisioned,
+    removedAccounts,
+    purges: () => purged,
     failProvisioning: (reason: string) => {
       provisionResult = () => ({ ok: false, reason });
     },

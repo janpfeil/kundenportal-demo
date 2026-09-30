@@ -2,7 +2,7 @@
   "name": "@kundenportal/e2e",
   "version": "0.1.0",
   "private": true,
-  "description": "End-to-end check of the first slice against the live environment (Playwright)",
+  "description": "End-to-end journeys against the live environment (Playwright)",
   "license": "MIT",
   "type": "module",
   "scripts": {

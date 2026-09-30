@@ -1,5 +1,6 @@
 import { ConditionalCheckFailedException, DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import {
+  BatchWriteCommand,
   DynamoDBDocumentClient,
   PutCommand,
   QueryCommand,
@@ -105,5 +106,34 @@ describe("migration repository", () => {
       PK: "TENANT#owner#SUBJ#sub-b",
       SK: "LINK#telco#T/88-4711",
     });
+  });
+
+  it("clears a tenant's records and runs in batches and retries unprocessed deletes", async () => {
+    const items = Array.from({ length: 30 }, (_, i) => ({
+      PK: "TENANT#owner#MIGRATION",
+      SK: `REC#telco#${i}`,
+    }));
+    dbMock
+      .on(QueryCommand, {
+        ExpressionAttributeValues: { ":pk": "TENANT#owner#MIGRATION", ":prefix": "REC#" },
+      })
+      .resolves({ Items: items })
+      .on(QueryCommand, {
+        ExpressionAttributeValues: { ":pk": "TENANT#owner#MIGRATION", ":prefix": "RUN#" },
+      })
+      .resolves({ Items: [{ PK: "TENANT#owner#MIGRATION", SK: "RUN#r1" }] });
+    dbMock
+      .on(BatchWriteCommand)
+      .resolvesOnce({
+        UnprocessedItems: {
+          table: [{ DeleteRequest: { Key: { PK: "TENANT#owner#MIGRATION", SK: "REC#telco#0" } } }],
+        },
+      })
+      .resolves({});
+    expect(await repository.clearTenant("owner")).toBe(31);
+    const batches = dbMock
+      .commandCalls(BatchWriteCommand)
+      .map((c) => c.args[0].input.RequestItems?.table?.length);
+    expect(batches).toEqual([25, 1, 6]);
   });
 });

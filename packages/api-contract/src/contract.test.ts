@@ -42,6 +42,7 @@ describe("OpenAPI contract", () => {
       "POST /me/links kundenportal/profile.write",
       "GET /migration/status kundenportal/migration.read",
       "POST /migration/bulk kundenportal/migration.write",
+      "POST /migration/reset kundenportal/migration.write",
       "POST /migration/dlq/{recordId}/redrive kundenportal/migration.write",
     ]);
   });

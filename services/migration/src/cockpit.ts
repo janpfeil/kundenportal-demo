@@ -159,6 +159,29 @@ export class Cockpit {
     return view({ ...record, status: "queued" });
   }
 
+  /**
+   * `POST /migration/reset` (demo reset): removes the portal accounts the migration
+   * created (lazy and bulk), the tenant's migration records and runs, and empties the
+   * DLQ, so the journeys can be shown again. The legacy systems keep their data; their
+   * customers' portal profiles stay behind unreachable (a demo pass gets its own table
+   * in phase 4 and drops everything at once).
+   */
+  async reset(caller: Caller): Promise<{ accountsRemoved: number; recordsRemoved: number }> {
+    const { repository, accounts, deadLetters } = this.ctx;
+    const records = await repository.listRecords(caller.tenantId);
+    const subjects = [...new Set(records.map((r) => r.subject).filter((s): s is string => !!s))];
+    let accountsRemoved = 0;
+    for (const subject of subjects) {
+      // Never the caller's own account, even if it came from a legacy system.
+      if (subject === caller.subject) continue;
+      if (await accounts.remove(subject)) accountsRemoved++;
+    }
+    const recordsRemoved = await repository.clearTenant(caller.tenantId);
+    await deadLetters.purge();
+    log("info", "Demo reset", { tenantId: caller.tenantId, accountsRemoved, recordsRemoved });
+    return { accountsRemoved, recordsRemoved };
+  }
+
   /** Every domain event of the bus becomes a timeline entry of its tenant. */
   async record(input: EventBridgeEnvelope): Promise<void> {
     const detail = input.detail as Record<string, unknown> | undefined;

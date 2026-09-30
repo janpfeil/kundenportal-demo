@@ -1,10 +1,12 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import { CloudFormationClient, DescribeStacksCommand } from "@aws-sdk/client-cloudformation";
 import {
+  AdminAddUserToGroupCommand,
   AdminCreateUserCommand,
   AdminDeleteUserCommand,
   AdminSetUserPasswordCommand,
   CognitoIdentityProviderClient,
+  UserNotFoundException,
 } from "@aws-sdk/client-cognito-identity-provider";
 
 const region = process.env.AWS_REGION ?? "eu-central-1";
@@ -63,4 +65,35 @@ export async function createTestUser(poolId: string): Promise<TestUser> {
       await cognito.send(new AdminDeleteUserCommand({ UserPoolId: poolId, Username: email }));
     },
   };
+}
+
+/** Adds a user to a Cognito group, e.g. `owner` for the migration cockpit. */
+export async function addToGroup(poolId: string, email: string, group: string): Promise<void> {
+  await cognito.send(
+    new AdminAddUserToGroupCommand({ UserPoolId: poolId, Username: email, GroupName: group }),
+  );
+}
+
+/** Removes a user if it exists (e.g. a demo person left over from an earlier run). */
+export async function deleteUserIfExists(poolId: string, email: string): Promise<void> {
+  try {
+    await cognito.send(new AdminDeleteUserCommand({ UserPoolId: poolId, Username: email }));
+  } catch (error) {
+    if (!(error instanceof UserNotFoundException)) throw error;
+  }
+}
+
+/**
+ * Sets a user's password as if they had completed "forgot password" (demo persons have
+ * no real mailbox). Used for Carla after the bulk import.
+ */
+export async function completePasswordReset(poolId: string, email: string, password: string) {
+  await cognito.send(
+    new AdminSetUserPasswordCommand({
+      UserPoolId: poolId,
+      Username: email,
+      Password: password,
+      Permanent: true,
+    }),
+  );
 }

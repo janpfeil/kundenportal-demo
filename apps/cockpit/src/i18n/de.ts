@@ -67,6 +67,16 @@ export const de = {
     problem: "Problem",
     updatedAt: "Stand",
   },
+  reset: {
+    title: "Demo zurücksetzen",
+    intro:
+      "Entfernt die Portal-Konten, die die Migration angelegt hat, sowie Läufe, Datensatz-Stände und die Dead-Letter-Queue. Die Altsysteme behalten ihre Daten; danach lassen sich alle Journeys erneut zeigen.",
+    start: "Demo zurücksetzen …",
+    confirm: "Ja, zurücksetzen",
+    cancel: "Abbrechen",
+    done: "Zurückgesetzt: {accountsRemoved} Konten und {recordsRemoved} Einträge entfernt.",
+    failed: "Das Zurücksetzen ist fehlgeschlagen.",
+  },
   timeline: {
     title: "Ereignis-Timeline",
     intro: "Alle Ereignisse des Portals der letzten sieben Tage, neueste zuerst.",

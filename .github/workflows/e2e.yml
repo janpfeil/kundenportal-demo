@@ -1,8 +1,9 @@
 name: E2E
 
-# Playwright run of the first slice against the live portal: start page in both
-# languages, sign-in via Cognito managed login with a throw-away user, account page
-# from GET /api/me and the welcome message in the demo mailbox.
+# Playwright run against the live portal: start page in both languages, sign-in via
+# Cognito managed login with a throw-away user, account page and mailbox, the zones'
+# journeys (J4, J6) and the migration journeys (J2, J3, J7, J8; skipped without the
+# LEGACY_DEMO_PASSWORD secret).
 
 on:
   workflow_dispatch:
@@ -39,6 +40,8 @@ jobs:
       - name: Run
         env:
           PORTAL_URL: ${{ inputs.portal_url }}
+          # Phase 3: password of the demo persons in both legacy systems (environment secret).
+          LEGACY_DEMO_PASSWORD: ${{ secrets.LEGACY_DEMO_PASSWORD }}
         run: pnpm --filter @kundenportal/e2e run e2e
       - if: always()
         uses: actions/upload-artifact@v7

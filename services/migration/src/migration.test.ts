@@ -359,6 +359,33 @@ describe("cockpit", () => {
     });
   });
 
+  it("resets the demo: removes migrated accounts (never the caller's), records and the DLQ", async () => {
+    const s = setup();
+    await startedTelcoRun(s);
+    await createProcessor(s.bulk)(s.dispatched[0]);
+    await s.repository.putRecord(
+      "owner",
+      {
+        account: { system: "utility", customerNumber: "V-1" },
+        displayName: "Owner",
+        status: "migrated",
+        subject: "owner-sub",
+        attempts: 0,
+        updatedAt: "x",
+      },
+      true,
+    );
+    const response = await s.api(apiEvent("POST /migration/reset", { claims: owner }));
+    expect(response.statusCode).toBe(200);
+    expect(JSON.parse(response.body ?? "{}")).toMatchObject({ accountsRemoved: 1 });
+    expect(s.removedAccounts).toEqual(["sub-carla.schulz@example.net"]);
+    expect(await s.repository.listRecords("owner")).toEqual([]);
+    expect(s.repository.runs.size).toBe(0);
+    expect(s.purges()).toBe(1);
+    const denied = await s.api(apiEvent("POST /migration/reset", { claims: { sub: "x" } }));
+    expect(denied.statusCode).toBe(403);
+  });
+
   it("starts a bulk import for a valid system only", async () => {
     const s = setup();
     const bad = await s.api(

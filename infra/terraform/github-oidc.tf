@@ -78,6 +78,8 @@ data "aws_iam_policy_document" "github_deploy" {
       "cognito-idp:AdminCreateUser",
       "cognito-idp:AdminSetUserPassword",
       "cognito-idp:AdminDeleteUser",
+      # Phase 3: the throw-away owner of the cockpit journeys joins the group "owner".
+      "cognito-idp:AdminAddUserToGroup",
     ]
     resources = ["arn:aws:cognito-idp:${var.region}:${local.account_id}:userpool/*"]
 

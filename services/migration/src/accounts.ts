@@ -1,10 +1,12 @@
 import { randomBytes } from "node:crypto";
 import {
   AdminCreateUserCommand,
+  AdminDeleteUserCommand,
   AdminGetUserCommand,
   AdminSetUserPasswordCommand,
   type CognitoIdentityProviderClient,
   UsernameExistsException,
+  UserNotFoundException,
 } from "@aws-sdk/client-cognito-identity-provider";
 import type { LegacyAccountRef } from "@kundenportal/events";
 
@@ -74,5 +76,21 @@ export class AccountProvisioner {
       return { ok: true, subject, created: false };
     }
     return { ok: false, reason: `The address ${email} belongs to another portal account` };
+  }
+
+  /**
+   * Removes a migrated account (demo reset). With e-mail as sign-in alias the Cognito
+   * user name is the subject. Returns false if it no longer exists.
+   */
+  async remove(subject: string): Promise<boolean> {
+    try {
+      await this.cognito.send(
+        new AdminDeleteUserCommand({ UserPoolId: this.userPoolId, Username: subject }),
+      );
+      return true;
+    } catch (error) {
+      if (error instanceof UserNotFoundException) return false;
+      throw error;
+    }
   }
 }

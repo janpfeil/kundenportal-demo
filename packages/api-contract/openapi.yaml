@@ -358,6 +358,30 @@ paths:
         "401": { $ref: "#/components/responses/Problem" }
         "403": { $ref: "#/components/responses/Problem" }
         "409": { $ref: "#/components/responses/Problem" }
+  /migration/reset:
+    post:
+      operationId: resetMigration
+      summary: Demo reset — remove migrated accounts and the migration state
+      description: >-
+        Owner only. Deletes the portal accounts created by the migration (lazy and bulk;
+        never the caller's own), the tenant's migration records and runs, and empties the
+        migration DLQ, so the journeys can be shown again. The legacy systems keep their
+        data.
+      security:
+        - oidc: [kundenportal/migration.write]
+      responses:
+        "200":
+          description: What was removed
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [accountsRemoved, recordsRemoved]
+                properties:
+                  accountsRemoved: { type: integer }
+                  recordsRemoved: { type: integer }
+        "401": { $ref: "#/components/responses/Problem" }
+        "403": { $ref: "#/components/responses/Problem" }
   /migration/dlq/{recordId}/redrive:
     post:
       operationId: redriveMigrationRecord
