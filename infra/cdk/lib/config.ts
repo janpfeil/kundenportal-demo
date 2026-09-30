@@ -37,7 +37,9 @@ export function loadConfig(app: App): PortalConfig {
     domainName: String(context("domainName") ?? "kundenportal-demo.rypox.com"),
     cognitoDomainPrefix: String(context("cognitoDomainPrefix") ?? "kundenportal-demo"),
     reservedConcurrency: reserved,
-    webReservedConcurrency: reserved > 0 ? Number(context("webReservedConcurrency") ?? 5) : 0,
+    // Next.js functions: a page load also triggers prefetches and RSC requests, and the
+    // live E2E run opens several pages at once; 5 was throttled (Rate Exceeded).
+    webReservedConcurrency: reserved > 0 ? Number(context("webReservedConcurrency") ?? 10) : 0,
     apiReservedConcurrency: reserved > 0 ? Number(context("apiReservedConcurrency") ?? 5) : 0,
     ownerEmailParameter: String(context("ownerEmailParameter") ?? "/kundenportal/owner-email"),
     allowLocalhostCallback: String(context("allowLocalhostCallback") ?? "true") === "true",

@@ -93,8 +93,9 @@ describe("guard rails", () => {
     expect(own(application, 2)).toBe(8);
     // Behind the HTTP API (a page calls several at once): customer, notification,
     // contract, consumption, documents, migration and tenancy API, tenancy public.
-    expect(own(application, 5)).toBe(8 + 1 + ZONES.length);
-    // Next.js functions (shell and zones) get the same headroom for bursty page loads.
+    expect(own(application, 5)).toBe(8);
+    // Next.js functions (shell and zones): page loads come with prefetches.
+    expect(own(application, 10)).toBe(1 + ZONES.length);
     for (const template of all())
       template.allResourcesProperties("AWS::Logs::LogGroup", { RetentionInDays: 3 });
   });
