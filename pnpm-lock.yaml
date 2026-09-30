@@ -252,6 +252,9 @@ importers:
       '@kundenportal/api-contract':
         specifier: workspace:*
         version: link:../../packages/api-contract
+      '@kundenportal/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
       jose:
         specifier: ^6.2.12
         version: 6.2.12

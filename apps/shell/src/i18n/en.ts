@@ -1,15 +1,6 @@
 import type { Dictionary } from "./index";
 
 export const en: Dictionary = {
-  brand: "Customer portal",
-  nav: {
-    home: "Home",
-    account: "My account",
-    mailbox: "Mailbox",
-    login: "Sign in",
-    logout: "Sign out",
-  },
-  language: { label: "Language", switchTo: "Deutsch" },
   home: {
     title: "Electricity, gas, water, internet and mobile — all in one account",
     lead: "This customer portal is a demo project. It shows how a utility modernises its portal while taking over the customers of an acquired provider.",
@@ -41,5 +32,4 @@ export const en: Dictionary = {
     refresh: "Refresh",
     error: "The mailbox could not be loaded right now.",
   },
-  footer: "Demo project · source code on GitHub",
 };

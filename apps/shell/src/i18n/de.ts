@@ -1,13 +1,4 @@
 export const de = {
-  brand: "Kundenportal",
-  nav: {
-    home: "Start",
-    account: "Mein Konto",
-    mailbox: "Postfach",
-    login: "Anmelden",
-    logout: "Abmelden",
-  },
-  language: { label: "Sprache", switchTo: "English" },
   home: {
     title: "Strom, Gas, Wasser, Internet und Mobilfunk — alles in einem Konto",
     lead: "Dieses Kundenportal ist ein Demo-Projekt. Es zeigt, wie ein Versorger sein Portal modernisiert und dabei die Kunden eines übernommenen Anbieters übernimmt.",
@@ -41,5 +32,4 @@ export const de = {
     refresh: "Aktualisieren",
     error: "Das Postfach konnte gerade nicht geladen werden.",
   },
-  footer: "Demo-Projekt · Quellcode auf GitHub",
 } as const;

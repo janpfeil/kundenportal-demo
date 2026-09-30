@@ -1,3 +1,4 @@
+import { Facts, Notice, Page } from "@kundenportal/ui";
 import { dictionary } from "@/i18n";
 import { api } from "@/lib/api";
 
@@ -8,32 +9,27 @@ export default async function AccountPage() {
   const { data: customer } = await (await api()).GET("/me");
   if (!customer) {
     return (
-      <section>
-        <h1>{t.account.title}</h1>
-        <p role="alert">{t.account.error}</p>
-      </section>
+      <Page title={t.account.title}>
+        <Notice tone="error">{t.account.error}</Notice>
+      </Page>
     );
   }
   const since = new Intl.DateTimeFormat(locale, { dateStyle: "long" }).format(
     new Date(customer.createdAt),
   );
   return (
-    <section>
-      <h1>{t.account.title}</h1>
-      <dl className="facts" data-testid="account">
-        <dt>{t.account.customerId}</dt>
-        <dd>{customer.customerId}</dd>
-        <dt>{t.account.name}</dt>
-        <dd>{customer.displayName}</dd>
-        <dt>{t.account.email}</dt>
-        <dd>{customer.email}</dd>
-        <dt>{t.account.locale}</dt>
-        <dd>{customer.locale === "de" ? "Deutsch" : "English"}</dd>
-        <dt>{t.account.origin}</dt>
-        <dd>{t.account.origins[customer.origin]}</dd>
-        <dt>{t.account.since}</dt>
-        <dd>{since}</dd>
-      </dl>
-    </section>
+    <Page title={t.account.title}>
+      <Facts
+        data-testid="account"
+        items={[
+          { term: t.account.customerId, description: customer.customerId },
+          { term: t.account.name, description: customer.displayName },
+          { term: t.account.email, description: customer.email },
+          { term: t.account.locale, description: customer.locale === "de" ? "Deutsch" : "English" },
+          { term: t.account.origin, description: t.account.origins[customer.origin] },
+          { term: t.account.since, description: since },
+        ]}
+      />
+    </Page>
   );
 }

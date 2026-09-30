@@ -1,3 +1,4 @@
+import { Badge, ButtonLink, EmptyState, Notice, Page } from "@kundenportal/ui";
 import { dictionary } from "@/i18n";
 import { api } from "@/lib/api";
 
@@ -8,24 +9,25 @@ export default async function MailboxPage() {
   const { data, error } = await (await api()).GET("/notifications");
   const format = new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" });
   return (
-    <section>
-      <h1>{t.mailbox.title}</h1>
-      <p>
-        <a href="/postfach" className="button secondary">
+    <Page
+      title={t.mailbox.title}
+      actions={
+        <ButtonLink href="/postfach" variant="secondary">
           {t.mailbox.refresh}
-        </a>
-      </p>
+        </ButtonLink>
+      }
+    >
       {error || !data ? (
-        <p role="alert">{t.mailbox.error}</p>
+        <Notice tone="error">{t.mailbox.error}</Notice>
       ) : data.items.length === 0 ? (
-        <p className="muted">{t.mailbox.empty}</p>
+        <EmptyState>{t.mailbox.empty}</EmptyState>
       ) : (
         <ul className="mailbox" data-testid="mailbox">
           {data.items.map((note) => (
             <li key={note.notificationId} className={note.read ? "read" : "unread"}>
               <div className="meta">
                 <time dateTime={note.createdAt}>{format.format(new Date(note.createdAt))}</time>
-                {!note.read && <span className="badge">{t.mailbox.unread}</span>}
+                {!note.read && <Badge>{t.mailbox.unread}</Badge>}
               </div>
               <h2>{note.title}</h2>
               <p>{note.body}</p>
@@ -33,6 +35,6 @@ export default async function MailboxPage() {
           ))}
         </ul>
       )}
-    </section>
+    </Page>
   );
 }

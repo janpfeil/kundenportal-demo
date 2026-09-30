@@ -1,8 +1,11 @@
+import { AppShell, type NavItem } from "@kundenportal/ui";
+import { otherLocale } from "@kundenportal/ui/i18n";
 import type { Metadata } from "next";
-import Link from "next/link";
 import type { ReactNode } from "react";
 import { dictionary } from "@/i18n";
 import { readSession } from "@/lib/session";
+import { ShellLink } from "@/lib/shell-link";
+import "@kundenportal/ui/styles.css";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -12,40 +15,44 @@ export const metadata: Metadata = {
 };
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
-  const [{ locale, t }, session] = await Promise.all([dictionary(), readSession()]);
-  const otherLocale = locale === "de" ? "en" : "de";
+  const [{ locale, common: t }, session] = await Promise.all([dictionary(), readSession()]);
+  const target = otherLocale(locale);
+  const nav: NavItem[] = [
+    { href: "/", label: t.nav.home },
+    // Zones for signed-in customers; /vertraege and /verbrauch are served by their own zones.
+    ...(session
+      ? [
+          { href: "/konto", label: t.nav.account },
+          { href: "/postfach", label: t.nav.mailbox },
+          { href: "/vertraege", label: t.nav.contracts },
+          { href: "/verbrauch", label: t.nav.consumption },
+        ]
+      : []),
+  ];
   return (
     <html lang={locale}>
       <body>
-        <header className="top">
-          <Link href="/" className="brand">
-            {t.brand}
-          </Link>
-          <nav aria-label="main">
-            <Link href="/">{t.nav.home}</Link>
-            {session && <Link href="/konto">{t.nav.account}</Link>}
-            {session && <Link href="/postfach">{t.nav.mailbox}</Link>}
-          </nav>
-          <div className="actions">
-            {/* Plain GET links: the shell accepts no POST requests (CloudFront OAC to Lambda). */}
-            <a href={`/sprache?to=${otherLocale}`} hrefLang={otherLocale} title={t.language.label}>
-              {t.language.switchTo}
-            </a>
-            {session ? (
-              <a href="/auth/logout" className="button secondary">
-                {t.nav.logout}
-              </a>
-            ) : (
-              <a href="/auth/login" className="button">
-                {t.nav.login}
-              </a>
-            )}
-          </div>
-        </header>
-        <main>{children}</main>
-        <footer>
-          <a href="https://github.com/janpfeil/kundenportal-demo">{t.footer}</a>
-        </footer>
+        {/* Plain GET links for language and sign-in/out: the shell accepts no POST requests (CloudFront OAC to Lambda). */}
+        <AppShell
+          brand={{ href: "/", label: t.brand }}
+          nav={nav}
+          navLabel={t.nav.label}
+          languageLink={{
+            href: `/sprache?to=${target}`,
+            label: t.language.switchTo,
+            hrefLang: target,
+            title: t.language.label,
+          }}
+          authLink={
+            session
+              ? { href: "/auth/logout", label: t.auth.logout, variant: "secondary" }
+              : { href: "/auth/login", label: t.auth.login }
+          }
+          linkComponent={ShellLink}
+          footer={<a href={t.footer.href}>{t.footer.text}</a>}
+        >
+          {children}
+        </AppShell>
       </body>
     </html>
   );
