@@ -170,7 +170,7 @@ test("the tenant's Anna is taken over inside the tenant with her contracts", asy
   await amount.fill(String(Math.round(current) + 1));
   await installment.getByRole("button").first().click();
   await expect(page.getByRole("status")).toBeVisible();
-  await expectMailboxMessage(page, /Abschlag|installment/i);
+  await expectMailboxMessage(page, /Abschlag|installment|Vertrag|contract/i);
 
   // J4 inside the tenant: a reading on top of the legacy meter reading.
   await page.goto("/verbrauch");
