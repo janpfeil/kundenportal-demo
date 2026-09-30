@@ -1,12 +1,17 @@
 name: Pages
 
 # Publishes the rendered concept reports (docs/reports, built by
-# scripts/build_reports.py) to GitHub Pages whenever they change on main.
+# scripts/build_reports.py) and the Storybook of the component library
+# (packages/ui, served under /storybook/) to GitHub Pages whenever either
+# changes on main.
 
 on:
   push:
     branches: [main]
-    paths: ["docs/reports/**"]
+    paths:
+      - "docs/reports/**"
+      - "packages/ui/**"
+      - ".github/workflows/pages.yml"
   workflow_dispatch:
 
 permissions:
@@ -20,16 +25,31 @@ concurrency:
 
 jobs:
   deploy:
-    name: Publish reports
+    name: Publish reports and Storybook
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # The package build compiles the library and builds its Storybook (storybook-static).
+      - name: Build Storybook
+        run: pnpm turbo run build --filter=@kundenportal/ui
+      - name: Assemble site
+        run: |
+          mkdir -p _site
+          cp -R docs/reports/. _site/
+          cp -R packages/ui/storybook-static _site/storybook
       - uses: actions/configure-pages@v6
       - uses: actions/upload-pages-artifact@v5
         with:
-          path: docs/reports
+          path: _site
       - id: deployment
         uses: actions/deploy-pages@v5
