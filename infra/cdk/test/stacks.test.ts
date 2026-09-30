@@ -401,6 +401,26 @@ describe("uploads", () => {
 });
 
 describe("edge", () => {
+  it("caches only what the shell marks public, never keyed by cookies", () => {
+    edge.hasResourceProperties("AWS::CloudFront::CachePolicy", {
+      CachePolicyConfig: Match.objectLike({
+        DefaultTTL: 0,
+        MinTTL: 0,
+        MaxTTL: 300,
+        ParametersInCacheKeyAndForwardedToOrigin: Match.objectLike({
+          CookiesConfig: { CookieBehavior: "none" },
+          HeadersConfig: { HeaderBehavior: "none" },
+          QueryStringsConfig: { QueryStringBehavior: "all" },
+        }),
+      }),
+    });
+    const [deployment] = Object.values(edge.findResources("Custom::CDKBucketDeployment")).filter(
+      (resource) =>
+        JSON.stringify(resource.Properties.DistributionPaths ?? []).includes("/pass/einloesen*"),
+    );
+    expect(deployment?.Properties.DistributionPaths).toEqual(["/", "/pass/einloesen*"]);
+  });
+
   it("serves shell, static files and API under the portal domain", () => {
     edge.hasResourceProperties("AWS::CloudFront::Distribution", {
       DistributionConfig: {

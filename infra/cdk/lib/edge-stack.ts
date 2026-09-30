@@ -1,9 +1,12 @@
 import path from "node:path";
-import { CfnOutput, RemovalPolicy, Stack, type StackProps } from "aws-cdk-lib";
+import { CfnOutput, Duration, RemovalPolicy, Stack, type StackProps } from "aws-cdk-lib";
 import type { ICertificate } from "aws-cdk-lib/aws-certificatemanager";
 import {
   AllowedMethods,
+  CacheCookieBehavior,
+  CacheHeaderBehavior,
   CachePolicy,
+  CacheQueryStringBehavior,
   CfnOriginAccessControl,
   Distribution,
   Function as CloudFrontFunction,
@@ -84,6 +87,23 @@ export class EdgeStack extends Stack {
       this.pausedDistribution(props, assets, assetsOrigin);
       return;
     }
+    // The shell decides what may be cached: the prerendered public pages (`/`,
+    // `/pass/einloesen`) answer `public, s-maxage=300` with the same HTML for everyone;
+    // every page rendered per request answers `private, no-store`, and anything without
+    // Cache-Control gets TTL 0. Cookies still reach the origin (origin request policy),
+    // they are just not part of the cache key.
+    const shellCache = new CachePolicy(this, "ShellCache", {
+      comment: "Shell: honour the origin's Cache-Control; only public pages are cached",
+      minTtl: Duration.seconds(0),
+      defaultTtl: Duration.seconds(0),
+      maxTtl: Duration.seconds(300),
+      cookieBehavior: CacheCookieBehavior.none(),
+      headerBehavior: CacheHeaderBehavior.none(),
+      // Next's in-page navigation uses ?_rsc=…, which must not share an entry with the HTML.
+      queryStringBehavior: CacheQueryStringBehavior.all(),
+      enableAcceptEncodingGzip: true,
+      enableAcceptEncodingBrotli: true,
+    });
     const distribution = new Distribution(this, "Distribution", {
       comment: "Kundenportal demo",
       priceClass: PriceClass.PRICE_CLASS_100,
@@ -95,7 +115,7 @@ export class EdgeStack extends Stack {
         viewerProtocolPolicy: ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
         // Writes need the x-amz-content-sha256 header from the browser (see @kundenportal/web-auth).
         allowedMethods: AllowedMethods.ALLOW_ALL,
-        cachePolicy: CachePolicy.CACHING_DISABLED,
+        cachePolicy: shellCache,
         originRequestPolicy: OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
         responseHeadersPolicy: ResponseHeadersPolicy.SECURITY_HEADERS,
       },
@@ -182,6 +202,10 @@ export class EdgeStack extends Stack {
       destinationKeyPrefix: "_next/static",
       // Old hashed files stay so pages opened before a deployment keep working.
       prune: false,
+      // The shell's files carry new hashes on every build, so this runs on every deploy:
+      // cached copies of the prerendered public pages must point at the new files.
+      distribution,
+      distributionPaths: ["/", "/pass/einloesen*"],
       memoryLimit: 256,
       logGroup: new LogGroup(this, "DeployStaticLogs", {
         retention: RetentionDays.THREE_DAYS,
