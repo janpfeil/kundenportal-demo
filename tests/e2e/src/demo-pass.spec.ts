@@ -66,6 +66,11 @@ test.afterAll(async ({ browser }) => {
 async function openPasses(page: Page) {
   await openSignedIn(page, "/cockpit/paesse", owner.email, owner.password);
   await expect(page.getByTestId("invitation-form")).toBeVisible();
+  // The owner's header leads to the cockpit, marked as the current section.
+  await expect(page.getByRole("navigation").getByRole("link", { name: "Cockpit" })).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
   // Wait for hydration: the form and the revoke buttons are client components.
   await page.waitForLoadState("networkidle");
 }
@@ -255,6 +260,10 @@ test("owner and pass holder see only their own tenant in the cockpit", async ({
   // Pass holder: own tenant, no pass administration.
   const holder = await freshPage(browser);
   await openSignedIn(holder, "/cockpit", guest, guestPassword);
+  await expect(holder.getByRole("navigation").getByRole("link", { name: "Cockpit" })).toBeVisible();
+  await expect(
+    holder.getByRole("navigation").getByRole("link", { name: "Demo-Pass" }),
+  ).toBeVisible();
   await expect(holder.getByTestId("cockpit-tenant")).toHaveAttribute("data-tenant", tenant);
   await expect(holder.getByTestId("to-passes")).toHaveCount(0);
   await expect(async () => {

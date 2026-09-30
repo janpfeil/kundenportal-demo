@@ -3,6 +3,11 @@ import { describe, expect, it } from "vitest";
 import { checkReading, parseNewReading, readingProblem, todayInGermany } from "./reading";
 import { BASE_PATH, navigation, zonePath } from "./zone";
 
+/** An unsigned access token with the given Cognito groups (the navigation only reads it). */
+const session = (...groups: string[]) => ({
+  accessToken: `e30.${Buffer.from(JSON.stringify({ "cognito:groups": groups })).toString("base64url")}.x`,
+});
+
 describe("todayInGermany", () => {
   it("uses German time, not UTC", () => {
     expect(todayInGermany(new Date("2026-09-30T21:30:00.000Z"))).toBe("2026-09-30");
@@ -82,7 +87,7 @@ describe("zone", () => {
   it("lives below /verbrauch and marks its navigation entry active", () => {
     expect(BASE_PATH).toBe("/verbrauch");
     expect(zonePath("/api/contracts/x/readings")).toBe("/verbrauch/api/contracts/x/readings");
-    const active = navigation(commonTexts.de, true).filter((item) => item.active);
+    const active = navigation(commonTexts.de, session()).filter((item) => item.active);
     expect(active).toEqual([{ href: "/verbrauch", label: "Verbrauch", active: true }]);
   });
 });

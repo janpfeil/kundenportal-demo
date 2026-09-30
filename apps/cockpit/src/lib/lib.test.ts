@@ -4,6 +4,11 @@ import { en } from "@/i18n/en";
 import { parseRedrive } from "./redrive";
 import { navigation, zonePath } from "./zone";
 
+/** An unsigned access token with the given Cognito groups (the navigation only reads it). */
+const session = (...groups: string[]) => ({
+  accessToken: `e30.${Buffer.from(JSON.stringify({ "cognito:groups": groups })).toString("base64url")}.x`,
+});
+
 describe("cockpit helpers", () => {
   it("accepts only known, well-formed corrections", () => {
     expect(parseRedrive({ corrections: { postalCode: "04229" } })).toEqual({
@@ -20,9 +25,13 @@ describe("cockpit helpers", () => {
     const texts = {
       nav: { home: "S", account: "K", mailbox: "P", contracts: "V", consumption: "B" },
     };
-    const items = navigation(texts as never, true, de.nav);
+    const items = navigation(texts as never, session("owner"));
     expect(items.find((item) => item.href === "/cockpit")).toMatchObject({ active: true });
-    expect(navigation(texts as never, false)).toHaveLength(1);
+    // Without the cockpit role there is no cockpit entry.
+    expect(navigation(texts as never, session()).some((item) => item.href === "/cockpit")).toBe(
+      false,
+    );
+    expect(navigation(texts as never)).toHaveLength(1);
   });
 
   it("has the same texts in both languages", () => {

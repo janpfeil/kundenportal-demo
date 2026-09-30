@@ -15,10 +15,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function ZoneLayout({ children }: { children: ReactNode }) {
-  const [{ locale, common: t, t: zone }, session] = await Promise.all([
-    dictionary(),
-    currentSession(),
-  ]);
+  const [{ locale, common: t }, session] = await Promise.all([dictionary(), currentSession()]);
   const target = otherLocale(locale);
   return (
     <html lang={locale}>
@@ -30,7 +27,7 @@ export default async function ZoneLayout({ children }: { children: ReactNode }) 
         {/* Language and sign-in/out are shell routes: plain links, a full page load. */}
         <AppShell
           brand={{ href: "/", label: t.brand }}
-          nav={navigation(t, Boolean(session), zone.nav)}
+          nav={navigation(t, session)}
           navLabel={t.nav.label}
           languageLink={{
             href: `/sprache?to=${target}`,
@@ -44,6 +41,7 @@ export default async function ZoneLayout({ children }: { children: ReactNode }) 
               : { href: "/auth/login", label: t.auth.login }
           }
           linkComponent={ZoneLink}
+          version={process.env.NEXT_PUBLIC_APP_VERSION}
           widget={
             session ? (
               <kp-bell label={t.nav.mailbox} href="/postfach" src="/postfach/anzahl" />

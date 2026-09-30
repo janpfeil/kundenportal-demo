@@ -19,6 +19,8 @@ test.describe("with a German browser", () => {
   test("start page speaks German and English", async ({ page }) => {
     await page.goto("/");
     await expect(page.getByRole("heading", { level: 1 })).toContainText("alles in einem Konto");
+    // The deployed version stands in the header of every page.
+    await expect(page.getByTestId("app-version")).toHaveText(/^v\d+\.\d+\.\d+ · [0-9a-f]{7}$/);
     await page.getByRole("link", { name: "English" }).click();
     await expect(page.getByRole("heading", { level: 1 })).toContainText("all in one account");
   });

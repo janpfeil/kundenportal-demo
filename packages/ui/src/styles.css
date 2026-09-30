@@ -553,3 +553,11 @@ a {
 .kp-upload-file {
   max-width: 100%;
 }
+
+/* Deployed version next to the brand: small, never in the way of the navigation. */
+.kp-version {
+  font-size: 0.75rem;
+  color: var(--kp-muted);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}

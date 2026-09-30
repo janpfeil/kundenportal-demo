@@ -1,5 +1,6 @@
 import { type NavItem, portalNavigation } from "@kundenportal/ui";
 import type { CommonTexts } from "@kundenportal/ui/i18n";
+import { rolesOf } from "@kundenportal/web-auth";
 
 /** URL prefix of this zone; must equal `basePath` in next.config.ts and the CDK zone registry. */
 export const BASE_PATH: string = "/cockpit";
@@ -10,13 +11,13 @@ export function zonePath(path = ""): string {
 }
 
 /**
- * Main navigation, identical to the shell's plus the cockpit itself, which is marked as the
- * current section.
+ * Main navigation, identical to the shell's; the cockpit entry (owner and pass holders) is
+ * marked as the current section.
  */
-export function navigation(t: CommonTexts, signedIn: boolean, cockpitLabel = "Cockpit"): NavItem[] {
+export function navigation(t: CommonTexts, session?: { accessToken: string }): NavItem[] {
   return portalNavigation(t, {
-    signedIn,
+    signedIn: Boolean(session),
     current: BASE_PATH,
-    extra: [{ href: "/cockpit", label: cockpitLabel }],
+    roles: rolesOf(session?.accessToken),
   });
 }

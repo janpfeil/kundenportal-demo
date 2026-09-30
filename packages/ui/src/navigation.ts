@@ -20,7 +20,12 @@ export interface PortalNavigationOptions {
   signedIn: boolean;
   /** Path of the current page (or the zone's basePath); its section is marked. */
   current?: string;
-  /** Entries after the common ones, e.g. the shell's demo pass or the cockpit. */
+  /**
+   * What the signed-in visitor may use beyond the common entries: the demo-pass status
+   * (pass holders) and the cockpit (owner and pass holders). The same in every app.
+   */
+  roles?: { cockpit?: boolean; pass?: boolean };
+  /** Entries after the common ones. */
   extra?: readonly Omit<NavItem, "active">[];
 }
 
@@ -30,7 +35,7 @@ export interface PortalNavigationOptions {
  */
 export function portalNavigation(
   t: CommonTexts,
-  { signedIn, current, extra = [] }: PortalNavigationOptions,
+  { signedIn, current, roles = {}, extra = [] }: PortalNavigationOptions,
 ): NavItem[] {
   const entries: Omit<NavItem, "active">[] = [
     { href: "/", label: t.nav.home },
@@ -40,6 +45,8 @@ export function portalNavigation(
           { href: "/postfach", label: t.nav.mailbox },
           { href: "/vertraege", label: t.nav.contracts },
           { href: "/verbrauch", label: t.nav.consumption },
+          ...(roles.pass ? [{ href: "/pass", label: t.nav.pass }] : []),
+          ...(roles.cockpit ? [{ href: "/cockpit", label: t.nav.cockpit }] : []),
           ...extra,
         ]
       : []),

@@ -35,7 +35,9 @@ describe("signed-in hint", () => {
     expect(cookieValue("kp_locale=en; kp_ui=pass", "kp_ui")).toBe("pass");
     expect(cookieValue("kp_ui=user", "kp_locale")).toBeUndefined();
     expect(cookieValue("a=%E0%A4%A", "a")).toBeUndefined();
-    expect(isUiHint("pass") && isUiHint("user") && !isUiHint("owner")).toBe(true);
+    expect(isUiHint("pass") && isUiHint("user") && isUiHint("owner") && !isUiHint("admin")).toBe(
+      true,
+    );
   });
 });
 

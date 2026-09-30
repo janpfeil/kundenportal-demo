@@ -30,3 +30,16 @@ export function tenantOf(accessToken: string): string | undefined {
   const claim = claims(accessToken)["tenant_id"];
   return typeof claim === "string" ? claim : undefined;
 }
+
+/** What the navigation offers: the cockpit (owner and pass holders) and the pass status. */
+export interface NavigationRoles {
+  cockpit: boolean;
+  pass: boolean;
+}
+
+/** Navigation roles from the Cognito groups of the session's access token. */
+export function rolesOf(accessToken: string | undefined): NavigationRoles {
+  const groups = accessToken ? groupsOf(accessToken) : [];
+  const pass = groups.includes(PASS_GROUP);
+  return { cockpit: pass || groups.includes(OWNER_GROUP), pass };
+}

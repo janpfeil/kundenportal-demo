@@ -42,7 +42,7 @@ describe("ShellFrame", () => {
   it("marks the current section, also below it", () => {
     pathname = "/postfach";
     render(
-      <ShellFrame state={{ locale: "de", signedIn: true, passHolder: false }}>
+      <ShellFrame state={{ locale: "de", signedIn: true, roles: { cockpit: false, pass: false } }}>
         <p>Inhalt</p>
       </ShellFrame>,
     );
@@ -67,9 +67,21 @@ describe("ShellFrame", () => {
       "Contracts",
       "Consumption",
       "Demo pass",
+      "Cockpit",
     ]);
     expect(screen.getByRole("link", { name: "Demo pass" })).toHaveAttribute("aria-current", "page");
     expect(document.documentElement.lang).toBe("en");
+  });
+
+  it("shows the cockpit to the owner and the deployed version in the header", () => {
+    render(
+      <ShellFrame state={{ locale: "de", signedIn: true, roles: { cockpit: true, pass: false } }}>
+        <p>Inhalt</p>
+      </ShellFrame>,
+    );
+    expect(screen.getByRole("link", { name: "Cockpit" })).toHaveAttribute("href", "/cockpit");
+    expect(screen.queryByRole("link", { name: "Demo-Pass" })).toBeNull();
+    expect(screen.getByTestId("app-version")).toHaveTextContent(/^v\d+\.\d+\.\d+/);
   });
 
   it("shows only the start page and the sign-in without the hint", () => {

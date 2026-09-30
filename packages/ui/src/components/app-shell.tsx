@@ -24,6 +24,8 @@ export interface TopBarProps {
   authLink?: { href: string; label: string; variant?: "primary" | "secondary" };
   /** Slot for the notification bell widget. */
   widget?: ReactNode;
+  /** Deployed version, e.g. "v0.4.1 · 1a2b3c4"; shown next to the brand. */
+  version?: string | undefined;
   linkComponent?: LinkComponent;
 }
 
@@ -34,6 +36,7 @@ export function TopBar({
   languageLink,
   authLink,
   widget,
+  version,
   linkComponent: Link = "a",
 }: TopBarProps) {
   return (
@@ -41,6 +44,11 @@ export function TopBar({
       <Link href={brand.href} className="kp-brand">
         {brand.label}
       </Link>
+      {version && (
+        <span className="kp-version" data-testid="app-version">
+          {version}
+        </span>
+      )}
       <nav aria-label={navLabel} className="kp-nav">
         <ul>
           {nav.map((item) => (

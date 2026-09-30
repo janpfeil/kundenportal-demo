@@ -8,6 +8,11 @@ import {
 } from "./contract-update";
 import { BASE_PATH, navigation, zonePath } from "./zone";
 
+/** An unsigned access token with the given Cognito groups (the navigation only reads it). */
+const session = (...groups: string[]) => ({
+  accessToken: `e30.${Buffer.from(JSON.stringify({ "cognito:groups": groups })).toString("base64url")}.x`,
+});
+
 describe("installment input", () => {
   it("accepts whole euros within the range", () => {
     expect(parseInstallmentEuros("85", 6000, 12000)).toEqual({ ok: true, cents: 8500 });
@@ -73,7 +78,7 @@ describe("zone", () => {
   });
 
   it("shows the shell's navigation with this zone active", () => {
-    const nav = navigation(commonTexts.de, true);
+    const nav = navigation(commonTexts.de, session());
     expect(nav.map((item) => item.href)).toEqual([
       "/",
       "/konto",
@@ -82,6 +87,16 @@ describe("zone", () => {
       "/verbrauch",
     ]);
     expect(nav.filter((item) => item.active).map((item) => item.href)).toEqual(["/vertraege"]);
-    expect(navigation(commonTexts.en, false)).toEqual([{ href: "/", label: "Home" }]);
+    expect(navigation(commonTexts.en)).toEqual([{ href: "/", label: "Home" }]);
+    // The cockpit role (owner or pass holder) brings the cockpit link, pass holders also
+    // their pass status.
+    expect(navigation(commonTexts.de, session("owner")).map((item) => item.href)).toContain(
+      "/cockpit",
+    );
+    expect(
+      navigation(commonTexts.de, session("pass"))
+        .map((item) => item.href)
+        .slice(-2),
+    ).toEqual(["/pass", "/cockpit"]);
   });
 });

@@ -23,6 +23,7 @@ export default function GlobalNotFound() {
           brand={{ href: "/", label: t.brand }}
           nav={[{ href: "/", label: t.nav.home }]}
           navLabel={t.nav.label}
+          version={process.env.NEXT_PUBLIC_APP_VERSION}
           footer={<a href={t.footer.href}>{t.footer.text}</a>}
         >
           <Page

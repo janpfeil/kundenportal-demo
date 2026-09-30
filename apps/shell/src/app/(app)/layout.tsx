@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { PASS_GROUP, groupsOf } from "@kundenportal/web-auth";
+import { rolesOf } from "@kundenportal/web-auth";
 import type { ReactNode } from "react";
 import { ShellFrame } from "@/components/shell-frame";
 import { dictionary } from "@/i18n";
@@ -20,8 +20,8 @@ export const metadata: Metadata = {
  */
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const [{ locale }, session] = await Promise.all([dictionary(), readSession()]);
-  // Pass holders get a link to their pass status; read from the token, no extra API call.
-  const passHolder = session ? groupsOf(session.accessToken).includes(PASS_GROUP) : false;
+  // Pass status and cockpit links from the token's groups; no extra API call.
+  const roles = rolesOf(session?.accessToken);
   return (
     <html lang={locale}>
       <head>
@@ -29,9 +29,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
         <script type="module" src="/widgets/bell.js" async />
       </head>
       <body>
-        <ShellFrame state={{ locale, signedIn: Boolean(session), passHolder }}>
-          {children}
-        </ShellFrame>
+        <ShellFrame state={{ locale, signedIn: Boolean(session), roles }}>{children}</ShellFrame>
       </body>
     </html>
   );
