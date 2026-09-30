@@ -24,7 +24,10 @@ test.describe("with a German browser", () => {
   });
 });
 
-test("first sign-in shows the account and a welcome message within seconds", async ({ page }) => {
+test("first sign-in shows the account and a welcome message within seconds", async ({
+  page,
+  baseURL,
+}) => {
   await page.goto("/konto");
   await signIn(page, user.email, user.password);
 
@@ -44,8 +47,10 @@ test("first sign-in shows the account and a welcome message within seconds", asy
   console.log(`Welcome message visible ${welcomeAfterMs} ms after the account page`);
 
   await page.getByRole("link", { name: /Abmelden|Sign out/ }).click();
-  await page.goto("/konto");
-  await page.waitForURL(/amazoncognito\.com|\/auth\/login/);
+  await page.waitForURL((url) => !url.pathname.startsWith("/auth/logout"));
+  // Signed out means the portal's session cookie is gone (Cognito may keep its own session).
+  const cookies = await page.context().cookies(baseURL);
+  expect(cookies.map((cookie) => cookie.name)).not.toContain("kp_session");
 });
 
 test("the API rejects calls without a token", async ({ request }) => {

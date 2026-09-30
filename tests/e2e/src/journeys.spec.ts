@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
-import { signIn } from "./sign-in.js";
+import { openSignedIn, signIn } from "./sign-in.js";
 import { createTestUser, type TestUser, userPoolId } from "./test-user.js";
 
 /**
@@ -41,10 +41,13 @@ test("zones share the shell's session and show the demo contracts", async ({ pag
 });
 
 test("J6: changing the installment is confirmed in the mailbox", async ({ page }) => {
-  await page.goto("/vertraege");
+  // Every test has its own browser context, so it signs in again.
+  await openSignedIn(page, "/vertraege", user.email, user.password);
   await page.getByTestId("contracts").getByRole("link").first().click();
   const form = page.getByTestId("contract-installment-form");
   await expect(form).toBeVisible();
+  // Wait for hydration: before it, a click submits the form natively (a GET reload).
+  await page.waitForLoadState("networkidle");
   const amount = form.getByRole("spinbutton").first();
   const current = Number((await amount.inputValue()).replace(",", "."));
   await amount.fill(String(Math.round(current) + 1));
@@ -54,9 +57,10 @@ test("J6: changing the installment is confirmed in the mailbox", async ({ page }
 });
 
 test("J4: a meter reading is stored and confirmed in the mailbox", async ({ page }) => {
-  await page.goto("/verbrauch");
+  await openSignedIn(page, "/verbrauch", user.email, user.password);
   const form = page.getByTestId("reading-form").first();
   await expect(form).toBeVisible();
+  await page.waitForLoadState("networkidle");
   const latest = Number(
     (await page.getByTestId("readings").first().getAttribute("data-latest-value")) || 0,
   );
