@@ -195,7 +195,7 @@ export class MigrationRepository {
           Key: { PK: this.migration(tenantId), SK: `RUN#${runId}` },
           UpdateExpression: "SET #status = :completed, #completedAt = :at",
           ConditionExpression: "#status = :running",
-          ExpressionAttributeNames: { "#status": "status" },
+          ExpressionAttributeNames: { "#status": "status", "#completedAt": "completedAt" },
           ExpressionAttributeValues: {
             ":completed": "completed",
             ":running": "running",

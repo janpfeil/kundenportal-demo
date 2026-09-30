@@ -116,7 +116,7 @@ describe("customer worker", () => {
 
     const update = dbMock.commandCalls(UpdateCommand)[0]?.args[0].input;
     expect(update?.UpdateExpression).toBe(
-      "SET address = if_not_exists(address, :address), phone = if_not_exists(phone, :phone) ADD legacyAccounts :account",
+      "SET #address = if_not_exists(#address, :address), #phone = if_not_exists(#phone, :phone) ADD #legacyAccounts :account",
     );
     expect(registered().eventId).toBe(deterministicUuid(customerId, "CustomerRegistered"));
   });

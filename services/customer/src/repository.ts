@@ -125,8 +125,8 @@ export class CustomerRepository {
     data: { address?: PostalAddress; phone?: string; legacyAccount: string },
   ): Promise<void> {
     const sets = [
-      ...(data.address ? ["address = if_not_exists(address, :address)"] : []),
-      ...(data.phone ? ["phone = if_not_exists(phone, :phone)"] : []),
+      ...(data.address ? ["#address = if_not_exists(#address, :address)"] : []),
+      ...(data.phone ? ["#phone = if_not_exists(#phone, :phone)"] : []),
     ];
     await this.db.send(
       new UpdateCommand({
@@ -134,8 +134,14 @@ export class CustomerRepository {
         Key: { PK: tenantKey(tenantId, "CUST", customerId), SK: "PROFILE" },
         UpdateExpression: [
           ...(sets.length ? [`SET ${sets.join(", ")}`] : []),
-          "ADD legacyAccounts :account",
+          "ADD #legacyAccounts :account",
         ].join(" "),
+        // Aliases throughout: DynamoDB rejects reserved words in expressions.
+        ExpressionAttributeNames: {
+          "#legacyAccounts": "legacyAccounts",
+          ...(data.address ? { "#address": "address" } : {}),
+          ...(data.phone ? { "#phone": "phone" } : {}),
+        },
         ExpressionAttributeValues: {
           ":account": new Set([data.legacyAccount]),
           ...(data.address ? { ":address": data.address } : {}),

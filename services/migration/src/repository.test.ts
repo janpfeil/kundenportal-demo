@@ -7,7 +7,7 @@ import {
   UpdateCommand,
 } from "@aws-sdk/lib-dynamodb";
 import { mockClient } from "aws-sdk-client-mock";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { MigrationRepository } from "./repository.js";
 
 const dbMock = mockClient(DynamoDBDocumentClient);
@@ -140,5 +140,32 @@ describe("migration repository", () => {
       .commandCalls(BatchWriteCommand)
       .map((c) => c.args[0].input.RequestItems?.table?.length);
     expect(batches).toEqual([25, 1, 6]);
+  });
+
+  it("completes a run once and defines every name alias it uses", async () => {
+    dbMock
+      .on(UpdateCommand)
+      .resolvesOnce({})
+      .rejects(new ConditionalCheckFailedException({ message: "x", $metadata: {} }));
+    expect(await repository.completeRun("owner", "r1", "2026-09-30T12:00:00.000Z")).toBe(true);
+    expect(await repository.completeRun("owner", "r1", "2026-09-30T12:00:00.000Z")).toBe(false);
+  });
+
+  // DynamoDB rejects an expression that uses an undefined #alias; the mocks would not.
+  afterEach(() => {
+    for (const call of dbMock.calls()) {
+      const input = call.args[0].input as {
+        UpdateExpression?: string;
+        ConditionExpression?: string;
+        KeyConditionExpression?: string;
+        ExpressionAttributeNames?: Record<string, string>;
+      };
+      const used = [input.UpdateExpression, input.ConditionExpression, input.KeyConditionExpression]
+        .join(" ")
+        .match(/#\w+/g);
+      for (const alias of used ?? []) {
+        expect(input.ExpressionAttributeNames?.[alias], alias).toBeDefined();
+      }
+    }
   });
 });
