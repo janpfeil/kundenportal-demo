@@ -330,9 +330,6 @@ Drei Fehler fielen erst live auf und sind behoben:
 
 ## Offen
 
-- Der Demo-Reset des **Inhaber**-Mandanten lässt migrierte Profile in der
-  Tabelle der Base stehen. Pass-Mandanten werden vollständig gelöscht; für
-  Besucher ist der Hinweis aus Phase 3 damit erledigt.
 - Die Startseite ist nicht im CDN zwischenspeicherbar, weil das gemeinsame
   Layout Cookies liest.
 - Atomare Obergrenze, Upload-Kontingent, Einstellungen, Angebot und

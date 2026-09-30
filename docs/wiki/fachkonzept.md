@@ -98,6 +98,7 @@ enthält `tenantId`, `occurredAt`, `correlationId` [E].
 | `BulkMigrationStarted` / `BulkMigrationCompleted` | migration | notification | Cockpit-Status |
 | `PasswordResetRequired` | migration | notification | Reset-Aufforderung ins Demo-Postfach |
 | `MigrationRecordFailed` | migration (DLQ) | — (Timeline) | fehlerhafter Datensatz im Cockpit, Redrive möglich |
+| `MigratedAccountsRemoved` | migration (Demo-Reset) | customer, contract, consumption, documents, notification | Portaldaten der entfernten Konten löschen (Profil, Verträge, Zählerstände, Dokumente, Postfach) |
 | `DemoPassIssued` / `DemoPassExpired` | tenancy | tenancy, alle | Mandant anlegen bzw. löschen |
 
 ```chart

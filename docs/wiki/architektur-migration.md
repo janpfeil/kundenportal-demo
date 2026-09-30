@@ -155,9 +155,64 @@ Läufe, Klärfälle, DLQ mit Redrive und die Ereignis-
 [Timeline](glossar.md#timeline): Eine Regel liefert **jedes** Ereignis des
 Busses an den migration-Worker, der es ohne personenbezogene Daten (nur IDs,
 Altkonten, Sparten, Zähler) mit [TTL](glossar.md#dynamodb-ttl) von 7 Tagen
-ablegt. Die Seite lädt sich alle 10 Sekunden neu. Der
-[Demo-Reset](glossar.md#demo-reset) entfernt die von der Migration angelegten
-Konten (nie das eigene), Datensätze, Läufe und die DLQ.
+ablegt. Die Seite lädt sich alle 10 Sekunden neu.
+
+### Demo-Reset
+
+Der [Demo-Reset](glossar.md#demo-reset) (`POST /migration/reset`) entfernt
+die von der Migration angelegten Konten (nie das eigene) samt ihrer
+Portaldaten, damit die Journeys wieder von vorn laufen. Eine erneute
+Anmeldung derselben Person erzeugt eine neue `sub` und damit eine neue
+Kundennummer; ohne Aufräumen blieben die alten Daten unerreichbar liegen.
+Schlimmer noch: Altverträge behalten ihre Vertragsnummer
+(`deterministicUuid(Mandant, Altvertrag)`), sodass Zählerstände und die
+Vertragsprojektion von `consumption` beim neuen Konto wieder auftauchten
+bzw. die neue Projektion als „älter" verwürfen [E].
+
+Ablauf im Migrationsdienst:
+
+1. Er sammelt die Identitäten aus seinen Datensätzen (`REC#…` mit `sub`,
+   ohne die des Aufrufers) und löscht deren Cognito-Konten.
+2. Er leert die Timeline des Mandanten (sonst erst per TTL nach 7 Tagen).
+3. Er veröffentlicht `MigratedAccountsRemoved` mit `reason: "demo-reset"`
+   und je Konto `subject` und `customerId`
+   (`customerIdFor(tenantId, subject)`) — in Schüben zu höchstens 100
+   Konten, weit unter der Grenze von 256 KB je Ereignis und klein genug,
+   dass jeder Konsument einen Schub in einem Aufruf abarbeitet. Auch
+   Identitäten, deren Cognito-Konto schon fehlte, stehen darin: Ihre Daten
+   können noch da sein.
+4. Er löscht seine Verknüpfungsangebote (`SUBJ#<sub>` / `LINK#…`) und den
+   Merker „Übernahme gemeldet" (`SUBJ#<sub>` / `IDENTITY#LEGACY`). Der
+   Merker gehört dem Identitätsbereich; der hat aber keinen Worker, der auf
+   Ereignisse reagieren könnte. Der Reset löscht ihn deshalb direkt — so wie
+   er auch die Cognito-Konten des Identitätsbereichs löscht.
+5. Zuletzt löscht er Datensätze und Läufe und leert — nur beim Inhaber — die
+   gemeinsame DLQ. Scheitert ein Schritt vorher, findet ein zweiter Reset die
+   Identitäten also noch.
+
+Jeder Bereich löscht seine Daten selbst, im Mandanten des Ereignisses und
+über `tenantData` (Pass-Mandant: eigene Tabelle, Vending-Anmeldedaten):
+
+| Bereich | Löscht je Konto |
+|---|---|
+| customer | `CUST#<id>` / `PROFILE`, `SUBJ#<sub>` / `CUSTOMER` |
+| contract | `CUST#<id>` / `CONTRACT#…`, `SUBJ#<sub>` / `CONTRACTS` |
+| consumption | je Vertrag des Kunden alles unter `CONTRACT#<vertrag>` (Projektion zuletzt), den Eintrag der Überwachungsliste Datenvolumen (Base), `SUBJ#<sub>` / `CONSUMPTION` |
+| documents | Dateien `uploads/<mandant>/<kunde>/<dokument>` (S3-Client des Mandanten), danach `CUST#<id>` / `DOC#…` und `SUBJ#<sub>` / `DOCUMENTS` |
+| notification | `CUST#<id>` / `NOTE#…` und `MAILBOX`, `SUBJ#<sub>` / `MAILBOX` |
+
+`consumption` kennt die Verträge eines Kunden nur aus der eigenen Projektion
+unter `CONTRACT#<vertrag>`; es gibt keinen Index nach Kunde. Der Worker
+sucht sie deshalb mit einem [Scan](glossar.md#dynamodb-scan) über die
+Tabelle des Mandanten (Filter auf `customerId IN (…)`, höchstens 100 Werte
+— daher die Schubgröße). Das kostet Lesekapazität im Umfang der Tabelle,
+beim Inhaber also der Base; im Demo mit einigen hundert Einträgen und dem
+seltenen Reset ist das vertretbar [E]. Alle Löschungen sind idempotent: ein
+wiederholt zugestelltes Ereignis findet nichts mehr und löscht nur die
+Identitäts-Verknüpfungen erneut. Nachzügler-Ereignisse, die nach dem Reset
+noch einen Eintrag eines entfernten Kunden anlegen (z. B. eine späte
+Postfach-Nachricht), bleiben unerreichbar liegen; sie stören keine neue
+Übernahme, weil die neue Kundennummer eine andere ist.
 
 ## 5. Daten und Kapazität
 
