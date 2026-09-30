@@ -1,0 +1,31 @@
+{
+  "name": "@kundenportal/tenancy",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Tenancy service: invitation links, demo-pass redemption with ALTCHA, provisioning and teardown of pass tenants, quotas and kill switch",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@aws-sdk/client-cognito-identity-provider": "^3.1143.0",
+    "@aws-sdk/client-dynamodb": "^3.1142.0",
+    "@aws-sdk/client-eventbridge": "^3.1142.0",
+    "@aws-sdk/client-s3": "^3.1142.0",
+    "@aws-sdk/client-scheduler": "^3.1142.0",
+    "@aws-sdk/client-ssm": "^3.1142.0",
+    "@aws-sdk/lib-dynamodb": "^3.1142.0",
+    "@kundenportal/events": "workspace:*",
+    "@kundenportal/legacy": "workspace:*",
+    "@kundenportal/service-kit": "workspace:*",
+    "altcha-lib": "^2.5.0",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.164",
+    "aws-sdk-client-mock": "^4.1.0"
+  }
+}
