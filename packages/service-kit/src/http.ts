@@ -5,6 +5,8 @@ import type {
 import type { z } from "zod";
 import { badRequest, HttpError } from "./errors.js";
 import { log } from "./log.js";
+import { createApiQuota, type TenantGuard } from "./platform.js";
+import { isPassTenant } from "./tenant-data.js";
 
 export type ApiEvent = APIGatewayProxyEventV2WithJWTAuthorizer;
 export type ApiResult = APIGatewayProxyStructuredResultV2;
@@ -53,15 +55,40 @@ export function parseBody<T extends z.ZodType>(event: ApiEvent, schema: T): z.in
   return result.data;
 }
 
+export interface RouterOptions {
+  /**
+   * Runs before every route called with a demo pass tenant's token (pass status and API
+   * quota, architektur-mandanten §5). Default: `createApiQuota()` configured from the
+   * environment, built on the first call of a pass tenant. `false` switches it off.
+   */
+  tenantGuard?: TenantGuard | false;
+}
+
+/** Tenant claim of the verified token, unvalidated: the route itself validates the caller. */
+function tenantClaim(event: ApiEvent): string | undefined {
+  const value = event.requestContext.authorizer?.jwt?.claims?.tenant_id;
+  return typeof value === "string" ? value : undefined;
+}
+
 /**
  * Dispatches by the API gateway route key (e.g. `GET /me`) and turns thrown
  * `HttpError`s into problem responses. Unexpected errors are logged and hidden.
+ * Calls with a pass tenant's token pass the tenant guard first; the owner's never do.
  */
-export function router(routes: Record<string, ApiHandler>): ApiHandler {
+export function router(
+  routes: Record<string, ApiHandler>,
+  options: RouterOptions = {},
+): ApiHandler {
+  let guard = options.tenantGuard || undefined;
   return async (event) => {
     const handler = routes[event.routeKey];
     if (!handler) return problem(404, "Not Found", `No route for ${event.routeKey}`);
     try {
+      const tenantId = tenantClaim(event);
+      if (options.tenantGuard !== false && tenantId && isPassTenant(tenantId)) {
+        guard ??= createApiQuota();
+        await guard(tenantId);
+      }
       return await handler(event);
     } catch (error) {
       if (error instanceof HttpError) return problem(error.status, error.title, error.detail);

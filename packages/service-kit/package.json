@@ -11,8 +11,8 @@
       "default": "./dist/index.js"
     },
     "./testing": {
-      "types": "./dist/testing/api-event.d.ts",
-      "default": "./dist/testing/api-event.js"
+      "types": "./dist/testing/index.d.ts",
+      "default": "./dist/testing/index.js"
     }
   },
   "files": [
@@ -25,9 +25,14 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.1142.0",
+    "@aws-sdk/client-s3": "^3.1142.0",
+    "@aws-sdk/client-sts": "^3.1142.0",
+    "@aws-sdk/lib-dynamodb": "^3.1142.0",
     "zod": "^4.6.5"
   },
   "devDependencies": {
-    "@types/aws-lambda": "^8.10.164"
+    "@types/aws-lambda": "^8.10.164",
+    "aws-sdk-client-mock": "^4.1.0"
   }
 }
