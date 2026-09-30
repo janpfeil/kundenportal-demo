@@ -14,6 +14,10 @@
       "types": "./dist/browser.d.ts",
       "default": "./dist/browser.js"
     },
+    "./csp": {
+      "types": "./dist/csp.d.ts",
+      "default": "./dist/csp.js"
+    },
     "./pages": {
       "types": "./dist/pages.d.ts",
       "default": "./dist/pages.js"
