@@ -171,7 +171,11 @@ export default async function CockpitPage() {
           columns={recordColumns}
           rows={status.clarifications}
           rowKey={(row) => row.id}
-          empty={<p className="kp-muted">{t.clarifications.empty}</p>}
+          empty={
+            <p className="kp-muted" data-testid="clarifications">
+              {t.clarifications.empty}
+            </p>
+          }
         />
       </Card>
 
@@ -183,7 +187,11 @@ export default async function CockpitPage() {
           columns={deadLetterColumns}
           rows={status.deadLetters}
           rowKey={(row) => row.id}
-          empty={<p className="kp-muted">{t.deadLetters.empty}</p>}
+          empty={
+            <p className="kp-muted" data-testid="dead-letters">
+              {t.deadLetters.empty}
+            </p>
+          }
         />
       </Card>
 
