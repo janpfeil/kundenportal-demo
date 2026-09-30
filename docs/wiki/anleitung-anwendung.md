@@ -358,8 +358,8 @@ Neuaufbau nach Vollabbau den alten Eintrag löschen (8.7, Variante B).
 2. https://kundenportal-demo.rypox.com → **Anmelden** → registrieren
    (Passwort mindestens 12 Zeichen). Der Code kommt von
    `no-reply@verificationemail.com` (Cognito-Standard, höchstens 50 E-Mails
-   pro Tag). Kommt keine E-Mail (Spamfilter/Greylisting des eigenen
-   Mailservers), bestätigt der Agent das Konto per Admin-API.
+   pro Tag). Der Code kann **mehrere Minuten** brauchen (30.09.2026: über
+   5 min); notfalls bestätigt der Agent das Konto per Admin-API.
 3. Ergebnis: **Mein Konto** zeigt die Daten; im **Postfach** steht nach
    wenigen Sekunden die Willkommensnachricht. Automatisch prüft das der
    Workflow **E2E** (Playwright, Wegwerf-Nutzer, misst die Zeit).
