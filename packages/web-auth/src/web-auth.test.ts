@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { sha256Hex } from "./browser.js";
+import { groupsOf, tenantOf } from "./claims.js";
 import { loadZoneConfig } from "./config.js";
 import { deriveKey, seal, unseal } from "./crypto.js";
 import { isSameOrigin } from "./origin.js";
@@ -52,5 +53,21 @@ describe("config", () => {
     });
     expect(config.apiUrl).toBe("https://api.example/api");
     expect(() => loadZoneConfig({})).toThrow(/APP_URL/);
+  });
+});
+
+describe("token claims", () => {
+  const token = (payload: object) =>
+    `e30.${Buffer.from(JSON.stringify(payload)).toString("base64url")}.sig`;
+
+  it("reads the Cognito groups from the access token", () => {
+    expect(groupsOf(token({ "cognito:groups": ["pass", 7] }))).toEqual(["pass"]);
+    expect(groupsOf(token({ sub: "s" }))).toEqual([]);
+    expect(groupsOf("not-a-jwt")).toEqual([]);
+  });
+
+  it("reads the tenant from the access token", () => {
+    expect(tenantOf(token({ tenant_id: "p4k7x2qa" }))).toBe("p4k7x2qa");
+    expect(tenantOf(token({}))).toBeUndefined();
   });
 });

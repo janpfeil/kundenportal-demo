@@ -45,6 +45,12 @@ const demo = {
     migrated: "übernommen",
     conflict: "Klärfall",
     bell: "Glocke (3)",
+    quotaApi: "API-Aufrufe",
+    quotaApiValue: "3.800 von 5.000 übrig",
+    quotaEvents: "Domänen-Ereignisse",
+    quotaEventsValue: "150 von 1.000 übrig",
+    quotaUploads: "Uploads",
+    quotaUploadsValue: "0 von 20 übrig",
   },
   en: {
     accountTitle: "My account",
@@ -88,6 +94,12 @@ const demo = {
     migrated: "migrated",
     conflict: "needs review",
     bell: "Bell (3)",
+    quotaApi: "API calls",
+    quotaApiValue: "3,800 of 5,000 left",
+    quotaEvents: "Domain events",
+    quotaEventsValue: "150 of 1,000 left",
+    quotaUploads: "Uploads",
+    quotaUploadsValue: "0 of 20 left",
   },
 } as const;
 

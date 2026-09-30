@@ -482,3 +482,55 @@ a {
 .kp-empty > :last-child {
   margin-bottom: 0;
 }
+
+/* Meter (bounded quantity such as a quota) */
+
+.kp-meter {
+  margin: 0 0 12px;
+}
+
+.kp-meter-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 12px;
+  margin: 0 0 4px;
+}
+
+.kp-meter-label {
+  font-weight: 600;
+}
+
+.kp-meter-value {
+  color: var(--kp-muted);
+}
+
+.kp-meter-track {
+  height: 8px;
+  border-radius: 4px;
+  background: var(--kp-border);
+  overflow: hidden;
+}
+
+.kp-meter-bar {
+  height: 100%;
+  background: var(--kp-accent);
+}
+
+.kp-meter-warning .kp-meter-bar {
+  background: var(--kp-warning-border);
+}
+
+.kp-meter-error .kp-meter-bar {
+  background: var(--kp-error-border);
+}
+
+@media (forced-colors: active) {
+  .kp-meter-track {
+    border: 1px solid CanvasText;
+  }
+
+  .kp-meter-bar {
+    background: Highlight;
+  }
+}

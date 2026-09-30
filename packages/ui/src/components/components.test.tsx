@@ -11,6 +11,7 @@ import {
   DataTable,
   EmptyState,
   Facts,
+  Meter,
   Notice,
   NumberField,
   Page,
@@ -244,5 +245,23 @@ describe("Notice and Badge", () => {
   it("renders the badge text", () => {
     render(<Badge>neu</Badge>);
     expect(screen.getByText("neu")).toHaveClass("kp-badge");
+  });
+});
+
+describe("Meter", () => {
+  it("exposes a named meter with its value text and clamps the bar", () => {
+    const { container } = render(
+      <Meter label="API-Aufrufe" value={6000} max={5000} valueText="0 von 5.000 übrig" />,
+    );
+    const meter = screen.getByRole("meter", { name: "API-Aufrufe" });
+    expect(meter).toHaveAttribute("aria-valuenow", "5000");
+    expect(meter).toHaveAttribute("aria-valuetext", "0 von 5.000 übrig");
+    expect(screen.getByText("0 von 5.000 übrig")).toBeInTheDocument();
+    expect(container.firstChild).toHaveClass("kp-meter-error");
+  });
+
+  it("warns from 80 % by default", () => {
+    const { container } = render(<Meter label="Uploads" value={16} max={20} />);
+    expect(container.firstChild).toHaveClass("kp-meter-warning");
   });
 });

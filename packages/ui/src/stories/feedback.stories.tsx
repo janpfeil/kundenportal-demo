@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Badge, Notice } from "../components/feedback.js";
+import { Meter } from "../components/meter.js";
 import { storyTexts } from "./texts.js";
 
 const meta: Meta = {
@@ -44,4 +45,23 @@ export const Badges: Story = {
       </p>
     );
   },
+};
+
+export const Meters: Story = {
+  render: (_, { globals }) => {
+    const { demo } = storyTexts(globals);
+    return (
+      <>
+        <Meter label={demo.quotaApi} value={1200} max={5000} valueText={demo.quotaApiValue} />
+        <Meter label={demo.quotaEvents} value={850} max={1000} valueText={demo.quotaEventsValue} />
+        <Meter label={demo.quotaUploads} value={20} max={20} valueText={demo.quotaUploadsValue} />
+      </>
+    );
+  },
+};
+
+export const MetersDark: Story = {
+  ...Meters,
+  name: "Meters (dark)",
+  globals: { theme: "dark" },
 };

@@ -16,5 +16,7 @@ export type {
 export { Footer } from "./components/footer.js";
 export type { FooterProps } from "./components/footer.js";
 export type { LinkComponent, LinkProps } from "./components/link.js";
+export { Meter } from "./components/meter.js";
+export type { MeterProps } from "./components/meter.js";
 export { Card, Page } from "./components/page.js";
 export type { CardProps, PageProps } from "./components/page.js";
