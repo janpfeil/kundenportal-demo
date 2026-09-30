@@ -44,8 +44,8 @@ Mandanten, Kontingente) liegen ebenfalls dort, unter eigenen Präfixen
 |---|---|---|
 | `INVITE#<sha256(token)>` | `META` | E-Mail, erstellt, gültig bis (TTL 14 Tage), eingelöst |
 | `PASS#<passId>` | `META` | Mandant, E-Mail, Status, ausgestellt, gültig bis |
-| `PASS#<passId>` | `QUOTA#<art>` | Zähler (`api`, `events`, `uploads`) |
-| `PLATFORM` | `TENANT#<kennung>` | Tabelle, Status, Pass — Liste für Abgleich und Cockpit |
+| `TENANT#<kennung>` | `QUOTA#<art>` | Zähler `used` (`api`, `events`, `uploads`) — der Router kennt nur den Mandanten, nicht den Pass |
+| `PLATFORM` | `TENANT#<kennung>` | Tabelle, Status (`provisioning`, `active`, `quota-exceeded`, `tearing-down`, `deleted`), Pass — Liste für Abgleich und Cockpit |
 | `PLATFORM` | `SETTINGS` | Einlösen offen/gesperrt (Kill-Switch), Obergrenze |
 | `RATE#<ip-hash>` | `REDEEM` | Einlöseversuche je IP, TTL 1 h |
 
@@ -141,7 +141,7 @@ dem Inhaber-Mandanten vorbehalten.
 | Größe | Grenze | Zählung |
 |---|---|---|
 | Laufzeit | 7 Tage | Zeitplan + täglicher Abgleich |
-| API-Aufrufe | 5.000 | `service-kit`-Router, atomares `ADD` mit Bedingung, sonst 429 |
+| API-Aufrufe | 5.000 (`QUOTA_API_CALLS`) | `service-kit`-Router vor jeder Route eines Pass-Mandanten: atomares `ADD` auf `TENANT#<kennung>/QUOTA#api` der Base mit Bedingung, sonst 429; Pass nicht `active` → 403 (`quota-exceeded` → 429), Status 30 s gecacht |
 | Domänen-Ereignisse | 1.000 | Timeline-Konsument der Migration zählt; bei Überschreitung Status „Kontingent erschöpft" → API 429 |
 | Uploads | 20, je ≤ 5 MB, nur JPEG/PNG/PDF | Documents beim Ausstellen der URL |
 | Gleichzeitige Instanzen | 1 je Pass | ein Mandant je Pass |
