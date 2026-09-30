@@ -190,6 +190,28 @@ test("the tenant's Anna is taken over inside the tenant with her contracts", asy
   await page.context().close();
 });
 
+test("the upload quota of the pass holds: the 21st upload is refused", async ({ browser }) => {
+  const page = await freshPage(browser);
+  await openSignedIn(page, "/verbrauch", anna, demoPassword);
+  const origin = new URL(page.url()).origin;
+  const announce = () =>
+    page.request.post(`${origin}/verbrauch/api/documents/upload-url`, {
+      headers: { origin, "content-type": "application/json" },
+      data: {
+        fileName: "zaehler.png",
+        contentType: "image/png",
+        sizeBytes: 68,
+        category: "meter-photo",
+      },
+    });
+  const statuses: number[] = [];
+  for (let i = 0; i < 21; i++) statuses.push((await announce()).status());
+  // Each announcement counts, whether or not the file is uploaded afterwards.
+  expect(statuses.slice(0, 20).every((status) => status >= 200 && status < 300)).toBe(true);
+  expect(statuses[20]).toBe(429);
+  await page.context().close();
+});
+
 test("J3 inside the tenant: Bernd links his telco account with the tenant's password", async ({
   browser,
 }) => {
@@ -242,6 +264,37 @@ test("owner and pass holder see only their own tenant in the cockpit", async ({
   await expect(page.getByTestId("cockpit-tenant")).toHaveCount(0);
   await expect(page.locator("main")).not.toContainText(tenant);
   await expect(page.locator("main")).not.toContainText(`+${tenant}@`);
+});
+
+test("the owner pauses redemption in the cockpit and the redeem page says so", async ({
+  page,
+  browser,
+}) => {
+  const settings = page.getByTestId("tenancy-settings");
+  const toggle = async (to: "open" | "closed") => {
+    await openPasses(page);
+    if ((await settings.getAttribute("data-redemption")) !== to) {
+      await page.getByTestId("toggle-redemption").click();
+    }
+    await expect(settings).toHaveAttribute("data-redemption", to);
+  };
+  const redeemPage = async () => {
+    const visitor = await freshPage(browser);
+    await visitor.goto("/pass/einloesen");
+    return visitor;
+  };
+  try {
+    await toggle("closed");
+    const closed = await redeemPage();
+    await expect(closed.getByTestId("redeem-paused")).toBeVisible();
+    await closed.context().close();
+  } finally {
+    await toggle("open");
+  }
+  const open = await redeemPage();
+  await expect(open.getByTestId("redeem-offer")).toContainText("5.000");
+  await expect(open.getByTestId("redeem-paused")).toHaveCount(0);
+  await open.context().close();
 });
 
 test("after the test duration the tenant is deleted and the holder cannot sign in", async ({
