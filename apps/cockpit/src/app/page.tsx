@@ -9,7 +9,7 @@ import {
   Notice,
   Page,
 } from "@kundenportal/ui";
-import { apiFor } from "@kundenportal/web-auth";
+import { apiFor, tenantOf } from "@kundenportal/web-auth";
 import { AutoRefresh } from "@/components/auto-refresh";
 import { BulkStart } from "@/components/bulk-start";
 import { DemoReset } from "@/components/demo-reset";
@@ -17,6 +17,7 @@ import { RedriveForm } from "@/components/redrive-form";
 import { dictionary } from "@/i18n";
 import { formatDateTime, percent } from "@/lib/format";
 import { requireSession } from "@/lib/session";
+import { accessOf } from "@/lib/tenancy";
 import { fill, zonePath } from "@/lib/zone";
 import { ZoneLink } from "@/lib/zone-link";
 
@@ -29,16 +30,34 @@ type Entry = MigrationStatus["timeline"][number];
 export default async function CockpitPage() {
   const session = await requireSession(zonePath());
   const { locale, t } = await dictionary();
-  const result = await apiFor(session)
-    .GET("/migration/status")
-    .catch(() => undefined);
+  // Owner: the owner tenant and the pass administration. Pass holders: the cockpit of their
+  // own tenant, which the API scopes by the token. The API checks the groups itself.
+  const access = accessOf(session);
+  const result =
+    access === "none"
+      ? undefined
+      : await apiFor(session)
+          .GET("/migration/status")
+          .catch(() => undefined);
 
   const actions = (
-    <ButtonLink href={zonePath()} variant="secondary" linkComponent={ZoneLink}>
-      {t.refresh}
-    </ButtonLink>
+    <>
+      <ButtonLink href={zonePath()} variant="secondary" linkComponent={ZoneLink}>
+        {t.refresh}
+      </ButtonLink>
+      {access === "owner" && (
+        <ButtonLink
+          href={zonePath("/paesse")}
+          variant="secondary"
+          linkComponent={ZoneLink}
+          data-testid="to-passes"
+        >
+          {t.access.toPasses}
+        </ButtonLink>
+      )}
+    </>
   );
-  if (result?.response.status === 403) {
+  if (access === "none" || result?.response.status === 403) {
     return (
       <Page title={t.title}>
         <Notice tone="warning" data-testid="cockpit-forbidden">
@@ -113,6 +132,15 @@ export default async function CockpitPage() {
   return (
     <Page title={t.title} lead={t.lead} actions={actions}>
       <AutoRefresh seconds={10} />
+      {access === "pass" && (
+        <Notice
+          tone="info"
+          data-testid="cockpit-tenant"
+          data-tenant={tenantOf(session.accessToken)}
+        >
+          {fill(t.access.ownInstance, { tenant: tenantOf(session.accessToken) ?? "" })}
+        </Notice>
+      )}
       <p className="kp-muted">{t.live}</p>
 
       <Card title={t.progress.title}>

@@ -1,4 +1,10 @@
-import { apiFor, isSameOrigin, readSession, zoneConfig } from "@kundenportal/web-auth";
+import {
+  type Session,
+  apiFor,
+  isSameOrigin,
+  readSession,
+  zoneConfig,
+} from "@kundenportal/web-auth";
 
 type Api = ReturnType<typeof apiFor>;
 
@@ -22,13 +28,14 @@ export function problem(status: number, title: string, detail?: string): Respons
 /**
  * Write path of a zone (BFF): the browser posts JSON to a route handler of the zone, which
  * checks the origin (CSRF) and the session, validates the body and calls the portal API
- * with the session's access token. The API's status and problem details pass through
+ * with the session's access token (typed client, or the session itself for endpoints the
+ * typed client does not know yet). The API's status and problem details pass through
  * unchanged, so the browser can show what went wrong.
  */
 export async function forwardWrite<T>(
   request: Request,
   parse: (body: unknown) => T | undefined,
-  call: (api: Api, body: T) => Promise<ApiResult>,
+  call: (api: Api, body: T, session: Session) => Promise<ApiResult>,
 ): Promise<Response> {
   if (!isSameOrigin(request.headers, zoneConfig().appUrl))
     return problem(403, "Forbidden", "The request does not come from the portal");
@@ -46,7 +53,7 @@ export async function forwardWrite<T>(
 
   let result: ApiResult;
   try {
-    result = await call(apiFor(session), body);
+    result = await call(apiFor(session), body, session);
   } catch {
     return problem(502, "Bad Gateway", "The portal API could not be reached");
   }
@@ -61,5 +68,7 @@ export async function forwardWrite<T>(
       headers: { ...NO_STORE, "content-type": "application/problem+json" },
     });
   }
+  // 204 and 205 must not carry a body; Response.json would throw.
+  if (status === 204 || status === 205) return new Response(null, { status, headers: NO_STORE });
   return Response.json(result.data ?? null, { status, headers: NO_STORE });
 }
