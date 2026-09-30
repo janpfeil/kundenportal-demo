@@ -25,12 +25,12 @@ export interface Clock {
 const unprocessable = (detail: string) => new HttpError(422, "Unprocessable Content", detail);
 const euros = (cents: number) => (cents / 100).toFixed(2);
 
-/** An event the consumer cannot process however often it retries (goes to the DLQ). */
+/** An event the worker cannot process however often it retries (goes to the DLQ). */
 export class UnprocessableEventError extends Error {
   override name = "UnprocessableEventError";
 }
 
-/** Use cases of the contract domain, independent of Lambda, HTTP and SQS. */
+/** Use cases of the contract domain, independent of Lambda, HTTP and EventBridge. */
 export class ContractService {
   constructor(
     private readonly repository: ContractRepository,

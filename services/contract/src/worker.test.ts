@@ -2,19 +2,18 @@ import { ConditionalCheckFailedException, DynamoDBClient } from "@aws-sdk/client
 import { EventBridgeClient, PutEventsCommand } from "@aws-sdk/client-eventbridge";
 import { DynamoDBDocumentClient, GetCommand, PutCommand } from "@aws-sdk/lib-dynamodb";
 import { ContractChanged, InstallmentAdjusted } from "@kundenportal/events";
-import type { SQSEvent, SQSRecord } from "aws-lambda";
 import { mockClient } from "aws-sdk-client-mock";
 import { beforeEach, describe, expect, it } from "vitest";
 import { demoContracts } from "./contract.js";
-import { createConsumer } from "./consumer.js";
 import { ContractEvents } from "./publisher.js";
 import { ContractRepository } from "./repository.js";
 import { ContractService } from "./service.js";
+import { createWorker } from "./worker.js";
 
 const dbMock = mockClient(DynamoDBDocumentClient);
 const ebMock = mockClient(EventBridgeClient);
 
-const consumer = createConsumer(
+const worker = createWorker(
   new ContractService(
     new ContractRepository(DynamoDBDocumentClient.from(new DynamoDBClient({})), "table"),
     new ContractEvents(new EventBridgeClient({}), "bus"),
@@ -57,25 +56,6 @@ const reading = (value: number, readAt = "2026-09-30") => ({
   },
 });
 
-function record(messageId: string, body: unknown): SQSRecord {
-  return {
-    messageId,
-    receiptHandle: "rh",
-    body: typeof body === "string" ? body : JSON.stringify(body),
-    attributes: {
-      ApproximateReceiveCount: "1",
-      SentTimestamp: "0",
-      SenderId: "events",
-      ApproximateFirstReceiveTimestamp: "0",
-    },
-    messageAttributes: {},
-    md5OfBody: "",
-    eventSource: "aws:sqs",
-    eventSourceARN: "arn:aws:sqs:eu-central-1:123456789012:contract",
-    awsRegion: "eu-central-1",
-  };
-}
-const event = (...records: SQSRecord[]): SQSEvent => ({ Records: records });
 const envelope = (source: string, detailType: string, detail: unknown) => ({
   source,
   "detail-type": detailType,
@@ -101,9 +81,7 @@ beforeEach(() => {
 
 describe("CustomerRegistered", () => {
   it("links the identity, creates demo contracts and publishes ContractChanged(created)", async () => {
-    const result = await consumer(event(record("m-1", customerRegistered())));
-
-    expect(result.batchItemFailures).toEqual([]);
+    await expect(worker(customerRegistered())).resolves.toBeUndefined();
     const puts = dbMock.commandCalls(PutCommand).map((call) => call.args[0].input);
     expect(puts[0]?.Item).toEqual({
       PK: "TENANT#owner#SUBJ#sub-1",
@@ -126,22 +104,20 @@ describe("CustomerRegistered", () => {
   });
 
   it("is idempotent: a redelivery creates nothing new and re-publishes the same event ids", async () => {
-    await consumer(event(record("m-1", customerRegistered())));
+    await worker(customerRegistered());
     const firstIds = published().map((e) => e.detail.eventId);
     dbMock
       .on(PutCommand, { ConditionExpression: "attribute_not_exists(PK)" })
       .rejects(new ConditionalCheckFailedException({ message: "exists", $metadata: {} }));
     ebMock.resetHistory();
 
-    const result = await consumer(event(record("m-1", customerRegistered())));
-
-    expect(result.batchItemFailures).toEqual([]);
+    await expect(worker(customerRegistered())).resolves.toBeUndefined();
     expect(published().map((e) => e.detail.eventId)).toEqual(firstIds);
   });
 
   it("gives legacy customers no demo contracts (they come with their migration)", async () => {
     const legacy = { ...registered, payload: { ...registered.payload, origin: "legacy-utility" } };
-    await consumer(event(record("m-1", customerRegistered(legacy))));
+    await worker(customerRegistered(legacy));
     expect(dbMock.commandCalls(PutCommand)).toHaveLength(1);
     expect(published()).toEqual([]);
   });
@@ -149,9 +125,7 @@ describe("CustomerRegistered", () => {
 
 describe("MeterReadingSubmitted", () => {
   it("recalculates the installment from the start reading and publishes InstallmentAdjusted", async () => {
-    const result = await consumer(event(record("m-1", meterReading(reading(19800)))));
-
-    expect(result.batchItemFailures).toEqual([]);
+    await expect(worker(meterReading(reading(19800)))).resolves.toBeUndefined();
     const put = dbMock.commandCalls(PutCommand)[0]?.args[0].input;
     expect(put?.Item).toMatchObject({
       monthlyInstallmentCent: 9700,
@@ -176,20 +150,20 @@ describe("MeterReadingSubmitted", () => {
 
   it("stores a reading that matches the current installment without publishing", async () => {
     // 1381 kWh in 180 days → 2800 kWh a year → still 87 €
-    await consumer(event(record("m-1", meterReading(reading(18234 + 1381)))));
+    await worker(meterReading(reading(18234 + 1381)));
     expect(dbMock.commandCalls(PutCommand)).toHaveLength(1);
     expect(published()).toEqual([]);
   });
 
   it("re-publishes the stored adjustment when the event is redelivered", async () => {
-    await consumer(event(record("m-1", meterReading(reading(19800)))));
+    await worker(meterReading(reading(19800)));
     const stored = dbMock.commandCalls(PutCommand)[0]?.args[0].input.Item;
     const firstId = published()[0]?.detail.eventId;
     dbMock.reset();
     dbMock.on(GetCommand).resolves({ Item: stored });
     ebMock.resetHistory();
 
-    await consumer(event(record("m-1", meterReading(reading(19800)))));
+    await worker(meterReading(reading(19800)));
 
     expect(dbMock.commandCalls(PutCommand)).toHaveLength(0);
     expect(published().map((e) => e.detail.eventId)).toEqual([firstId]);
@@ -202,41 +176,37 @@ describe("MeterReadingSubmitted", () => {
         lastReading: { value: 19800, readAt: "2026-09-30", eventId: registrationId },
       },
     });
-    await consumer(event(record("m-1", meterReading(reading(19700, "2026-09-20")))));
+    await worker(meterReading(reading(19700, "2026-09-20")));
     expect(dbMock.commandCalls(PutCommand)).toHaveLength(0);
   });
 
-  it("retries if the contract changed concurrently", async () => {
+  it("throws for a retry if the contract changed concurrently", async () => {
     dbMock
       .on(PutCommand)
       .rejects(new ConditionalCheckFailedException({ message: "version", $metadata: {} }));
-    const result = await consumer(event(record("m-1", meterReading(reading(19800)))));
-    expect(result.batchItemFailures).toEqual([{ itemIdentifier: "m-1" }]);
+    await expect(worker(meterReading(reading(19800)))).rejects.toThrow();
     expect(published()).toEqual([]);
   });
 });
 
 describe("failures", () => {
   it.each([
-    ["non-JSON body", "{oops"],
     ["no EventBridge envelope", { hello: "world" }],
     ["unknown event type", envelope("kundenportal.customer", "Unknown", {})],
     ["missing tenant", customerRegistered({ ...registered, tenantId: undefined })],
     ["negative reading", meterReading(reading(-1))],
-  ])("reports a message with %s as failed so it ends up in the DLQ", async (_case, body) => {
-    const result = await consumer(event(record("bad", body), record("good", customerRegistered())));
-    expect(result.batchItemFailures).toEqual([{ itemIdentifier: "bad" }]);
+  ])("throws for %s so Lambda hands it to the DLQ", async (_case, body) => {
+    await expect(worker(body)).rejects.toThrow();
+    expect(dbMock.commandCalls(PutCommand)).toHaveLength(0);
   });
 
   it("sends readings for unknown contracts to the DLQ", async () => {
     dbMock.on(GetCommand).resolves({});
-    const result = await consumer(event(record("m-1", meterReading(reading(19800)))));
-    expect(result.batchItemFailures).toEqual([{ itemIdentifier: "m-1" }]);
+    await expect(worker(meterReading(reading(19800)))).rejects.toThrow();
   });
 
-  it("reports infrastructure errors as failed for a retry", async () => {
+  it("throws on infrastructure errors so Lambda retries", async () => {
     dbMock.on(PutCommand).rejects(new Error("throttled"));
-    const result = await consumer(event(record("m-1", customerRegistered())));
-    expect(result.batchItemFailures).toEqual([{ itemIdentifier: "m-1" }]);
+    await expect(worker(customerRegistered())).rejects.toThrow();
   });
 });

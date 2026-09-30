@@ -3,10 +3,9 @@ import { Alarm, ComparisonOperator, TreatMissingData } from "aws-cdk-lib/aws-clo
 import { SnsAction } from "aws-cdk-lib/aws-cloudwatch-actions";
 import type { ITable } from "aws-cdk-lib/aws-dynamodb";
 import { EventBus, type IEventBus, type IRuleTarget, Rule } from "aws-cdk-lib/aws-events";
-import { LambdaFunction, SqsQueue } from "aws-cdk-lib/aws-events-targets";
+import { LambdaFunction } from "aws-cdk-lib/aws-events-targets";
 import type { IFunction } from "aws-cdk-lib/aws-lambda";
 import { SqsDestination } from "aws-cdk-lib/aws-lambda-destinations";
-import { SqsEventSource } from "aws-cdk-lib/aws-lambda-event-sources";
 import type { IBucket } from "aws-cdk-lib/aws-s3";
 import { Schedule, ScheduleExpression, ScheduleTargetInput } from "aws-cdk-lib/aws-scheduler";
 import { LambdaInvoke } from "aws-cdk-lib/aws-scheduler-targets";
@@ -33,13 +32,13 @@ export const DATA_VOLUME_CHECK_INPUT = { task: "checkDataVolumes" } as const;
  * Contract, consumption and documents services (fachkonzept §5): one API function each
  * plus their event consumers.
  *
- * - contract consumes through SQS (queue with DLQ, partial batch response), like
- *   notification: its reactions change money amounts and should survive long outages.
- * - consumption and documents only keep projections, run the daily check and react to
- *   uploads. EventBridge invokes their workers directly (asynchronously) instead of
- *   through a queue: an SQS event source polls around the clock (≈ 0.65 M requests per
- *   queue and month), which would push the account past the SQS free tier. Lambda
- *   retries failed invocations twice, then hands them to the service's DLQ.
+ * EventBridge invokes the workers directly (asynchronously) instead of through a queue:
+ * an SQS event source polls around the clock (≈ 0.65 M requests per queue and month),
+ * and the notification queue alone already uses most of the 1 M free SQS requests, so
+ * any further queue would cost money even after the Free Plan. Instead: a retry policy
+ * and a DLQ on every rule target (delivery failures), two Lambda retries and then an
+ * on-failure destination to the same DLQ (function errors). The workers are idempotent,
+ * so retries and duplicate deliveries are harmless.
  *
  * Every DLQ has an alarm to the owner, like the notification DLQ.
  */
@@ -47,7 +46,6 @@ export class DomainServices extends Construct {
   readonly contractApi: IFunction;
   readonly consumptionApi: IFunction;
   readonly documentsApi: IFunction;
-  readonly contractQueue: Queue;
 
   private readonly props: DomainServicesProps;
 
@@ -68,31 +66,17 @@ export class DomainServices extends Construct {
     bus.grantPutEventsTo(contractApi);
     this.contractApi = contractApi;
 
-    const consumerTimeout = Duration.seconds(10);
-    const contractConsumer = new ServiceFunction(this, "ContractConsumer", {
-      entry: "services/contract/src/consumer-handler.ts",
-      description: "contract service: demo contracts and installments from SQS",
-      reservedConcurrency,
-      timeout: consumerTimeout,
+    const contractDlq = this.deadLetterQueue("ContractDlq", "contract");
+    const contractWorker = this.worker("ContractWorker", contractDlq, {
+      entry: "services/contract/src/worker-handler.ts",
+      description: "contract service: demo contracts and installment recalculation",
       environment,
     });
-    table.grantReadWriteData(contractConsumer);
-    bus.grantPutEventsTo(contractConsumer);
-    const contractDlq = this.deadLetterQueue("ContractDlq", "contract");
-    this.contractQueue = new Queue(this, "ContractQueue", {
-      // AWS recommends at least six times the function timeout for SQS event sources.
-      visibilityTimeout: Duration.seconds(consumerTimeout.toSeconds() * 6),
-      retentionPeriod: Duration.days(4),
-      encryption: QueueEncryption.SQS_MANAGED,
-      enforceSSL: true,
-      deadLetterQueue: { queue: contractDlq, maxReceiveCount: 3 },
-    });
-    contractConsumer.addEventSource(
-      new SqsEventSource(this.contractQueue, { batchSize: 10, reportBatchItemFailures: true }),
-    );
+    table.grantReadWriteData(contractWorker);
+    bus.grantPutEventsTo(contractWorker);
     for (const event of [CustomerRegistered, MeterReadingSubmitted]) {
       this.route(`${event.detailType}ToContract`, event, "contract", [
-        new SqsQueue(this.contractQueue, { deadLetterQueue: contractDlq, retryAttempts: 8 }),
+        this.invoke(contractWorker, contractDlq),
       ]);
     }
 

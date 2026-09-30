@@ -202,18 +202,35 @@ describe("domain services", () => {
     });
   });
 
-  it("gives every queue with a consumer a DLQ and every DLQ an alarm", () => {
+  it("keeps notification the only polled queue and gives every DLQ an alarm", () => {
+    // Every SQS event source polls around the clock (≈ 0.65 M requests a month); a
+    // second one would leave the 1 M free SQS requests.
     const queues = Object.values(application.findResources("AWS::SQS::Queue"));
     const sources = queues.filter((queue) => queue.Properties.RedrivePolicy);
-    expect(sources).toHaveLength(2); // notification, contract
-    for (const queue of sources) expect(queue.Properties.RedrivePolicy.maxReceiveCount).toBe(3);
-    expect(Object.keys(application.findResources("AWS::CloudWatch::Alarm"))).toHaveLength(
-      queues.length - sources.length,
-    );
+    expect(sources).toHaveLength(1);
+    expect(sources[0]?.Properties.RedrivePolicy.maxReceiveCount).toBe(3);
+    // DLQs of notification, contract, consumption and documents
+    expect(queues.length - sources.length).toBe(4);
+    expect(Object.keys(application.findResources("AWS::CloudWatch::Alarm"))).toHaveLength(4);
     const mappings = Object.values(application.findResources("AWS::Lambda::EventSourceMapping"));
-    expect(mappings).toHaveLength(2);
-    for (const mapping of mappings)
-      expect(mapping.Properties.FunctionResponseTypes).toEqual(["ReportBatchItemFailures"]);
+    expect(mappings).toHaveLength(1);
+    expect(mappings[0]?.Properties.FunctionResponseTypes).toEqual(["ReportBatchItemFailures"]);
+  });
+
+  it("invokes the domain workers directly with retries and a DLQ on every rule target", () => {
+    const rules = Object.values(application.findResources("AWS::Events::Rule"));
+    const lambdaTargets = rules
+      .flatMap((rule) => rule.Properties.Targets as Record<string, unknown>[])
+      .filter((target) => !JSON.stringify(target.Arn).includes("NotificationQueue"));
+    // contract 2, consumption 2, documents 2 (CustomerRegistered, S3 upload)
+    expect(lambdaTargets).toHaveLength(6);
+    for (const target of lambdaTargets) {
+      expect(target.RetryPolicy).toEqual({
+        MaximumRetryAttempts: 8,
+        MaximumEventAgeInSeconds: 86400,
+      });
+      expect(target.DeadLetterConfig).toBeDefined();
+    }
   });
 
   it("routes each event only to the domains that react to it", () => {
@@ -240,7 +257,7 @@ describe("domain services", () => {
 
   it("hands failed asynchronous invocations of the workers to a DLQ", () => {
     const configs = Object.values(application.findResources("AWS::Lambda::EventInvokeConfig"));
-    expect(configs).toHaveLength(2);
+    expect(configs).toHaveLength(3); // contract, consumption, documents
     for (const config of configs) {
       expect(config.Properties.MaximumRetryAttempts).toBe(2);
       expect(config.Properties.DestinationConfig.OnFailure.Destination).toBeDefined();
