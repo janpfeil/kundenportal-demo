@@ -34,6 +34,14 @@ minimumReleaseAgeExclude:
   - "@next/swc-win32-x64-msvc@16.3.7"
   - next@16.3.7
   - "@aws-sdk/client-cloudformation@3.1142.0"
+  - "@storybook/addon-a11y@10.6.1"
+  - "@storybook/addon-docs@10.6.1"
+  - "@storybook/addon-themes@10.6.1"
+  - "@storybook/builder-vite@10.6.1"
+  - "@storybook/react-dom-shim@10.6.1"
+  - "@storybook/react-vite@10.6.1"
+  - "@storybook/react@10.6.1"
+  - storybook@10.6.1
 
 # Only these dependencies may run install scripts (native binaries).
 allowBuilds:
