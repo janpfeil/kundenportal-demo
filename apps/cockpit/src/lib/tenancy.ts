@@ -72,7 +72,8 @@ export async function listPasses(session: Session): Promise<PassSummary[] | unde
   try {
     const { data, response } = await tenancyCall(session, "GET", "/tenancy/passes");
     if (!response.ok) return undefined;
-    const items = (data as { items?: unknown } | undefined)?.items;
+    // Contract: `{ passes: PassSummary[] }` (listPasses in openapi.yaml).
+    const items = (data as { passes?: unknown } | undefined)?.passes;
     if (!Array.isArray(items)) return undefined;
     // The contract names the usage `quota` (PassSummary in openapi.yaml).
     return (items as (Omit<PassSummary, "quotas"> & { quota?: PassSummary["quotas"] })[]).map(
