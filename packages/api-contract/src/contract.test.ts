@@ -17,8 +17,9 @@ describe("OpenAPI contract", () => {
     expect(routes.filter((route) => route.public && route.scopes.length > 0)).toEqual([]);
   });
 
-  it("makes only the challenge and redeeming an invitation public", () => {
+  it("makes only the offer, the challenge and redeeming an invitation public", () => {
     expect(routes.filter((route) => route.public).map((route) => route.operationId)).toEqual([
+      "getOffer",
       "getRedeemChallenge",
       "redeemInvitation",
     ]);
@@ -56,6 +57,9 @@ describe("OpenAPI contract", () => {
       "GET /tenancy/passes kundenportal/tenancy.admin",
       "POST /tenancy/passes/{passId}/revoke kundenportal/tenancy.admin",
       "GET /tenancy/pass kundenportal/tenancy.read",
+      "GET /tenancy/settings kundenportal/tenancy.admin",
+      "PUT /tenancy/settings kundenportal/tenancy.admin",
+      "GET /tenancy/offer ",
       "GET /tenancy/challenge ",
       "POST /tenancy/redeem ",
     ]);

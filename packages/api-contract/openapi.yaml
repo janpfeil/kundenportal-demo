@@ -247,7 +247,8 @@ paths:
         The URL is valid for five minutes and accepts exactly the announced content type
         and size (both are signed): send `PUT` with the returned headers and the file as
         body. After the upload arrives the document becomes `uploaded` and
-        `DocumentUploaded` is published. Files are deleted after seven days.
+        `DocumentUploaded` is published. Files are deleted after seven days. A demo pass
+        may request 20 upload URLs; after that the answer is 429 ("Kontingent erschöpft").
       security:
         - oidc: [kundenportal/documents.write]
       requestBody:
@@ -264,6 +265,7 @@ paths:
         "400": { $ref: "#/components/responses/Problem" }
         "401": { $ref: "#/components/responses/Problem" }
         "409": { $ref: "#/components/responses/Problem" }
+        "429": { $ref: "#/components/responses/Problem" }
   /me/links:
     get:
       operationId: listLinks
@@ -522,6 +524,68 @@ paths:
         "401": { $ref: "#/components/responses/Problem" }
         "403": { $ref: "#/components/responses/Problem" }
         "404": { $ref: "#/components/responses/Problem" }
+  /tenancy/settings:
+    get:
+      operationId: getSettings
+      summary: Platform settings of the demo passes
+      description: >-
+        Owner only. Kill switch (`redemption`, with when and why it was closed), the cap
+        of concurrent pass tenants and how many are in use (every tenant that is not
+        deleted, including ones being set up or torn down).
+      security:
+        - oidc: [kundenportal/tenancy.admin]
+      responses:
+        "200":
+          description: Current settings
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlatformSettings" }
+        "401": { $ref: "#/components/responses/Problem" }
+        "403": { $ref: "#/components/responses/Problem" }
+    put:
+      operationId: updateSettings
+      summary: Open or close redeeming and set the cap of concurrent pass tenants
+      description: >-
+        Owner only. At least one field. Reopening clears `closedAt` and `closedReason`;
+        closing keeps an earlier reason (e.g. the budget alarm's). The cap is at most 4:
+        each pass tenant has its own table with 5 read and 5 write capacity units, and
+        the free tier's 25 units cover the base table plus four tenants. A cap below the
+        tenants in use only stops new redemptions.
+      security:
+        - oidc: [kundenportal/tenancy.admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SettingsUpdate" }
+      responses:
+        "200":
+          description: Settings after the change
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlatformSettings" }
+        "400": { $ref: "#/components/responses/Problem" }
+        "401": { $ref: "#/components/responses/Problem" }
+        "403": { $ref: "#/components/responses/Problem" }
+  /tenancy/offer:
+    get:
+      operationId: getOffer
+      summary: What a demo pass offers, for the redeem page
+      description: >-
+        Public and the same for every visitor (no personal data); cacheable for 60
+        seconds (`Cache-Control: public, max-age=60`). Duration, quotas and upload size
+        come from the configuration; `redemptionOpen` is false while redeeming is
+        closed or every pass tenant is taken.
+      security: []
+      responses:
+        "200":
+          description: Offer
+          headers:
+            Cache-Control:
+              schema: { type: string, example: "public, max-age=60" }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PassOffer" }
   /tenancy/challenge:
     get:
       operationId: getRedeemChallenge
@@ -972,6 +1036,36 @@ components:
               name: { type: string }
               system: { $ref: "#/components/schemas/LegacySystem" }
               signIn: { type: string, format: email }
+    PlatformSettings:
+      type: object
+      required: [redemption, maxTenants, activeTenants]
+      properties:
+        redemption: { type: string, enum: [open, closed] }
+        closedAt: { type: string, format: date-time, description: Only while closed }
+        closedReason: { type: string, description: Only while closed }
+        maxTenants: { type: integer, minimum: 0, maximum: 4 }
+        activeTenants: { type: integer, minimum: 0 }
+    SettingsUpdate:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        redemption: { type: string, enum: [open, closed] }
+        maxTenants: { type: integer, minimum: 1, maximum: 4 }
+    PassOffer:
+      type: object
+      required: [passDays, quotas, uploadMaxBytes, redemptionOpen]
+      properties:
+        passDays: { type: integer, minimum: 1 }
+        quotas:
+          type: object
+          required: [api, events, uploads]
+          properties:
+            api: { type: integer, description: API calls per pass }
+            events: { type: integer, description: Domain events per pass }
+            uploads: { type: integer, description: Uploads per pass }
+        uploadMaxBytes: { type: integer, description: Largest single upload }
+        redemptionOpen: { type: boolean }
     Problem:
       type: object
       required: [title, status]
