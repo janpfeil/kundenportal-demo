@@ -123,6 +123,37 @@ Zonen ([Architektur](architektur.md) §6):
 - **Storybook** liegt auf GitHub Pages (Abschnitt 3), nicht auf S3 oder
   CloudFront.
 
+**Ergänzungen aus Phase 3 (Stand 30.09.2026)** — Altsysteme und Migration
+([Altsysteme & Migration](architektur-migration.md)):
+
+- **Keine weitere abgefragte Queue [E]:** customer- und migration-Worker
+  sowie der Record-Processor werden wie in Phase 2 direkt aufgerufen. Drei neue
+  SQS-Queues (DLQ von customer und migration-Worker, Migrations-DLQ) haben
+  keinen Abfrager; Anfragen entstehen nur, wenn etwas darin landet, und beim
+  Redrive aus dem Cockpit (einige Long Polls je Klick).
+- **EventBridge:** Die Timeline-Regel liefert jedes Ereignis zusätzlich an
+  den migration-Worker. Berechnet werden veröffentlichte Ereignisse, nicht
+  Zustellungen an Ziele auf demselben Bus
+  [B: https://aws.amazon.com/eventbridge/pricing/]; die zusätzlichen
+  Lambda-Aufrufe liegen weit unter 1 Mio. im Monat.
+- **Lambda:** 19 Funktionen mit Reservierung statt 13 (drei Cognito-Trigger,
+  customer-Worker, migration-API, -Worker, -Processor, Cockpit-Zone);
+  Cognito-Trigger kosten nur ihre Lambda-Aufrufe.
+- **SSM Parameter Store und KMS:** sieben Standard-Parameter, davon drei
+  SecureStrings mit dem AWS-verwalteten Schlüssel `aws/ssm` — kostenlos; die
+  Entschlüsselung beim Kaltstart zählt gegen die 20.000 freien KMS-Anfragen im
+  Monat [B: https://aws.amazon.com/kms/pricing/]. Kein Secrets Manager.
+- **Cognito:** Per Bulk-Import angelegte Konten zählen erst mit einer
+  Anmeldung als aktive Nutzer (MAU); das Demo bleibt weit unter 10.000.
+- **DynamoDB:** Timeline-Einträge (einer je Ereignis) laufen nach 7 Tagen per
+  TTL ab — kostenlos; kein zusätzlicher Index, Kapazität bleibt 5/5.
+- **CloudWatch:** sechs Alarme von 10 freien (neu: DLQ von customer und
+  migration-Worker; die Migrations-DLQ bekommt bewusst keinen, weil der
+  fehlerhafte Datensatz zur Demo gehört).
+- **Eigene Infrastruktur statt AWS:** Altsysteme (zwei Container mit
+  SQLite) und der Keycloak-Realm laufen auf dem eigenen Server; ihre
+  Pipelines laufen in GitLab (Abschnitt 3).
+
 ## 3. Was auf eigene Infrastruktur wandert
 
 Eigene, bereits vorhandene Infrastruktur: ein **eigener Server** mit Docker,

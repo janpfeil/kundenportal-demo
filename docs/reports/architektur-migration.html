@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Altsysteme &amp; Migration · kundenportal-demo</title>
+<link rel="stylesheet" href="assets/report.css">
+<script src="assets/report.js"></script>
+</head>
+<body>
+<header class="topbar"><a class="brand" href="index.html">kundenportal-demo · Konzept</a><nav class="topnav"><a href="index.html">Übersicht</a><a href="machbarkeit-kosten.html">Machbarkeit &amp; Kosten</a><a href="fachkonzept.html">Fachkonzept</a><a href="demo-pass.html">Demo-Pass</a><a href="kostenfrei.html">Kostenfreier Betrieb</a><a href="anleitung-kontoinhaber.html">Anleitung Kontoinhaber</a><a href="anleitung-fundament.html">Anleitung Fundament</a><a href="anleitung-anwendung.html">Anleitung Anwendung</a><a href="anleitung-altsysteme.html">Anleitung Altsysteme</a><a href="nextjs-betrieb.html">Next.js-Betrieb</a><a href="architektur.html">Architektur</a><a href="architektur-zonen.html">Zonen &amp; Frontend</a><a href="architektur-migration.html" aria-current="page">Altsysteme &amp; Migration</a><a href="glossar.html">Glossar</a></nav>
+<button class="theme-toggle" type="button">Dunkel</button></header>
+<div class="layout"><nav class="toc" aria-label="Inhalt"><div class="toc-title">Inhalt</div><div>
+<ul>
+<li><a href="#überblick">Überblick</a></li>
+<li><a href="#1-lazy-migration-j2">1. Lazy Migration (J2)</a></li>
+<li><a href="#2-bulk-import-der-inaktiven-j7">2. Bulk-Import der Inaktiven (J7)</a></li>
+<li><a href="#3-dubletten-und-account-linking-j3">3. Dubletten und Account-Linking (J3)</a></li>
+<li><a href="#4-migrations-cockpit-j8">4. Migrations-Cockpit (J8)</a></li>
+<li><a href="#5-daten-und-kapazität">5. Daten und Kapazität</a></li>
+</ul>
+</div>
+</nav><main><h1 id="architektur-altsysteme-und-migration">Architektur: Altsysteme und Migration<a class="anchor" href="#architektur-altsysteme-und-migration" title="Permanent link">#</a></h1>
+<p>Stand: 2026-09-30 · Phase 3 im Code fertig; die <a class="term" href="glossar.html#legacy-system" title="bestehendes Altsystem mit Kundendaten, das abgelöst werden soll; im Demo simuliert">Altsysteme</a> und der <a class="term" href="glossar.html#keycloak" title="Open-Source-Identitätsdienst (OIDC, SAML), selbst betrieben; im Demo unter id.rypox.net die Anmeldung des Telko-Altsystems und ab Phase 3 Gegenstelle des Migrate-User-Triggers">Keycloak</a>-<a class="term" href="glossar.html#realm" title="abgeschlossener Bereich in Keycloak mit eigenen Nutzern, Clients und Einstellungen">Realm</a> gehen nach den Schritten der <a href="anleitung-altsysteme.html">Anleitung Altsysteme</a> in Betrieb. Ergänzt die <a href="architektur.html">Architektur</a> (Ist-Stand Phase 1 und 2). Kennzeichnung: <strong>[B]</strong> belegt, <strong>[A]</strong> Annahme, <strong>[E]</strong> Einschätzung.</p>
+<p>Fachbegriffe sind in jedem Abschnitt beim ersten Vorkommen mit dem <a href="glossar.html">Glossar</a> verlinkt (Erklärung und Entsprechung außerhalb von <a class="term" href="glossar.html#aws" title="Cloud-Plattform von Amazon mit über 200 Diensten (Rechenleistung, Datenbanken, Netzwerk, Messaging …), abgerechnet nach Nutzung">AWS</a>).</p>
+<h2 id="überblick">Überblick<a class="anchor" href="#überblick" title="Permanent link">#</a></h2>
+<p>Der <a class="term" href="glossar.html#multi-sparten-versorger" title="Unternehmen, das mehrere Versorgungs- und Kommunikationsprodukte anbietet (Strom, Gas, Wasser, Wärme, Internet, Mobilfunk) – typisch für Stadtwerke">Versorger</a> übernimmt die Kundenkonten zweier <a class="term" href="glossar.html#legacy-system" title="bestehendes Altsystem mit Kundendaten, das abgelöst werden soll; im Demo simuliert">Altsysteme</a>
+(<a href="fachkonzept.html">Fachkonzept</a> §7.3). Beide laufen als kleine <a class="term" href="glossar.html#https" title="verschlüsseltes Web-Protokoll; HTTP ohne Verschlüsselung">HTTP</a>-Dienste
+auf einem eigenen <a class="term" href="glossar.html#server" title="Rechner oder Prozess, der Anfragen beantwortet">Server</a> hinter einem <a href="glossar.html#reverse-proxy">Reverse Proxy</a>
+mit TLS, damit <a class="term" href="glossar.html#lambda" title="führt eine einzelne Funktion (z. B. einen HTTP-Handler) bei Bedarf aus; Abrechnung pro Aufruf und Laufzeit, skaliert automatisch von 0 auf viele Instanzen">Lambdas</a> sie ohne <a class="term" href="glossar.html#vpc" title="privates, isoliertes Netzwerk im AWS-Konto; Lambdas brauchen es nur für Zugriff auf private Ressourcen (z. B. RDS)">VPC</a> erreichen; Code und Beispieldaten liegen in
+privaten <a class="term" href="glossar.html#gitlab" title="Git-Plattform mit CI, auch selbst betreibbar; bei rypox intern auf gitlab.rypox.org im Einsatz">GitLab</a>-Projekten, die <a class="term" href="glossar.html#api" title="Programmierschnittstelle, über die Programme miteinander sprechen">Schnittstellen</a> öffentlich in
+<code>packages/api-contract/legacy/</code>.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th>Versorger (<code>legacy-versorger</code>)</th>
+<th>Telko (<code>legacy-telko</code>)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Adresse</td>
+<td><code>&lt;https://kundenportal-versorger.rypox.com</code>&gt;</td>
+<td><code>&lt;https://kundenportal-telko.rypox.com</code>&gt;</td>
+</tr>
+<tr>
+<td>Datenform</td>
+<td>deutsche Felder, Straße und Hausnummer getrennt, Euro als Dezimaltext</td>
+<td><code>Nachname, Vorname</code>, eine Adresszeile mit Abkürzungen, deutsche Daten, Preise als Zahl</td>
+</tr>
+<tr>
+<td>Kundennummer</td>
+<td><code>V-1000123</code></td>
+<td><code>T/88-4711</code> (mit Schrägstrich, in Pfaden <a class="term" href="glossar.html#url" title="Internetadresse einer Seite oder eines API-Endpunkts">URL</a>-kodiert)</td>
+</tr>
+<tr>
+<td>Passwörter</td>
+<td><a href="glossar.html#bcrypt">bcrypt</a></td>
+<td>eigenes Verfahren: HMAC-SHA256 mit Salt und geheimem <a href="glossar.html#pepper">Pepper</a></td>
+</tr>
+<tr>
+<td>Anmeldung am Portal</td>
+<td>Passwortprüfung per <a class="term" href="glossar.html#rest" title="Architekturstil für HTTP-APIs: Ressourcen unter URLs, Operationen über HTTP-Methoden (GET, POST …)">REST</a></td>
+<td>Passwortprüfung im <a class="term" href="glossar.html#realm" title="abgeschlossener Bereich in Keycloak mit eigenen Nutzern, Clients und Einstellungen">Realm</a> <code>telko</code> des eigenen <a href="glossar.html#keycloak">Keycloak</a> per <a href="glossar.html#password-grant">Password Grant</a></td>
+</tr>
+<tr>
+<td>Datenhaltung</td>
+<td>eine <a href="glossar.html#sqlite">SQLite</a>-Datei je <a class="term" href="glossar.html#mandant" title="abgeschotteter Bereich eines Kunden in einer gemeinsam betriebenen Anwendung; im Demo je Demo-Pass ein Mandant">Mandant</a> (<code>X-Mandant</code>)</td>
+<td>eine <a class="term" href="glossar.html#sqlite" title="eingebettete Datenbank in einer Datei; jedes Altsystem hält je Mandant eine Datei">SQLite</a>-Datei je Mandant (<code>X-Tenant</code>)</td>
+</tr>
+<tr>
+<td>Absicherung</td>
+<td>API-Schlüssel <code>X-Api-Key</code></td>
+<td>API-Schlüssel <code>Authorization: ApiKey …</code></td>
+</tr>
+</tbody>
+</table></div>
+<p>Beide Altsysteme bieten: Anmeldung prüfen, Kunde lesen, Kunde per <a class="term" href="glossar.html#e-mail" title="elektronische Post; SNS verschickt bis 1.000 E-Mails im Monat kostenlos">E-Mail</a>
+finden, Kunden seitenweise exportieren (inklusive <a class="term" href="glossar.html#passwort-hash" title="Einweg-verschlüsselte Form eines Passworts; alte Systeme nutzen oft schwache Verfahren (MD5, SHA-1), die bei der Migration einen Passwort-Reset erzwingen">Hashes</a>) und die
+Beispieldaten eines Mandanten neu erzeugen. Adressen, Schlüssel und das
+<a class="term" href="glossar.html#keycloak" title="Open-Source-Identitätsdienst (OIDC, SAML), selbst betrieben; im Demo unter id.rypox.net die Anmeldung des Telko-Altsystems und ab Phase 3 Gegenstelle des Migrate-User-Triggers">Keycloak</a>-Client-Secret liest die Anwendung zur Laufzeit aus dem
+<a href="glossar.html#ssm-parameter-store">Parameter Store</a> (<code>/kundenportal/legacy/…</code>,
+drei <a class="term" href="glossar.html#ssm-parameter-store" title="Ablage für Konfigurationswerte und (verschlüsselt als SecureString) Geheimnisse; Standard-Stufe kostenlos. Im Demo auch Übergabestelle zwischen Terraform und CDK">SecureStrings</a> mit dem <a class="term" href="glossar.html#aws" title="Cloud-Plattform von Amazon mit über 200 Diensten (Rechenleistung, Datenbanken, Netzwerk, Messaging …), abgerechnet nach Nutzung">AWS</a>-verwalteten Schlüssel); geschrieben werden sie
+von <a class="term" href="glossar.html#terraform" title="verbreitetes IaC-Werkzeug von HashiCorp: Infrastruktur deklarativ in HCL beschreiben, für viele Anbieter (AWS, Azure, Keycloak, GitHub …) über Provider">Terraform</a> aus <a class="term" href="glossar.html#ci" title="automatisches Bauen und Testen bei jeder Änderung">CI</a>-Variablen des GitLab-Projekts <code>platform</code>
+(<a href="anleitung-altsysteme.html">Anleitung Altsysteme</a>). Das Paket
+<code>packages/legacy</code> kapselt die Clients und die Abbildung auf die <a class="term" href="glossar.html#event" title="Nachricht, dass etwas passiert ist (z. B. „Zählerstand erfasst&quot;); Empfänger reagieren darauf, ohne dass der Absender sie kennt">Ereignisse</a>
+des Portals.</p>
+<figure class="chart"><figcaption>Übernahme eines Altkontos (J2, J3, J7)</figcaption><svg viewBox="0 0 1000 279" role="img" aria-label="Übernahme eines Altkontos (J2, J3, J7)" preserveAspectRatio="xMinYMin meet"><defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="edge-head" d="M0,0L10,5L0,10z"/></marker></defs><text x="96.0" y="18.0" class="t-muted" font-size="12" text-anchor="middle" font-weight="600">Auslöser</text><rect class="box" x="10.0" y="32" width="172.0" height="69" rx="6"/><text x="20.0" y="53.0" class="t-ink" font-size="13" text-anchor="start" font-weight="600">Erste Anmeldung</text><text x="20.0" y="72.0" class="t-ink2" font-size="12" text-anchor="start">Cognito kennt die</text><text x="20.0" y="89.0" class="t-ink2" font-size="12" text-anchor="start">Adresse nicht</text><rect class="box" x="10.0" y="113" width="172.0" height="52" rx="6"/><text x="20.0" y="134.0" class="t-ink" font-size="13" text-anchor="start" font-weight="600">Bulk-Import</text><text x="20.0" y="153.0" class="t-ink2" font-size="12" text-anchor="start">Inhaber im Cockpit</text><text x="298.0" y="18.0" class="t-muted" font-size="12" text-anchor="middle" font-weight="600">Identität</text><rect class="box-accent" x="212.0" y="32" width="172.0" height="69" rx="6"/><text x="222.0" y="53.0" class="t-ink" font-size="13" text-anchor="start" font-weight="600">Migrate User</text><text x="222.0" y="72.0" class="t-ink2" font-size="12" text-anchor="start">prüft Passwort beim</text><text x="222.0" y="89.0" class="t-ink2" font-size="12" text-anchor="start">Altsystem</text><rect class="box-accent" x="212.0" y="113" width="172.0" height="52" rx="6"/><text x="222.0" y="134.0" class="t-ink" font-size="13" text-anchor="start" font-weight="600">Post Authentication</text><text x="222.0" y="153.0" class="t-ink2" font-size="12" text-anchor="start">kennt jetzt die sub</text><text x="500.0" y="18.0" class="t-muted" font-size="12" text-anchor="middle" font-weight="600">Migration</text><rect class="box" x="414.0" y="32" width="172.0" height="69" rx="6"/><text x="424.0" y="53.0" class="t-ink" font-size="13" text-anchor="start" font-weight="600">migration-Worker</text><text x="424.0" y="72.0" class="t-ink2" font-size="12" text-anchor="start">liest Export, sucht</text><text x="424.0" y="89.0" class="t-ink2" font-size="12" text-anchor="start">Dubletten</text><rect class="box" x="414.0" y="113" width="172.0" height="69" rx="6"/><text x="424.0" y="134.0" class="t-ink" font-size="13" text-anchor="start" font-weight="600">Record-Processor</text><text x="424.0" y="153.0" class="t-ink2" font-size="12" text-anchor="start">legt Konto ohne</text><text x="424.0" y="170.0" class="t-ink2" font-size="12" text-anchor="start">Passwort an</text><text x="702.0" y="18.0" class="t-muted" font-size="12" text-anchor="middle" font-weight="600">Ereignisse</text><rect class="box-accent" x="616.0" y="32" width="172.0" height="120" rx="6"/><text x="626.0" y="53.0" class="t-ink" font-size="13" text-anchor="start" font-weight="600">EventBridge</text><text x="626.0" y="72.0" class="t-ink2" font-size="12" text-anchor="start">LegacyAccountMigrated,</text><text x="626.0" y="89.0" class="t-ink2" font-size="12" text-anchor="start">DuplicateCandidateFound,</text><text x="626.0" y="106.0" class="t-ink2" font-size="12" text-anchor="start">AccountsLinked,</text><text x="626.0" y="123.0" class="t-ink2" font-size="12" text-anchor="start">PasswordResetRequired,</text><text x="626.0" y="140.0" class="t-ink2" font-size="12" text-anchor="start">MigrationRecordFailed</text><text x="904.0" y="18.0" class="t-muted" font-size="12" text-anchor="middle" font-weight="600">Wirkung</text><rect class="box" x="818.0" y="32" width="172.0" height="69" rx="6"/><text x="828.0" y="53.0" class="t-ink" font-size="13" text-anchor="start" font-weight="600">customer, contract</text><text x="828.0" y="72.0" class="t-ink2" font-size="12" text-anchor="start">Profil und</text><text x="828.0" y="89.0" class="t-ink2" font-size="12" text-anchor="start">Altverträge</text><rect class="box" x="818.0" y="113" width="172.0" height="69" rx="6"/><text x="828.0" y="134.0" class="t-ink" font-size="13" text-anchor="start" font-weight="600">notification</text><text x="828.0" y="153.0" class="t-ink2" font-size="12" text-anchor="start">Reset-Aufforderung,</text><text x="828.0" y="170.0" class="t-ink2" font-size="12" text-anchor="start">Verknüpfungsangebot</text><rect class="box" x="818.0" y="194" width="172.0" height="69" rx="6"/><text x="828.0" y="215.0" class="t-ink" font-size="13" text-anchor="start" font-weight="600">Migrations-DLQ</text><text x="828.0" y="234.0" class="t-ink2" font-size="12" text-anchor="start">Redrive aus dem</text><text x="828.0" y="251.0" class="t-ink2" font-size="12" text-anchor="start">Cockpit</text><path class="edge" marker-end="url(#ah)" d="M182.0,66.5 C197.0,66.5 197.0,66.5 210.0,66.5"/><path class="edge" marker-end="url(#ah)" d="M384.0,66.5 C298.0,66.5 298.0,139.0 210.0,139.0"/><path class="edge" marker-end="url(#ah)" d="M384.0,139.0 C500.0,139.0 500.0,92.0 614.0,92.0"/><path class="edge" marker-end="url(#ah)" d="M182.0,139.0 C298.0,139.0 298.0,66.5 412.0,66.5"/><path class="edge" marker-end="url(#ah)" d="M586.0,66.5 C500.0,66.5 500.0,147.5 412.0,147.5"/><path class="edge" marker-end="url(#ah)" d="M586.0,147.5 C601.0,147.5 601.0,92.0 614.0,92.0"/><path class="edge" marker-end="url(#ah)" d="M586.0,147.5 C702.0,147.5 702.0,228.5 816.0,228.5"/><path class="edge" marker-end="url(#ah)" d="M788.0,92.0 C803.0,92.0 803.0,66.5 816.0,66.5"/><path class="edge" marker-end="url(#ah)" d="M788.0,92.0 C803.0,92.0 803.0,147.5 816.0,147.5"/><path class="edge" marker-end="url(#ah)" d="M788.0,92.0 C601.0,92.0 601.0,66.5 412.0,66.5"/></svg><details><summary>Daten als Tabelle</summary><div class="table-wrap"><div class="table-wrap"><table><thead><tr><th>Schicht</th><th>Komponente</th></tr></thead><tbody><tr><td>Auslöser</td><td>Erste Anmeldung (Cognito kennt die Adresse nicht)</td></tr><tr><td>Auslöser</td><td>Bulk-Import (Inhaber im Cockpit)</td></tr><tr><td>Identität</td><td>Migrate User (prüft Passwort beim Altsystem)</td></tr><tr><td>Identität</td><td>Post Authentication (kennt jetzt die sub)</td></tr><tr><td>Migration</td><td>migration-Worker (liest Export, sucht Dubletten)</td></tr><tr><td>Migration</td><td>Record-Processor (legt Konto ohne Passwort an)</td></tr><tr><td><a class="term" href="glossar.html#event" title="Nachricht, dass etwas passiert ist (z. B. „Zählerstand erfasst&quot;); Empfänger reagieren darauf, ohne dass der Absender sie kennt">Ereignisse</a></td><td>EventBridge (LegacyAccountMigrated, DuplicateCandidateFound, AccountsLinked, PasswordResetRequired, MigrationRecordFailed)</td></tr><tr><td>Wirkung</td><td>customer, contract (Profil und Altverträge)</td></tr><tr><td>Wirkung</td><td>notification (Reset-Aufforderung, Verknüpfungsangebot)</td></tr><tr><td>Wirkung</td><td>Migrations-DLQ (Redrive aus dem Cockpit)</td></tr></tbody></table></div></div></details></figure>
+<h2 id="1-lazy-migration-j2">1. Lazy Migration (J2)<a class="anchor" href="#1-lazy-migration-j2" title="Permanent link">#</a></h2>
+<ol>
+<li>Anna meldet sich mit ihrer alten Adresse und ihrem alten Passwort am
+   <a class="term" href="glossar.html#managed-login" title="von Cognito gehostete Login-, Registrierungs- und Passwort-Seiten samt OAuth2-/OIDC-Endpunkten; erreichbar unter einer Präfix-Domain (&lt;präfix&gt;.auth.&lt;region&gt;.amazoncognito.com) oder">Managed Login</a> an. <a class="term" href="glossar.html#amazon-cognito" title="AWS-Identitätsdienst für Registrierung, Login, MFA und Benutzerverwaltung; im Demo der Portal-Login (Entscheidung 29.09.2026), angelegt per CDK">Cognito</a> kennt sie nicht und ruft den
+   <a href="glossar.html#migrate-user-trigger">Migrate-User-Trigger</a> (<code>services/identity</code>).</li>
+<li>Der Trigger prüft das Passwort <strong>parallel</strong> beim <a class="term" href="glossar.html#multi-sparten-versorger" title="Unternehmen, das mehrere Versorgungs- und Kommunikationsprodukte anbietet (Strom, Gas, Wasser, Wärme, Internet, Mobilfunk) – typisch für Stadtwerke">Versorger</a> (<a class="term" href="glossar.html#rest" title="Architekturstil für HTTP-APIs: Ressourcen unter URLs, Operationen über HTTP-Methoden (GET, POST …)">REST</a>, <a class="term" href="glossar.html#bcrypt" title="verbreitetes Passwort-Hashverfahren mit Salt und einstellbarem Aufwand; das Versorger-Altsystem speichert Passwörter so">bcrypt</a>)
+   und beim <a class="term" href="glossar.html#keycloak" title="Open-Source-Identitätsdienst (OIDC, SAML), selbst betrieben; im Demo unter id.rypox.net die Anmeldung des Telko-Altsystems und ab Phase 3 Gegenstelle des Migrate-User-Triggers">Keycloak</a> der Telko — Cognito gibt einem Trigger höchstens
+   5 Sekunden [B: <a href="https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-pools-working-with-lambda-triggers.html">https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-pools-working-with-lambda-triggers.html</a>].
+   Passt es, liest er den Kunden, prüft die Pflichtdaten und gibt die
+   Attribute zurück: bestätigte <a class="term" href="glossar.html#e-mail" title="elektronische Post; SNS verschickt bis 1.000 E-Mails im Monat kostenlos">E-Mail</a>, Name und die
+   <a href="glossar.html#custom-attribute">Custom Attributes</a> <code>legacy_ref</code>
+   (<code>utility:V-1000123</code>) und <code>migration_mode</code> (<code>lazy</code>). Cognito legt den
+   Nutzer mit dem eingegebenen Passwort an; der <a class="term" href="glossar.html#passwort-hash" title="Einweg-verschlüsselte Form eines Passworts; alte Systeme nutzen oft schwache Verfahren (MD5, SHA-1), die bei der Migration einen Passwort-Reset erzwingen">Hash</a> verlässt das <a class="term" href="glossar.html#legacy-system" title="bestehendes Altsystem mit Kundendaten, das abgelöst werden soll; im Demo simuliert">Altsystem</a> nie.</li>
+<li>Der <a href="glossar.html#post-authentication-trigger">Post-Authentication-Trigger</a>
+   kennt nun die neue <code>sub</code>, liest das Altsystem erneut und veröffentlicht
+   <code>LegacyAccountMigrated</code> (Quelle <code>kundenportal.identity</code>) mit Stammdaten und
+   Verträgen. Ein Merker (<code>SUBJ#&lt;sub&gt;</code> / <code>IDENTITY#LEGACY</code>) verhindert
+   <a class="term" href="glossar.html#retry" title="erneuter Verarbeitungsversuch nach einem Fehler">Wiederholungen</a>; scheitert das Veröffentlichen, versucht es die nächste
+   Anmeldung erneut. Die Anmeldung selbst scheitert daran nie.</li>
+<li>Der <a class="term" href="glossar.html#pre-token-generation-trigger" title="Lambda, die Cognito vor dem Ausstellen der Tokens aufruft; in Version 2 kann sie dem Access Token eigene Claims hinzufügen (im Demo tenant_id, email, locale, name)">Pre-Token-Trigger</a> setzt zusätzlich den <a class="term" href="glossar.html#claims" title="einzelne Angaben in einem JWT (z. B. sub, email, eigene Rollen)">Claim</a> <code>origin</code>. Ruft die <a class="term" href="glossar.html#shell" title="Rahmenanwendung, die Navigation, Login und Layout stellt und die Micro-Frontends einbindet">Shell</a>
+   <code>/me</code> auf, bevor das <a class="term" href="glossar.html#event" title="Nachricht, dass etwas passiert ist (z. B. „Zählerstand erfasst&quot;); Empfänger reagieren darauf, ohne dass der Absender sie kennt">Ereignis</a> verarbeitet ist, legt <code>customer</code> das Profil
+   mit dieser Herkunft und der aus der Identität abgeleiteten Kunden-ID an
+   (<code>customerIdFor</code>) — ohne Demo-Verträge. Der Worker von <code>customer</code> ergänzt
+   dann Anschrift und Telefon; <code>contract</code> übernimmt die Verträge mit dem
+   bisherigen <a class="term" href="glossar.html#abschlag" title="monatliche Vorauszahlung auf die Energie-Jahresrechnung; wird nach neuem Zählerstand angepasst">Abschlag</a> und dem letzten abgerechneten Zählerstand als Bezug.</li>
+</ol>
+<p>Fehlt einem <a class="term" href="glossar.html#altkonto" title="Kundenkonto im Altsystem des Versorgers oder der Telko, das ins neue Portal übernommen wird (nicht zu verwechseln mit einem alten AWS-Konto)">Altkonto</a> die E-Mail-Adresse (Emil), lehnt der Trigger ab: ein
+<a href="glossar.html#klärfall">Klärfall</a>, kein Portal-Konto.</p>
+<h2 id="2-bulk-import-der-inaktiven-j7">2. Bulk-Import der Inaktiven (J7)<a class="anchor" href="#2-bulk-import-der-inaktiven-j7" title="Permanent link">#</a></h2>
+<p>Der Inhaber startet im Cockpit den Import eines <a class="term" href="glossar.html#legacy-system" title="bestehendes Altsystem mit Kundendaten, das abgelöst werden soll; im Demo simuliert">Altsystems</a>
+(<code>POST /migration/bulk</code>, <code>BulkMigrationStarted</code>). Der migration-Worker liest
+den Export und sortiert: Konten mit Anmeldung in den letzten 12 Monaten
+warten auf ihre eigene Anmeldung (<code>pending-lazy</code>), bereits übernommene
+zählen als erledigt, jedes inaktive Konto geht als eigener <a class="term" href="glossar.html#asynchroner-aufruf" title="Lambda nimmt das Ereignis an, bestätigt sofort und verarbeitet es aus einer internen Warteschlange; bei Fehlern wiederholt Lambda selbst (bis zu 2-mal)">asynchroner Aufruf</a>
+an den <strong>Record-Processor</strong>. Dieser</p>
+<ul>
+<li>legt das <a class="term" href="glossar.html#amazon-cognito" title="AWS-Identitätsdienst für Registrierung, Login, MFA und Benutzerverwaltung; im Demo der Portal-Login (Entscheidung 29.09.2026), angelegt per CDK">Cognito</a>-Konto mit einem zufälligen, niemandem bekannten Passwort
+  an (bestätigt, damit „Passwort vergessen" funktioniert; keine Mail),</li>
+<li>veröffentlicht <code>LegacyAccountMigrated</code> (Quelle <code>kundenportal.migration</code>,
+  <code>passwordMigrated: false</code>) und <code>PasswordResetRequired</code> — die
+  Aufforderung erscheint im <a class="term" href="glossar.html#demo-postfach" title="im Portal angezeigtes Postfach der Demo-Personen; ersetzt echte E-Mails, damit die Demo niemanden anschreibt">Demo-Postfach</a>,</li>
+<li>führt <a class="term" href="glossar.html#klärfall" title="Altdatensatz, der ohne Rückfrage nicht übernommen werden kann (z. B. ohne oder mit ungültiger E-Mail-Adresse); steht im Cockpit, nicht in der DLQ">Klärfälle</a> (keine oder ungültige <a class="term" href="glossar.html#e-mail" title="elektronische Post; SNS verschickt bis 1.000 E-Mails im Monat kostenlos">E-Mail</a>) als Status im Cockpit,</li>
+<li>und wirft bei fehlenden Pflicht-Stammdaten: <a class="term" href="glossar.html#lambda" title="führt eine einzelne Funktion (z. B. einen HTTP-Handler) bei Bedarf aus; Abrechnung pro Aufruf und Laufzeit, skaliert automatisch von 0 auf viele Instanzen">Lambda</a> gibt den Aufruf ohne
+  <a class="term" href="glossar.html#retry" title="erneuter Verarbeitungsversuch nach einem Fehler">Wiederholung</a> an die <strong>Migrations-<a class="term" href="glossar.html#dlq" title="Ablage für Nachrichten, die nach mehreren Versuchen nicht verarbeitet werden konnten, zur Analyse und Nachverarbeitung">DLQ</a></strong> (<a class="term" href="glossar.html#sqs" title="Nachrichtenwarteschlange: Absender legt Nachrichten ab, Empfänger holt sie ab und bestätigt sie; entkoppelt Dienste und puffert Last">SQS</a>,
+  <a href="glossar.html#on-failure-destination">On-Failure-Destination</a>), der Datensatz
+  steht als <code>failed</code> im Cockpit, <code>MigrationRecordFailed</code> geht auf den Bus.</li>
+</ul>
+<p>Der letzte bearbeitete Datensatz schließt den Lauf (<code>BulkMigrationCompleted</code>
+mit Zählern). <strong><a class="term" href="glossar.html#redrive" title="Zurückführen von Nachrichten aus der DLQ in die Ursprungs-Queue, nachdem der Fehler behoben ist">Redrive</a>:</strong> Das Cockpit nimmt die Aufgabe per Long Poll aus der
+DLQ und gibt sie mit der eingetragenen Korrektur (z. B. fehlende
+Postleitzahl) erneut an den Processor; das Altsystem bleibt unverändert.</p>
+<p><a class="term" href="glossar.html#passwort-hash" title="Einweg-verschlüsselte Form eines Passworts; alte Systeme nutzen oft schwache Verfahren (MD5, SHA-1), die bei der Migration einen Passwort-Reset erzwingen">Passwort-Hashes</a>: Telko-Hashes lassen sich ohne den <a class="term" href="glossar.html#pepper" title="geheimer Wert, der beim Hashen zusätzlich zum Salt einfließt und nicht bei den Daten liegt; Hashes lassen sich ohne ihn nirgends prüfen — deshalb kann das Portal Telko-Passwörter n">Pepper</a> nirgends prüfen,
+also nie importieren. <a class="term" href="glossar.html#bcrypt" title="verbreitetes Passwort-Hashverfahren mit Salt und einstellbarem Aufwand; das Versorger-Altsystem speichert Passwörter so">bcrypt-Hashes</a> des <a class="term" href="glossar.html#multi-sparten-versorger" title="Unternehmen, das mehrere Versorgungs- und Kommunikationsprodukte anbietet (Strom, Gas, Wasser, Wärme, Internet, Mobilfunk) – typisch für Stadtwerke">Versorgers</a> kann Cognito grundsätzlich
+per <a class="term" href="glossar.html#csv" title="einfache Tabellendatei mit durch Komma getrennten Werten, lesbar mit LibreOffice Calc oder Excel">CSV</a>-Importauftrag übernehmen
+[B: <a href="https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-pools-using-import-tool.html">https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-pools-using-import-tool.html</a>];
+das Demo setzt auch dort auf die Reset-Aufforderung (Grund
+<code>hash-import-unavailable</code>), weil ein Importauftrag eine eigene <a class="term" href="glossar.html#iam" title="Rechteverwaltung von AWS: Rollen und Richtlinien legen fest, wer (Mensch, Dienst, Lambda) was mit welcher Ressource darf">IAM-Rolle</a>, eine
+CSV über <a class="term" href="glossar.html#s3" title="Objektspeicher für Dateien beliebiger Größe in „Buckets&quot;; Standard für statische Websites, Uploads, Build-Artefakte">S3</a> und einen asynchronen Auftrag je Lauf bräuchte — die offene
+Folgefrage steht in der <a href="index.html">Übersicht</a>.</p>
+<h2 id="3-dubletten-und-account-linking-j3">3. Dubletten und Account-Linking (J3)<a class="anchor" href="#3-dubletten-und-account-linking-j3" title="Permanent link">#</a></h2>
+<p>Nach jeder Übernahme durchsucht der migration-Worker den Export des jeweils
+anderen <a class="term" href="glossar.html#legacy-system" title="bestehendes Altsystem mit Kundendaten, das abgelöst werden soll; im Demo simuliert">Altsystems</a>. Als dieselbe Person gilt nur, wer im Namen übereinstimmt
+<strong>und</strong> zusätzlich in der normalisierten Adresse, im Geburtsdatum oder in der
+<a class="term" href="glossar.html#e-mail" title="elektronische Post; SNS verschickt bis 1.000 E-Mails im Monat kostenlos">E-Mail</a> (<a href="glossar.html#adressnormalisierung">Adressnormalisierung</a>:
+„Hauptstr. 5" = „Hauptstraße 5"). Ein Treffer wird Angebot
+(<code>SUBJ#&lt;sub&gt;</code> / <code>LINK#…</code>) und Nachricht im Postfach
+(<code>DuplicateCandidateFound</code>). Auf der Kontoseite bestätigt der Kunde mit dem
+<strong>Passwort des anderen Kontos</strong> — geprüft vom anderen Altsystem bzw. dessen
+<a class="term" href="glossar.html#keycloak" title="Open-Source-Identitätsdienst (OIDC, SAML), selbst betrieben; im Demo unter id.rypox.net die Anmeldung des Telko-Altsystems und ab Phase 3 Gegenstelle des Migrate-User-Triggers">Keycloak</a>, nie gespeichert. Danach veröffentlicht der Dienst <code>AccountsLinked</code>
+mit den Verträgen des verknüpften Kontos; <code>contract</code> übernimmt sie,
+<code>customer</code> vermerkt das <a class="term" href="glossar.html#altkonto" title="Kundenkonto im Altsystem des Versorgers oder der Telko, das ins neue Portal übernommen wird (nicht zu verwechseln mit einem alten AWS-Konto)">Altkonto</a>.</p>
+<h2 id="4-migrations-cockpit-j8">4. Migrations-Cockpit (J8)<a class="anchor" href="#4-migrations-cockpit-j8" title="Permanent link">#</a></h2>
+<p><a class="term" href="glossar.html#multi-zones" title="Next.js-Ansatz, mehrere Next.js-Apps unter einer Domain zu betreiben, aufgeteilt nach Pfaden">Zone</a> <code>/cockpit</code> (<code>apps/cockpit</code>), nur für Mitglieder der
+<a href="glossar.html#cognito-gruppe">Cognito-Gruppe</a> <code>owner</code> — die <a class="term" href="glossar.html#api" title="Programmierschnittstelle, über die Programme miteinander sprechen">API</a> prüft
+<code>cognito:groups</code>, die Zone zeigt bei 403 einen Hinweis. Inhalte: Fortschritt
+je <a class="term" href="glossar.html#legacy-system" title="bestehendes Altsystem mit Kundendaten, das abgelöst werden soll; im Demo simuliert">Altsystem</a> (übernommen/verknüpft im Verhältnis zur Zahl im Altsystem),
+Läufe, <a class="term" href="glossar.html#klärfall" title="Altdatensatz, der ohne Rückfrage nicht übernommen werden kann (z. B. ohne oder mit ungültiger E-Mail-Adresse); steht im Cockpit, nicht in der DLQ">Klärfälle</a>, <a class="term" href="glossar.html#dlq" title="Ablage für Nachrichten, die nach mehreren Versuchen nicht verarbeitet werden konnten, zur Analyse und Nachverarbeitung">DLQ</a> mit <a class="term" href="glossar.html#redrive" title="Zurückführen von Nachrichten aus der DLQ in die Ursprungs-Queue, nachdem der Fehler behoben ist">Redrive</a> und die <a class="term" href="glossar.html#event" title="Nachricht, dass etwas passiert ist (z. B. „Zählerstand erfasst&quot;); Empfänger reagieren darauf, ohne dass der Absender sie kennt">Ereignis</a>-
+<a href="glossar.html#timeline">Timeline</a>: Eine Regel liefert <strong>jedes</strong> Ereignis des
+Busses an den migration-Worker, der es ohne personenbezogene Daten (nur IDs,
+<a class="term" href="glossar.html#altkonto" title="Kundenkonto im Altsystem des Versorgers oder der Telko, das ins neue Portal übernommen wird (nicht zu verwechseln mit einem alten AWS-Konto)">Altkonten</a>, <a class="term" href="glossar.html#sparte" title="Produktbereich eines Versorgers, z. B. Strom, Gas, Mobilfunk; im Demo zentraler Begriff des Datenmodells">Sparten</a>, Zähler) mit <a href="glossar.html#dynamodb-ttl">TTL</a> von 7 Tagen
+ablegt. Die Seite lädt sich alle 10 Sekunden neu. Der
+<a href="glossar.html#demo-reset">Demo-Reset</a> entfernt die von der Migration angelegten
+Konten (nie das eigene), Datensätze, Läufe und die DLQ.</p>
+<h2 id="5-daten-und-kapazität">5. Daten und Kapazität<a class="anchor" href="#5-daten-und-kapazität" title="Permanent link">#</a></h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Eintrag</th>
+<th>PK</th>
+<th>SK</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Status je Altdatensatz</td>
+<td><code>TENANT#&lt;t&gt;#MIGRATION</code></td>
+<td><code>REC#&lt;system&gt;#&lt;nummer&gt;</code></td>
+</tr>
+<tr>
+<td>Bulk-Lauf mit Zählern</td>
+<td><code>TENANT#&lt;t&gt;#MIGRATION</code></td>
+<td><code>RUN#&lt;runId&gt;</code></td>
+</tr>
+<tr>
+<td>Verknüpfungsangebot</td>
+<td><code>TENANT#&lt;t&gt;#SUBJ#&lt;sub&gt;</code></td>
+<td><code>LINK#&lt;system&gt;#&lt;nummer&gt;</code></td>
+</tr>
+<tr>
+<td>Merker „Übernahme gemeldet"</td>
+<td><code>TENANT#&lt;t&gt;#SUBJ#&lt;sub&gt;</code></td>
+<td><code>IDENTITY#LEGACY</code></td>
+</tr>
+<tr>
+<td><a class="term" href="glossar.html#timeline" title="zeitliche Liste von Ereignissen in der Oberfläche">Timeline</a></td>
+<td><code>TENANT#&lt;t&gt;#TIMELINE</code></td>
+<td><code>EVT#&lt;zeitpunkt&gt;#&lt;eventId&gt;</code>, <code>ttl</code></td>
+</tr>
+</tbody>
+</table></div>
+<p>Kein <code>GSI1</code>: Das Cockpit liest alle Datensätze eines <a class="term" href="glossar.html#mandant" title="abgeschotteter Bereich eines Kunden in einer gemeinsam betriebenen Anwendung; im Demo je Demo-Pass ein Mandant">Mandanten</a> mit einer
+Abfrage (einige Dutzend Einträge im Demo); ein Index hätte eigene Kapazität
+aus den 25 freien Einheiten gebraucht [E]. <a class="term" href="glossar.html#bulk-import" title="Übernahme vieler Konten auf einmal; bei Cognito per CSV-Import oder AdminCreateUser, im Demo ohne Passwörter (Nutzer müssen zurücksetzen); Hash-Import (u. a. bcrypt) ist noch nicht">Bulk-Import</a> und Reset schreiben in
+Schüben; bei 5 <a class="term" href="glossar.html#wcu" title="Schreib-Kapazitätseinheit von DynamoDB: 1 Schreibvorgang pro Sekunde bis 1 KB">WCU</a> drosselt <a class="term" href="glossar.html#dynamodb" title="vollständig verwaltete NoSQL-Datenbank (Schlüssel-Wert/Dokument) mit Antwortzeiten im Millisekundenbereich, ohne Server und ohne Verbindungs-Pool">DynamoDB</a> kurz, die <a class="term" href="glossar.html#sdk" title="Software Development Kit: Bibliothek für den Zugriff auf einen Dienst (z. B. AWS SDK)">SDK</a>-<a class="term" href="glossar.html#retry" title="erneuter Verarbeitungsversuch nach einem Fehler">Wiederholungen</a> bzw. die
+Wiederholung unverarbeiteter Löschungen fangen das ab [E].</p></main></div>
+<footer class="site"><a href="../wiki/architektur-migration.md">Markdown-Quelle</a> · Generiert 2026-09-30 11:44 aus <code>docs/wiki</code> mit <code>scripts/build_reports.py</code></footer>
+</body>
+</html>

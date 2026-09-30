@@ -8,7 +8,7 @@
 <script src="assets/report.js"></script>
 </head>
 <body>
-<header class="topbar"><a class="brand" href="index.html">kundenportal-demo · Konzept</a><nav class="topnav"><a href="index.html">Übersicht</a><a href="machbarkeit-kosten.html">Machbarkeit &amp; Kosten</a><a href="fachkonzept.html">Fachkonzept</a><a href="demo-pass.html">Demo-Pass</a><a href="kostenfrei.html">Kostenfreier Betrieb</a><a href="anleitung-kontoinhaber.html">Anleitung Kontoinhaber</a><a href="anleitung-fundament.html">Anleitung Fundament</a><a href="anleitung-anwendung.html">Anleitung Anwendung</a><a href="nextjs-betrieb.html">Next.js-Betrieb</a><a href="architektur.html" aria-current="page">Architektur</a><a href="architektur-zonen.html">Zonen &amp; Frontend</a><a href="glossar.html">Glossar</a></nav>
+<header class="topbar"><a class="brand" href="index.html">kundenportal-demo · Konzept</a><nav class="topnav"><a href="index.html">Übersicht</a><a href="machbarkeit-kosten.html">Machbarkeit &amp; Kosten</a><a href="fachkonzept.html">Fachkonzept</a><a href="demo-pass.html">Demo-Pass</a><a href="kostenfrei.html">Kostenfreier Betrieb</a><a href="anleitung-kontoinhaber.html">Anleitung Kontoinhaber</a><a href="anleitung-fundament.html">Anleitung Fundament</a><a href="anleitung-anwendung.html">Anleitung Anwendung</a><a href="anleitung-altsysteme.html">Anleitung Altsysteme</a><a href="nextjs-betrieb.html">Next.js-Betrieb</a><a href="architektur.html" aria-current="page">Architektur</a><a href="architektur-zonen.html">Zonen &amp; Frontend</a><a href="architektur-migration.html">Altsysteme &amp; Migration</a><a href="glossar.html">Glossar</a></nav>
 <button class="theme-toggle" type="button">Dunkel</button></header>
 <div class="layout"><nav class="toc" aria-label="Inhalt"><div class="toc-title">Inhalt</div><div>
 <ul>
@@ -29,11 +29,12 @@
 <li><a href="#7a-stacks-und-lebensdauer">7a. Stacks und Lebensdauer</a></li>
 <li><a href="#8-pipelines">8. Pipelines</a></li>
 <li><a href="#9-messwerte">9. Messwerte</a></li>
+<li><a href="#10-altsysteme-und-migration-phase-3">10. Altsysteme und Migration (Phase 3)</a></li>
 <li><a href="#quellen">Quellen</a></li>
 </ul>
 </div>
 </nav><main><h1 id="architektur-ist-stand-des-portals">Architektur — Ist-Stand des Portals<a class="anchor" href="#architektur-ist-stand-des-portals" title="Permanent link">#</a></h1>
-<p>Stand: 2026-09-30 · Beschreibt den <strong>Ist-Stand</strong> des Codes (Phase 1 und 2 abgeschlossen), nicht die Zielarchitektur. Kennzeichnung: <strong>[B]</strong> belegt (offizielle Quelle oder Messung), <strong>[A]</strong> Annahme, <strong>[E]</strong> Einschätzung.</p>
+<p>Stand: 2026-09-30 · Beschreibt den <strong>Ist-Stand</strong> des Codes (Phase 1 und 2 abgeschlossen, Phase 3 im Code fertig), nicht die Zielarchitektur. Kennzeichnung: <strong>[B]</strong> belegt (offizielle Quelle oder Messung), <strong>[A]</strong> Annahme, <strong>[E]</strong> Einschätzung.</p>
 <p>Fachbegriffe sind in jedem Abschnitt beim ersten Vorkommen mit dem <a href="glossar.html">Glossar</a> verlinkt (Erklärung und Entsprechung außerhalb von <a class="term" href="glossar.html#aws" title="Cloud-Plattform von Amazon mit über 200 Diensten (Rechenleistung, Datenbanken, Netzwerk, Messaging …), abgerechnet nach Nutzung">AWS</a>).</p>
 <p>Die Zielarchitektur steht in <a href="machbarkeit-kosten.html">Machbarkeit &amp; Kosten</a>;
 diese Seite zeigt, was davon tatsächlich gebaut ist:</p>
@@ -46,6 +47,10 @@ diese Seite zeigt, was davon tatsächlich gebaut ist:</p>
   täglicher Zeitplan, das <a class="term" href="glossar.html#multi-zones" title="Next.js-Ansatz, mehrere Next.js-Apps unter einer Domain zu betreiben, aufgeteilt nach Pfaden">Zonen</a>-Muster mit zwei Zonen, der Schreibweg aus dem
   <a class="term" href="glossar.html#browser" title="Programm zum Anzeigen von Webseiten; „Browser-App&quot; = Anwendung, die im Browser läuft">Browser</a>, das <a class="term" href="glossar.html#laufzeit-integration" title="Einbinden eines Bausteins erst im laufenden Browser statt beim Build">Laufzeit-Widget</a> „Glocke" und die <a class="term" href="glossar.html#component-library" title="gemeinsames Paket wiederverwendbarer UI-Bausteine (Buttons, Formulare, Layouts), das alle Micro-Frontends nutzen und so ein einheitliches Aussehen sichern">Component Library</a>. Die
   <a class="term" href="glossar.html#ui" title="Benutzeroberfläche">Oberfläche</a> beschreibt die Seite <a href="architektur-zonen.html">Architektur: Zonen und Frontend</a>.</li>
+<li><strong>Phase 3 (im Code fertig, Inbetriebnahme der <a class="term" href="glossar.html#legacy-system" title="bestehendes Altsystem mit Kundendaten, das abgelöst werden soll; im Demo simuliert">Altsysteme</a> ausstehend):</strong> zwei
+  simulierte Altsysteme, Übernahme der Kundenkonten per <a class="term" href="glossar.html#migrate-user-trigger" title="Cognito-Trigger für die Lazy Migration: meldet sich ein unbekannter Nutzer mit Passwort an, prüft die Lambda die Daten beim Altsystem; bei Erfolg legt Cognito den Nutzer mit demsel">Migrate-User-Trigger</a>
+  und <a class="term" href="glossar.html#bulk-import" title="Übernahme vieler Konten auf einmal; bei Cognito per CSV-Import oder AdminCreateUser, im Demo ohne Passwörter (Nutzer müssen zurücksetzen); Hash-Import (u. a. bcrypt) ist noch nicht">Bulk-Import</a>, Dublettenerkennung mit <a class="term" href="glossar.html#account-linking" title="mehrere Identitäten derselben Person (z. B. Google-Login und Altkonto) zu einem Konto zusammenführen">Account-Linking</a>, <a class="term" href="glossar.html#migrations-cockpit" title="im Demo geplantes Micro-Frontend, das den Fortschritt der Kontenübernahme, Ereignisse und DLQ-Fälle live zeigt">Migrations-Cockpit</a>
+  (<a href="architektur-migration.html">Architektur: Altsysteme und Migration</a>).</li>
 </ul>
 <p>Wie der Kontoinhaber das Ganze aufbaut, steht in der
 <a href="anleitung-fundament.html">Anleitung Fundament</a> und der
@@ -562,7 +567,7 @@ Uploads eine Pause der Anwendung überstehen:</p>
 </tr>
 <tr>
 <td>Kostendeckel <a class="term" href="glossar.html#lambda" title="führt eine einzelne Funktion (z. B. einen HTTP-Handler) bei Bedarf aus; Abrechnung pro Aufruf und Laufzeit, skaliert automatisch von 0 auf viele Instanzen">Lambda</a></td>
-<td><a href="glossar.html#reserved-concurrency">Reserved Concurrency</a> je Funktion: Services aus <a class="term" href="glossar.html#cdk" title="Infrastruktur als Programmcode (TypeScript, Java, Python …): man schreibt Klassen wie new Table(...), CDK erzeugt daraus CloudFormation-Vorlagen und legt die Ressourcen an">CDK</a>-Kontext <code>reservedConcurrency</code> (Standard 2, <code>0</code> = nicht setzen), <a class="term" href="glossar.html#nextjs" title="React-Framework (von Vercel) mit Routing, Server-Rendering, API-Routen und Build-Optimierung">Next.js</a>-Funktionen (Shell, <a class="term" href="glossar.html#multi-zones" title="Next.js-Ansatz, mehrere Next.js-Apps unter einer Domain zu betreiben, aufgeteilt nach Pfaden">Zonen</a>) <code>webReservedConcurrency</code> (Standard 5); Stand Phase 2: 10 Services × 2 + 3 Next.js-Funktionen × 5 = 35 (Phase 1: 5 × 2 = 10)</td>
+<td><a href="glossar.html#reserved-concurrency">Reserved Concurrency</a> je Funktion: Services aus <a class="term" href="glossar.html#cdk" title="Infrastruktur als Programmcode (TypeScript, Java, Python …): man schreibt Klassen wie new Table(...), CDK erzeugt daraus CloudFormation-Vorlagen und legt die Ressourcen an">CDK</a>-Kontext <code>reservedConcurrency</code> (Standard 2, <code>0</code> = nicht setzen), <a class="term" href="glossar.html#nextjs" title="React-Framework (von Vercel) mit Routing, Server-Rendering, API-Routen und Build-Optimierung">Next.js</a>-Funktionen (Shell, <a class="term" href="glossar.html#multi-zones" title="Next.js-Ansatz, mehrere Next.js-Apps unter einer Domain zu betreiben, aufgeteilt nach Pfaden">Zonen</a>) <code>webReservedConcurrency</code> (Standard 5); Stand Phase 3: 16 Services × 2 + 4 Next.js-Funktionen × 5 = 52 (Phase 2: 35, Phase 1: 10)</td>
 </tr>
 <tr>
 <td>Kostendeckel <a class="term" href="glossar.html#api" title="Programmierschnittstelle, über die Programme miteinander sprechen">API</a></td>
@@ -596,14 +601,15 @@ Kontokapazität minus 100" reservieren
 Neue Konten haben oft ein Limit von 10
 [B: <a href="https://docs.aws.amazon.com/lambda/latest/dg/gettingstarted-limits.html">https://docs.aws.amazon.com/lambda/latest/dg/gettingstarted-limits.html</a>];
 dann ist gar keine Reservierung möglich. Faustregel: <a class="term" href="glossar.html#service-quotas" title="AWS-Dienst, der die Obergrenzen eines Kontos je Dienst und Region anzeigt (z. B. Lambda „Concurrent executions“) und Erhöhungen per Antrag ermöglicht; der Antrag ist kostenlos">Kontolimit</a> ≥ 100 +
-2 × Anzahl Funktionen, derzeit also ≥ 126; mit jeder weiteren Zone oder
-jedem weiteren Service steigt der Wert um 2. Das Konto hat nach genehmigter
+Summe der Reservierungen, derzeit also ≥ 152; jede weitere Service-Funktion
+erhöht den Wert um 2, jede weitere Zone um 5. Das Konto hat nach genehmigter
 Erhöhung ein Limit von 1.000 [B]. Weg bei zu kleinem Limit: Quotenerhöhung
 oder <code>reservedConcurrency=0</code> (Anleitung Kapitel 4.5).</p>
-<p>Die zwölf Funktionen im App-<a class="term" href="glossar.html#stack" title="Einheit in CloudFormation/CDK: eine Gruppe von Ressourcen, die gemeinsam angelegt und gelöscht wird">Stack</a>: customer, notification-API,
+<p>Die 17 Funktionen im App-<a class="term" href="glossar.html#stack" title="Einheit in CloudFormation/CDK: eine Gruppe von Ressourcen, die gemeinsam angelegt und gelöscht wird">Stack</a>: customer-API und -Worker, notification-API,
 notification-<a class="term" href="glossar.html#konsument" title="Dienst, der Nachrichten oder Events empfängt und verarbeitet">Konsument</a>, je API-Funktion und Worker von contract,
-consumption und documents, Shell und zwei Zonen. Im Base-Stack: der
-<a class="term" href="glossar.html#pre-token-generation-trigger" title="Lambda, die Cognito vor dem Ausstellen der Tokens aufruft; in Version 2 kann sie dem Access Token eigene Claims hinzufügen (im Demo tenant_id, email, locale, name)">Pre-Token-Generation-Trigger</a>.</p>
+consumption und documents, migration-API, -Worker und -Record-Processor,
+Shell und drei Zonen. Im Base-Stack die drei <a class="term" href="glossar.html#lambda-trigger-cognito" title="Lambda-Funktion, die Cognito an festen Punkten aufruft (vor Registrierung, vor/nach Login, Token-Erzeugung, Migration); im Demo in services/identity">Cognito-Trigger</a>: <a class="term" href="glossar.html#pre-token-generation-trigger" title="Lambda, die Cognito vor dem Ausstellen der Tokens aufruft; in Version 2 kann sie dem Access Token eigene Claims hinzufügen (im Demo tenant_id, email, locale, name)">Pre Token
+Generation</a>, <a class="term" href="glossar.html#migrate-user-trigger" title="Cognito-Trigger für die Lazy Migration: meldet sich ein unbekannter Nutzer mit Passwort an, prüft die Lambda die Daten beim Altsystem; bei Erfolg legt Cognito den Nutzer mit demsel">Migrate User</a> und <a class="term" href="glossar.html#post-authentication-trigger" title="Cognito-Lambda nach jeder erfolgreichen Anmeldung; hier meldet sie die Übernahme eines Altkontos einmalig als Ereignis, weil erst dann die neue Identität (sub) feststeht">Post Authentication</a>.</p>
 <p>Zusätzlich legt CDK Hilfs-Lambdas an (Kopieren der statischen Dateien nach S3,
 Leeren des Buckets beim Löschen, regionsübergreifende Werte zwischen den zwei
 Stacks). Sie laufen nur beim <a class="term" href="glossar.html#deployment" title="Ausliefern einer neuen Version in eine Umgebung">Deploy</a> bzw. Abbau und haben keine Reserved
@@ -728,7 +734,7 @@ angelegtes Repository gleichen Namens die Rolle nicht übernehmen kann), die Git
 <p>Gemessen beim ersten <a class="term" href="glossar.html#durchstich" title="erste, schmale Umsetzung durch alle Schichten (UI → API → DB → Event), um die Architektur früh zu beweisen">Durchstich</a> am 29./30.09.2026 und mit dem Stand von
 Phase 2 am 30.09.2026 (Quelle: Zusammenfassungen
 der <a class="term" href="glossar.html#github" title="Plattform für Git-Repositories, Pull Requests und CI">GitHub</a>-Actions-Läufe, <a class="term" href="glossar.html#cloudformation" title="AWS-eigener Dienst, der Ressourcen aus einer JSON/YAML-Vorlage anlegt, ändert und löscht; Grundlage von CDK und SAM">CloudFormation</a>-<a class="term" href="glossar.html#event" title="Nachricht, dass etwas passiert ist (z. B. „Zählerstand erfasst&quot;); Empfänger reagieren darauf, ohne dass der Absender sie kennt">Ereignisse</a>, <code>curl</code> und der
-Playwright-Lauf gegen die Live-Umgebung).</p>
+<a class="term" href="glossar.html#playwright" title="Werkzeug, das echte Browser fernsteuert; prüft die Journeys am laufenden Portal">Playwright</a>-Lauf gegen die Live-Umgebung).</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -848,6 +854,12 @@ Playwright-Lauf gegen die Live-Umgebung).</p>
 <a class="term" href="glossar.html#trust-policy" title="Teil einer IAM-Rolle: wer diese Rolle übernehmen darf (z. B. nur GitHub Actions aus einem bestimmten Repo)">Vertrauensstellung</a> prüft dieses Format; <a class="term" href="glossar.html#function-url" title="eigene HTTPS-Adresse einer Lambda ohne API Gateway; unterstützt Response Streaming und kann hinter CloudFront (mit OAC) liegen">Function URLs</a> brauchen seit
 10/2025 zusätzlich <code>lambda:InvokeFunction</code>; das <a class="term" href="glossar.html#lambda" title="führt eine einzelne Funktion (z. B. einen HTTP-Handler) bei Bedarf aus; Abrechnung pro Aufruf und Laufzeit, skaliert automatisch von 0 auf viele Instanzen">Lambda</a>-Paket der Shell muss
 die pnpm-Symlinks behalten (eigenes Zip statt <a class="term" href="glossar.html#cdk" title="Infrastruktur als Programmcode (TypeScript, Java, Python …): man schreibt Klassen wie new Table(...), CDK erzeugt daraus CloudFormation-Vorlagen und legt die Ressourcen an">CDK</a>-Kopie).</p>
+<h2 id="10-altsysteme-und-migration-phase-3">10. Altsysteme und Migration (Phase 3)<a class="anchor" href="#10-altsysteme-und-migration-phase-3" title="Permanent link">#</a></h2>
+<p>Zwei simulierte <a class="term" href="glossar.html#legacy-system" title="bestehendes Altsystem mit Kundendaten, das abgelöst werden soll; im Demo simuliert">Altsysteme</a> auf eigenem <a class="term" href="glossar.html#server" title="Rechner oder Prozess, der Anfragen beantwortet">Server</a>, Übernahme der Kundenkonten per
+<a class="term" href="glossar.html#migrate-user-trigger" title="Cognito-Trigger für die Lazy Migration: meldet sich ein unbekannter Nutzer mit Passwort an, prüft die Lambda die Daten beim Altsystem; bei Erfolg legt Cognito den Nutzer mit demsel">Migrate-User-Trigger</a> (<a class="term" href="glossar.html#journey-kürzel" title="Nummern der neun Demo-Abläufe im Fachkonzept (J1 Registrierung … J9 Demo-Pass)">J2</a>) und <a class="term" href="glossar.html#bulk-import" title="Übernahme vieler Konten auf einmal; bei Cognito per CSV-Import oder AdminCreateUser, im Demo ohne Passwörter (Nutzer müssen zurücksetzen); Hash-Import (u. a. bcrypt) ist noch nicht">Bulk-Import</a> mit <a class="term" href="glossar.html#dlq" title="Ablage für Nachrichten, die nach mehreren Versuchen nicht verarbeitet werden konnten, zur Analyse und Nachverarbeitung">DLQ</a> und <a class="term" href="glossar.html#redrive" title="Zurückführen von Nachrichten aus der DLQ in die Ursprungs-Queue, nachdem der Fehler behoben ist">Redrive</a> (J7),
+Dublettenerkennung und <a class="term" href="glossar.html#account-linking" title="mehrere Identitäten derselben Person (z. B. Google-Login und Altkonto) zu einem Konto zusammenführen">Account-Linking</a> (J3) sowie das <a class="term" href="glossar.html#migrations-cockpit" title="im Demo geplantes Micro-Frontend, das den Fortschritt der Kontenübernahme, Ereignisse und DLQ-Fälle live zeigt">Migrations-Cockpit</a> (J8)
+beschreibt die eigene Seite
+<a href="architektur-migration.html">Architektur: Altsysteme und Migration</a>.</p>
 <h2 id="quellen">Quellen<a class="anchor" href="#quellen" title="Permanent link">#</a></h2>
 <ul class="sources">
 <li>Lambda Reserved Concurrency (höchstens Kontokapazität minus 100): <a href="https://docs.aws.amazon.com/lambda/latest/dg/configuration-concurrency.html">https://docs.aws.amazon.com/lambda/latest/dg/configuration-concurrency.html</a></li>
@@ -858,6 +870,6 @@ die pnpm-Symlinks behalten (eigenes Zip statt <a class="term" href="glossar.html
 <li>EventBridge, Wiederholungen und DLQ am Regelziel: <a href="https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-rule-dlq.html">https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-rule-dlq.html</a></li>
 <li>S3-Ereignisse über EventBridge: <a href="https://docs.aws.amazon.com/AmazonS3/latest/userguide/EventBridge.html">https://docs.aws.amazon.com/AmazonS3/latest/userguide/EventBridge.html</a></li>
 </ul></main></div>
-<footer class="site"><a href="../wiki/architektur.md">Markdown-Quelle</a> · Generiert 2026-09-30 09:40 aus <code>docs/wiki</code> mit <code>scripts/build_reports.py</code></footer>
+<footer class="site"><a href="../wiki/architektur.md">Markdown-Quelle</a> · Generiert 2026-09-30 11:44 aus <code>docs/wiki</code> mit <code>scripts/build_reports.py</code></footer>
 </body>
 </html>

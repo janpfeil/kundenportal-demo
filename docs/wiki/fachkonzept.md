@@ -89,7 +89,7 @@ enthält `tenantId`, `occurredAt`, `correlationId` [E].
 | `CustomerRegistered` | identity | customer, notification | Kundendatensatz anlegen, Willkommensnachricht |
 | `LegacyAccountMigrated` | identity (Lazy) / migration (Bulk) | customer, contract, migration | Stammdaten und Verträge aus Altsystem übernehmen, Cockpit zählt |
 | `DuplicateCandidateFound` | migration | notification | Kunde erhält Verknüpfungsangebot |
-| `AccountsLinked` | identity | contract, migration | Verträge beider Häuser einem Konto zuordnen |
+| `AccountsLinked` | migration (gebaut; ursprünglich identity geplant — migration hält die Altdaten der verknüpften Verträge) | customer, contract, notification | Verträge beider Häuser einem Konto zuordnen |
 | `OnboardingCompleted` | customer | notification | Hinweis „Profil vollständig" |
 | `MeterReadingSubmitted` | consumption | contract, notification | Abschlag neu berechnen, Bestätigung |
 | `InstallmentAdjusted` | contract | notification, documents | neue Abschlagsinfo als PDF |
@@ -97,7 +97,7 @@ enthält `tenantId`, `occurredAt`, `correlationId` [E].
 | `ContractChanged` | contract | notification | Bestätigung |
 | `BulkMigrationStarted` / `BulkMigrationCompleted` | migration | notification | Cockpit-Status |
 | `PasswordResetRequired` | migration | notification | Reset-Aufforderung ins Demo-Postfach |
-| `MigrationRecordFailed` | migration (DLQ) | — | Klärfall im Cockpit, Redrive möglich |
+| `MigrationRecordFailed` | migration (DLQ) | — (Timeline) | fehlerhafter Datensatz im Cockpit, Redrive möglich |
 | `DemoPassIssued` / `DemoPassExpired` | tenancy | tenancy, alle | Mandant anlegen bzw. löschen |
 
 ```chart
@@ -126,7 +126,7 @@ kostenlos — siehe [Demo-Pass](demo-pass.md) §5.
 Single-Table-Design: Partition Key `PK`, Sort Key `SK`, ein globaler
 Sekundärindex `GSI1` für Suchen [E].
 
-**Abgleich mit dem Code (Stand 30.09.2026, Phase 2 in Arbeit):** Bis zum
+**Abgleich mit dem Code (Stand 30.09.2026, Phase 3 im Code fertig):** Bis zum
 Demo-Pass (Phase 4) gibt es genau **eine** Tabelle für alle Mandanten. Jeder
 Schlüssel beginnt deshalb mit dem Mandanten (`TENANT#<t>#…`, Helfer
 `tenantKey` in `packages/service-kit`); mit einer eigenen Tabelle je Mandant
@@ -139,7 +139,8 @@ angelegt. Die Spalte „Stand" nennt, was schon gebaut ist; Einzelheiten in
 | Kunde | `TENANT#<t>#CUST#<kundeId>` | `PROFILE` | Profil lesen/ändern | gebaut (customer) |
 | Anmelde-Identität → Kunde | `TENANT#<t>#SUBJ#<sub>` | `CUSTOMER` | Kunde zum Token finden | gebaut (customer) |
 | Projektion Identität → Kunde je Service | `TENANT#<t>#SUBJ#<sub>` | `CONTRACTS`, `CONSUMPTION`, `DOCUMENTS`, `MAILBOX` | jeder Service findet den Kunden ohne fremde Einträge | gebaut |
-| Verknüpftes Altkonto | `TENANT#<t>#CUST#<kundeId>` | `LEGACY#<system>#<altId>` | Herkunft anzeigen, Dubletten prüfen | geplant (Phase 3) |
+| Verknüpftes Altkonto | `TENANT#<t>#CUST#<kundeId>` | `PROFILE`, Attribut `legacyAccounts` (Menge `system:nummer`) | Herkunft anzeigen | gebaut (customer; statt eigener Einträge [E]) |
+| Verknüpfungsangebot | `TENANT#<t>#SUBJ#<sub>` | `LINK#<system>#<altId>` | `/me/links` | gebaut (migration) |
 | Vertrag | `TENANT#<t>#CUST#<kundeId>` | `CONTRACT#<sparte>#<vertragId>` | alle Verträge eines Kunden, je Sparte filtern | gebaut (contract) |
 | Vertragsprojektion | `TENANT#<t>#CONTRACT#<vertragId>` | `CONSUMPTION` | Vertrag aus Sicht des Verbrauchs, mit Versionsschutz | gebaut (consumption) |
 | Zählerstand | `TENANT#<t>#CONTRACT#<vertragId>` | `READING#<datum>#<readingId>` | Verlauf je Zähler, neuester zuerst (geplant: `READING#<datum>`; die ID erlaubt mehrere Stände am selben Tag) | gebaut (consumption) |
@@ -148,8 +149,8 @@ angelegt. Die Spalte „Stand" nennt, was schon gebaut ist; Einzelheiten in
 | Dokument | `TENANT#<t>#CUST#<kundeId>` | `DOC#<documentId>` | Postfach, Rechnungen; die ID beginnt mit dem Zeitpunkt (geplant: `DOC#<datum>#<docId>`, gleiche Sortierung) | gebaut (documents) |
 | Benachrichtigung | `TENANT#<t>#CUST#<kundeId>` | `NOTE#<id>` | Glocke, ungelesene zuerst; `<id>` = Zeitstempel + eventId | gebaut (notification) |
 | Postfach-Sprache | `TENANT#<t>#CUST#<kundeId>` | `MAILBOX` | Texte auf Deutsch oder Englisch | gebaut (notification) |
-| Migrationsstatus | `TENANT#<t>#MIGRATION` | `REC#<system>#<altId>` | Cockpit: Status je Altdatensatz; `GSI1PK=MIGSTATUS#<status>` für Zählungen | geplant (Phase 3; Präfix nach der Konvention oben [E]) |
-| Ereignis-Timeline | `TENANT#<t>#TIMELINE` | `EVT#<zeitstempel>#<id>` | Cockpit-Timeline (Stream-Kopie aller Ereignisse) | geplant (Phase 3; Präfix nach der Konvention oben [E]) |
+| Migrationsstatus | `TENANT#<t>#MIGRATION` | `REC#<system>#<altId>`, `RUN#<runId>` | Cockpit: Status je Altdatensatz und Bulk-Läufe; Zählung per Abfrage statt `GSI1` | gebaut (migration) |
+| Ereignis-Timeline | `TENANT#<t>#TIMELINE` | `EVT#<zeitstempel>#<id>` | Cockpit-Timeline (Kopie aller Ereignisse über eine EventBridge-Regel, TTL 7 Tage) | gebaut (migration) |
 
 ### 7.2 Plattform-Tabelle (eine, mandantenübergreifend)
 
@@ -183,13 +184,13 @@ Vertrag, TypeScript-Client wird daraus erzeugt [E].
 | Ressource | Methoden | Bereich |
 |---|---|---|
 | `/me` | GET, PATCH | Kunde |
-| `/me/links` | GET, POST (Verknüpfung bestätigen) | Identität |
+| `/me/links` | GET, POST (Verknüpfung bestätigen, mit dem Passwort des anderen Kontos) | Identität (gebaut im Service `migration`) |
 | `/contracts`, `/contracts/{id}` | GET, PATCH (Abschlag, Option) | Vertrag |
 | `/contracts/{id}/readings` | GET, POST | Verbrauch |
 | `/contracts/{id}/usage` | GET | Verbrauch |
 | `/documents`, `/documents/upload-url` | GET, POST | Dokumente |
 | `/notifications` | GET, PATCH (gelesen) | Benachrichtigung |
-| `/migration/status`, `/migration/bulk`, `/migration/dlq/{id}/redrive` | GET, POST | Migration (nur Pass-Inhaber) |
+| `/migration/status`, `/migration/bulk`, `/migration/dlq/{id}/redrive`, `/migration/reset` | GET, POST | Migration (bis Phase 4 nur Inhaber: Cognito-Gruppe `owner`) |
 | `/admin/invites`, `/admin/tenants` | GET, POST, DELETE | Mandant & Pass (nur Inhaber) |
 
 ## 9. Repository-Struktur

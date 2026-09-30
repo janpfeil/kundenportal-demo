@@ -8,7 +8,7 @@
 <script src="assets/report.js"></script>
 </head>
 <body>
-<header class="topbar"><a class="brand" href="index.html">kundenportal-demo · Konzept</a><nav class="topnav"><a href="index.html">Übersicht</a><a href="machbarkeit-kosten.html">Machbarkeit &amp; Kosten</a><a href="fachkonzept.html">Fachkonzept</a><a href="demo-pass.html">Demo-Pass</a><a href="kostenfrei.html" aria-current="page">Kostenfreier Betrieb</a><a href="anleitung-kontoinhaber.html">Anleitung Kontoinhaber</a><a href="anleitung-fundament.html">Anleitung Fundament</a><a href="anleitung-anwendung.html">Anleitung Anwendung</a><a href="nextjs-betrieb.html">Next.js-Betrieb</a><a href="architektur.html">Architektur</a><a href="architektur-zonen.html">Zonen &amp; Frontend</a><a href="glossar.html">Glossar</a></nav>
+<header class="topbar"><a class="brand" href="index.html">kundenportal-demo · Konzept</a><nav class="topnav"><a href="index.html">Übersicht</a><a href="machbarkeit-kosten.html">Machbarkeit &amp; Kosten</a><a href="fachkonzept.html">Fachkonzept</a><a href="demo-pass.html">Demo-Pass</a><a href="kostenfrei.html" aria-current="page">Kostenfreier Betrieb</a><a href="anleitung-kontoinhaber.html">Anleitung Kontoinhaber</a><a href="anleitung-fundament.html">Anleitung Fundament</a><a href="anleitung-anwendung.html">Anleitung Anwendung</a><a href="anleitung-altsysteme.html">Anleitung Altsysteme</a><a href="nextjs-betrieb.html">Next.js-Betrieb</a><a href="architektur.html">Architektur</a><a href="architektur-zonen.html">Zonen &amp; Frontend</a><a href="architektur-migration.html">Altsysteme &amp; Migration</a><a href="glossar.html">Glossar</a></nav>
 <button class="theme-toggle" type="button">Dunkel</button></header>
 <div class="layout"><nav class="toc" aria-label="Inhalt"><div class="toc-title">Inhalt</div><div>
 <ul>
@@ -212,6 +212,37 @@ zusätzlich verbraucht (<a href="architektur.html">Architektur</a>):</p>
   consumption, documents) von 10 freien.</li>
 <li><strong><a class="term" href="glossar.html#storybook" title="Werkzeug, das jede Komponente der Component Library isoliert darstellt und dokumentiert; als statische Seite veröffentlicht">Storybook</a></strong> liegt auf <a class="term" href="glossar.html#github-pages" title="kostenloses Hosting statischer Websites direkt aus einem GitHub-Repository; im Demo für Storybook und Berichte">GitHub Pages</a> (Abschnitt 3), nicht auf S3 oder
   CloudFront.</li>
+</ul>
+<p><strong>Ergänzungen aus Phase 3 (Stand 30.09.2026)</strong> — <a class="term" href="glossar.html#legacy-system" title="bestehendes Altsystem mit Kundendaten, das abgelöst werden soll; im Demo simuliert">Altsysteme</a> und Migration
+(<a href="architektur-migration.html">Altsysteme &amp; Migration</a>):</p>
+<ul>
+<li><strong>Keine weitere abgefragte Queue [E]:</strong> customer- und migration-Worker
+  sowie der Record-Processor werden wie in Phase 2 direkt aufgerufen. Drei neue
+  SQS-Queues (DLQ von customer und migration-Worker, Migrations-DLQ) haben
+  keinen Abfrager; Anfragen entstehen nur, wenn etwas darin landet, und beim
+  <a class="term" href="glossar.html#redrive" title="Zurückführen von Nachrichten aus der DLQ in die Ursprungs-Queue, nachdem der Fehler behoben ist">Redrive</a> aus dem Cockpit (einige Long Polls je Klick).</li>
+<li><strong>EventBridge:</strong> Die <a class="term" href="glossar.html#timeline" title="zeitliche Liste von Ereignissen in der Oberfläche">Timeline</a>-Regel liefert jedes Ereignis zusätzlich an
+  den migration-Worker. Berechnet werden veröffentlichte Ereignisse, nicht
+  Zustellungen an Ziele auf demselben Bus
+  [B: <a href="https://aws.amazon.com/eventbridge/pricing/">https://aws.amazon.com/eventbridge/pricing/</a>]; die zusätzlichen
+  Lambda-Aufrufe liegen weit unter 1 Mio. im Monat.</li>
+<li><strong>Lambda:</strong> 19 Funktionen mit Reservierung statt 13 (drei Cognito-Trigger,
+  customer-Worker, migration-<a class="term" href="glossar.html#api" title="Programmierschnittstelle, über die Programme miteinander sprechen">API</a>, -Worker, -Processor, Cockpit-Zone);
+  Cognito-Trigger kosten nur ihre Lambda-Aufrufe.</li>
+<li><strong>SSM Parameter Store und KMS:</strong> sieben Standard-Parameter, davon drei
+  SecureStrings mit dem AWS-verwalteten Schlüssel <code>aws/ssm</code> — kostenlos; die
+  Entschlüsselung beim <a class="term" href="glossar.html#kaltstart" title="Verzögerung, wenn eine Lambda-Instanz erst gestartet werden muss (bei Node.js meist &lt; 1 s)">Kaltstart</a> zählt gegen die 20.000 freien KMS-Anfragen im
+  Monat [B: <a href="https://aws.amazon.com/kms/pricing/">https://aws.amazon.com/kms/pricing/</a>]. Kein Secrets Manager.</li>
+<li><strong>Cognito:</strong> Per <a class="term" href="glossar.html#bulk-import" title="Übernahme vieler Konten auf einmal; bei Cognito per CSV-Import oder AdminCreateUser, im Demo ohne Passwörter (Nutzer müssen zurücksetzen); Hash-Import (u. a. bcrypt) ist noch nicht">Bulk-Import</a> angelegte Konten zählen erst mit einer
+  Anmeldung als aktive Nutzer (MAU); das Demo bleibt weit unter 10.000.</li>
+<li><strong>DynamoDB:</strong> Timeline-Einträge (einer je Ereignis) laufen nach 7 Tagen per
+  <a class="term" href="glossar.html#dynamodb-ttl" title="Attribut ttl mit Ablaufzeitpunkt; DynamoDB löscht solche Einträge selbst und kostenlos (hier die Cockpit-Timeline nach 7 Tagen)">TTL</a> ab — kostenlos; kein zusätzlicher Index, Kapazität bleibt 5/5.</li>
+<li><strong>CloudWatch:</strong> sechs Alarme von 10 freien (neu: DLQ von customer und
+  migration-Worker; die Migrations-DLQ bekommt bewusst keinen, weil der
+  fehlerhafte Datensatz zur Demo gehört).</li>
+<li><strong>Eigene Infrastruktur statt AWS:</strong> Altsysteme (zwei Container mit
+  <a class="term" href="glossar.html#sqlite" title="eingebettete Datenbank in einer Datei; jedes Altsystem hält je Mandant eine Datei">SQLite</a>) und der <a class="term" href="glossar.html#keycloak" title="Open-Source-Identitätsdienst (OIDC, SAML), selbst betrieben; im Demo unter id.rypox.net die Anmeldung des Telko-Altsystems und ab Phase 3 Gegenstelle des Migrate-User-Triggers">Keycloak</a>-<a class="term" href="glossar.html#realm" title="abgeschlossener Bereich in Keycloak mit eigenen Nutzern, Clients und Einstellungen">Realm</a> laufen auf dem eigenen <a class="term" href="glossar.html#server" title="Rechner oder Prozess, der Anfragen beantwortet">Server</a>; ihre
+  <a class="term" href="glossar.html#pipeline" title="automatisierte Abfolge von Schritten (bauen, testen, ausliefern)">Pipelines</a> laufen in <a class="term" href="glossar.html#gitlab" title="Git-Plattform mit CI, auch selbst betreibbar; bei rypox intern auf gitlab.rypox.org im Einsatz">GitLab</a> (Abschnitt 3).</li>
 </ul>
 <h2 id="3-was-auf-eigene-infrastruktur-wandert">3. Was auf eigene Infrastruktur wandert<a class="anchor" href="#3-was-auf-eigene-infrastruktur-wandert" title="Permanent link">#</a></h2>
 <p>Eigene, bereits vorhandene Infrastruktur: ein <strong>eigener <a class="term" href="glossar.html#server" title="Rechner oder Prozess, der Anfragen beantwortet">Server</a></strong> mit <a class="term" href="glossar.html#docker" title="Container-Technik; ein Image enthält eine Anwendung mit allen Abhängigkeiten">Docker</a>,
@@ -521,6 +552,6 @@ nötig), Startzeiten messen und dann über Z3 entscheiden. Der Auf-/Abbau-
 <li>GitLab-managed Terraform State: <a href="https://docs.gitlab.com/user/infrastructure/iac/terraform_state/">https://docs.gitlab.com/user/infrastructure/iac/terraform_state/</a></li>
 <li>Drittquelle Always Free [D]: <a href="https://infratally.com/articles/aws-free-tier-2026.html">https://infratally.com/articles/aws-free-tier-2026.html</a></li>
 </ul></main></div>
-<footer class="site"><a href="../wiki/kostenfrei.md">Markdown-Quelle</a> · Generiert 2026-09-30 09:40 aus <code>docs/wiki</code> mit <code>scripts/build_reports.py</code></footer>
+<footer class="site"><a href="../wiki/kostenfrei.md">Markdown-Quelle</a> · Generiert 2026-09-30 11:44 aus <code>docs/wiki</code> mit <code>scripts/build_reports.py</code></footer>
 </body>
 </html>

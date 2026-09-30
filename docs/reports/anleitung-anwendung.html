@@ -8,7 +8,7 @@
 <script src="assets/report.js"></script>
 </head>
 <body>
-<header class="topbar"><a class="brand" href="index.html">kundenportal-demo · Konzept</a><nav class="topnav"><a href="index.html">Übersicht</a><a href="machbarkeit-kosten.html">Machbarkeit &amp; Kosten</a><a href="fachkonzept.html">Fachkonzept</a><a href="demo-pass.html">Demo-Pass</a><a href="kostenfrei.html">Kostenfreier Betrieb</a><a href="anleitung-kontoinhaber.html">Anleitung Kontoinhaber</a><a href="anleitung-fundament.html">Anleitung Fundament</a><a href="anleitung-anwendung.html" aria-current="page">Anleitung Anwendung</a><a href="nextjs-betrieb.html">Next.js-Betrieb</a><a href="architektur.html">Architektur</a><a href="architektur-zonen.html">Zonen &amp; Frontend</a><a href="glossar.html">Glossar</a></nav>
+<header class="topbar"><a class="brand" href="index.html">kundenportal-demo · Konzept</a><nav class="topnav"><a href="index.html">Übersicht</a><a href="machbarkeit-kosten.html">Machbarkeit &amp; Kosten</a><a href="fachkonzept.html">Fachkonzept</a><a href="demo-pass.html">Demo-Pass</a><a href="kostenfrei.html">Kostenfreier Betrieb</a><a href="anleitung-kontoinhaber.html">Anleitung Kontoinhaber</a><a href="anleitung-fundament.html">Anleitung Fundament</a><a href="anleitung-anwendung.html" aria-current="page">Anleitung Anwendung</a><a href="anleitung-altsysteme.html">Anleitung Altsysteme</a><a href="nextjs-betrieb.html">Next.js-Betrieb</a><a href="architektur.html">Architektur</a><a href="architektur-zonen.html">Zonen &amp; Frontend</a><a href="architektur-migration.html">Altsysteme &amp; Migration</a><a href="glossar.html">Glossar</a></nav>
 <button class="theme-toggle" type="button">Dunkel</button></header>
 <div class="layout"><nav class="toc" aria-label="Inhalt"><div class="toc-title">Inhalt</div><div>
 <ul>
@@ -441,7 +441,7 @@ zügig anlegen.</p>
    Typ <strong>CNAME</strong>, Name = CNAME name <strong>ohne</strong> Domain-Anhang, also
    <code>_&lt;…&gt;.kundenportal-demo</code> (viele <a class="term" href="glossar.html#ui" title="Benutzeroberfläche">Oberflächen</a> hängen <code>.rypox.com</code>
    selbst an; sonst entsteht <code>….rypox.com.rypox.com</code>), Ziel = CNAME value,
-   TTL 300.</li>
+   <a class="term" href="glossar.html#dynamodb-ttl" title="Attribut ttl mit Ablaufzeitpunkt; DynamoDB löscht solche Einträge selbst und kostenlos (hier die Cockpit-Timeline nach 7 Tagen)">TTL</a> 300.</li>
 <li>Prüfen 👁: <code>dig +short CNAME _&lt;…&gt;.kundenportal-demo.rypox.com</code> zeigt den
    <code>acm-validations.aws</code>-Wert.</li>
 <li>Ergebnis nach Minuten (bis zu 30): Status <strong>Issued</strong>; der Deploy läuft
@@ -490,7 +490,7 @@ Neuaufbau nach Vollabbau den alten Eintrag löschen (8.7, Variante B).</p>
    5 min); notfalls bestätigt der Agent das Konto per Admin-<a class="term" href="glossar.html#api" title="Programmierschnittstelle, über die Programme miteinander sprechen">API</a>.</li>
 <li>Ergebnis: <strong>Mein Konto</strong> zeigt die Daten; im <strong>Postfach</strong> steht nach
    wenigen Sekunden die Willkommensnachricht. Automatisch prüft das der
-   <a class="term" href="glossar.html#workflow" title="allgemein: automatisierter Ablauf mehrerer Schritte; bei GitHub: eine Pipeline-Datei">Workflow</a> <strong>E2E</strong> (Playwright, Wegwerf-Nutzer, misst die Zeit).</li>
+   <a class="term" href="glossar.html#workflow" title="allgemein: automatisierter Ablauf mehrerer Schritte; bei GitHub: eine Pipeline-Datei">Workflow</a> <strong><a class="term" href="glossar.html#playwright" title="Werkzeug, das echte Browser fernsteuert; prüft die Journeys am laufenden Portal">E2E</a></strong> (Playwright, Wegwerf-Nutzer, misst die Zeit).</li>
 </ol>
 <p>Rückweg: Testnutzer in Cognito → <strong>Delete user</strong>.</p>
 <h3 id="85-dlq-probe">8.5 DLQ-Probe ✎<a class="anchor" href="#85-dlq-probe" title="Permanent link">#</a></h3>
@@ -734,6 +734,6 @@ private Adressen und meldet das Ergebnis. Erst danach umschalten.</p>
 </tr>
 </tbody>
 </table></div></main></div>
-<footer class="site"><a href="../wiki/anleitung-anwendung.md">Markdown-Quelle</a> · Generiert 2026-09-30 09:40 aus <code>docs/wiki</code> mit <code>scripts/build_reports.py</code></footer>
+<footer class="site"><a href="../wiki/anleitung-anwendung.md">Markdown-Quelle</a> · Generiert 2026-09-30 11:44 aus <code>docs/wiki</code> mit <code>scripts/build_reports.py</code></footer>
 </body>
 </html>

@@ -8,7 +8,7 @@
 <script src="assets/report.js"></script>
 </head>
 <body>
-<header class="topbar"><a class="brand" href="index.html">kundenportal-demo · Konzept</a><nav class="topnav"><a href="index.html">Übersicht</a><a href="machbarkeit-kosten.html">Machbarkeit &amp; Kosten</a><a href="fachkonzept.html">Fachkonzept</a><a href="demo-pass.html">Demo-Pass</a><a href="kostenfrei.html">Kostenfreier Betrieb</a><a href="anleitung-kontoinhaber.html">Anleitung Kontoinhaber</a><a href="anleitung-fundament.html" aria-current="page">Anleitung Fundament</a><a href="anleitung-anwendung.html">Anleitung Anwendung</a><a href="nextjs-betrieb.html">Next.js-Betrieb</a><a href="architektur.html">Architektur</a><a href="architektur-zonen.html">Zonen &amp; Frontend</a><a href="glossar.html">Glossar</a></nav>
+<header class="topbar"><a class="brand" href="index.html">kundenportal-demo · Konzept</a><nav class="topnav"><a href="index.html">Übersicht</a><a href="machbarkeit-kosten.html">Machbarkeit &amp; Kosten</a><a href="fachkonzept.html">Fachkonzept</a><a href="demo-pass.html">Demo-Pass</a><a href="kostenfrei.html">Kostenfreier Betrieb</a><a href="anleitung-kontoinhaber.html">Anleitung Kontoinhaber</a><a href="anleitung-fundament.html" aria-current="page">Anleitung Fundament</a><a href="anleitung-anwendung.html">Anleitung Anwendung</a><a href="anleitung-altsysteme.html">Anleitung Altsysteme</a><a href="nextjs-betrieb.html">Next.js-Betrieb</a><a href="architektur.html">Architektur</a><a href="architektur-zonen.html">Zonen &amp; Frontend</a><a href="architektur-migration.html">Altsysteme &amp; Migration</a><a href="glossar.html">Glossar</a></nav>
 <button class="theme-toggle" type="button">Dunkel</button></header>
 <div class="layout"><nav class="toc" aria-label="Inhalt"><div class="toc-title">Inhalt</div><div>
 <ul>
@@ -234,7 +234,7 @@ erste Deploy würde scheitern.</p>
 <code>UnreservedConcurrentExecutions</code>.</p>
 <p>Nötig ist: <strong>Limit ≥ 100 + Summe aller Reservierungen</strong> (2 je Service,
 5 je <a class="term" href="glossar.html#nextjs" title="React-Framework (von Vercel) mit Routing, Server-Rendering, API-Routen und Build-Optimierung">Next.js</a>-Funktion). Die Zahlen stehen in der <a href="architektur.html">Architektur</a>
-§7 (Stand Phase 2: 10 × 2 + 3 × 5 = 35, also ≥ 135).</p>
+§7 (Stand Phase 3: 16 × 2 + 4 × 5 = 52, also ≥ 152; Phase 2: ≥ 135).</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -244,7 +244,7 @@ erste Deploy würde scheitern.</p>
 </thead>
 <tbody>
 <tr>
-<td>≥ 100 + Summe der Reservierungen (Stand Phase 2: ≥ 135)</td>
+<td>≥ 100 + Summe der Reservierungen (Stand Phase 3: ≥ 152)</td>
 <td>nichts zu tun; die Standardwerte passen (≥ 100 bleiben frei)</td>
 </tr>
 <tr>
@@ -566,6 +566,6 @@ Anwendung) kommt erst beim ersten Deploy (Kapitel 8).</p>
 </tr>
 </tbody>
 </table></div></main></div>
-<footer class="site"><a href="../wiki/anleitung-fundament.md">Markdown-Quelle</a> · Generiert 2026-09-30 09:40 aus <code>docs/wiki</code> mit <code>scripts/build_reports.py</code></footer>
+<footer class="site"><a href="../wiki/anleitung-fundament.md">Markdown-Quelle</a> · Generiert 2026-09-30 11:44 aus <code>docs/wiki</code> mit <code>scripts/build_reports.py</code></footer>
 </body>
 </html>

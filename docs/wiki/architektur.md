@@ -1,6 +1,6 @@
 # Architektur — Ist-Stand des Portals
 
-Stand: 2026-09-30 · Beschreibt den **Ist-Stand** des Codes (Phase 1 und 2 abgeschlossen), nicht die Zielarchitektur. Kennzeichnung: **[B]** belegt (offizielle Quelle oder Messung), **[A]** Annahme, **[E]** Einschätzung.
+Stand: 2026-09-30 · Beschreibt den **Ist-Stand** des Codes (Phase 1 und 2 abgeschlossen, Phase 3 im Code fertig), nicht die Zielarchitektur. Kennzeichnung: **[B]** belegt (offizielle Quelle oder Messung), **[A]** Annahme, **[E]** Einschätzung.
 
 Fachbegriffe sind in jedem Abschnitt beim ersten Vorkommen mit dem [Glossar](glossar.md) verlinkt (Erklärung und Entsprechung außerhalb von AWS).
 
@@ -15,6 +15,10 @@ diese Seite zeigt, was davon tatsächlich gebaut ist:
   täglicher Zeitplan, das Zonen-Muster mit zwei Zonen, der Schreibweg aus dem
   Browser, das Laufzeit-Widget „Glocke" und die Component Library. Die
   Oberfläche beschreibt die Seite [Architektur: Zonen und Frontend](architektur-zonen.md).
+- **Phase 3 (im Code fertig, Inbetriebnahme der Altsysteme ausstehend):** zwei
+  simulierte Altsysteme, Übernahme der Kundenkonten per Migrate-User-Trigger
+  und Bulk-Import, Dublettenerkennung mit Account-Linking, Migrations-Cockpit
+  ([Architektur: Altsysteme und Migration](architektur-migration.md)).
 
 Wie der Kontoinhaber das Ganze aufbaut, steht in der
 [Anleitung Fundament](anleitung-fundament.md) und der
@@ -313,7 +317,7 @@ Uploads eine Pause der Anwendung überstehen:
 | Leitplanke | Umsetzung |
 |---|---|
 | Laufzeit | Node.js 24, arm64, 256 MB (Shell 1024 MB) |
-| Kostendeckel Lambda | [Reserved Concurrency](glossar.md#reserved-concurrency) je Funktion: Services aus CDK-Kontext `reservedConcurrency` (Standard 2, `0` = nicht setzen), Next.js-Funktionen (Shell, Zonen) `webReservedConcurrency` (Standard 5); Stand Phase 2: 10 Services × 2 + 3 Next.js-Funktionen × 5 = 35 (Phase 1: 5 × 2 = 10) |
+| Kostendeckel Lambda | [Reserved Concurrency](glossar.md#reserved-concurrency) je Funktion: Services aus CDK-Kontext `reservedConcurrency` (Standard 2, `0` = nicht setzen), Next.js-Funktionen (Shell, Zonen) `webReservedConcurrency` (Standard 5); Stand Phase 3: 16 Services × 2 + 4 Next.js-Funktionen × 5 = 52 (Phase 2: 35, Phase 1: 10) |
 | Kostendeckel API | Throttling der Stage: 10 Anfragen/s, Spitze 20 |
 | Kostendeckel Datenbank | provisioned 5/5 statt On-Demand |
 | Logs | eigene Log-Gruppen mit 3 Tagen Aufbewahrung; Reste löscht der Teardown |
@@ -327,15 +331,16 @@ Kontokapazität minus 100" reservieren
 Neue Konten haben oft ein Limit von 10
 [B: https://docs.aws.amazon.com/lambda/latest/dg/gettingstarted-limits.html];
 dann ist gar keine Reservierung möglich. Faustregel: Kontolimit ≥ 100 +
-2 × Anzahl Funktionen, derzeit also ≥ 126; mit jeder weiteren Zone oder
-jedem weiteren Service steigt der Wert um 2. Das Konto hat nach genehmigter
+Summe der Reservierungen, derzeit also ≥ 152; jede weitere Service-Funktion
+erhöht den Wert um 2, jede weitere Zone um 5. Das Konto hat nach genehmigter
 Erhöhung ein Limit von 1.000 [B]. Weg bei zu kleinem Limit: Quotenerhöhung
 oder `reservedConcurrency=0` (Anleitung Kapitel 4.5).
 
-Die zwölf Funktionen im App-Stack: customer, notification-API,
+Die 17 Funktionen im App-Stack: customer-API und -Worker, notification-API,
 notification-Konsument, je API-Funktion und Worker von contract,
-consumption und documents, Shell und zwei Zonen. Im Base-Stack: der
-Pre-Token-Generation-Trigger.
+consumption und documents, migration-API, -Worker und -Record-Processor,
+Shell und drei Zonen. Im Base-Stack die drei Cognito-Trigger: Pre Token
+Generation, Migrate User und Post Authentication.
 
 Zusätzlich legt CDK Hilfs-Lambdas an (Kopieren der statischen Dateien nach S3,
 Leeren des Buckets beim Löschen, regionsübergreifende Werte zwischen den zwei
@@ -413,6 +418,14 @@ OIDC-Tokens mit unveränderlichen IDs (`repo:owner@id/name@id`), die
 Vertrauensstellung prüft dieses Format; Function URLs brauchen seit
 10/2025 zusätzlich `lambda:InvokeFunction`; das Lambda-Paket der Shell muss
 die pnpm-Symlinks behalten (eigenes Zip statt CDK-Kopie).
+
+## 10. Altsysteme und Migration (Phase 3)
+
+Zwei simulierte Altsysteme auf eigenem Server, Übernahme der Kundenkonten per
+Migrate-User-Trigger (J2) und Bulk-Import mit DLQ und Redrive (J7),
+Dublettenerkennung und Account-Linking (J3) sowie das Migrations-Cockpit (J8)
+beschreibt die eigene Seite
+[Architektur: Altsysteme und Migration](architektur-migration.md).
 
 ## Quellen
 

@@ -24,9 +24,11 @@ PAGES = [
     ("anleitung-kontoinhaber", "anleitung-kontoinhaber", "Anleitung Kontoinhaber", "Alle AWS-Handgriffe des Kontoinhabers Schritt für Schritt, ohne Vorkenntnisse"),
     ("anleitung-fundament", "anleitung-fundament", "Anleitung Fundament", "Alltagszugang, Terraform-Erstlauf, Budget (Kapitel 4–5)"),
     ("anleitung-anwendung", "anleitung-anwendung", "Anleitung Anwendung", "GitLab-Pipeline, CDK-Bootstrap, GitHub-Freigabe, DNS, Deploy, Test, Abbau (Kapitel 6–10)"),
+    ("anleitung-altsysteme", "anleitung-altsysteme", "Anleitung Altsysteme", "Keycloak-Zugang für Terraform, CI-Variablen, Rechte, Pipeline (Kapitel 11)"),
     ("nextjs-betrieb", "nextjs-betrieb", "Next.js-Betrieb", "Static Export oder OpenNext: Auswirkungen, Micro-Frontends, Empfehlung"),
     ("architektur", "architektur", "Architektur", "Ist-Architektur: Anmeldung, API, Services, Daten, Ereignisse, Pipelines, Messwerte"),
     ("architektur-zonen", "architektur-zonen", "Zonen & Frontend", "Multi-Zones, Schreibweg aus dem Browser, Laufzeit-Widget, Component Library"),
+    ("architektur-migration", "architektur-migration", "Altsysteme & Migration", "Lazy Migration, Bulk-Import mit DLQ, Dubletten und Account-Linking, Migrations-Cockpit"),
 ]
 SKIP_TAGS = {"a", "h1", "h2", "h3", "h4", "h5", "h6", "code", "pre", "svg", "figure", "script", "style", "summary", "th"}
 URL_RE = re.compile(r'(?<![(<"\'=])\bhttps?://[^\s<>()\]]*[^\s<>()\].,;:!?\'"»“”]')

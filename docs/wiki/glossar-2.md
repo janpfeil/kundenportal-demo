@@ -237,3 +237,23 @@ Generator liest beide Dateien und erzeugt daraus **eine** Glossar-Seite.
 | Datenbank | DB | geordnete Datenablage | — |
 | Altkonto | Altkonten, Altkunde, Altkunden, Bestandskunde | Kundenkonto im Altsystem des Versorgers oder der Telko, das ins neue Portal übernommen wird (nicht zu verwechseln mit einem alten AWS-Konto) | — |
 | Internationalisierung | i18n, zweisprachig, Übersetzungsdateien | Vorbereitung einer Anwendung auf mehrere Sprachen; Texte liegen in Übersetzungsdateien statt im Code | `messages_de.properties` / Spring `MessageSource` |
+
+## Altsysteme und Migration
+
+| Begriff | Auch | Erklärung | Außerhalb von AWS |
+|---|---|---|---|
+| Post-Authentication-Trigger | Post Authentication, Post-Auth-Trigger | Cognito-Lambda nach jeder erfolgreichen Anmeldung; hier meldet sie die Übernahme eines Altkontos einmalig als Ereignis, weil erst dann die neue Identität (`sub`) feststeht | Keycloak Event Listener (Ereignis LOGIN), Auth0 Post-Login Action |
+| Custom Attribute | Custom Attributes, custom:legacy_ref, custom:migration_mode, benutzerdefiniertes Attribut | zusätzliches Feld am Cognito-Nutzer mit Präfix `custom:`; lässt sich hinzufügen, aber nie mehr entfernen | Keycloak User Attribute, Auth0 app_metadata |
+| Cognito-Gruppe | Gruppe owner, User Pool Group, cognito:groups | Gruppe im User Pool; die Mitgliedschaft steht im Access Token (`cognito:groups`), die API prüft sie für das Cockpit | Keycloak-Gruppe oder -Rolle, LDAP-Gruppe |
+| Password Grant | Resource Owner Password Credentials, ROPC, Direct Access Grants | OAuth-2.0-Verfahren, bei dem ein vertrauenswürdiger Server Benutzername und Passwort direkt gegen ein Token tauscht; in OAuth 2.1 gestrichen, hier nur Server-zu-Server bei der Übernahme eines Telko-Kontos | Keycloak „Direct access grants", Spring Security `password`-Grant |
+| Service-Client | Service Account, Dienstkonto, Service accounts roles | Keycloak-Client ohne Person, der sich mit eigenem Secret anmeldet (Client Credentials); hier Terraforms Zugang zum Keycloak | technischer Benutzer, Spring Security `client_credentials` |
+| bcrypt | $2b$, bcrypt-Hash | verbreitetes Passwort-Hashverfahren mit Salt und einstellbarem Aufwand; das Versorger-Altsystem speichert Passwörter so | Spring Security `BCryptPasswordEncoder`, PHP `password_hash` |
+| Pepper | geheimer Zusatzwert | geheimer Wert, der beim Hashen zusätzlich zum Salt einfließt und nicht bei den Daten liegt; Hashes lassen sich ohne ihn nirgends prüfen — deshalb kann das Portal Telko-Passwörter nicht importieren | HMAC mit Serverschlüssel, Hashing mit HSM |
+| Klärfall | Klärfälle, Clearing-Fall | Altdatensatz, der ohne Rückfrage nicht übernommen werden kann (z. B. ohne oder mit ungültiger E-Mail-Adresse); steht im Cockpit, nicht in der DLQ | Datenpflege-Queue, Clearing-Stelle |
+| Adressnormalisierung | normalisierte Adresse, Adressschlüssel | Vereinheitlichung von Schreibweisen vor dem Vergleich („Hauptstr. 5" = „Hauptstraße 5", Umlaute, Groß-/Kleinschreibung); Grundlage der Dublettenerkennung | Adressprüfdienste (z. B. Deutsche Post DATAFACTORY), libpostal |
+| DynamoDB TTL | TTL, Time to Live, Ablaufzeit | Attribut `ttl` mit Ablaufzeitpunkt; DynamoDB löscht solche Einträge selbst und kostenlos (hier die Cockpit-Timeline nach 7 Tagen) | Redis `EXPIRE`, zeitgesteuerter Löschjob |
+| Demo-Reset | Demo zurücksetzen | Cockpit-Funktion des Inhabers: entfernt die von der Migration angelegten Konten, Migrationsstände und die DLQ, damit sich die Journeys wiederholen lassen | Testdaten-Reset, Datenbank-Snapshot zurückspielen |
+| Reverse Proxy | nginx | Webserver vor einem Dienst, der TLS-Verbindungen annimmt und an den Dienst weiterreicht; die Altsysteme laufen dahinter | Traefik, Caddy, HAProxy, Apache `mod_proxy` |
+| Ansible | Playbook | Werkzeug, das Server per SSH nach einer Beschreibung einrichtet; die Pipelines der Altsysteme spielen damit Container und Webserver-Konfiguration aus | Puppet, Chef, Salt |
+| SQLite | node:sqlite | eingebettete Datenbank in einer Datei; jedes Altsystem hält je Mandant eine Datei | H2 oder Apache Derby (Java) |
+| Playwright | Ende-zu-Ende-Test, E2E | Werkzeug, das echte Browser fernsteuert; prüft die Journeys am laufenden Portal | Selenium, Cypress |

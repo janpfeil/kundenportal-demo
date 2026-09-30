@@ -166,11 +166,11 @@ Prüfen 👁 (Kommandozeile, nach 4.4):
 
 Nötig ist: **Limit ≥ 100 + Summe aller Reservierungen** (2 je Service,
 5 je Next.js-Funktion). Die Zahlen stehen in der [Architektur](architektur.md)
-§7 (Stand Phase 2: 10 × 2 + 3 × 5 = 35, also ≥ 135).
+§7 (Stand Phase 3: 16 × 2 + 4 × 5 = 52, also ≥ 152; Phase 2: ≥ 135).
 
 | Angezeigtes Limit | Folge |
 |---|---|
-| ≥ 100 + Summe der Reservierungen (Stand Phase 2: ≥ 135) | nichts zu tun; die Standardwerte passen (≥ 100 bleiben frei) |
+| ≥ 100 + Summe der Reservierungen (Stand Phase 3: ≥ 152) | nichts zu tun; die Standardwerte passen (≥ 100 bleiben frei) |
 | darunter (bei Neukonten typisch 10) | Weg A oder B |
 
 Stand des Kontos: Die Erhöhung auf **1.000** ist genehmigt; das reicht mit

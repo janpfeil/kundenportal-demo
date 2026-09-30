@@ -1,6 +1,6 @@
 # kundenportal-demo — Konzept für ein AWS-Fullstack-Referenzprojekt
 
-Stand: 2026-09-30 · Phase 1 (Fundament und Durchstich) abgeschlossen: live unter https://kundenportal-demo.rypox.com, Release v0.1.0 · Phase 2 (Zonen und Component Library) abgeschlossen, Release v0.2.0; Storybook: https://janpfeil.github.io/kundenportal-demo/storybook/
+Stand: 2026-09-30 · Phase 1 (Fundament und Durchstich) abgeschlossen: live unter https://kundenportal-demo.rypox.com, Release v0.1.0 · Phase 2 (Zonen und Component Library) abgeschlossen, Release v0.2.0; Storybook: https://janpfeil.github.io/kundenportal-demo/storybook/ · Phase 3 (Altsysteme und Migration) im Code fertig
 
 Fachbegriffe sind in jedem Abschnitt beim ersten Vorkommen mit dem [Glossar](glossar.md) verlinkt (Erklärung und Entsprechung außerhalb von AWS).
 
@@ -84,7 +84,7 @@ Jede Phase endet mit einem lauffähigen, deployten Stand.
 |---|---|---|
 | **1 – Fundament und Durchstich** | Monorepo, CI/CD, Fundament per Terraform (OIDC-Vertrauensstellungen, Budget), Identität mit Amazon Cognito, Shell-Zone mit Login (Deutsch/Englisch), Services `customer` und `notification`, Ereignisfluss über EventBridge und SQS, unbeaufsichtigter Auf- und Abbau | **abgeschlossen (30.09.2026)** — Release v0.1.0, live unter https://kundenportal-demo.rypox.com; Aufbau in [Architektur](architektur.md) |
 | **2 – Zonen und Component Library** | Zonen „Verträge & Rechnungen" und „Verbrauch", Laufzeit-Widget „Glocke", Component Library mit Storybook, Uploads (S3) | **abgeschlossen (30.09.2026)** — Release v0.2.0: Zonen `/vertraege` (Verträge, Abschlag ändern, Dokumente mit Upload) und `/verbrauch` (Zählerstände, Zählerfoto, Datenvolumen), Schreibweg aus dem Browser, Services `contract`, `consumption`, `documents` mit Ereignissen und täglichem Zeitplan, Glocke `<kp-bell>`, Component Library mit [Storybook](https://janpfeil.github.io/kundenportal-demo/storybook/); live per E2E geprüft. Aufbau in [Architektur](architektur.md) und [Zonen & Frontend](architektur-zonen.md) |
-| 3 – Altsysteme und Migration | zwei simulierte Altsysteme auf eigenem Server, Telko-Anmeldung über den eigenen Keycloak, Lazy Migration per Cognito-Migrate-User-Trigger, Bulk-Import, Dublettenerkennung, Migrations-Cockpit | geplant |
+| **3 – Altsysteme und Migration** | zwei simulierte Altsysteme auf eigenem Server, Telko-Anmeldung über den eigenen Keycloak, Lazy Migration per Cognito-Migrate-User-Trigger, Bulk-Import, Dublettenerkennung, Migrations-Cockpit | **im Code fertig, Inbetriebnahme läuft** — Altsysteme `legacy-versorger` und `legacy-telko` (privat, OpenAPI öffentlich), Migrate-User- und Post-Authentication-Trigger, Service `migration` (Bulk-Import mit DLQ und Redrive, Dubletten, Account-Linking, Demo-Reset), Zone `/cockpit`, Keycloak-Realm per Terraform ([Anleitung Altsysteme](anleitung-altsysteme.md)); Aufbau in [Altsysteme & Migration](architektur-migration.md) |
 | 4 – Mandanten und Demo-Pass | Einladungslinks, eigener Mandant je Besucher im Bridge-Modell, Kontingente, automatischer Ablauf ([Demo-Pass](demo-pass.md)) | geplant |
 | 5 – Feinschliff | 5-Minuten-Demo, Video, Messungen, Abschluss der Dokumentation | geplant |
 
@@ -100,9 +100,13 @@ Alle Handgriffe des Kontoinhabers für Phase 1 beschreiben die
 
 - **Bulk-Import mit Passwort-Hashes:** Cognito kann inzwischen bcrypt-Hashes
   per CSV übernehmen, aber nicht in jedem User Pool
-  ([Machbarkeit & Kosten](machbarkeit-kosten.md) §2). Offen: Versorger-Inaktive
-  mit Hash übernehmen statt Reset, falls der User Pool das anbietet? Das
-  Telko-Verfahren wird nicht unterstützt, dort bleibt der Reset.
+  ([Machbarkeit & Kosten](machbarkeit-kosten.md) §2). Stand Phase 3: Der
+  Bulk-Import setzt für beide Altsysteme auf die Reset-Aufforderung; ein
+  CSV-Importauftrag bräuchte eine eigene IAM-Rolle, eine Datei über S3 und
+  einen asynchronen Auftrag je Lauf
+  ([Altsysteme & Migration](architektur-migration.md) §2). Offen bleibt, ob
+  Versorger-Inaktive später mit Hash übernommen werden sollen. Das
+  Telko-Verfahren (geheimer Pepper) ist grundsätzlich nicht übertragbar.
 - **DynamoDB provisioned 5 RCU/5 WCU je Tabelle:** Die 25 kostenlosen
   Einheiten reichen ohne Guthaben nur für die Plattform-Tabelle und wenige
   Mandanten-Tabellen gleichzeitig ([Demo-Pass](demo-pass.md) §5). Offen:
