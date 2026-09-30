@@ -8,7 +8,14 @@ import {
   type MatchCriterion,
 } from "@kundenportal/events";
 import { addressKey, fold, formatAddress, type MappedAccount } from "@kundenportal/legacy";
-import { type Caller, forbidden, HttpError, log, notFound } from "@kundenportal/service-kit";
+import {
+  type Caller,
+  forbidden,
+  HttpError,
+  log,
+  notFound,
+  OWNER_TENANT,
+} from "@kundenportal/service-kit";
 import { type MigrationContext, readExport, readRecord } from "./context.js";
 import { type LinkOffer, refString } from "./model.js";
 
@@ -157,7 +164,11 @@ export class Linking {
       candidate.system === "utility"
         ? (await legacy.utility.verifyLogin(tenantId, mapped.email, password)) ===
           candidate.customerNumber
-        : Boolean(await legacy.keycloak.verify(mapped.email, password));
+        : tenantId === OWNER_TENANT
+          ? Boolean(await legacy.keycloak.verify(mapped.email, password))
+          : // The Keycloak realm is the owner's; a pass tenant's telco checks itself.
+            (await legacy.telco.checkLogin(tenantId, mapped.email, password)) ===
+            candidate.customerNumber;
     if (!proven) throw forbidden("The password of the other account does not match");
 
     const now = this.ctx.now().toISOString();

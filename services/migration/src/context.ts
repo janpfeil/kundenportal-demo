@@ -5,6 +5,7 @@ import {
   mapTelcoSubscriber,
   mapUtilityCustomer,
 } from "@kundenportal/legacy";
+import type { TenantStatusLookup } from "@kundenportal/service-kit";
 import type { AccountProvisioner } from "./accounts.js";
 import type { Corrections } from "./model.js";
 import type { DeadLetters, RecordDispatcher } from "./ports.js";
@@ -19,6 +20,8 @@ export interface MigrationContext {
   accounts: AccountProvisioner;
   dispatcher: RecordDispatcher;
   deadLetters: DeadLetters;
+  /** Platform status of the tenants (demo passes come and go). */
+  tenants: TenantStatusLookup;
   now: () => Date;
   newId: () => string;
 }

@@ -12,6 +12,7 @@ import {
   PasswordResetRequired,
 } from "@kundenportal/events";
 import { type Caller, HttpError, log } from "@kundenportal/service-kit";
+import { portalEmail } from "./accounts.js";
 import { type MigrationContext, readExport, readRecord } from "./context.js";
 import {
   INACTIVE_MONTHS,
@@ -136,8 +137,18 @@ export class BulkImport {
    * puts the task into the migration DLQ, from where the cockpit can redrive it. An
    * unexpected error (legacy system down, throttling) is treated the same way, so every
    * dispatched record ends up counted and visible in the cockpit.
+   *
+   * A task of a tenant that is gone or no longer active (demo pass expired, reset) is
+   * dropped without error: it would only fail again and fill the shared DLQ.
    */
   async process(task: RecordTask): Promise<void> {
+    if (!(await this.ctx.tenants.isActive(task.tenantId))) {
+      log("warn", "Record task of an inactive tenant dropped", {
+        tenantId: task.tenantId,
+        account: refString(task.account),
+      });
+      return;
+    }
     const existing = await this.ctx.repository.getRecord(task.tenantId, task.account);
     if (existing?.status === "migrated" || existing?.status === "linked") {
       return this.count(task, { alreadyMigrated: 1 });
@@ -190,6 +201,7 @@ export class BulkImport {
       return this.fail(task, named, problem ?? { code: "unexpected", message: "", fields: [] });
 
     const provisioned = await this.ctx.accounts.provision(
+      tenantId,
       account,
       mapped.email,
       mapped.displayName,
@@ -214,7 +226,7 @@ export class BulkImport {
       payload: {
         customerId,
         subject,
-        email: mapped.email,
+        email: portalEmail(tenantId, mapped.email),
         displayName: mapped.displayName,
         locale: "de",
         account,
@@ -232,7 +244,7 @@ export class BulkImport {
       payload: {
         customerId,
         subject,
-        email: mapped.email,
+        email: portalEmail(tenantId, mapped.email),
         account,
         // Telco: own scheme with a secret pepper. Utility: bcrypt would be importable, but
         // only by a CSV import job (see architektur.md); the demo resets instead.

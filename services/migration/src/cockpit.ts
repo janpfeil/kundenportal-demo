@@ -1,5 +1,5 @@
 import { EventBridgeEnvelope, type LegacySystem } from "@kundenportal/events";
-import { type Caller, HttpError, log, notFound } from "@kundenportal/service-kit";
+import { type Caller, HttpError, log, notFound, OWNER_TENANT } from "@kundenportal/service-kit";
 import { legacyTotal, type MigrationContext } from "./context.js";
 import {
   accountFromRecordId,
@@ -161,10 +161,10 @@ export class Cockpit {
 
   /**
    * `POST /migration/reset` (demo reset): removes the portal accounts the migration
-   * created (lazy and bulk), the tenant's migration records and runs, and empties the
-   * DLQ, so the journeys can be shown again. The legacy systems keep their data; their
-   * customers' portal profiles stay behind unreachable (a demo pass gets its own table
-   * in phase 4 and drops everything at once).
+   * created (lazy and bulk), the tenant's migration records and runs, and — for the
+   * owner only — empties the shared DLQ, so the journeys can be shown again. The legacy
+   * systems keep their data; their customers' portal profiles stay behind unreachable
+   * (a demo pass's own table goes with the pass).
    */
   async reset(caller: Caller): Promise<{ accountsRemoved: number; recordsRemoved: number }> {
     const { repository, accounts, deadLetters } = this.ctx;
@@ -177,7 +177,9 @@ export class Cockpit {
       if (await accounts.remove(subject)) accountsRemoved++;
     }
     const recordsRemoved = await repository.clearTenant(caller.tenantId);
-    await deadLetters.purge();
+    // The DLQ is shared by all tenants: only the owner may empty it. A pass's leftover
+    // tasks are dropped by the processor once the pass is gone, or redriven by record.
+    if (caller.tenantId === OWNER_TENANT) await deadLetters.purge();
     log("info", "Demo reset", { tenantId: caller.tenantId, accountsRemoved, recordsRemoved });
     return { accountsRemoved, recordsRemoved };
   }
@@ -189,6 +191,10 @@ export class Cockpit {
     const eventId = typeof detail?.eventId === "string" ? detail.eventId : undefined;
     const occurredAt = typeof detail?.occurredAt === "string" ? detail.occurredAt : undefined;
     if (!tenantId || !eventId || !occurredAt || !detail) return;
+    // A pass tenant's table exists only while it is set up (e.g. not yet for
+    // `DemoPassIssued`, no longer for `TenantDeleted`).
+    const status = await this.ctx.tenants.status(tenantId);
+    if (status !== "active" && status !== "quota-exceeded") return;
     await this.ctx.repository.addTimeline(tenantId, {
       eventId,
       source: input.source,

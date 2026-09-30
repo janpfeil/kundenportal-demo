@@ -1,5 +1,7 @@
 import type { BulkMigrationCounts, LegacyAccountRef } from "@kundenportal/events";
 import type { Kunde, LegacyAccess, Subscriber } from "@kundenportal/legacy";
+import type { TenantStatus } from "@kundenportal/service-kit";
+import { fixedTenantStatus } from "@kundenportal/service-kit/testing";
 import type { AccountProvisioner, ProvisionResult } from "./accounts.js";
 import type { MigrationContext } from "./context.js";
 import type {
@@ -243,7 +245,8 @@ export interface Published {
   detail: { eventId: string; payload: Record<string, unknown> };
 }
 
-export function testContext() {
+/** Use case context in memory; `statuses` are the pass tenants' platform status. */
+export function testContext(statuses: Record<string, TenantStatus> = {}) {
   const repository = new MemoryRepository();
   const published: Published[] = [];
   const dispatched: RecordTask[] = [];
@@ -272,8 +275,8 @@ export function testContext() {
     } as unknown as MigrationEvents,
     legacy: async () => fakeLegacy(),
     accounts: {
-      provision: async (_a: LegacyAccountRef, email: string) => {
-        provisioned.push(email);
+      provision: async (tenantId: string, _a: LegacyAccountRef, email: string) => {
+        provisioned.push(tenantId === "owner" ? email : `${tenantId}:${email}`);
         return provisionResult(email);
       },
       remove: async (subject: string) => {
@@ -291,6 +294,7 @@ export function testContext() {
         purged++;
       },
     },
+    tenants: fixedTenantStatus(statuses),
     now: () => NOW,
     newId: () => `00000000-0000-4000-8000-00000000000${ids++}`,
   };

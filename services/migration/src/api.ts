@@ -6,6 +6,7 @@ import {
   type Caller,
   callerFrom,
   forbidden,
+  isPassTenant,
   json,
   router,
 } from "@kundenportal/service-kit";
@@ -30,9 +31,20 @@ export function groupsOf(event: ApiEvent): string[] {
     .filter(Boolean);
 }
 
+/** Cognito group of a demo pass's holder: the cockpit of the own pass tenant. */
+export const PASS_GROUP = "pass";
+
+/**
+ * The cockpit's operator: the owner, or a pass holder for the pass tenant of the token
+ * (architektur-mandanten §3). The tenant always comes from the token, never the URL.
+ */
 function owner(event: ApiEvent): Caller {
   const caller = callerFrom(event);
-  if (!groupsOf(event).includes(OWNER_GROUP)) throw forbidden("Only the owner may do this");
+  const groups = groupsOf(event);
+  const passHolder = groups.includes(PASS_GROUP) && isPassTenant(caller.tenantId);
+  if (!groups.includes(OWNER_GROUP) && !passHolder) {
+    throw forbidden("Only the owner may do this");
+  }
   return caller;
 }
 

@@ -1,14 +1,13 @@
 import { ConditionalCheckFailedException } from "@aws-sdk/client-dynamodb";
 import {
   BatchWriteCommand,
-  type DynamoDBDocumentClient,
   GetCommand,
   PutCommand,
   QueryCommand,
   UpdateCommand,
 } from "@aws-sdk/lib-dynamodb";
 import type { BulkMigrationCounts, LegacyAccountRef } from "@kundenportal/events";
-import { tenantKey } from "@kundenportal/service-kit";
+import { tenantKey, type TenantDataSource } from "@kundenportal/service-kit";
 import {
   LinkOffer,
   MigrationRecord,
@@ -32,10 +31,7 @@ const TIMELINE_DAYS = 7;
  * free capacity units.
  */
 export class MigrationRepository {
-  constructor(
-    private readonly db: DynamoDBDocumentClient,
-    private readonly table: string,
-  ) {}
+  constructor(private readonly data: TenantDataSource) {}
 
   private migration(tenantId: string) {
     return tenantKey(tenantId, "MIGRATION");
@@ -46,9 +42,10 @@ export class MigrationRepository {
   }
 
   async getRecord(tenantId: string, account: LegacyAccountRef) {
-    const result = await this.db.send(
+    const { db, tableName } = await this.data(tenantId);
+    const result = await db.send(
       new GetCommand({
-        TableName: this.table,
+        TableName: tableName,
         Key: this.recordKey(tenantId, account),
         ConsistentRead: true,
       }),
@@ -61,10 +58,11 @@ export class MigrationRepository {
    * migrated or linked (a late bulk task must not undo a lazy migration); returns false then.
    */
   async putRecord(tenantId: string, record: MigrationRecord, final = false): Promise<boolean> {
+    const { db, tableName } = await this.data(tenantId);
     try {
-      await this.db.send(
+      await db.send(
         new PutCommand({
-          TableName: this.table,
+          TableName: tableName,
           Item: { ...this.recordKey(tenantId, record.account), ...record },
           ...(final
             ? {}
@@ -83,25 +81,27 @@ export class MigrationRepository {
   }
 
   async listRecords(tenantId: string): Promise<MigrationRecord[]> {
-    return (await this.queryAll(this.migration(tenantId), "REC#")).map((item) =>
+    return (await this.queryAll(tenantId, this.migration(tenantId), "REC#")).map((item) =>
       MigrationRecord.parse(item),
     );
   }
 
   /** Deletes all records and runs of a tenant (demo reset); returns how many items. */
   async clearTenant(tenantId: string): Promise<number> {
+    const { db, tableName } = await this.data(tenantId);
     const pk = this.migration(tenantId);
-    const keys = [...(await this.queryAll(pk, "REC#")), ...(await this.queryAll(pk, "RUN#"))].map(
-      (item) => ({ PK: item.PK, SK: item.SK }),
-    );
+    const keys = [
+      ...(await this.queryAll(tenantId, pk, "REC#")),
+      ...(await this.queryAll(tenantId, pk, "RUN#")),
+    ].map((item) => ({ PK: item.PK, SK: item.SK }));
     for (let i = 0; i < keys.length; i += 25) {
       let requests = keys.slice(i, i + 25).map((Key) => ({ DeleteRequest: { Key } }));
       // Provisioned capacity is small; unprocessed deletes are retried with a pause.
       for (let attempt = 0; requests.length > 0 && attempt < 8; attempt++) {
-        const result = await this.db.send(
-          new BatchWriteCommand({ RequestItems: { [this.table]: requests } }),
+        const result = await db.send(
+          new BatchWriteCommand({ RequestItems: { [tableName]: requests } }),
         );
-        requests = (result.UnprocessedItems?.[this.table] ?? []) as typeof requests;
+        requests = (result.UnprocessedItems?.[tableName] ?? []) as typeof requests;
         if (requests.length > 0)
           await new Promise((resolve) => setTimeout(resolve, 200 * 2 ** attempt));
       }
@@ -111,9 +111,10 @@ export class MigrationRepository {
   }
 
   async createRun(tenantId: string, run: MigrationRun): Promise<void> {
-    await this.db.send(
+    const { db, tableName } = await this.data(tenantId);
+    await db.send(
       new PutCommand({
-        TableName: this.table,
+        TableName: tableName,
         Item: { PK: this.migration(tenantId), SK: `RUN#${run.runId}`, ...run },
         ConditionExpression: "attribute_not_exists(PK)",
       }),
@@ -121,9 +122,10 @@ export class MigrationRepository {
   }
 
   async getRun(tenantId: string, runId: string): Promise<MigrationRun | undefined> {
-    const result = await this.db.send(
+    const { db, tableName } = await this.data(tenantId);
+    const result = await db.send(
       new GetCommand({
-        TableName: this.table,
+        TableName: tableName,
         Key: { PK: this.migration(tenantId), SK: `RUN#${runId}` },
         ConsistentRead: true,
       }),
@@ -132,9 +134,10 @@ export class MigrationRepository {
   }
 
   async listRuns(tenantId: string, limit = 5): Promise<MigrationRun[]> {
-    const result = await this.db.send(
+    const { db, tableName } = await this.data(tenantId);
+    const result = await db.send(
       new QueryCommand({
-        TableName: this.table,
+        TableName: tableName,
         KeyConditionExpression: "PK = :pk AND begins_with(SK, :run)",
         ExpressionAttributeValues: { ":pk": this.migration(tenantId), ":run": "RUN#" },
         ScanIndexForward: false,
@@ -154,6 +157,7 @@ export class MigrationRepository {
     counts: Partial<BulkMigrationCounts>,
     options: { processed?: number; dispatched?: number } = {},
   ): Promise<MigrationRun> {
+    const { db, tableName } = await this.data(tenantId);
     const adds = Object.entries(counts).filter(([, value]) => value);
     const names: Record<string, string> = { "#counts": "counts" };
     const values: Record<string, unknown> = {};
@@ -172,9 +176,9 @@ export class MigrationRepository {
     if (options.dispatched !== undefined) names["#dispatched"] = "dispatched";
     const set = options.dispatched === undefined ? "" : "SET #dispatched = :dispatched ";
     if (options.dispatched !== undefined) values[":dispatched"] = options.dispatched;
-    const result = await this.db.send(
+    const result = await db.send(
       new UpdateCommand({
-        TableName: this.table,
+        TableName: tableName,
         Key: { PK: this.migration(tenantId), SK: `RUN#${runId}` },
         UpdateExpression: `${set}${parts.length ? `ADD ${parts.join(", ")}` : ""}`.trim(),
         ExpressionAttributeNames: names,
@@ -188,10 +192,11 @@ export class MigrationRepository {
 
   /** Marks a run completed exactly once; returns false if it already was. */
   async completeRun(tenantId: string, runId: string, at: string): Promise<boolean> {
+    const { db, tableName } = await this.data(tenantId);
     try {
-      await this.db.send(
+      await db.send(
         new UpdateCommand({
-          TableName: this.table,
+          TableName: tableName,
           Key: { PK: this.migration(tenantId), SK: `RUN#${runId}` },
           UpdateExpression: "SET #status = :completed, #completedAt = :at",
           ConditionExpression: "#status = :running",
@@ -219,10 +224,11 @@ export class MigrationRepository {
 
   /** Stores an offer once; returns false if it exists already (redelivered event). */
   async putOffer(tenantId: string, subject: string, offer: LinkOffer): Promise<boolean> {
+    const { db, tableName } = await this.data(tenantId);
     try {
-      await this.db.send(
+      await db.send(
         new PutCommand({
-          TableName: this.table,
+          TableName: tableName,
           Item: { ...this.offerKey(tenantId, subject, offer.candidate), ...offer },
           ConditionExpression: "attribute_not_exists(PK)",
         }),
@@ -235,9 +241,10 @@ export class MigrationRepository {
   }
 
   async getOffer(tenantId: string, subject: string, candidate: LegacyAccountRef) {
-    const result = await this.db.send(
+    const { db, tableName } = await this.data(tenantId);
+    const result = await db.send(
       new GetCommand({
-        TableName: this.table,
+        TableName: tableName,
         Key: this.offerKey(tenantId, subject, candidate),
         ConsistentRead: true,
       }),
@@ -246,8 +253,8 @@ export class MigrationRepository {
   }
 
   async listOffers(tenantId: string, subject: string): Promise<LinkOffer[]> {
-    return (await this.queryAll(tenantKey(tenantId, "SUBJ", subject), "LINK#")).map((item) =>
-      LinkOffer.parse(item),
+    return (await this.queryAll(tenantId, tenantKey(tenantId, "SUBJ", subject), "LINK#")).map(
+      (item) => LinkOffer.parse(item),
     );
   }
 
@@ -258,10 +265,11 @@ export class MigrationRepository {
     candidate: LegacyAccountRef,
     at: string,
   ): Promise<boolean> {
+    const { db, tableName } = await this.data(tenantId);
     try {
-      await this.db.send(
+      await db.send(
         new UpdateCommand({
-          TableName: this.table,
+          TableName: tableName,
           Key: this.offerKey(tenantId, subject, candidate),
           UpdateExpression: "SET #status = :linked, linkedAt = :at",
           ConditionExpression: "#status = :offered",
@@ -277,10 +285,11 @@ export class MigrationRepository {
   }
 
   async addTimeline(tenantId: string, entry: TimelineEntry): Promise<void> {
+    const { db, tableName } = await this.data(tenantId);
     const ttl = Math.floor(Date.parse(entry.occurredAt) / 1000) + TIMELINE_DAYS * 86400;
-    await this.db.send(
+    await db.send(
       new PutCommand({
-        TableName: this.table,
+        TableName: tableName,
         Item: {
           PK: tenantKey(tenantId, "TIMELINE"),
           SK: `EVT#${entry.occurredAt}#${entry.eventId}`,
@@ -292,9 +301,10 @@ export class MigrationRepository {
   }
 
   async listTimeline(tenantId: string, limit = 50): Promise<TimelineEntry[]> {
-    const result = await this.db.send(
+    const { db, tableName } = await this.data(tenantId);
+    const result = await db.send(
       new QueryCommand({
-        TableName: this.table,
+        TableName: tableName,
         KeyConditionExpression: "PK = :pk AND begins_with(SK, :evt)",
         ExpressionAttributeValues: { ":pk": tenantKey(tenantId, "TIMELINE"), ":evt": "EVT#" },
         ScanIndexForward: false,
@@ -304,13 +314,18 @@ export class MigrationRepository {
     return (result.Items ?? []).map((item) => TimelineEntry.parse(item));
   }
 
-  private async queryAll(pk: string, prefix: string): Promise<Record<string, unknown>[]> {
+  private async queryAll(
+    tenantId: string,
+    pk: string,
+    prefix: string,
+  ): Promise<Record<string, unknown>[]> {
+    const { db, tableName } = await this.data(tenantId);
     const items: Record<string, unknown>[] = [];
     let start: Record<string, unknown> | undefined;
     do {
-      const result = await this.db.send(
+      const result = await db.send(
         new QueryCommand({
-          TableName: this.table,
+          TableName: tableName,
           KeyConditionExpression: "PK = :pk AND begins_with(SK, :prefix)",
           ExpressionAttributeValues: { ":pk": pk, ":prefix": prefix },
           ExclusiveStartKey: start,

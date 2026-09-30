@@ -1,4 +1,4 @@
-import { ConditionalCheckFailedException, DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import { ConditionalCheckFailedException } from "@aws-sdk/client-dynamodb";
 import {
   BatchWriteCommand,
   DynamoDBDocumentClient,
@@ -6,15 +6,13 @@ import {
   QueryCommand,
   UpdateCommand,
 } from "@aws-sdk/lib-dynamodb";
+import { fixedTenantData } from "@kundenportal/service-kit/testing";
 import { mockClient } from "aws-sdk-client-mock";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { MigrationRepository } from "./repository.js";
 
 const dbMock = mockClient(DynamoDBDocumentClient);
-const repository = new MigrationRepository(
-  DynamoDBDocumentClient.from(new DynamoDBClient({})),
-  "table",
-);
+const repository = new MigrationRepository(fixedTenantData());
 const record = {
   account: { system: "telco" as const, customerNumber: "T/88-4712" },
   displayName: "Carla Schulz",
