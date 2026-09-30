@@ -29,7 +29,7 @@ const TONES: Record<PassStatus, NonNullable<BadgeProps["tone"]>> = {
   provisioning: "accent",
   active: "success",
   "quota-exceeded": "warning",
-  expired: "neutral",
+  "tearing-down": "neutral",
   deleted: "neutral",
 };
 

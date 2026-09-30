@@ -14,15 +14,26 @@ import { AutoRefresh } from "@/components/auto-refresh";
 import { CopyButton } from "@/components/copy-button";
 import { dictionary } from "@/i18n";
 import { readSession } from "@/lib/session";
-import { type PassStatus, QUOTA_KINDS, daysLeft, fetchPass, fill } from "@/lib/tenancy";
+import { type PassStatus, QUOTA_KINDS, fetchPass, fill, timeLeft } from "@/lib/tenancy";
 
 export const dynamic = "force-dynamic";
+
+/** "noch 6 Tage", "noch 5 Std." or "noch 3 Min." — test passes last minutes. */
+function remaining(
+  validUntil: string,
+  texts: { daysLeft: string; hoursLeft: string; minutesLeft: string },
+): string {
+  const { unit, value } = timeLeft(validUntil);
+  if (unit === "days") return fill(texts.daysLeft, { days: value });
+  if (unit === "hours") return fill(texts.hoursLeft, { hours: value });
+  return fill(texts.minutesLeft, { minutes: value });
+}
 
 const TONES: Record<PassStatus, Tone> = {
   provisioning: "info",
   active: "success",
   "quota-exceeded": "warning",
-  expired: "warning",
+  "tearing-down": "warning",
   deleted: "warning",
 };
 
@@ -96,7 +107,7 @@ export default async function PassPage() {
           },
           {
             term: texts.validUntil,
-            description: `${date} (${fill(texts.daysLeft, { days: daysLeft(pass.validUntil) })})`,
+            description: `${date} (${remaining(pass.validUntil, texts)})`,
           },
         ]}
       />

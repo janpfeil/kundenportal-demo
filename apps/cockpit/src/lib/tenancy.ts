@@ -14,7 +14,7 @@ import type { ApiResult } from "./forward";
  * plain fetch. Replace with the generated types once openapi.yaml contains them.
  */
 
-export type PassStatus = "provisioning" | "active" | "quota-exceeded" | "expired" | "deleted";
+export type PassStatus = "provisioning" | "active" | "quota-exceeded" | "tearing-down" | "deleted";
 export type QuotaKind = "api" | "events" | "uploads";
 
 export interface PassSummary {
@@ -73,7 +73,11 @@ export async function listPasses(session: Session): Promise<PassSummary[] | unde
     const { data, response } = await tenancyCall(session, "GET", "/tenancy/passes");
     if (!response.ok) return undefined;
     const items = (data as { items?: unknown } | undefined)?.items;
-    return Array.isArray(items) ? (items as PassSummary[]) : undefined;
+    if (!Array.isArray(items)) return undefined;
+    // The contract names the usage `quota` (PassSummary in openapi.yaml).
+    return (items as (Omit<PassSummary, "quotas"> & { quota?: PassSummary["quotas"] })[]).map(
+      ({ quota, ...pass }) => ({ ...pass, quotas: quota ?? {} }),
+    );
   } catch {
     return undefined;
   }

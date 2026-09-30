@@ -108,7 +108,7 @@ describe("pass helpers", () => {
   it("offer revocation only for running passes", () => {
     expect(isRevocable("active")).toBe(true);
     expect(isRevocable("provisioning")).toBe(true);
-    expect(isRevocable("expired")).toBe(false);
+    expect(isRevocable("tearing-down")).toBe(false);
     expect(isRevocable("deleted")).toBe(false);
   });
 });

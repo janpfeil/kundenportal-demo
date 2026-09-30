@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { redeemError, tokenFromHash } from "./redeem";
-import { clientIp, daysLeft, fill, toPassLookup } from "./tenancy";
+import { clientIp, fill, timeLeft, toPassLookup } from "./tenancy";
 
 vi.mock("next/headers", () => ({ cookies: vi.fn() }));
 vi.mock("./config", () => ({
@@ -135,19 +135,33 @@ describe("pass helpers", () => {
       tenantId: "p4k7x2qa",
       status: "active",
       validUntil: "2026-10-07T12:00:00Z",
-      quotas: { api: { used: 1, limit: 5000 } },
+      quota: { api: { used: 1, limit: 5000 } },
       demoPassword: "pw",
+      demoPersons: [
+        { name: "Anna Becker", system: "utility", signIn: "anna.becker+p4k7x2qa@example.org" },
+      ],
     });
+    // The contract's OwnPass (quota, signIn) becomes the page's view (quotas, login).
     expect(lookup).toMatchObject({
       kind: "pass",
-      pass: { tenantId: "p4k7x2qa", demoPassword: "pw" },
+      pass: {
+        tenantId: "p4k7x2qa",
+        demoPassword: "pw",
+        quotas: { api: { used: 1, limit: 5000 } },
+        demoPersons: [{ name: "Anna Becker", login: "anna.becker+p4k7x2qa@example.org" }],
+      },
+    });
+    expect(toPassLookup(200, { tenantId: "p4k7x2qa", status: "tearing-down" })).toMatchObject({
+      kind: "pass",
     });
   });
 
-  it("counts days left and fills placeholders", () => {
+  it("counts the time left in days, hours or minutes and fills placeholders", () => {
     const now = Date.parse("2026-09-30T12:00:00Z");
-    expect(daysLeft("2026-10-07T12:00:00Z", now)).toBe(7);
-    expect(daysLeft("2026-09-30T11:00:00Z", now)).toBe(0);
+    expect(timeLeft("2026-10-07T12:00:00Z", now)).toEqual({ unit: "days", value: 7 });
+    expect(timeLeft("2026-09-30T17:30:00Z", now)).toEqual({ unit: "hours", value: 6 });
+    expect(timeLeft("2026-09-30T12:03:00Z", now)).toEqual({ unit: "minutes", value: 3 });
+    expect(timeLeft("2026-09-30T11:00:00Z", now)).toEqual({ unit: "minutes", value: 0 });
     expect(fill("{left} von {limit}", { left: 3, limit: 5 })).toBe("3 von 5");
   });
 });

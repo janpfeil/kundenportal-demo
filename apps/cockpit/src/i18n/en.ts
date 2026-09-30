@@ -131,7 +131,7 @@ export const en: Dictionary = {
       provisioning: "being set up",
       active: "active",
       "quota-exceeded": "quota used up",
-      expired: "expired",
+      "tearing-down": "being deleted",
       deleted: "deleted",
     },
     revoke: {

@@ -131,7 +131,7 @@ export const de = {
       provisioning: "wird eingerichtet",
       active: "aktiv",
       "quota-exceeded": "Kontingent erschöpft",
-      expired: "abgelaufen",
+      "tearing-down": "wird gelöscht",
       deleted: "gelöscht",
     },
     revoke: {

@@ -13,7 +13,7 @@ export interface Quota {
   used: number;
   limit: number;
 }
-export type PassStatus = "provisioning" | "active" | "quota-exceeded" | "expired" | "deleted";
+export type PassStatus = "provisioning" | "active" | "quota-exceeded" | "tearing-down" | "deleted";
 
 export interface PassView {
   tenantId: string;
@@ -34,9 +34,19 @@ const PASS_STATUSES = new Set<string>([
   "provisioning",
   "active",
   "quota-exceeded",
-  "expired",
+  "tearing-down",
   "deleted",
 ]);
+
+/** GET /tenancy/pass as the contract (OwnPass in openapi.yaml) defines it. */
+interface OwnPassResponse {
+  tenantId?: unknown;
+  status?: unknown;
+  validUntil?: unknown;
+  quota?: Partial<Record<QuotaKind, Quota>>;
+  demoPersons?: { name: string; signIn: string }[];
+  demoPassword?: unknown;
+}
 
 /** Interprets the response of GET /tenancy/pass; the owner tenant has no pass (404 or tenantId "owner"). */
 export function toPassLookup(status: number, body: unknown): PassLookup {
@@ -44,7 +54,7 @@ export function toPassLookup(status: number, body: unknown): PassLookup {
   if (status < 200 || status >= 300 || typeof body !== "object" || body === null) {
     return { kind: "error", status };
   }
-  const value = body as Partial<PassView>;
+  const value = body as OwnPassResponse;
   if (value.tenantId === "owner") return { kind: "owner" };
   if (typeof value.tenantId !== "string" || !PASS_STATUSES.has(String(value.status))) {
     return { kind: "error", status: 502 };
@@ -55,8 +65,15 @@ export function toPassLookup(status: number, body: unknown): PassLookup {
       tenantId: value.tenantId,
       status: value.status as PassStatus,
       validUntil: String(value.validUntil ?? ""),
-      quotas: value.quotas ?? {},
-      ...(Array.isArray(value.demoPersons) ? { demoPersons: value.demoPersons } : {}),
+      quotas: value.quota ?? {},
+      ...(Array.isArray(value.demoPersons)
+        ? {
+            demoPersons: value.demoPersons.map((person) => ({
+              name: person.name,
+              login: person.signIn,
+            })),
+          }
+        : {}),
       ...(typeof value.demoPassword === "string" ? { demoPassword: value.demoPassword } : {}),
     },
   };
@@ -116,9 +133,17 @@ export function fill(template: string, values: Record<string, string | number>):
   );
 }
 
-/** Days left until `validUntil`, rounded up; 0 when over. */
-export function daysLeft(validUntil: string, now = Date.now()): number {
+/**
+ * Time left until `validUntil` in the largest sensible unit, rounded up: days while more
+ * than a day is left, then hours, then minutes (short test passes run for minutes).
+ */
+export function timeLeft(
+  validUntil: string,
+  now = Date.now(),
+): { unit: "days" | "hours" | "minutes"; value: number } {
   const end = Date.parse(validUntil);
-  if (Number.isNaN(end)) return 0;
-  return Math.max(0, Math.ceil((end - now) / 86_400_000));
+  const ms = Number.isNaN(end) ? 0 : Math.max(0, end - now);
+  if (ms > 86_400_000) return { unit: "days", value: Math.ceil(ms / 86_400_000) };
+  if (ms > 3_600_000) return { unit: "hours", value: Math.ceil(ms / 3_600_000) };
+  return { unit: "minutes", value: Math.ceil(ms / 60_000) };
 }
