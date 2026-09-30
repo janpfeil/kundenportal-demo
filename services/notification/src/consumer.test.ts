@@ -1,6 +1,6 @@
 import { ConditionalCheckFailedException, DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { PublishCommand, SNSClient } from "@aws-sdk/client-sns";
-import { DynamoDBDocumentClient, PutCommand } from "@aws-sdk/lib-dynamodb";
+import { DynamoDBDocumentClient, GetCommand, PutCommand } from "@aws-sdk/lib-dynamodb";
 import type { SQSEvent, SQSRecord } from "aws-lambda";
 import { mockClient } from "aws-sdk-client-mock";
 import { beforeEach, describe, expect, it } from "vitest";
@@ -56,12 +56,168 @@ const registered = (d: unknown = detail) => ({
   "detail-type": "CustomerRegistered",
   detail: d,
 });
+const domainEvent = (source: string, detailType: string, payload: unknown) => ({
+  source,
+  "detail-type": detailType,
+  detail: {
+    eventId: "7a2d2e75-9b5d-4d66-8b4a-6e9b5b1f3d22",
+    tenantId: "owner",
+    occurredAt: "2026-09-30T12:30:00.000Z",
+    correlationId: "req-2",
+    payload,
+  },
+});
+const contractId = "0b6f3f7e-1c2d-4e5f-8a9b-0c1d2e3f4a5b";
+const contract = {
+  contractId,
+  customerId: "c-1",
+  division: "electricity",
+  tariffName: "Strom Klassik",
+  tariffOption: "oeko",
+  monthlyInstallmentCent: 9000,
+  meterNumber: "1EMH0012345678",
+  unit: "kWh",
+  startDate: "2026-04-03",
+  status: "active",
+  version: 2,
+};
 
 beforeEach(() => {
   dbMock.reset();
   snsMock.reset();
   dbMock.on(PutCommand).resolves({});
+  dbMock.on(GetCommand).resolves({});
   snsMock.on(PublishCommand).resolves({});
+});
+
+describe("notes from other domains", () => {
+  const notes = () =>
+    dbMock
+      .commandCalls(PutCommand)
+      .map((call) => call.args[0].input)
+      .filter((input) => String(input.Item?.SK).startsWith("NOTE#"));
+
+  it.each([
+    [
+      "MeterReadingSubmitted",
+      domainEvent("kundenportal.consumption", "MeterReadingSubmitted", {
+        customerId: "c-1",
+        contractId,
+        division: "electricity",
+        meterNumber: "1EMH0012345678",
+        readingId: "r-1",
+        value: 19800.5,
+        unit: "kWh",
+        readAt: "2026-09-30",
+      }),
+      "info",
+      ["Zählerstand bestätigt", "19.800,5 kWh vom 30.09.2026 für Strom"],
+      ["Meter reading confirmed", "electricity meter reading of 19,800.5 kWh from 30 Sep"],
+    ],
+    [
+      "InstallmentAdjusted",
+      domainEvent("kundenportal.contract", "InstallmentAdjusted", {
+        customerId: "c-1",
+        contractId,
+        division: "gas",
+        previousInstallmentCent: 12700,
+        newInstallmentCent: 13500,
+        estimatedAnnualConsumption: 1290,
+        unit: "m3",
+        reason: "meter-reading",
+        causationId: "6f1c1f64-8a4c-4c55-9a39-5d8a4a0f2c11",
+      }),
+      "info",
+      ["Abschlag angepasst", "Gas auf 1.290 m³. Ihr monatlicher Abschlag ändert sich von 127,00"],
+      [
+        "Installment adjusted",
+        "gas consumption at 1,290 m³. Your monthly installment changes from €127.00 to €135.00",
+      ],
+    ],
+    [
+      "ContractChanged",
+      domainEvent("kundenportal.contract", "ContractChanged", {
+        changeType: "updated",
+        changes: ["installment", "tariffOption"],
+        previous: { monthlyInstallmentCent: 8700, tariffOption: "standard" },
+        contract,
+      }),
+      "info",
+      ["Vertrag geändert", "Strom Klassik (Strom) wurde geändert: monatlicher Betrag jetzt 90,00"],
+      ["Contract changed", 'monthly amount now €90.00, tariff option now "oeko"'],
+    ],
+    [
+      "DataVolumeThresholdReached",
+      domainEvent("kundenportal.consumption", "DataVolumeThresholdReached", {
+        customerId: "c-1",
+        contractId,
+        month: "2026-09",
+        usedMb: 16500,
+        includedMb: 20480,
+        thresholdPercent: 80,
+      }),
+      "warning",
+      ["Datenvolumen zu 80 % verbraucht", "Im September 2026 haben Sie 16,1 von 20 GB"],
+      ["80 % of your data volume used", "In September 2026 you have used 16.1 of 20 GB"],
+    ],
+    [
+      "DocumentUploaded",
+      domainEvent("kundenportal.documents", "DocumentUploaded", {
+        customerId: "c-1",
+        documentId: "mg6b0k000-6f1c1f64-8a4c-4c55-9a39-5d8a4a0f2c11",
+        fileName: "zaehler.jpg",
+        contentType: "image/jpeg",
+        category: "meter-photo",
+        sizeBytes: 1000,
+      }),
+      "info",
+      ["Dokument hochgeladen", "„zaehler.jpg“"],
+      ["Document uploaded", '"zaehler.jpg"'],
+    ],
+  ])("turns %s into a note in the customer's language", async (_name, body, kind, de, en) => {
+    await consumer(event(record("m-de", body)));
+    dbMock
+      .on(GetCommand, { Key: { PK: "TENANT#owner#CUST#c-1", SK: "MAILBOX" } })
+      .resolves({ Item: { locale: "en" } });
+    await consumer(event(record("m-en", body)));
+
+    const [german, english] = notes();
+    const id = notificationId("2026-09-30T12:30:00.000Z", "7a2d2e75-9b5d-4d66-8b4a-6e9b5b1f3d22");
+    expect(german).toMatchObject({
+      Item: { PK: "TENANT#owner#CUST#c-1", SK: `NOTE#${id}`, kind, title: de[0], read: false },
+      ConditionExpression: "attribute_not_exists(PK)",
+    });
+    expect(german?.Item?.body.replaceAll(" ", " ")).toContain(de[1]);
+    expect(english?.Item?.title).toBe(en[0]);
+    expect(english?.Item?.body.replaceAll(" ", " ")).toContain(en[1]);
+    expect(snsMock.commandCalls(PublishCommand)).toHaveLength(0);
+  });
+
+  it("leaves no note for contracts created at registration", async () => {
+    const created = domainEvent("kundenportal.contract", "ContractChanged", {
+      changeType: "created",
+      changes: [],
+      contract: { ...contract, version: 1 },
+    });
+    const result = await consumer(event(record("m-1", created)));
+    expect(result.batchItemFailures).toEqual([]);
+    expect(notes()).toEqual([]);
+  });
+
+  it("is idempotent: a redelivered event does not duplicate the note", async () => {
+    dbMock
+      .on(PutCommand)
+      .rejects(new ConditionalCheckFailedException({ message: "exists", $metadata: {} }));
+    const body = domainEvent("kundenportal.documents", "DocumentUploaded", {
+      customerId: "c-1",
+      documentId: "d-1",
+      fileName: "a.pdf",
+      contentType: "application/pdf",
+      category: "other",
+      sizeBytes: 1,
+    });
+    expect((await consumer(event(record("m-1", body)))).batchItemFailures).toEqual([]);
+  });
 });
 
 describe("notification consumer", () => {
@@ -71,7 +227,8 @@ describe("notification consumer", () => {
     expect(result.batchItemFailures).toEqual([]);
     const items = dbMock.commandCalls(PutCommand).map((call) => call.args[0].input.Item);
     expect(items[0]).toEqual({ PK: "TENANT#owner#SUBJ#sub-1", SK: "MAILBOX", customerId: "c-1" });
-    expect(items[1]).toMatchObject({
+    expect(items[1]).toEqual({ PK: "TENANT#owner#CUST#c-1", SK: "MAILBOX", locale: "en" });
+    expect(items[2]).toMatchObject({
       PK: "TENANT#owner#CUST#c-1",
       SK: `NOTE#${notificationId(detail.occurredAt, detail.eventId)}`,
       kind: "welcome",
@@ -108,6 +265,12 @@ describe("notification consumer", () => {
     ["invalid e-mail", registered({ ...detail, payload: { ...detail.payload, email: "nope" } })],
   ])("reports a message with %s as failed so it ends up in the DLQ", async (_case, body) => {
     const result = await consumer(event(record("bad", body), record("good", registered())));
+    expect(result.batchItemFailures).toEqual([{ itemIdentifier: "bad" }]);
+  });
+
+  it("reports an invalid domain event as failed so it ends up in the DLQ", async () => {
+    const broken = domainEvent("kundenportal.consumption", "MeterReadingSubmitted", {});
+    const result = await consumer(event(record("bad", broken)));
     expect(result.batchItemFailures).toEqual([{ itemIdentifier: "bad" }]);
   });
 

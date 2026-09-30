@@ -6,6 +6,7 @@ import {
   QueryCommand,
   UpdateCommand,
 } from "@aws-sdk/lib-dynamodb";
+import { Locale } from "@kundenportal/events";
 import { tenantKey } from "@kundenportal/service-kit";
 import { z } from "zod";
 
@@ -39,12 +40,35 @@ export function isNotificationId(value: string): boolean {
  * - `TENANT#<t>#CUST#<customerId>` / `NOTE#<notificationId>` — mailbox entries
  * - `TENANT#<t>#SUBJ#<subject>` / `MAILBOX` — own projection from events: whose mailbox
  *   a sign-in identity opens (the service never reads the customer domain's items)
+ * - `TENANT#<t>#CUST#<customerId>` / `MAILBOX` — own projection from `CustomerRegistered`:
+ *   the language the mailbox writes in (events of other domains carry no language)
  */
 export class Mailbox {
   constructor(
     private readonly db: DynamoDBDocumentClient,
     private readonly table: string,
   ) {}
+
+  async rememberLocale(tenantId: string, customerId: string, locale: Locale): Promise<void> {
+    await this.db.send(
+      new PutCommand({
+        TableName: this.table,
+        Item: { PK: tenantKey(tenantId, "CUST", customerId), SK: "MAILBOX", locale },
+      }),
+    );
+  }
+
+  /** Language of the customer's mailbox; German if the customer is not known (yet). */
+  async localeOf(tenantId: string, customerId: string): Promise<Locale> {
+    const result = await this.db.send(
+      new GetCommand({
+        TableName: this.table,
+        Key: { PK: tenantKey(tenantId, "CUST", customerId), SK: "MAILBOX" },
+      }),
+    );
+    const parsed = Locale.safeParse(result.Item?.locale);
+    return parsed.success ? parsed.data : "de";
+  }
 
   async linkSubject(tenantId: string, subject: string, customerId: string): Promise<void> {
     await this.db.send(
