@@ -7,6 +7,8 @@ export interface ApiRoute {
   method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   path: string;
   scopes: string[];
+  /** Declared with `security: []`: no JWT authorizer (e.g. redeeming an invitation). */
+  public: boolean;
 }
 
 interface Operation {
@@ -39,6 +41,7 @@ export function loadApiRoutes(
         method: method.toUpperCase() as ApiRoute["method"],
         path,
         scopes: requirement?.[SECURITY_SCHEME] ?? [],
+        public: Array.isArray(operation.security) && operation.security.length === 0,
       };
     }),
   );

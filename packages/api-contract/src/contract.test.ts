@@ -12,8 +12,16 @@ describe("OpenAPI contract", () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  it("requires at least one OIDC scope on every operation", () => {
-    expect(routes.filter((route) => route.scopes.length === 0)).toEqual([]);
+  it("requires at least one OIDC scope on every operation that is not public", () => {
+    expect(routes.filter((route) => !route.public && route.scopes.length === 0)).toEqual([]);
+    expect(routes.filter((route) => route.public && route.scopes.length > 0)).toEqual([]);
+  });
+
+  it("makes only the challenge and redeeming an invitation public", () => {
+    expect(routes.filter((route) => route.public).map((route) => route.operationId)).toEqual([
+      "getRedeemChallenge",
+      "redeemInvitation",
+    ]);
   });
 
   it("uses scopes of a single resource server in the form <server>/<name>", () => {
@@ -44,10 +52,16 @@ describe("OpenAPI contract", () => {
       "POST /migration/bulk kundenportal/migration.write",
       "POST /migration/reset kundenportal/migration.write",
       "POST /migration/dlq/{recordId}/redrive kundenportal/migration.write",
+      "POST /tenancy/invitations kundenportal/tenancy.admin",
+      "GET /tenancy/passes kundenportal/tenancy.admin",
+      "POST /tenancy/passes/{passId}/revoke kundenportal/tenancy.admin",
+      "GET /tenancy/pass kundenportal/tenancy.read",
+      "GET /tenancy/challenge ",
+      "POST /tenancy/redeem ",
     ]);
   });
 
-  it("derives one read and one write scope per domain", () => {
+  it("derives one read and one write scope per domain (tenancy: read and admin)", () => {
     expect(apiScopes(routes).map((scope) => scope.name)).toEqual([
       "contracts.read",
       "contracts.write",
@@ -61,6 +75,8 @@ describe("OpenAPI contract", () => {
       "profile.write",
       "readings.read",
       "readings.write",
+      "tenancy.admin",
+      "tenancy.read",
     ]);
   });
 

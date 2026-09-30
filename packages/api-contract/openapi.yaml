@@ -417,6 +417,167 @@ paths:
         "403": { $ref: "#/components/responses/Problem" }
         "404": { $ref: "#/components/responses/Problem" }
         "409": { $ref: "#/components/responses/Problem" }
+  /tenancy/invitations:
+    post:
+      operationId: createInvitation
+      summary: Create an invitation link for a demo pass
+      description: >-
+        Owner only (Cognito group `owner`). The link is valid for 14 days and can be
+        redeemed once; its token sits in the URL fragment and is stored only as a hash.
+        `validMinutes` creates a short test pass (end-to-end tests) whose holder gets no
+        Cognito mail.
+      security:
+        - oidc: [kundenportal/tenancy.admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              additionalProperties: false
+              properties:
+                email: { type: string, format: email }
+                validMinutes: { type: integer, minimum: 1, maximum: 60 }
+      responses:
+        "201":
+          description: Invitation created
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [invitationId, link, expiresAt]
+                properties:
+                  invitationId: { type: string }
+                  link: { type: string, format: uri }
+                  expiresAt: { type: string, format: date-time }
+        "400": { $ref: "#/components/responses/Problem" }
+        "401": { $ref: "#/components/responses/Problem" }
+        "403": { $ref: "#/components/responses/Problem" }
+  /tenancy/passes:
+    get:
+      operationId: listPasses
+      summary: All demo passes with status and quota usage
+      description: Owner only.
+      security:
+        - oidc: [kundenportal/tenancy.admin]
+      responses:
+        "200":
+          description: Passes, newest first
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [passes]
+                properties:
+                  passes:
+                    type: array
+                    items: { $ref: "#/components/schemas/PassSummary" }
+        "401": { $ref: "#/components/responses/Problem" }
+        "403": { $ref: "#/components/responses/Problem" }
+  /tenancy/passes/{passId}/revoke:
+    post:
+      operationId: revokePass
+      summary: End a demo pass early
+      description: Owner only. The tenant is torn down asynchronously (`DemoPassExpired`).
+      security:
+        - oidc: [kundenportal/tenancy.admin]
+      parameters:
+        - name: passId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "202":
+          description: Teardown started
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [passId, tenantId, status]
+                properties:
+                  passId: { type: string }
+                  tenantId: { type: string }
+                  status: { $ref: "#/components/schemas/TenantStatus" }
+        "401": { $ref: "#/components/responses/Problem" }
+        "403": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+        "409": { $ref: "#/components/responses/Problem" }
+  /tenancy/pass:
+    get:
+      operationId: getOwnPass
+      summary: The demo pass of the caller's tenant
+      description: >-
+        Status, end date and quota of the pass behind the tenant in the token. The pass
+        holder (group `pass`) and the owner also get the demo persons' sign-in names and
+        the tenant's demo password. For the owner's tenant the status is `owner`.
+      security:
+        - oidc: [kundenportal/tenancy.read]
+      responses:
+        "200":
+          description: Own pass
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OwnPass" }
+        "401": { $ref: "#/components/responses/Problem" }
+        "403": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+  /tenancy/challenge:
+    get:
+      operationId: getRedeemChallenge
+      summary: ALTCHA proof-of-work challenge for redeeming a link
+      description: >-
+        Public. A signed challenge (protocol v2, PBKDF2/SHA-256) the ALTCHA widget solves
+        in about a second; valid for 10 minutes.
+      security: []
+      responses:
+        "200":
+          description: Challenge
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [parameters, signature]
+                properties:
+                  parameters: { type: object, additionalProperties: true }
+                  signature: { type: string }
+  /tenancy/redeem:
+    post:
+      operationId: redeemInvitation
+      summary: Redeem an invitation link and receive a demo pass
+      description: >-
+        Public. Needs a solved ALTCHA challenge (each one once); at most 10 attempts per
+        address and hour. The tenant is set up asynchronously; the holder receives the
+        one-time password of the new account by e-mail.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, altcha]
+              additionalProperties: false
+              properties:
+                token: { type: string, description: The token from the link's fragment }
+                altcha: { type: string, description: Base64 payload of the ALTCHA widget }
+      responses:
+        "202":
+          description: Pass issued, tenant being set up
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [passId, statusUrl]
+                properties:
+                  passId: { type: string }
+                  statusUrl: { type: string, format: uri }
+        "400": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+        "409": { $ref: "#/components/responses/Problem" }
+        "410": { $ref: "#/components/responses/Problem" }
+        "429": { $ref: "#/components/responses/Problem" }
+        "503": { $ref: "#/components/responses/Problem" }
 components:
   parameters:
     ContractId:
@@ -760,6 +921,57 @@ components:
               detailType: { type: string }
               occurredAt: { type: string, format: date-time }
               summary: { type: string, description: Ids and accounts only, no personal data }
+    TenantStatus:
+      type: string
+      enum: [provisioning, active, quota-exceeded, tearing-down, deleted]
+    QuotaCounter:
+      type: object
+      required: [used, limit]
+      properties:
+        used: { type: integer }
+        limit: { type: integer }
+    QuotaUsage:
+      type: object
+      required: [api, events, uploads]
+      properties:
+        api: { $ref: "#/components/schemas/QuotaCounter" }
+        events: { $ref: "#/components/schemas/QuotaCounter" }
+        uploads: { $ref: "#/components/schemas/QuotaCounter" }
+    PassSummary:
+      type: object
+      required: [passId, tenantId, email, status, createdAt, validUntil, shortLived]
+      properties:
+        passId: { type: string }
+        tenantId: { type: string }
+        email: { type: string, format: email }
+        status: { $ref: "#/components/schemas/TenantStatus" }
+        createdAt: { type: string, format: date-time }
+        validUntil: { type: string, format: date-time }
+        shortLived: { type: boolean }
+        quota: { $ref: "#/components/schemas/QuotaUsage" }
+    OwnPass:
+      type: object
+      required: [tenantId, status]
+      properties:
+        tenantId: { type: string }
+        passId: { type: string }
+        status:
+          oneOf:
+            - { $ref: "#/components/schemas/TenantStatus" }
+            - { type: string, enum: [owner] }
+        validUntil: { type: string, format: date-time }
+        quota: { $ref: "#/components/schemas/QuotaUsage" }
+        demoPassword: { type: string, description: Pass holder and owner only }
+        demoPersons:
+          type: array
+          description: Pass holder and owner only
+          items:
+            type: object
+            required: [name, system, signIn]
+            properties:
+              name: { type: string }
+              system: { $ref: "#/components/schemas/LegacySystem" }
+              signIn: { type: string, format: email }
     Problem:
       type: object
       required: [title, status]
