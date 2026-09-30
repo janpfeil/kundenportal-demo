@@ -1,6 +1,6 @@
 # Architektur — Ist-Stand des Portals
 
-Stand: 2026-09-30 · Beschreibt den **Ist-Stand** des Codes (Branch `develop`: Phase 1 abgeschlossen, Phase 2 in Arbeit), nicht die Zielarchitektur. Kennzeichnung: **[B]** belegt (offizielle Quelle oder Messung), **[A]** Annahme, **[E]** Einschätzung.
+Stand: 2026-09-30 · Beschreibt den **Ist-Stand** des Codes (Phase 1 und 2 abgeschlossen), nicht die Zielarchitektur. Kennzeichnung: **[B]** belegt (offizielle Quelle oder Messung), **[A]** Annahme, **[E]** Einschätzung.
 
 Fachbegriffe sind in jedem Abschnitt beim ersten Vorkommen mit dem [Glossar](glossar.md) verlinkt (Erklärung und Entsprechung außerhalb von AWS).
 
@@ -10,7 +10,7 @@ diese Seite zeigt, was davon tatsächlich gebaut ist:
 - **Phase 1 (Durchstich, abgeschlossen):** Registrierung und Anmeldung, ein
   geschütztes Profil, ein Domänen-Ereignis und eine Willkommensnachricht im
   Postfach.
-- **Phase 2 (in Arbeit):** die Services `contract`, `consumption` und
+- **Phase 2 (abgeschlossen, v0.2.0):** die Services `contract`, `consumption` und
   `documents` mit ihren Ereignissen (Abschnitt 6), Uploads nach S3, ein
   täglicher Zeitplan, das Zonen-Muster mit zwei Zonen, der Schreibweg aus dem
   Browser, das Laufzeit-Widget „Glocke" und die Component Library. Die
@@ -313,7 +313,7 @@ Uploads eine Pause der Anwendung überstehen:
 | Leitplanke | Umsetzung |
 |---|---|
 | Laufzeit | Node.js 24, arm64, 256 MB (Shell 1024 MB) |
-| Kostendeckel Lambda | [Reserved Concurrency](glossar.md#reserved-concurrency) je Funktion aus CDK-Kontext `reservedConcurrency` (Standard 2, `0` = nicht setzen); Stand Phase 2: 13 Funktionen × 2 = 26 (12 im App-Stack, 1 im Base-Stack; Phase 1: 5 × 2 = 10) |
+| Kostendeckel Lambda | [Reserved Concurrency](glossar.md#reserved-concurrency) je Funktion: Services aus CDK-Kontext `reservedConcurrency` (Standard 2, `0` = nicht setzen), Next.js-Funktionen (Shell, Zonen) `webReservedConcurrency` (Standard 5); Stand Phase 2: 10 Services × 2 + 3 Next.js-Funktionen × 5 = 35 (Phase 1: 5 × 2 = 10) |
 | Kostendeckel API | Throttling der Stage: 10 Anfragen/s, Spitze 20 |
 | Kostendeckel Datenbank | provisioned 5/5 statt On-Demand |
 | Logs | eigene Log-Gruppen mit 3 Tagen Aufbewahrung; Reste löscht der Teardown |

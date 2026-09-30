@@ -1,6 +1,6 @@
 # Architektur: Zonen und Frontend
 
-Stand: 2026-09-30 · Beschreibt den **Ist-Stand** des Codes (Branch `develop`, Phase 2 in Arbeit), nicht die Zielarchitektur. Kennzeichnung: **[B]** belegt (offizielle Quelle oder Messung), **[A]** Annahme, **[E]** Einschätzung.
+Stand: 2026-09-30 · Beschreibt den **Ist-Stand** des Codes (Phase 2 abgeschlossen), nicht die Zielarchitektur. Kennzeichnung: **[B]** belegt (offizielle Quelle oder Messung), **[A]** Annahme, **[E]** Einschätzung.
 
 Fachbegriffe sind in jedem Abschnitt beim ersten Vorkommen mit dem [Glossar](glossar.md) verlinkt (Erklärung und Entsprechung außerhalb von AWS).
 
@@ -21,8 +21,8 @@ Edge-Stack lesen sie beide.
 | Zone | Pfad | App | Stand 30.09.2026 |
 |---|---|---|---|
 | Shell | `/` (alles, was keine Zone ist) | `apps/shell` | Startseite, Anmeldung, Konto mit Profil-Bearbeitung, Demo-Postfach mit „als gelesen markieren", Glocke |
-| `contracts` | `/vertraege` | `apps/contracts` | Grundgerüst: liest die Sitzung, leitet ohne Sitzung zur Anmeldung; fachliche Seiten (Verträge, Abschlag, Dokumente) in Arbeit |
-| `consumption` | `/verbrauch` | `apps/consumption` | Grundgerüst wie oben; fachliche Seiten (Zählerstand, Datenvolumen) in Arbeit |
+| `contracts` | `/vertraege` | `apps/contracts` | Vertragsübersicht, Detailseite mit Abschlag und Tarifoption (J6), Dokumente mit Upload per Presigned URL |
+| `consumption` | `/verbrauch` | `apps/consumption` | Zählerstand-Verlauf und -Erfassung mit Plausibilitätsprüfung (J4), Zählerfoto, Datenvolumen Mobilfunk |
 | `cockpit` | `/cockpit` | — | kommt in Phase 3 (Migrations-Cockpit) |
 
 ```chart
@@ -50,19 +50,22 @@ Stacks aus der Registry ab:
 
 | Baustein | Umsetzung |
 |---|---|
-| Paket | `scripts/package-next-lambda.mjs <app> --serve-static`: [Standalone-Build](glossar.md#standalone-build) als Zip (mit den pnpm-Symlinks); `--serve-static` legt `.next/static` und `public` mit ins Paket, die Zone liefert ihre statischen Dateien also **selbst** aus |
+| Paket | `scripts/package-next-lambda.mjs <app>`: [Standalone-Build](glossar.md#standalone-build) als Zip (mit den pnpm-Symlinks); die statischen Dateien (`.next/static`) lädt der Edge-Stack je Zone in den Asset-Bucket unter `<basePath>/_next/static/` |
 | Lambda | Construct `NextLambda` (`infra/cdk/lib/next-lambda.ts`), dasselbe wie für die Shell: [Lambda Web Adapter](glossar.md#lambda-web-adapter), Response Streaming, 1024 MB, 15 s, [Function URL](glossar.md#function-url) mit `AWS_IAM`; Bereitschaftsprüfung unter `<basePath>/healthz` |
 | Übergabe an den Edge | SSM `/kundenportal/app/zones/<id>/function-arn` und `/kundenportal/app/zones/<id>/origin-domain` |
-| CloudFront | je Zone **drei** [Cache-Behaviors](glossar.md#cache-behavior): `<basePath>` und `<basePath>/*` (alle HTTP-Methoden, kein Cache) sowie `<basePath>/_next/static/*` (gecacht; jede neue Fassung einer Datei bekommt einen neuen Namen) |
+| CloudFront | je Zone **drei** [Cache-Behaviors](glossar.md#cache-behavior): `<basePath>` und `<basePath>/*` (alle HTTP-Methoden, kein Cache) sowie `<basePath>/_next/static/*` aus S3 (gecacht; jede neue Fassung einer Datei bekommt einen neuen Namen) |
 | Signatur | **eine** gemeinsame [OAC](glossar.md#oac) vom Typ `lambda` für Shell und alle Zonen (`originAccessControlId` am Ursprung) |
 | Aufrufrechte | je Zone `lambda:InvokeFunctionUrl` und `lambda:InvokeFunction` nur für diese Distribution, wie bei der Shell |
 | Umgebung | `API_URL`, `OIDC_CLIENT_ID`, `COGNITO_USER_POOL_ID`, `APP_URL`; die Zone darf wie die Shell `DescribeUserPoolClient` aufrufen (Schlüssel der Sitzung, siehe Abschnitt 3) |
 
-Die statischen Dateien der Shell liegen weiterhin im S3-Bucket des
-Edge-Stacks unter `/_next/static/*`. Bei den Zonen hätte ein eigener
-S3-Pfad je Zone einen weiteren Upload-Schritt im Edge-Deploy bedeutet; die
-Lambda liefert sie beim ersten Abruf, danach kommen sie aus dem
-CloudFront-Cache [E].
+Statische Dateien kommen für Shell **und** Zonen aus dem S3-Bucket des
+Edge-Stacks. Anfangs lieferten die Zonen sie selbst aus; der erste
+Live-Test brach dann mit `ReservedFunctionConcurrentInvocationLimitExceeded`
+ab: ein erster Seitenaufruf lädt viele Chunks gleichzeitig, mehr als eine
+Reserved Concurrency von 2 zulässt [B: Live-Test 30.09.2026]. Seither laufen
+nur Seiten und Route Handler über die Lambda; die Next.js-Funktionen (Shell,
+Zonen) haben eine Reserved Concurrency von **5** (CDK-Kontext
+`webReservedConcurrency`), die Services weiterhin 2.
 
 ## 3. Anmeldung in den Zonen
 

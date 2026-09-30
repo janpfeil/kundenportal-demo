@@ -164,13 +164,13 @@ Prüfen 👁 (Kommandozeile, nach 4.4):
 → `AccountLimit.ConcurrentExecutions` (Limit) und
 `UnreservedConcurrentExecutions`.
 
-Nötig ist: **Limit ≥ 100 + 2 × Anzahl Funktionen** mit Reserved
-Concurrency. Die Anzahl steht in der [Architektur](architektur.md) §7
-(Stand Phase 2: 13, also ≥ 126).
+Nötig ist: **Limit ≥ 100 + Summe aller Reservierungen** (2 je Service,
+5 je Next.js-Funktion). Die Zahlen stehen in der [Architektur](architektur.md)
+§7 (Stand Phase 2: 10 × 2 + 3 × 5 = 35, also ≥ 135).
 
 | Angezeigtes Limit | Folge |
 |---|---|
-| ≥ 100 + 2 × Anzahl Funktionen (Stand Phase 2: ≥ 126) | nichts zu tun; Standard `reservedConcurrency=2` passt (≥ 100 bleiben frei) |
+| ≥ 100 + Summe der Reservierungen (Stand Phase 2: ≥ 135) | nichts zu tun; die Standardwerte passen (≥ 100 bleiben frei) |
 | darunter (bei Neukonten typisch 10) | Weg A oder B |
 
 Stand des Kontos: Die Erhöhung auf **1.000** ist genehmigt; das reicht mit
@@ -197,7 +197,8 @@ liest den Wert aus der GitHub-Variable `RESERVED_CONCURRENCY` (Standard 2):
 GitHub → Repository → **Settings** → **Secrets and variables** → **Actions**
 → Reiter **Variables** → **New repository variable**, Name
 `RESERVED_CONCURRENCY`, Wert `0`. Rückweg: Variable löschen, sobald das Limit
-erhöht ist; der nächste Deploy reserviert dann wieder 2 je Funktion.
+erhöht ist; der nächste Deploy reserviert dann wieder (2 je Service, 5 je
+Next.js-Funktion).
 
 Notieren: angezeigtes Limit, gewählter Weg, Datum des Antrags und der
 Genehmigung.

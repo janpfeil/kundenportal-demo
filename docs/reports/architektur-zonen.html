@@ -23,7 +23,7 @@
 </ul>
 </div>
 </nav><main><h1 id="architektur-zonen-und-frontend">Architektur: Zonen und Frontend<a class="anchor" href="#architektur-zonen-und-frontend" title="Permanent link">#</a></h1>
-<p>Stand: 2026-09-30 · Beschreibt den <strong>Ist-Stand</strong> des Codes (Branch <code>develop</code>, Phase 2 in Arbeit), nicht die Zielarchitektur. Kennzeichnung: <strong>[B]</strong> belegt (offizielle Quelle oder Messung), <strong>[A]</strong> Annahme, <strong>[E]</strong> Einschätzung.</p>
+<p>Stand: 2026-09-30 · Beschreibt den <strong>Ist-Stand</strong> des Codes (Phase 2 abgeschlossen), nicht die Zielarchitektur. Kennzeichnung: <strong>[B]</strong> belegt (offizielle Quelle oder Messung), <strong>[A]</strong> Annahme, <strong>[E]</strong> Einschätzung.</p>
 <p>Fachbegriffe sind in jedem Abschnitt beim ersten Vorkommen mit dem <a href="glossar.html">Glossar</a> verlinkt (Erklärung und Entsprechung außerhalb von <a class="term" href="glossar.html#aws" title="Cloud-Plattform von Amazon mit über 200 Diensten (Rechenleistung, Datenbanken, Netzwerk, Messaging …), abgerechnet nach Nutzung">AWS</a>).</p>
 <p>Diese Seite ergänzt die <a href="architektur.html">Architektur</a> um die <a class="term" href="glossar.html#ui" title="Benutzeroberfläche">Oberfläche</a>:
 wie das Portal in mehrere <a class="term" href="glossar.html#nextjs" title="React-Framework (von Vercel) mit Routing, Server-Rendering, API-Routen und Build-Optimierung">Next.js</a>-Apps zerfällt, wie der <a class="term" href="glossar.html#browser" title="Programm zum Anzeigen von Webseiten; „Browser-App&quot; = Anwendung, die im Browser läuft">Browser</a> schreibt,
@@ -56,13 +56,13 @@ genau einer Stelle, der Registry <code>infra/cdk/lib/zones.ts</code>; App-<a cla
 <td><code>contracts</code></td>
 <td><code>/vertraege</code></td>
 <td><code>apps/contracts</code></td>
-<td>Grundgerüst: liest die Sitzung, leitet ohne Sitzung zur Anmeldung; fachliche Seiten (Verträge, <a class="term" href="glossar.html#abschlag" title="monatliche Vorauszahlung auf die Energie-Jahresrechnung; wird nach neuem Zählerstand angepasst">Abschlag</a>, Dokumente) in Arbeit</td>
+<td>Vertragsübersicht, Detailseite mit <a class="term" href="glossar.html#abschlag" title="monatliche Vorauszahlung auf die Energie-Jahresrechnung; wird nach neuem Zählerstand angepasst">Abschlag</a> und Tarifoption (<a class="term" href="glossar.html#journey-kürzel" title="Nummern der neun Demo-Abläufe im Fachkonzept (J1 Registrierung … J9 Demo-Pass)">J6</a>), Dokumente mit <a class="term" href="glossar.html#upload" title="Hochladen einer Datei vom Browser zum Server bzw. nach S3">Upload</a> per <a class="term" href="glossar.html#presigned-url" title="zeitlich begrenzter, signierter Link, mit dem der Browser direkt in S3 hoch- oder herunterlädt, ohne AWS-Zugangsdaten">Presigned URL</a></td>
 </tr>
 <tr>
 <td><code>consumption</code></td>
 <td><code>/verbrauch</code></td>
 <td><code>apps/consumption</code></td>
-<td>Grundgerüst wie oben; fachliche Seiten (Zählerstand, Datenvolumen) in Arbeit</td>
+<td>Zählerstand-Verlauf und -Erfassung mit Plausibilitätsprüfung (J4), Zählerfoto, Datenvolumen Mobilfunk</td>
 </tr>
 <tr>
 <td><code>cockpit</code></td>
@@ -91,7 +91,7 @@ Neuladen [E].</p>
 <tbody>
 <tr>
 <td>Paket</td>
-<td><code>scripts/package-next-lambda.mjs &lt;app&gt; --serve-static</code>: <a href="glossar.html#standalone-build">Standalone-Build</a> als Zip (mit den pnpm-Symlinks); <code>--serve-static</code> legt <code>.next/static</code> und <code>public</code> mit ins Paket, die Zone liefert ihre statischen Dateien also <strong>selbst</strong> aus</td>
+<td><code>scripts/package-next-lambda.mjs &lt;app&gt;</code>: <a href="glossar.html#standalone-build">Standalone-Build</a> als Zip (mit den pnpm-Symlinks); die statischen Dateien (<code>.next/static</code>) lädt der <a class="term" href="glossar.html#edge-stack" title="CDK-Stack für alles am Rand des Systems: CloudFront, Zertifikat, CloudFront Functions">Edge-Stack</a> je Zone in den Asset-<a class="term" href="glossar.html#s3" title="Objektspeicher für Dateien beliebiger Größe in „Buckets&quot;; Standard für statische Websites, Uploads, Build-Artefakte">Bucket</a> unter <code>&lt;basePath&gt;/_next/static/</code></td>
 </tr>
 <tr>
 <td><a class="term" href="glossar.html#lambda" title="führt eine einzelne Funktion (z. B. einen HTTP-Handler) bei Bedarf aus; Abrechnung pro Aufruf und Laufzeit, skaliert automatisch von 0 auf viele Instanzen">Lambda</a></td>
@@ -103,7 +103,7 @@ Neuladen [E].</p>
 </tr>
 <tr>
 <td><a class="term" href="glossar.html#cloudfront" title="Content Delivery Network (CDN): liefert Inhalte weltweit aus nahen Standorten aus, cacht sie und leitet Pfade an verschiedene Ziele (S3, API Gateway, Lambda) weiter">CloudFront</a></td>
-<td>je Zone <strong>drei</strong> <a href="glossar.html#cache-behavior">Cache-Behaviors</a>: <code>&lt;basePath&gt;</code> und <code>&lt;basePath&gt;/*</code> (alle <a class="term" href="glossar.html#http-methoden" title="Arten von REST-Aufrufen: lesen (GET), anlegen (POST), teilweise ändern (PATCH), ersetzen (PUT), löschen (DELETE)">HTTP-Methoden</a>, kein <a class="term" href="glossar.html#cache" title="Zwischenspeicher, der wiederholte Anfragen schneller und billiger beantwortet">Cache</a>) sowie <code>&lt;basePath&gt;/_next/static/*</code> (gecacht; jede neue Fassung einer Datei bekommt einen neuen Namen)</td>
+<td>je Zone <strong>drei</strong> <a href="glossar.html#cache-behavior">Cache-Behaviors</a>: <code>&lt;basePath&gt;</code> und <code>&lt;basePath&gt;/*</code> (alle <a class="term" href="glossar.html#http-methoden" title="Arten von REST-Aufrufen: lesen (GET), anlegen (POST), teilweise ändern (PATCH), ersetzen (PUT), löschen (DELETE)">HTTP-Methoden</a>, kein <a class="term" href="glossar.html#cache" title="Zwischenspeicher, der wiederholte Anfragen schneller und billiger beantwortet">Cache</a>) sowie <code>&lt;basePath&gt;/_next/static/*</code> aus S3 (gecacht; jede neue Fassung einer Datei bekommt einen neuen Namen)</td>
 </tr>
 <tr>
 <td>Signatur</td>
@@ -119,11 +119,14 @@ Neuladen [E].</p>
 </tr>
 </tbody>
 </table></div>
-<p>Die statischen Dateien der Shell liegen weiterhin im <a class="term" href="glossar.html#s3" title="Objektspeicher für Dateien beliebiger Größe in „Buckets&quot;; Standard für statische Websites, Uploads, Build-Artefakte">S3-Bucket</a> des
-Edge-Stacks unter <code>/_next/static/*</code>. Bei den Zonen hätte ein eigener
-S3-Pfad je Zone einen weiteren <a class="term" href="glossar.html#upload" title="Hochladen einer Datei vom Browser zum Server bzw. nach S3">Upload</a>-Schritt im Edge-<a class="term" href="glossar.html#deployment" title="Ausliefern einer neuen Version in eine Umgebung">Deploy</a> bedeutet; die
-Lambda liefert sie beim ersten Abruf, danach kommen sie aus dem
-CloudFront-Cache [E].</p>
+<p>Statische Dateien kommen für Shell <strong>und</strong> Zonen aus dem S3-Bucket des
+Edge-Stacks. Anfangs lieferten die Zonen sie selbst aus; der erste
+Live-Test brach dann mit <code>ReservedFunctionConcurrentInvocationLimitExceeded</code>
+ab: ein erster Seitenaufruf lädt viele Chunks gleichzeitig, mehr als eine
+<a class="term" href="glossar.html#reserved-concurrency" title="feste Obergrenze gleichzeitiger Ausführungen einer Lambda; wirkt im Demo als harte Kostenbremse (0 = Funktion abgeschaltet). Reservieren lässt sich höchstens das Kontolimit minus 1">Reserved Concurrency</a> von 2 zulässt [B: Live-Test 30.09.2026]. Seither laufen
+nur Seiten und <a class="term" href="glossar.html#route-handler" title="Datei route.ts im Next.js-App-Router, die eine HTTP-Schnittstelle (GET, POST, PATCH …) statt einer Seite bereitstellt">Route Handler</a> über die Lambda; die <a class="term" href="glossar.html#nextjs" title="React-Framework (von Vercel) mit Routing, Server-Rendering, API-Routen und Build-Optimierung">Next.js</a>-Funktionen (Shell,
+Zonen) haben eine Reserved Concurrency von <strong>5</strong> (<a class="term" href="glossar.html#cdk" title="Infrastruktur als Programmcode (TypeScript, Java, Python …): man schreibt Klassen wie new Table(...), CDK erzeugt daraus CloudFormation-Vorlagen und legt die Ressourcen an">CDK</a>-Kontext
+<code>webReservedConcurrency</code>), die Services weiterhin 2.</p>
 <h2 id="3-anmeldung-in-den-zonen">3. Anmeldung in den Zonen<a class="anchor" href="#3-anmeldung-in-den-zonen" title="Permanent link">#</a></h2>
 <p>Die Anmeldung bleibt <strong>in der <a class="term" href="glossar.html#shell" title="Rahmenanwendung, die Navigation, Login und Layout stellt und die Micro-Frontends einbindet">Shell</a></strong>; <a class="term" href="glossar.html#multi-zones" title="Next.js-Ansatz, mehrere Next.js-Apps unter einer Domain zu betreiben, aufgeteilt nach Pfaden">Zonen</a> haben keinen eigenen
 <a class="term" href="glossar.html#openid-connect" title="Identitätsschicht auf OAuth2: liefert zusätzlich ein ID-Token mit Nutzerangaben; auch für die Anmeldung von GitHub Actions bei AWS genutzt">OIDC</a>-Ablauf. Das gemeinsame Paket <code>@kundenportal/web-auth</code> gibt jeder Zone
@@ -324,6 +327,6 @@ ohne <a class="term" href="glossar.html#s3" title="Objektspeicher für Dateien b
 <li>Custom Elements (MDN): <a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_custom_elements">https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_custom_elements</a></li>
 <li>Cookie-Attribut SameSite (MDN): <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Set-Cookie#samesitesamesite-value">https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Set-Cookie#samesitesamesite-value</a></li>
 </ul></main></div>
-<footer class="site"><a href="../wiki/architektur-zonen.md">Markdown-Quelle</a> · Generiert 2026-09-30 09:00 aus <code>docs/wiki</code> mit <code>scripts/build_reports.py</code></footer>
+<footer class="site"><a href="../wiki/architektur-zonen.md">Markdown-Quelle</a> · Generiert 2026-09-30 09:40 aus <code>docs/wiki</code> mit <code>scripts/build_reports.py</code></footer>
 </body>
 </html>

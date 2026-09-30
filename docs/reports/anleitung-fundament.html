@@ -232,9 +232,9 @@ erste Deploy würde scheitern.</p>
 <code>aws lambda get-account-settings --region eu-central-1 --profile kundenportal</code>
 → <code>AccountLimit.ConcurrentExecutions</code> (Limit) und
 <code>UnreservedConcurrentExecutions</code>.</p>
-<p>Nötig ist: <strong>Limit ≥ 100 + 2 × Anzahl Funktionen</strong> mit <a class="term" href="glossar.html#reserved-concurrency" title="feste Obergrenze gleichzeitiger Ausführungen einer Lambda; wirkt im Demo als harte Kostenbremse (0 = Funktion abgeschaltet). Reservieren lässt sich höchstens das Kontolimit minus 1">Reserved
-Concurrency</a>. Die Anzahl steht in der <a href="architektur.html">Architektur</a> §7
-(Stand Phase 2: 13, also ≥ 126).</p>
+<p>Nötig ist: <strong>Limit ≥ 100 + Summe aller Reservierungen</strong> (2 je Service,
+5 je <a class="term" href="glossar.html#nextjs" title="React-Framework (von Vercel) mit Routing, Server-Rendering, API-Routen und Build-Optimierung">Next.js</a>-Funktion). Die Zahlen stehen in der <a href="architektur.html">Architektur</a>
+§7 (Stand Phase 2: 10 × 2 + 3 × 5 = 35, also ≥ 135).</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -244,8 +244,8 @@ Concurrency</a>. Die Anzahl steht in der <a href="architektur.html">Architektur<
 </thead>
 <tbody>
 <tr>
-<td>≥ 100 + 2 × Anzahl Funktionen (Stand Phase 2: ≥ 126)</td>
-<td>nichts zu tun; Standard <code>reservedConcurrency=2</code> passt (≥ 100 bleiben frei)</td>
+<td>≥ 100 + Summe der Reservierungen (Stand Phase 2: ≥ 135)</td>
+<td>nichts zu tun; die Standardwerte passen (≥ 100 bleiben frei)</td>
 </tr>
 <tr>
 <td>darunter (bei <a class="term" href="glossar.html#aws-konto" title="Abrechnungs- und Sicherheitsgrenze bei AWS: alle Ressourcen, Rechnungen und Berechtigungen hängen an einem Konto">Neukonten</a> typisch 10)</td>
@@ -275,7 +275,8 @@ liest den Wert aus der GitHub-Variable <code>RESERVED_CONCURRENCY</code> (Standa
 GitHub → Repository → <strong>Settings</strong> → <strong>Secrets and variables</strong> → <strong>Actions</strong>
 → Reiter <strong>Variables</strong> → <strong>New repository variable</strong>, Name
 <code>RESERVED_CONCURRENCY</code>, Wert <code>0</code>. Rückweg: Variable löschen, sobald das Limit
-erhöht ist; der nächste Deploy reserviert dann wieder 2 je Funktion.</p>
+erhöht ist; der nächste Deploy reserviert dann wieder (2 je Service, 5 je
+Next.js-Funktion).</p>
 <p>Notieren: angezeigtes Limit, gewählter Weg, Datum des Antrags und der
 Genehmigung.</p>
 <h3 id="46-protokoll">4.6 Protokoll<a class="anchor" href="#46-protokoll" title="Permanent link">#</a></h3>
@@ -565,6 +566,6 @@ Anwendung) kommt erst beim ersten Deploy (Kapitel 8).</p>
 </tr>
 </tbody>
 </table></div></main></div>
-<footer class="site"><a href="../wiki/anleitung-fundament.md">Markdown-Quelle</a> · Generiert 2026-09-30 09:00 aus <code>docs/wiki</code> mit <code>scripts/build_reports.py</code></footer>
+<footer class="site"><a href="../wiki/anleitung-fundament.md">Markdown-Quelle</a> · Generiert 2026-09-30 09:40 aus <code>docs/wiki</code> mit <code>scripts/build_reports.py</code></footer>
 </body>
 </html>
