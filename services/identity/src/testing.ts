@@ -55,14 +55,25 @@ export const carlaSubscriber = {
 };
 
 /**
- * Legacy systems in memory: Anna (utility) and Carla (telco, Keycloak) accept PASSWORD;
- * `down` simulates an outage of both.
+ * Legacy systems in memory: Anna (utility) and Carla (telco, Keycloak; for a pass tenant
+ * the telco's own check) accept PASSWORD; `down` simulates an outage of both. `requests`
+ * collects `<tenant> <path>` of every call (`-` without tenant header, e.g. Keycloak).
  */
-export function fakeLegacy(options: { down?: boolean } = {}): LegacyAccess {
+export function fakeLegacy(options: { down?: boolean; requests?: string[] } = {}): LegacyAccess {
   const fetchImpl = (async (input: string | URL | Request, init?: RequestInit) => {
     if (options.down) throw new TypeError("fetch failed");
     const url = new URL(String(input));
     const body = typeof init?.body === "string" ? init.body : "";
+    const headers = new Headers(init?.headers);
+    const tenant = headers.get("x-tenant") ?? headers.get("x-mandant") ?? "-";
+    options.requests?.push(`${tenant} ${url.pathname}`);
+    if (url.pathname === "/v2/auth/check") {
+      const { login, password } = JSON.parse(body) as { login: string; password: string };
+      if (login === carlaSubscriber.mail && password === PASSWORD) {
+        return json(200, { subscriberId: carlaSubscriber.subscriberId });
+      }
+      return json(401, { error: "invalid" });
+    }
     if (url.pathname === "/api/v1/anmeldung/pruefen") {
       const { email, passwort } = JSON.parse(body) as { email: string; passwort: string };
       if (passwort !== PASSWORD) return json(401, { fehler: "x" });

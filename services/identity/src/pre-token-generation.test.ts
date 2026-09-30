@@ -1,6 +1,7 @@
 import type { PreTokenGenerationV2TriggerEvent } from "aws-lambda";
+import { fixedTenantStatus } from "@kundenportal/service-kit/testing";
 import { describe, expect, it } from "vitest";
-import { handler } from "./pre-token-generation.js";
+import { createHandler, handler } from "./pre-token-generation.js";
 
 function trigger(userAttributes: Record<string, string>): PreTokenGenerationV2TriggerEvent {
   return {
@@ -53,4 +54,36 @@ describe("pre token generation", () => {
     });
     expect(await accessClaims({})).not.toHaveProperty("origin");
   });
+});
+
+describe("pre token generation for a demo pass", () => {
+  const announced: string[] = [];
+  const passHandler = createHandler(
+    async (attributes) => {
+      announced.push(attributes.sub ?? "");
+    },
+    fixedTenantStatus({
+      pactivee: "active",
+      pquotaaa: "quota-exceeded",
+      pdeleted: "deleted",
+      ptearing: "tearing-down",
+    }),
+  );
+  const claimsOf = async (tenantId: string) =>
+    (await passHandler(trigger({ "custom:tenant_id": tenantId }))).response
+      .claimsAndScopeOverrideDetails?.accessTokenGeneration?.claimsToAddOrOverride;
+
+  it("issues the pass tenant's token while the pass is usable", async () => {
+    expect(await claimsOf("pactivee")).toMatchObject({ tenant_id: "pactivee" });
+    expect(await claimsOf("pquotaaa")).toMatchObject({ tenant_id: "pquotaaa" });
+  });
+
+  it.each(["pdeleted", "ptearing", "punknown"])(
+    "refuses the sign-in for pass %s",
+    async (tenantId) => {
+      announced.length = 0;
+      await expect(claimsOf(tenantId)).rejects.toThrow(/Demo-Pass/);
+      expect(announced).toEqual([]);
+    },
+  );
 });

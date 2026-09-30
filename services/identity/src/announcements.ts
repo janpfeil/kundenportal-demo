@@ -1,33 +1,32 @@
 import { ConditionalCheckFailedException } from "@aws-sdk/client-dynamodb";
-import { type DynamoDBDocumentClient, GetCommand, PutCommand } from "@aws-sdk/lib-dynamodb";
-import { tenantKey } from "@kundenportal/service-kit";
+import { GetCommand, PutCommand } from "@aws-sdk/lib-dynamodb";
+import { tenantKey, type TenantDataSource } from "@kundenportal/service-kit";
 
 /**
  * Item of the identity domain: `TENANT#<t>#SUBJ#<subject>` / `IDENTITY#LEGACY` records
  * that the lazy migration of this identity was announced (`LegacyAccountMigrated`).
  */
 export class AnnouncementRepository {
-  constructor(
-    private readonly db: DynamoDBDocumentClient,
-    private readonly table: string,
-  ) {}
+  constructor(private readonly data: TenantDataSource) {}
 
   private key(tenantId: string, subject: string) {
     return { PK: tenantKey(tenantId, "SUBJ", subject), SK: "IDENTITY#LEGACY" };
   }
 
   async announced(tenantId: string, subject: string): Promise<boolean> {
-    const result = await this.db.send(
-      new GetCommand({ TableName: this.table, Key: this.key(tenantId, subject) }),
+    const { db, tableName } = await this.data(tenantId);
+    const result = await db.send(
+      new GetCommand({ TableName: tableName, Key: this.key(tenantId, subject) }),
     );
     return Boolean(result.Item);
   }
 
   async markAnnounced(tenantId: string, subject: string, eventId: string, at: string) {
+    const { db, tableName } = await this.data(tenantId);
     try {
-      await this.db.send(
+      await db.send(
         new PutCommand({
-          TableName: this.table,
+          TableName: tableName,
           Item: { ...this.key(tenantId, subject), eventId, announcedAt: at },
           ConditionExpression: "attribute_not_exists(PK)",
         }),

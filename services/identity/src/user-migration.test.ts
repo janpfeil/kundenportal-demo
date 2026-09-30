@@ -1,7 +1,8 @@
 import type { UserMigrationTriggerEvent } from "aws-lambda";
+import { fixedTenantStatus } from "@kundenportal/service-kit/testing";
 import { describe, expect, it } from "vitest";
 import { fakeLegacy, PASSWORD } from "./testing.js";
-import { createHandler } from "./user-migration.js";
+import { createHandler, signInTarget } from "./user-migration.js";
 
 function trigger(
   userName: string,
@@ -69,5 +70,80 @@ describe("migrate user trigger", () => {
     await expect(down(trigger("anna.becker@example.org", PASSWORD))).rejects.toThrow(
       "Legacy systems unavailable",
     );
+  });
+});
+
+describe("migrate user trigger for a demo pass", () => {
+  const PASS = "p4k7x2qa";
+  const tenants = fixedTenantStatus({ [PASS]: "active", pzzzzzzz: "deleted" });
+
+  it("takes a demo person over into the pass tenant named by the plus suffix", async () => {
+    const requests: string[] = [];
+    const handler = createHandler(async () => fakeLegacy({ requests }), tenants);
+
+    const result = await handler(trigger(`Anna.Becker+${PASS}@example.org`, PASSWORD));
+
+    expect(result.response.userAttributes).toEqual({
+      email: `anna.becker+${PASS}@example.org`,
+      email_verified: "true",
+      name: "Anna Becker",
+      locale: "de",
+      "custom:legacy_ref": "utility:V-1000123",
+      "custom:migration_mode": "lazy",
+      "custom:tenant_id": PASS,
+    });
+    // The legacy systems of the pass tenant are asked, with the address without suffix.
+    expect(requests).toContain(`${PASS} /api/v1/anmeldung/pruefen`);
+    expect(requests.every((r) => r.startsWith(`${PASS} `))).toBe(true);
+  });
+
+  it("checks a pass tenant's telco customers at the telco system, never at Keycloak", async () => {
+    const requests: string[] = [];
+    const handler = createHandler(async () => fakeLegacy({ requests }), tenants);
+
+    const result = await handler(trigger(`carla.schulz+${PASS}@example.net`, PASSWORD));
+
+    expect(result.response.userAttributes).toMatchObject({
+      email: `carla.schulz+${PASS}@example.net`,
+      "custom:legacy_ref": "telco:T/88-4712",
+      "custom:tenant_id": PASS,
+    });
+    expect(requests).toContain(`${PASS} /v2/auth/check`);
+    expect(requests.some((r) => r.includes("openid-connect"))).toBe(false);
+  });
+
+  it("finds a pass's demo person for a password reset", async () => {
+    const handler = createHandler(async () => fakeLegacy(), tenants);
+    const result = await handler(
+      trigger(`anna.becker+${PASS}@example.org`, "", "UserMigration_ForgotPassword"),
+    );
+    expect(result.response.userAttributes["custom:tenant_id"]).toBe(PASS);
+  });
+
+  it.each([
+    ["a tenant that is gone", "anna.becker+pzzzzzzz@example.org"],
+    ["an unknown tenant", "anna.becker+pyyyyyyy@example.org"],
+    ["a suffix that is no tenant id", "anna.becker+newsletter@example.org"],
+  ])("treats %s as the owner's address, unchanged", async (_case, userName) => {
+    const requests: string[] = [];
+    const handler = createHandler(async () => fakeLegacy({ requests }), tenants);
+    await expect(handler(trigger(userName, PASSWORD))).rejects.toThrow("Bad credentials");
+    expect(requests.filter((r) => !r.startsWith("-")).every((r) => r.startsWith("owner "))).toBe(
+      true,
+    );
+  });
+});
+
+describe("sign-in target", () => {
+  it("reads the tenant from the plus suffix only for an active pass", async () => {
+    const tenants = fixedTenantStatus({ p4k7x2qa: "active" });
+    expect(await signInTarget(" Anna+p4k7x2qa@Example.org", tenants)).toEqual({
+      tenantId: "p4k7x2qa",
+      legacyEmail: "anna@example.org",
+    });
+    expect(await signInTarget("anna@example.org", tenants)).toEqual({
+      tenantId: "owner",
+      legacyEmail: "anna@example.org",
+    });
   });
 });

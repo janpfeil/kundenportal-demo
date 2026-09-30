@@ -1,6 +1,6 @@
 import { customerIdFor, deterministicUuid, originOf } from "@kundenportal/events";
 import type { LegacyAccess } from "@kundenportal/legacy";
-import { log } from "@kundenportal/service-kit";
+import { log, OWNER_TENANT } from "@kundenportal/service-kit";
 import type { AnnouncementRepository } from "./announcements.js";
 import {
   formatLegacyRef,
@@ -11,8 +11,8 @@ import {
 } from "./legacy-account.js";
 import type { IdentityEvents } from "./publisher.js";
 
-/** Tenant of every account in phase 1; demo passes add further tenants in phase 4. */
-export const DEFAULT_TENANT = "owner";
+/** Tenant of an account without `custom:tenant_id` (the owner's; see service-kit). */
+export const DEFAULT_TENANT = OWNER_TENANT;
 
 export interface AnnouncerDeps {
   access: () => Promise<LegacyAccess>;

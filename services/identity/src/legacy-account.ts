@@ -1,6 +1,6 @@
 import type { LegacyAccountRef, LegacySystem } from "@kundenportal/events";
 import { type MappingResult, mapTelcoSubscriber, mapUtilityCustomer } from "@kundenportal/legacy";
-import { log } from "@kundenportal/service-kit";
+import { log, OWNER_TENANT } from "@kundenportal/service-kit";
 import type { LegacyAccess } from "@kundenportal/legacy";
 
 /** User attribute that records which legacy account a Cognito user came from. */
@@ -22,8 +22,10 @@ export function parseLegacyRef(value: string | undefined): LegacyAccountRef | un
 
 /**
  * Finds the legacy account whose password matches: the utility checks its bcrypt hash,
- * the telco's Keycloak realm checks telco customers. Both run in parallel to stay within
- * Cognito's 5 seconds; the utility wins if both accept (duplicates are linked later).
+ * the telco's Keycloak realm checks the owner's telco customers; a demo pass tenant's
+ * telco customers are checked by the telco system itself (`/v2/auth/check`), since the
+ * realm belongs to the owner. Both run in parallel to stay within Cognito's 5 seconds;
+ * the utility wins if both accept (duplicates are linked later).
  */
 export async function authenticateLegacy(
   access: LegacyAccess,
@@ -31,17 +33,29 @@ export async function authenticateLegacy(
   email: string,
   password: string,
 ): Promise<MappingResult | undefined> {
+  const telcoCheck: Promise<{ subscriberId?: string; email?: string } | undefined> =
+    tenantId === OWNER_TENANT
+      ? access.keycloak.verify(email, password).then(
+          (claims) =>
+            claims && {
+              ...(claims.subscriber_id ? { subscriberId: claims.subscriber_id } : {}),
+              ...(claims.email ? { email: claims.email } : {}),
+            },
+        )
+      : access.telco
+          .checkLogin(tenantId, email, password)
+          .then((subscriberId) => (subscriberId ? { subscriberId } : undefined));
   const [utility, telco] = await Promise.allSettled([
     access.utility.verifyLogin(tenantId, email, password),
-    access.keycloak.verify(email, password),
+    telcoCheck,
   ]);
   if (utility.status === "fulfilled" && utility.value) {
     const kunde = await access.utility.getCustomer(tenantId, utility.value);
     if (kunde) return mapUtilityCustomer(kunde);
   }
   if (telco.status === "fulfilled" && telco.value) {
-    const subscriber = telco.value.subscriber_id
-      ? await access.telco.getSubscriber(tenantId, telco.value.subscriber_id)
+    const subscriber = telco.value.subscriberId
+      ? await access.telco.getSubscriber(tenantId, telco.value.subscriberId)
       : await access.telco.findByMail(tenantId, telco.value.email ?? email);
     if (subscriber) return mapTelcoSubscriber(subscriber);
   }
