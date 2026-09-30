@@ -1,3 +1,4 @@
+import { PASS_GROUP, groupsOf } from "@kundenportal/web-auth";
 import { redirect } from "next/navigation";
 import type { NextRequest } from "next/server";
 import { config } from "@/lib/config";
@@ -35,6 +36,7 @@ export async function GET(request: NextRequest) {
   };
   if (typeof claims.name === "string") session.name = claims.name;
   if (typeof claims.email === "string") session.email = claims.email;
-  await writeSession(session);
+  // The navigation of prerendered pages shows the pass entry from this hint (no API call).
+  await writeSession(session, groupsOf(tokens.access_token).includes(PASS_GROUP) ? "pass" : "user");
   redirect(transaction.returnTo);
 }

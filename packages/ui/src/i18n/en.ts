@@ -10,6 +10,7 @@ export const en: CommonTexts = {
     contracts: "Contracts",
     consumption: "Consumption",
     cockpit: "Cockpit",
+    pass: "Demo pass",
   },
   auth: {
     login: "Sign in",

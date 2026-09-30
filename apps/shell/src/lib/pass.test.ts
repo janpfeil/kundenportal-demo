@@ -11,8 +11,8 @@ vi.mock("./config", () => ({
   }),
 }));
 
-const { POST: redeem } = await import("../app/pass/einloesen/api/route");
-const { GET: challenge } = await import("../app/pass/einloesen/challenge/route");
+const { POST: redeem } = await import("../app/(public)/pass/einloesen/api/route");
+const { GET: challenge } = await import("../app/(public)/pass/einloesen/challenge/route");
 
 const ORIGIN = "https://kundenportal-demo.rypox.com";
 const TOKEN = "Zm9vYmFyYmF6cXV4cXV1eGNvcmdlZ3JhdWx0Z2FycGx5";

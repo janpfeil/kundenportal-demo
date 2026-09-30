@@ -8,6 +8,7 @@ export const de = {
     contracts: "Verträge",
     consumption: "Verbrauch",
     cockpit: "Cockpit",
+    pass: "Demo-Pass",
   },
   auth: {
     login: "Anmelden",

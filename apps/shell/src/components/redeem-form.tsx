@@ -3,7 +3,8 @@
 import { Button, ButtonLink, Notice } from "@kundenportal/ui";
 import { sendJson } from "@kundenportal/web-auth/browser";
 import { type FormEvent, useEffect, useRef, useState } from "react";
-import type { Dictionary, Locale } from "@/i18n";
+import type { Locale } from "@kundenportal/ui/i18n";
+import type { RedeemTexts } from "@/i18n/public";
 import { type RedeemError, redeemError, tokenFromHash } from "@/lib/redeem";
 
 type Phase = "loading" | "noToken" | "ready" | "sending" | "done";
@@ -13,7 +14,7 @@ type Phase = "loading" | "noToken" | "ready" | "sending" | "done";
  * to a server; it leaves the browser only in the body of the redeem request. The ALTCHA
  * widget fetches its challenge from the shell and solves it in the browser.
  */
-export function RedeemForm({ texts, locale }: { texts: Dictionary["redeem"]; locale: Locale }) {
+export function RedeemForm({ texts, locale }: { texts: RedeemTexts; locale: Locale }) {
   const [phase, setPhase] = useState<Phase>("loading");
   const [error, setError] = useState<RedeemError | "verifyFirst" | undefined>();
   const [verified, setVerified] = useState(false);

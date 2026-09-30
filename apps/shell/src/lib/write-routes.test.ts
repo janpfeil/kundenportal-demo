@@ -12,9 +12,9 @@ vi.mock("./config", () => ({
   config: () => ({ appUrl: new URL("https://kundenportal-demo.rypox.com") }),
 }));
 
-const { PATCH: patchProfile } = await import("../app/konto/profil/route");
-const { POST: markRead } = await import("../app/postfach/[notificationId]/gelesen/route");
-const { POST: confirmLink } = await import("../app/konto/verknuepfung/route");
+const { PATCH: patchProfile } = await import("../app/(app)/konto/profil/route");
+const { POST: markRead } = await import("../app/(app)/postfach/[notificationId]/gelesen/route");
+const { POST: confirmLink } = await import("../app/(app)/konto/verknuepfung/route");
 
 const request = (origin: string | undefined, body?: unknown) =>
   new Request("https://kundenportal-demo.rypox.com/x", {

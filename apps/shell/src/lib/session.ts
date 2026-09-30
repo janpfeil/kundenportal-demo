@@ -3,6 +3,7 @@ import { clientSecret } from "./client-secret";
 import { config } from "./config";
 import { LOGIN_COOKIE, SESSION_COOKIE } from "./cookie-names";
 import { deriveKey, seal, unseal } from "./crypto";
+import { UI_HINT_COOKIE, type UiHint } from "./ui-hint";
 
 /**
  * Server-side session (BFF pattern): the access token stays on the server, the browser
@@ -49,14 +50,22 @@ export async function readSession(): Promise<Session | undefined> {
   return session && session.expiresAt > Date.now() ? session : undefined;
 }
 
-export async function writeSession(session: Session): Promise<void> {
+/**
+ * Opens the session. Next to the encrypted session cookie the shell sets the readable
+ * signed-in hint for its prerendered pages (see ui-hint.ts), with the same lifetime.
+ */
+export async function writeSession(session: Session, hint: UiHint = "user"): Promise<void> {
   const value = await seal({ ...session }, await key("session"), new Date(session.expiresAt));
   const maxAge = Math.max(0, Math.floor((session.expiresAt - Date.now()) / 1000));
-  (await cookies()).set(SESSION_COOKIE, value, cookieOptions(maxAge));
+  const store = await cookies();
+  store.set(SESSION_COOKIE, value, cookieOptions(maxAge));
+  store.set(UI_HINT_COOKIE, hint, { ...cookieOptions(maxAge), httpOnly: false });
 }
 
 export async function clearSession(): Promise<void> {
-  (await cookies()).delete(SESSION_COOKIE);
+  const store = await cookies();
+  store.delete(SESSION_COOKIE);
+  store.delete(UI_HINT_COOKIE);
 }
 
 export async function writeLoginTransaction(transaction: LoginTransaction): Promise<void> {
