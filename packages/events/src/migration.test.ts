@@ -7,6 +7,8 @@ import {
   customerIdFor,
   DuplicateCandidateFound,
   LegacyAccountMigrated,
+  MAX_REMOVED_ACCOUNTS_PER_EVENT,
+  MigratedAccountsRemoved,
   MigrationRecordFailed,
   originOf,
   PasswordResetRequired,
@@ -133,6 +135,11 @@ const cases = [
       attempts: 1,
     },
   ],
+  [
+    "MigratedAccountsRemoved",
+    MigratedAccountsRemoved,
+    { reason: "demo-reset", accounts: [{ subject, customerId }] },
+  ],
 ] as const;
 
 describe.each(cases)("%s", (name, event, payload) => {
@@ -186,6 +193,33 @@ describe("LegacyAccountMigrated", () => {
   it("keeps installments in integer cents", () => {
     const contract = { ...electricity, monthlyInstallmentCent: 87.5 };
     expect(parses({ ...migrated, contracts: [contract] })).toBe(false);
+  });
+});
+
+describe("MigratedAccountsRemoved", () => {
+  const parses = (accounts: object[], reason = "demo-reset") =>
+    MigratedAccountsRemoved.detail.safeParse({ ...metadata, payload: { reason, accounts } })
+      .success;
+  const account = (i: number) => ({ subject: `sub-${i}`, customerId: `c-${i}` });
+
+  it("lists at least one and at most a chunk of accounts", () => {
+    expect(parses([])).toBe(false);
+    const full = Array.from({ length: MAX_REMOVED_ACCOUNTS_PER_EVENT }, (_, i) => account(i));
+    expect(parses(full)).toBe(true);
+    expect(parses([...full, account(-1)])).toBe(false);
+  });
+
+  it("stays far below EventBridge's 256 KB with a full chunk", () => {
+    const accounts = Array.from({ length: MAX_REMOVED_ACCOUNTS_PER_EVENT }, () => ({
+      subject,
+      customerId,
+    }));
+    const size = JSON.stringify({ ...metadata, payload: { reason: "demo-reset", accounts } });
+    expect(size.length).toBeLessThan(32 * 1024);
+  });
+
+  it("knows only the demo reset as reason", () => {
+    expect(parses([account(1)], "cleanup")).toBe(false);
   });
 });
 

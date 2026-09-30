@@ -237,3 +237,40 @@ export const MigrationRecordFailed = {
   ),
 } as const;
 export type MigrationRecordFailedDetail = z.infer<typeof MigrationRecordFailed.detail>;
+
+/**
+ * Most accounts one `MigratedAccountsRemoved` carries. The demo reset publishes several
+ * events beyond it: an EventBridge event may hold 256 KB, and every consumer deletes the
+ * data of all listed customers within one invocation.
+ */
+export const MAX_REMOVED_ACCOUNTS_PER_EVENT = 100;
+
+/** Why migrated portal accounts were removed; so far only the cockpit's demo reset. */
+export const AccountsRemovedReason = z.enum(["demo-reset"]);
+
+/**
+ * The migration removed the portal accounts (Cognito users) it had created. The
+ * identities cannot sign in any more, and a new sign-in of the same person creates a new
+ * subject and customer id; every domain therefore deletes its data of these customers in
+ * the event's tenant — idempotently, a redelivered event finds nothing left to delete.
+ */
+export const MigratedAccountsRemoved = {
+  source: EventSource.migration,
+  detailType: "MigratedAccountsRemoved",
+  detail: eventDetailSchema(
+    z.object({
+      reason: AccountsRemovedReason,
+      accounts: z
+        .array(
+          z.object({
+            subject: z.string().min(1),
+            /** `customerIdFor(tenantId, subject)`. */
+            customerId: z.string().min(1),
+          }),
+        )
+        .min(1)
+        .max(MAX_REMOVED_ACCOUNTS_PER_EVENT),
+    }),
+  ),
+} as const;
+export type MigratedAccountsRemovedDetail = z.infer<typeof MigratedAccountsRemoved.detail>;
