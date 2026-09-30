@@ -79,6 +79,7 @@ export const de = {
     errorEmpty: "Die Datei ist leer.",
     errorSetup:
       "Ihr Konto wird noch eingerichtet. Bitte versuchen Sie es in einer Minute noch einmal.",
+    errorQuota: "Ihr Demo-Pass hat sein Upload-Kontingent aufgebraucht.",
     errorSession: "Ihre Sitzung ist abgelaufen. Bitte melden Sie sich erneut an.",
     errorGeneric: "Das Foto konnte nicht hochgeladen werden. Bitte versuchen Sie es noch einmal.",
     login: "Erneut anmelden",

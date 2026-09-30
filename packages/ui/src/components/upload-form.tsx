@@ -27,6 +27,8 @@ export interface UploadTexts {
   errorSize: string;
   errorEmpty: string;
   errorSetup: string;
+  /** The demo pass has used up its uploads (429 from the documents service). */
+  errorQuota: string;
   errorSession: string;
   errorGeneric: string;
   login: string;
@@ -103,6 +105,7 @@ export function UploadForm({
         if (announced.status === 401)
           setFeedback({ tone: "error", text: texts.errorSession, login: true });
         else if (announced.status === 409) setFeedback({ tone: "error", text: texts.errorSetup });
+        else if (announced.status === 429) setFeedback({ tone: "error", text: texts.errorQuota });
         else setFeedback({ tone: "error", text: texts.errorGeneric });
         return;
       }

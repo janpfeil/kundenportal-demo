@@ -14,6 +14,7 @@ const texts: UploadTexts = {
   errorSize: "Zu groß",
   errorEmpty: "Leer",
   errorSetup: "Konto wird eingerichtet",
+  errorQuota: "Uploads aufgebraucht",
   errorSession: "Sitzung abgelaufen",
   errorGeneric: "Fehlgeschlagen",
   login: "Erneut anmelden",
@@ -94,5 +95,12 @@ describe("UploadForm", () => {
       "href",
       "/auth/login?returnTo=/zone",
     );
+  });
+
+  it("explains an exhausted upload quota of a demo pass", async () => {
+    const { choose, submit } = setup(vi.fn().mockResolvedValue({ ok: false, status: 429 }));
+    choose(new File(["png"], "a.png", { type: "image/png" }));
+    submit();
+    expect(await screen.findByRole("alert")).toHaveTextContent("Uploads aufgebraucht");
   });
 });

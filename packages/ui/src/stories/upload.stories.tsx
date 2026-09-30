@@ -17,6 +17,7 @@ const texts: Record<Locale, UploadTexts & { other: string; meterPhoto: string; p
     errorEmpty: "Die Datei ist leer.",
     errorSetup:
       "Ihr Konto wird noch eingerichtet. Bitte versuchen Sie es in einer Minute noch einmal.",
+    errorQuota: "Ihr Demo-Pass hat sein Upload-Kontingent aufgebraucht.",
     errorSession: "Ihre Sitzung ist abgelaufen. Bitte melden Sie sich erneut an.",
     errorGeneric: "Die Datei konnte nicht hochgeladen werden. Bitte versuchen Sie es noch einmal.",
     login: "Erneut anmelden",
@@ -36,6 +37,7 @@ const texts: Record<Locale, UploadTexts & { other: string; meterPhoto: string; p
     errorSize: "The file is too large (at most 5 MB).",
     errorEmpty: "The file is empty.",
     errorSetup: "Your account is still being set up. Please try again in a minute.",
+    errorQuota: "Your demo pass has used up its uploads.",
     errorSession: "Your session has expired. Please sign in again.",
     errorGeneric: "The file could not be uploaded. Please try again.",
     login: "Sign in again",
@@ -47,14 +49,14 @@ const texts: Record<Locale, UploadTexts & { other: string; meterPhoto: string; p
 
 interface Args {
   /** Status the simulated announcement answers with (no request leaves Storybook). */
-  answer: 401 | 409 | 500;
+  answer: 401 | 409 | 429 | 500;
   meterPhoto: boolean;
 }
 
 const meta: Meta<Args> = {
   title: "Forms/UploadForm",
   args: { answer: 409, meterPhoto: false },
-  argTypes: { answer: { control: "select", options: [401, 409, 500] } },
+  argTypes: { answer: { control: "select", options: [401, 409, 429, 500] } },
   render: ({ answer, meterPhoto }, { globals }) => {
     const t = texts[isLocale(globals["locale"]) ? globals["locale"] : "de"];
     return (
@@ -86,4 +88,6 @@ export const Documents: Story = {};
 export const MeterPhoto: Story = { args: { meterPhoto: true } };
 /** Expired session: the error offers a sign-in link. */
 export const SessionExpired: Story = { args: { answer: 401 } };
+/** A demo pass that has used up its uploads (429). */
+export const QuotaExhausted: Story = { args: { answer: 429 } };
 export const English: Story = { globals: { locale: "en" } };

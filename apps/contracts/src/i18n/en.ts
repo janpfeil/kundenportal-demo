@@ -108,6 +108,7 @@ export const en: Dictionary = {
     errorSize: "The file is too large (at most 5 MB).",
     errorEmpty: "The file is empty.",
     errorSetup: "Your account is still being set up. Please try again in a minute.",
+    errorQuota: "Your demo pass has used up its uploads.",
     errorSession: "Your session has expired. Please sign in again.",
     errorGeneric: "The file could not be uploaded. Please try again.",
     login: "Sign in again",
