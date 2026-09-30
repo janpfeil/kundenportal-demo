@@ -27,11 +27,13 @@ import {
   ResourceNotFoundException as ScheduleNotFound,
   type SchedulerClient,
 } from "@aws-sdk/client-scheduler";
+import { PublishCommand, type SNSClient } from "@aws-sdk/client-sns";
 import type { LegacyAccess } from "@kundenportal/legacy";
 import { PASS_GROUP } from "./model.js";
 import {
   type ExpirySchedules,
   type LegacyTenants,
+  type OwnerHints,
   scheduleName,
   type TenantAccounts,
   type TenantTables,
@@ -302,5 +304,24 @@ export class S3TenantUploads implements TenantUploads {
       token = page.IsTruncated ? page.NextContinuationToken : undefined;
     } while (token);
     return deleted;
+  }
+}
+
+/** Hints to the owner via the owner topic (the same topic the notification service uses). */
+export class SnsOwnerHints implements OwnerHints {
+  constructor(
+    private readonly sns: SNSClient,
+    private readonly topicArn: string,
+  ) {}
+
+  async send(subject: string, message: string): Promise<void> {
+    await this.sns.send(
+      new PublishCommand({
+        TopicArn: this.topicArn,
+        // SNS allows at most 100 characters in an e-mail subject.
+        Subject: subject.slice(0, 100),
+        Message: message,
+      }),
+    );
   }
 }

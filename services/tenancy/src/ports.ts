@@ -44,5 +44,14 @@ export interface TenantUploads {
   deleteAll(tenantId: string): Promise<number>;
 }
 
+/**
+ * Short operational hints to the portal owner (the owner topic in SNS with an e-mail
+ * subscription). Hints name the pass, its address and tenant — never the demo password
+ * or a token.
+ */
+export interface OwnerHints {
+  send(subject: string, message: string): Promise<void>;
+}
+
 /** Name of the expiry schedule of a tenant. */
 export const scheduleName = (tenantId: string) => `pass-expiry-${tenantId}`;

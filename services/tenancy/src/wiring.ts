@@ -4,10 +4,11 @@ import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { EventBridgeClient } from "@aws-sdk/client-eventbridge";
 import { S3Client } from "@aws-sdk/client-s3";
 import { SchedulerClient } from "@aws-sdk/client-scheduler";
+import { SNSClient } from "@aws-sdk/client-sns";
 import { SSMClient } from "@aws-sdk/client-ssm";
 import { DynamoDBDocumentClient } from "@aws-sdk/lib-dynamodb";
 import { cachedLegacyAccess } from "@kundenportal/legacy";
-import { requireEnv } from "@kundenportal/service-kit";
+import { log, requireEnv } from "@kundenportal/service-kit";
 import { Altcha, cachedHmacKey } from "./altcha.js";
 import {
   CognitoTenantAccounts,
@@ -15,12 +16,15 @@ import {
   LegacySystemTenants,
   S3TenantUploads,
   SchedulerExpiry,
+  SnsOwnerHints,
 } from "./aws.js";
 import type { TenancyContext } from "./context.js";
 import type { TenancyConfig } from "./model.js";
 import { Passes } from "./passes.js";
+import type { OwnerHints } from "./ports.js";
 import { TenancyEvents } from "./publisher.js";
 import { TenancyRepository } from "./repository.js";
+import { PlatformSettings } from "./settings.js";
 
 function numberEnv(name: string, fallback: number, max = Number.MAX_SAFE_INTEGER): number {
   const raw = process.env[name];
@@ -61,6 +65,18 @@ export function workerArn(env: NodeJS.ProcessEnv = process.env): string {
   return `arn:aws:lambda:${region}:${account}:function:${name}`;
 }
 
+/**
+ * Hints to the owner via the owner topic (`OWNER_TOPIC_ARN`). Without it (a stack that
+ * predates the hints) the worker logs instead, so provisioning never fails over a hint.
+ */
+export function ownerHintsFromEnv(env: NodeJS.ProcessEnv = process.env): OwnerHints {
+  const topicArn = env.OWNER_TOPIC_ARN;
+  if (topicArn) return new SnsOwnerHints(new SNSClient({}), topicArn);
+  return {
+    send: async (subject) => log("warn", "OWNER_TOPIC_ARN is not set; hint dropped", { subject }),
+  };
+}
+
 const db = () =>
   DynamoDBDocumentClient.from(new DynamoDBClient({}), {
     marshallOptions: { removeUndefinedValues: true },
@@ -97,20 +113,25 @@ function baseContext(config: TenancyConfig, lifecycle: boolean): TenancyContext 
             roleArn: requireEnv("SCHEDULER_ROLE_ARN"),
           }),
           uploads: new S3TenantUploads(new S3Client({}), requireEnv("UPLOAD_BUCKET")),
+          ownerHints: ownerHintsFromEnv(),
         }
       : {
           tables: unused("tables"),
           legacy: unused("legacy"),
           schedules: unused("schedules"),
           uploads: unused("uploads"),
+          ownerHints: unused("ownerHints"),
         }),
   };
 }
 
-/** JWT API: invitations, pass administration, own pass. */
+/** JWT API: invitations, pass administration, own pass, platform settings. */
 export function createApiUseCases() {
   const ctx = baseContext(configFromEnv(), false);
-  return { passes: new Passes(ctx) };
+  return {
+    passes: new Passes(ctx),
+    settings: new PlatformSettings(ctx.repository, ctx.config, ctx.now),
+  };
 }
 
 /** Public API: ALTCHA challenge and redeem. */

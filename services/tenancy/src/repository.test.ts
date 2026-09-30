@@ -51,7 +51,7 @@ beforeEach(() => dbMock.reset());
 describe("tenancy repository", () => {
   it("redeems, creates pass, tenant and address lock in one transaction", async () => {
     dbMock.on(TransactWriteCommand).resolves({});
-    expect(await repository.issuePass("hash", NOW, pass, tenant)).toBe("issued");
+    expect(await repository.issuePass("hash", NOW, pass, tenant, 3)).toBe("issued");
     const items = dbMock.commandCalls(TransactWriteCommand)[0]?.args[0].input.TransactItems ?? [];
     expect(items[0]?.Update).toMatchObject({
       Key: { PK: "INVITE#hash", SK: "META" },
@@ -65,6 +65,12 @@ describe("tenancy repository", () => {
       SK: "PASS",
       passId: "pass-1",
     });
+    expect(items[4]?.Update).toMatchObject({
+      Key: { PK: "PLATFORM", SK: "SETTINGS" },
+      UpdateExpression: "ADD activeTenants :one",
+      ConditionExpression: "attribute_not_exists(activeTenants) OR activeTenants < :max",
+      ExpressionAttributeValues: { ":one": 1, ":max": 3 },
+    });
   });
 
   it("maps cancelled transactions to the failed condition", async () => {
@@ -76,12 +82,14 @@ describe("tenancy repository", () => {
       });
     dbMock
       .on(TransactWriteCommand)
-      .rejectsOnce(cancelled(["ConditionalCheckFailed", "None", "None", "None"]))
-      .rejectsOnce(cancelled(["None", "None", "None", "ConditionalCheckFailed"]))
-      .rejectsOnce(cancelled(["None", "None", "ConditionalCheckFailed", "None"]));
-    expect(await repository.issuePass("h", NOW, pass, tenant)).toBe("invitation-gone");
-    expect(await repository.issuePass("h", NOW, pass, tenant)).toBe("email-taken");
-    await expect(repository.issuePass("h", NOW, pass, tenant)).rejects.toThrow("cancelled");
+      .rejectsOnce(cancelled(["ConditionalCheckFailed", "None", "None", "None", "None"]))
+      .rejectsOnce(cancelled(["None", "None", "None", "ConditionalCheckFailed", "None"]))
+      .rejectsOnce(cancelled(["None", "None", "None", "None", "ConditionalCheckFailed"]))
+      .rejectsOnce(cancelled(["None", "None", "ConditionalCheckFailed", "None", "None"]));
+    expect(await repository.issuePass("h", NOW, pass, tenant, 3)).toBe("invitation-gone");
+    expect(await repository.issuePass("h", NOW, pass, tenant, 3)).toBe("email-taken");
+    expect(await repository.issuePass("h", NOW, pass, tenant, 3)).toBe("tenants-full");
+    await expect(repository.issuePass("h", NOW, pass, tenant, 3)).rejects.toThrow("cancelled");
   });
 
   it("stores invitations with a TTL at their expiry", async () => {
@@ -166,6 +174,80 @@ describe("tenancy repository", () => {
       "p4k7x2qa",
       "pbbbbbbb",
     ]);
+  });
+
+  it("marks a tenant deleted and frees its place of the cap in one transaction", async () => {
+    const cancelled = (codes: string[]) =>
+      new TransactionCanceledException({
+        message: "cancelled",
+        $metadata: {},
+        CancellationReasons: codes.map((Code) => ({ Code })),
+      });
+    dbMock
+      .on(TransactWriteCommand)
+      .resolvesOnce({})
+      .rejectsOnce(cancelled(["ConditionalCheckFailed", "None"]))
+      .rejectsOnce(cancelled(["None", "ConditionalCheckFailed"]));
+    dbMock.on(UpdateCommand).resolves({});
+    const keep = new Date("2026-10-30T12:00:00.000Z");
+
+    expect(await repository.markTenantDeleted("p4k7x2qa", NOW, keep)).toBe(true);
+    const items = dbMock.commandCalls(TransactWriteCommand)[0]?.args[0].input.TransactItems ?? [];
+    expect(items[0]?.Update).toMatchObject({
+      Key: { PK: "PLATFORM", SK: "TENANT#p4k7x2qa" },
+      ConditionExpression: "attribute_exists(PK) AND #status <> :status",
+      ExpressionAttributeValues: { ":status": "deleted", ":ttl": keep.getTime() / 1000 },
+    });
+    expect(items[1]?.Update).toMatchObject({
+      Key: { PK: "PLATFORM", SK: "SETTINGS" },
+      UpdateExpression: "ADD activeTenants :minusOne",
+      ConditionExpression: "activeTenants > :zero",
+    });
+
+    // Already deleted: nothing to free.
+    expect(await repository.markTenantDeleted("p4k7x2qa", NOW, keep)).toBe(false);
+    expect(dbMock.commandCalls(UpdateCommand)).toHaveLength(0);
+
+    // Counter missing or 0: the tenant is still marked, the counter left alone.
+    expect(await repository.markTenantDeleted("p4k7x2qa", NOW, keep)).toBe(true);
+    expect(dbMock.commandCalls(UpdateCommand)[0]?.args[0].input.Key).toEqual({
+      PK: "PLATFORM",
+      SK: "TENANT#p4k7x2qa",
+    });
+  });
+
+  it("corrects the counter only if nobody changed it meanwhile", async () => {
+    dbMock.on(UpdateCommand).resolvesOnce({}).rejectsOnce(failed());
+    expect(await repository.setActiveTenants(2, 3)).toBe(true);
+    expect(dbMock.commandCalls(UpdateCommand)[0]?.args[0].input).toMatchObject({
+      UpdateExpression: "SET activeTenants = :count",
+      ConditionExpression: "activeTenants = :seen",
+      ExpressionAttributeValues: { ":count": 2, ":seen": 3 },
+    });
+    expect(await repository.setActiveTenants(2, undefined)).toBe(false);
+    expect(dbMock.commandCalls(UpdateCommand)[1]?.args[0].input.ConditionExpression).toBe(
+      "attribute_not_exists(activeTenants)",
+    );
+  });
+
+  it("updates the settings; reopening removes when and why it was closed", async () => {
+    dbMock.on(UpdateCommand).resolves({
+      Attributes: { PK: "PLATFORM", SK: "SETTINGS", redemption: "open", maxTenants: 4 },
+    });
+    expect(await repository.updateSettings({ redemption: "open", maxTenants: 4 }, NOW)).toEqual({
+      redemption: "open",
+      maxTenants: 4,
+    });
+    expect(dbMock.commandCalls(UpdateCommand)[0]?.args[0].input.UpdateExpression).toBe(
+      "SET maxTenants = :max, redemption = :open REMOVE closedAt, closedReason",
+    );
+    await repository.updateSettings({ redemption: "closed" }, NOW);
+    expect(dbMock.commandCalls(UpdateCommand)[1]?.args[0].input).toMatchObject({
+      UpdateExpression:
+        "SET redemption = :closed, closedAt = if_not_exists(closedAt, :now), " +
+        "closedReason = if_not_exists(closedReason, :reason)",
+      ExpressionAttributeValues: { ":reason": "Vom Inhaber gesperrt" },
+    });
   });
 
   it("keeps a finished pass and its address lock for a while", async () => {

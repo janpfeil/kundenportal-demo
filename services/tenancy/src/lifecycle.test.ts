@@ -67,10 +67,41 @@ describe("provisioning", () => {
     const provisioned = TenantProvisioned.detail.parse(s.published.at(-1)?.detail);
     expect(provisioned.payload).toEqual({ passId, tenantId, tableName: table, durationMs: 20_000 });
 
+    expect(s.hints).toEqual([
+      {
+        subject: "Demo-Pass eingelöst",
+        message:
+          `Demo-Pass eingelöst: visitor@example.org, Mandant ${tenantId}, ` +
+          "gültig bis 07.10.2026, 14:00 (Europe/Berlin).",
+      },
+    ]);
+
     // A redelivered event does nothing.
     await s.worker(event);
     expect(s.calls).toHaveLength(4);
     expect(s.types().filter((type) => type === "TenantProvisioned")).toHaveLength(1);
+    expect(s.hints).toHaveLength(1);
+  });
+
+  it("tells the owner about the end without secrets, and survives a failing hint", async () => {
+    const s = setup();
+    const { tenantId, passId } = await activePass(s);
+    await s.worker({ task: "expire", tenantId, passId });
+    await s.worker(expiredEvent(s));
+    const ended = s.hints.at(-1);
+    expect(ended).toEqual({
+      subject: "Demo-Pass beendet",
+      message: `Demo-Pass beendet (abgelaufen): visitor@example.org, Mandant ${tenantId} gelöscht, 1 Konto, 0 Uploads.`,
+    });
+    const password = s.repository.tenants.get(tenantId)?.demoPassword ?? "unset";
+    expect(JSON.stringify(s.hints)).not.toContain(password);
+
+    const failing = setup();
+    failing.ctx.ownerHints.send = async () => {
+      throw new Error("SNS down");
+    };
+    const pass = await activePass(failing, "b@example.org");
+    expect(failing.repository.tenants.get(pass.tenantId)?.status).toBe("active");
   });
 
   it("creates short-lived holders without the Cognito mail", async () => {
@@ -141,11 +172,31 @@ describe("expiry and teardown", () => {
       deletedAccounts: 1,
     });
 
+    expect(s.repository.settings.activeTenants).toBe(0);
+
     // Redelivery and a late schedule are harmless.
     await s.worker(event);
     await s.worker({ task: "expire", tenantId, passId });
     expect(s.types().filter((type) => type === "TenantDeleted")).toHaveLength(1);
     expect(s.types().filter((type) => type === "DemoPassExpired")).toHaveLength(1);
+    expect(s.hints.filter((hint) => hint.subject === "Demo-Pass beendet")).toHaveLength(1);
+  });
+
+  it("frees exactly one place of the cap per tenant, however often it is torn down", async () => {
+    const s = setup();
+    const first = await activePass(s, "a@example.org");
+    await activePass(s, "b@example.org");
+    expect(s.repository.settings.activeTenants).toBe(2);
+    await Promise.all([
+      teardownTenant(s.ctx, first.tenantId),
+      teardownTenant(s.ctx, first.tenantId),
+      teardownTenant(s.ctx, first.tenantId),
+    ]);
+    expect(s.repository.settings.activeTenants).toBe(1);
+    // A counter that drifted to 0 stays at 0 instead of going negative.
+    s.repository.settings.activeTenants = 0;
+    await teardownAllTenants(s.ctx);
+    expect(s.repository.settings.activeTenants).toBe(0);
   });
 
   it("tears down orphans that have no platform items", async () => {
@@ -172,8 +223,22 @@ describe("reconcile", () => {
       expired: [overdue.tenantId, stuck.tenantId].sort(),
       reprovisioned: [],
       tornDown: ["porphan2"],
+      // Both only expired so far (tearing-down): they still hold their place.
+      activeTenants: 2,
     });
     expect(s.tables.has("kp-tenant-porphan2")).toBe(false);
+  });
+
+  it("recomputes a drifted counter of active tenants from the tenant items", async () => {
+    const s = setup();
+    await activePass(s, "a@example.org");
+    await activePass(s, "b@example.org");
+    s.repository.settings.activeTenants = 3;
+    expect(await s.worker({ task: "reconcile" })).toMatchObject({ activeTenants: 2 });
+    expect(s.repository.settings.activeTenants).toBe(2);
+    delete s.repository.settings.activeTenants;
+    await s.worker({ task: "reconcile" });
+    expect(s.repository.settings.activeTenants).toBe(2);
   });
 
   it("re-drives a setup that hangs for more than ten minutes", async () => {

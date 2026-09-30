@@ -16,6 +16,7 @@ import type { Repository } from "./context.js";
 import { OWNER_GROUP, PASS_GROUP, type TenancyConfig } from "./model.js";
 import { InvitationRequest, type Passes, RedeemRequest } from "./passes.js";
 import { sha256 } from "./secrets.js";
+import { PlatformSettings, SettingsRequest } from "./settings.js";
 
 /**
  * Groups from the access token. The HTTP API's JWT authorizer passes array claims as a
@@ -38,9 +39,17 @@ function owner(event: ApiEvent): Caller {
 }
 
 /** Routes behind the JWT authorizer. */
-export function createApi(passes: Passes): ApiHandler {
+export function createApi(passes: Passes, settings: PlatformSettings): ApiHandler {
   return router(
     {
+      "GET /tenancy/settings": async (event) => {
+        owner(event);
+        return json(200, await settings.get());
+      },
+      "PUT /tenancy/settings": async (event) => {
+        owner(event);
+        return json(200, await settings.update(parseBody(event, SettingsRequest)));
+      },
       "POST /tenancy/invitations": async (event) =>
         json(
           201,
@@ -90,7 +99,10 @@ function clientAddresses(event: ApiEvent) {
 const tooManyRequests = () =>
   new HttpError(429, "Too Many Requests", "Too many attempts. Please try again in an hour.");
 
-/** Routes without JWT: the ALTCHA challenge and redeeming an invitation link. */
+/** How long browsers and the CDN may reuse the public offer. */
+export const OFFER_MAX_AGE_SECONDS = 60;
+
+/** Routes without JWT: the offer, the ALTCHA challenge and redeeming an invitation link. */
 export function createPublicApi(
   passes: Passes,
   altcha: Altcha,
@@ -98,8 +110,20 @@ export function createPublicApi(
   config: TenancyConfig,
   now: () => Date = () => new Date(),
 ): ApiHandler {
+  const settings = new PlatformSettings(repository, config, now);
   return router(
     {
+      "GET /tenancy/offer": async () => {
+        const result = json(200, await settings.offer());
+        // Same for every visitor and without personal data, so shared caches may keep it.
+        return {
+          ...result,
+          headers: {
+            ...result.headers,
+            "cache-control": `public, max-age=${OFFER_MAX_AGE_SECONDS}`,
+          },
+        };
+      },
       "GET /tenancy/challenge": async () => json(200, await altcha.challenge()),
       "POST /tenancy/redeem": async (event) => {
         const { client, source } = clientAddresses(event);

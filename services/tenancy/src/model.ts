@@ -78,14 +78,41 @@ export const PlatformTenant = z.object({
 });
 export type PlatformTenant = z.infer<typeof PlatformTenant>;
 
-/** `PLATFORM` / `SETTINGS`. */
+/** Default cap of concurrent pass tenants (architektur-mandanten §6). */
+export const DEFAULT_MAX_TENANTS = 3;
+/**
+ * Highest cap the owner may set. Every pass tenant has its own table with 5 RCU/5 WCU
+ * provisioned; the Always Free tier covers 25 RCU/25 WCU per account and region. The base
+ * table takes 5, so 4 tenants × 5 = 20 more reach exactly 25 — a fifth would be billed.
+ */
+export const MAX_TENANTS_LIMIT = 4;
+/** Upper limit of one upload (documents service, `MAX_UPLOAD_BYTES`), shown on the offer. */
+export const UPLOAD_MAX_BYTES = 5 * 1024 * 1024;
+
+/**
+ * `PLATFORM` / `SETTINGS`. `activeTenants` counts the pass tenants that are not
+ * `deleted`: the redeem adds one in the same transaction that creates the tenant (so the
+ * cap holds under concurrency), the teardown removes one when the tenant becomes
+ * `deleted`, and the daily reconcile recomputes it from the tenant items. Missing until
+ * the first redeem after the feature went live.
+ */
 export const Settings = z.object({
   redemption: z.enum(["open", "closed"]).default("open"),
-  maxTenants: z.number().int().nonnegative().default(3),
+  maxTenants: z.number().int().nonnegative().default(DEFAULT_MAX_TENANTS),
+  activeTenants: z.number().int().optional(),
   closedAt: isoDate.optional(),
   closedReason: z.string().optional(),
 });
 export type Settings = z.infer<typeof Settings>;
+
+/** `closedReason` when the owner closes redemption (the budget alarm names itself). */
+export const OWNER_CLOSED_REASON = "Vom Inhaber gesperrt";
+
+/** What the owner may change (`PUT /tenancy/settings`). */
+export interface SettingsChange {
+  redemption?: "open" | "closed" | undefined;
+  maxTenants?: number | undefined;
+}
 
 export type QuotaUsage = Record<QuotaKind, { used: number; limit: number }>;
 

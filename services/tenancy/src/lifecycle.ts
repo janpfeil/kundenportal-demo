@@ -15,6 +15,31 @@ import { addDays, PASS_RECORD_DAYS, STUCK_AFTER_MS, type TenantStatus } from "./
 const LIVE: TenantStatus[] = ["provisioning", "active", "quota-exceeded"];
 const NOT_DELETED: TenantStatus[] = [...LIVE, "tearing-down"];
 
+const berlinTime = new Intl.DateTimeFormat("de-DE", {
+  dateStyle: "medium",
+  timeStyle: "short",
+  timeZone: "Europe/Berlin",
+});
+const END_REASON: Record<PassEndReason, string> = {
+  expired: "abgelaufen",
+  revoked: "widerrufen",
+};
+
+/**
+ * Sends a hint to the owner. Hints are informative only: a failure is logged and never
+ * fails (or retries) the lifecycle step that triggered it.
+ */
+async function hintOwner(ctx: TenancyContext, subject: string, message: string) {
+  try {
+    await ctx.ownerHints.send(subject, message);
+  } catch (error) {
+    log("warn", "Owner hint could not be sent", {
+      subject,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+}
+
 /**
  * Sets up the tenant of a new pass (on `DemoPassIssued`): own table, legacy data, the
  * holder's Cognito account, the expiry schedule; then `active` and `TenantProvisioned`.
@@ -65,6 +90,13 @@ export async function provisionTenant(
       durationMs: Math.max(0, done.getTime() - Date.parse(tenant.createdAt)),
     },
   });
+  // Only the run that moved the tenant to `active` gets here, so the hint goes out once.
+  await hintOwner(
+    ctx,
+    "Demo-Pass eingelöst",
+    `Demo-Pass eingelöst: ${tenant.email}, Mandant ${tenantId}, gültig bis ` +
+      `${berlinTime.format(new Date(tenant.validUntil))} (Europe/Berlin).`,
+  );
 }
 
 /**
@@ -137,13 +169,8 @@ export async function teardownTenant(
   if (tenant) {
     const now = ctx.now();
     const keepUntil = addDays(now, PASS_RECORD_DAYS);
-    const deleted = await ctx.repository.setTenantStatus(
-      tenantId,
-      "deleted",
-      now,
-      NOT_DELETED,
-      keepUntil,
-    );
+    // Also takes the tenant off `activeTenants` — exactly once, in the same transaction.
+    const deleted = await ctx.repository.markTenantDeleted(tenantId, now, keepUntil);
     const pass = await ctx.repository.getPass(tenant.passId);
     if (pass) {
       await ctx.repository.updatePass(
@@ -173,6 +200,14 @@ export async function teardownTenant(
             error: error instanceof Error ? error.message : String(error),
           }),
         );
+      const reason = END_REASON[pass?.endReason ?? "expired"];
+      await hintOwner(
+        ctx,
+        "Demo-Pass beendet",
+        `Demo-Pass beendet (${reason}): ${tenant.email}, Mandant ${tenantId} gelöscht, ` +
+          `${deletedAccounts} ${deletedAccounts === 1 ? "Konto" : "Konten"}, ` +
+          `${deletedUploads} ${deletedUploads === 1 ? "Upload" : "Uploads"}.`,
+      );
     }
   }
   log("info", "Tenant torn down", { tenantId, deletedAccounts, deletedUploads });
@@ -190,6 +225,8 @@ export interface ReconcileResult {
   expired: string[];
   reprovisioned: string[];
   tornDown: string[];
+  /** Pass tenants that are not deleted, after the run (the recomputed counter). */
+  activeTenants?: number;
 }
 
 /**
@@ -246,7 +283,23 @@ export async function reconcile(ctx: TenancyContext): Promise<ReconcileResult> {
     await teardownTenant(ctx, tenantId, correlationId);
     result.tornDown.push(tenantId);
   }
+  result.activeTenants = await recountActiveTenants(ctx);
   return result;
+}
+
+/**
+ * Self-healing of the cap: recomputes `activeTenants` from the tenant items. The value
+ * is read before counting and only replaced if unchanged, so a redeem or teardown that
+ * runs concurrently is never overwritten. Returns the count.
+ */
+export async function recountActiveTenants(ctx: TenancyContext): Promise<number> {
+  const seen = (await ctx.repository.getSettings()).activeTenants;
+  const tenants = await ctx.repository.listTenants();
+  const count = tenants.filter((tenant) => tenant.status !== "deleted").length;
+  if (count !== seen && (await ctx.repository.setActiveTenants(count, seen))) {
+    log("warn", "Counter of active tenants corrected", { seen, count });
+  }
+  return count;
 }
 
 /**

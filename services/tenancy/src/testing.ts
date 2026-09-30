@@ -1,13 +1,15 @@
 import type { QuotaKind } from "@kundenportal/events";
 import type { z } from "zod";
 import type { Repository, TenancyContext } from "./context.js";
-import type {
-  Invitation,
-  Pass,
-  PlatformTenant,
-  Settings,
-  TenancyConfig,
-  TenantStatus,
+import {
+  type Invitation,
+  OWNER_CLOSED_REASON,
+  type Pass,
+  type PlatformTenant,
+  type Settings,
+  type SettingsChange,
+  type TenancyConfig,
+  type TenantStatus,
 } from "./model.js";
 import type { IssueResult } from "./repository.js";
 
@@ -31,12 +33,16 @@ export class MemoryRepository implements Repository {
   async getInvitation(hash: string) {
     return structuredClone(this.invitations.get(hash));
   }
-  async issuePass(hash: string, now: Date, pass: Pass, tenant: PlatformTenant) {
+  /** All conditions checked and all items written without an await: one transaction. */
+  async issuePass(hash: string, now: Date, pass: Pass, tenant: PlatformTenant, maxTenants: number) {
     const invitation = this.invitations.get(hash);
     if (!invitation || invitation.redeemedAt || invitation.expiresAt <= now.toISOString()) {
       return "invitation-gone" satisfies IssueResult;
     }
     if (this.emails.has(pass.email)) return "email-taken" satisfies IssueResult;
+    const active = this.settings.activeTenants;
+    if (active !== undefined && active >= maxTenants) return "tenants-full" satisfies IssueResult;
+    this.settings.activeTenants = (active ?? 0) + 1;
     invitation.redeemedAt = now.toISOString();
     invitation.passId = pass.passId;
     this.passes.set(pass.passId, structuredClone(pass));
@@ -87,8 +93,36 @@ export class MemoryRepository implements Repository {
     if (keepUntil) tenant.ttl = Math.floor(keepUntil.getTime() / 1000);
     return true;
   }
+  async markTenantDeleted(tenantId: string, now: Date, keepUntil: Date) {
+    const tenant = this.tenants.get(tenantId);
+    if (!tenant || tenant.status === "deleted") return false;
+    tenant.status = "deleted";
+    tenant.updatedAt = now.toISOString();
+    tenant.ttl = Math.floor(keepUntil.getTime() / 1000);
+    const active = this.settings.activeTenants;
+    if (active !== undefined && active > 0) this.settings.activeTenants = active - 1;
+    return true;
+  }
+  async setActiveTenants(count: number, seen: number | undefined) {
+    if (this.settings.activeTenants !== seen) return false;
+    this.settings.activeTenants = count;
+    return true;
+  }
   async getSettings(): Promise<Settings> {
-    return { redemption: "open", maxTenants: 3, ...this.settings };
+    return { redemption: "open", maxTenants: 3, ...structuredClone(this.settings) };
+  }
+  async updateSettings(change: SettingsChange, now: Date) {
+    if (change.maxTenants !== undefined) this.settings.maxTenants = change.maxTenants;
+    if (change.redemption === "open") {
+      this.settings.redemption = "open";
+      delete this.settings.closedAt;
+      delete this.settings.closedReason;
+    } else if (change.redemption === "closed") {
+      this.settings.redemption = "closed";
+      this.settings.closedAt ??= now.toISOString();
+      this.settings.closedReason ??= OWNER_CLOSED_REASON;
+    }
+    return this.getSettings();
   }
   async closeRedemption(now: Date, reason: string) {
     this.settings = {
@@ -146,6 +180,7 @@ export function testContext(overrides: Partial<TenancyContext> = {}) {
   const legacyTenants = new Map<string, string>();
   const schedules = new Map<string, { passId: string; at: Date }>();
   const uploads = new Map<string, number>();
+  const hints: { subject: string; message: string }[] = [];
   let clock = NOW;
   let ids = 0;
   const ctx: TenancyContext = {
@@ -222,6 +257,11 @@ export function testContext(overrides: Partial<TenancyContext> = {}) {
         return count;
       },
     },
+    ownerHints: {
+      async send(subject, message) {
+        hints.push({ subject, message });
+      },
+    },
     config: CONFIG,
     now: () => clock,
     newId: () => `id-${++ids}`,
@@ -237,6 +277,7 @@ export function testContext(overrides: Partial<TenancyContext> = {}) {
     legacyTenants,
     schedules,
     uploads,
+    hints,
     types: () => published.map((p) => p.detailType),
     advance: (ms: number) => {
       clock = new Date(clock.getTime() + ms);

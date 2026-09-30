@@ -3,7 +3,6 @@ import {
   TransactionCanceledException,
 } from "@aws-sdk/client-dynamodb";
 import {
-  type DynamoDBDocumentClient,
   DeleteCommand,
   GetCommand,
   PutCommand,
@@ -12,17 +11,11 @@ import {
   UpdateCommand,
 } from "@aws-sdk/lib-dynamodb";
 import { QuotaKind } from "@kundenportal/events";
-import {
-  Invitation,
-  Pass,
-  PlatformTenant,
-  Settings,
-  type TenantStatus,
-  epochSeconds,
-} from "./model.js";
+import { Invitation, Pass, PlatformTenant, type TenantStatus, epochSeconds } from "./model.js";
 import { sha256 } from "./secrets.js";
+import { SETTINGS_KEY, SettingsRepository } from "./settings-repository.js";
 
-export type IssueResult = "issued" | "invitation-gone" | "email-taken";
+export type IssueResult = "issued" | "invitation-gone" | "email-taken" | "tenants-full";
 
 const PLATFORM = "PLATFORM";
 const inviteKey = (tokenHash: string) => ({ PK: `INVITE#${tokenHash}`, SK: "META" });
@@ -33,27 +26,24 @@ const quotaKey = (tenantId: string, kind: QuotaKind) => ({
   PK: `TENANT#${tenantId}`,
   SK: `QUOTA#${kind}`,
 });
-const SETTINGS_KEY = { PK: PLATFORM, SK: "SETTINGS" };
 
 const isConditionFailure = (error: unknown) => error instanceof ConditionalCheckFailedException;
+const cancellationCodes = (error: TransactionCanceledException) =>
+  error.CancellationReasons?.map((reason) => reason.Code) ?? [];
 
 /**
  * Platform items of the tenancy domain in the base table (architektur-mandanten §1):
  * - `INVITE#<sha256(token)>` / `META` — invitation, TTL 14 days
  * - `PASS#<passId>` / `META` — the pass, kept 30 days after the teardown (TTL)
  * - `PLATFORM` / `TENANT#<id>` — every pass tenant with its status (reconcile, cockpit)
- * - `PLATFORM` / `SETTINGS` — kill switch and the cap of concurrent pass tenants
+ * - `PLATFORM` / `SETTINGS` — kill switch, cap of concurrent pass tenants (`maxTenants`)
+ *   and the counter of tenants that are not deleted (`activeTenants`)
  * - `EMAIL#<sha256(email)>` / `PASS` — one pass per address
  * - `TENANT#<id>` / `QUOTA#<kind>` — counters (`used`)
  * - `RATE#<sha256(ip)>` / `REDEEM` — redeem attempts per address and hour (TTL)
  * - `ALTCHA#<sha256(signature)>` / `USED` — solved challenges, against replays (TTL)
  */
-export class TenancyRepository {
-  constructor(
-    private readonly db: DynamoDBDocumentClient,
-    private readonly table: string,
-  ) {}
-
+export class TenancyRepository extends SettingsRepository {
   async putInvitation(tokenHash: string, invitation: Invitation): Promise<void> {
     await this.db.send(
       new PutCommand({
@@ -77,9 +67,17 @@ export class TenancyRepository {
 
   /**
    * Redeems the invitation exactly once and creates pass, platform tenant and the
-   * address lock in one transaction, so a race never yields two passes.
+   * address lock in one transaction, so a race never yields two passes. The same
+   * transaction adds one to `activeTenants` only while it is below `maxTenants`, so two
+   * simultaneous redeems cannot exceed the cap either.
    */
-  async issuePass(tokenHash: string, now: Date, pass: Pass, tenant: PlatformTenant) {
+  async issuePass(
+    tokenHash: string,
+    now: Date,
+    pass: Pass,
+    tenant: PlatformTenant,
+    maxTenants: number,
+  ) {
     try {
       await this.db.send(
         new TransactWriteCommand({
@@ -115,15 +113,25 @@ export class TenancyRepository {
                 ConditionExpression: "attribute_not_exists(PK)",
               },
             },
+            {
+              Update: {
+                TableName: this.table,
+                Key: SETTINGS_KEY,
+                UpdateExpression: "ADD activeTenants :one",
+                ConditionExpression: "attribute_not_exists(activeTenants) OR activeTenants < :max",
+                ExpressionAttributeValues: { ":one": 1, ":max": maxTenants },
+              },
+            },
           ],
         }),
       );
       return "issued" satisfies IssueResult;
     } catch (error) {
       if (!(error instanceof TransactionCanceledException)) throw error;
-      const reasons = error.CancellationReasons?.map((reason) => reason.Code) ?? [];
+      const reasons = cancellationCodes(error);
       if (reasons[0] === "ConditionalCheckFailed") return "invitation-gone" satisfies IssueResult;
       if (reasons[3] === "ConditionalCheckFailed") return "email-taken" satisfies IssueResult;
+      if (reasons[4] === "ConditionalCheckFailed") return "tenants-full" satisfies IssueResult;
       throw error;
     }
   }
@@ -249,27 +257,57 @@ export class TenancyRepository {
     }
   }
 
-  async getSettings(): Promise<Settings> {
-    const result = await this.db.send(
-      new GetCommand({ TableName: this.table, Key: SETTINGS_KEY, ConsistentRead: true }),
-    );
-    return Settings.parse(result.Item ?? {});
-  }
-
-  /** Kill switch: no further redemptions; running passes stay usable. */
-  async closeRedemption(now: Date, reason: string): Promise<void> {
-    await this.db.send(
-      new UpdateCommand({
-        TableName: this.table,
-        Key: SETTINGS_KEY,
-        UpdateExpression: "SET redemption = :closed, closedAt = :now, closedReason = :reason",
-        ExpressionAttributeValues: {
-          ":closed": "closed",
-          ":now": now.toISOString(),
-          ":reason": reason,
-        },
-      }),
-    );
+  /**
+   * Moves a tenant that is not yet deleted to `deleted` (kept until `keepUntil`) and
+   * removes it from `activeTenants` in the same transaction, so the counter drops exactly
+   * once per tenant however often the teardown runs. A counter that is missing or
+   * already 0 (drift; the reconcile repairs it) is left alone rather than going negative.
+   * Returns false if the tenant is missing or already deleted.
+   */
+  async markTenantDeleted(tenantId: string, now: Date, keepUntil: Date): Promise<boolean> {
+    const tenantUpdate = {
+      TableName: this.table,
+      Key: tenantKey(tenantId),
+      UpdateExpression: "SET #status = :status, updatedAt = :now, #ttl = :ttl",
+      ConditionExpression: "attribute_exists(PK) AND #status <> :status",
+      ExpressionAttributeNames: { "#status": "status", "#ttl": "ttl" },
+      ExpressionAttributeValues: {
+        ":status": "deleted",
+        ":now": now.toISOString(),
+        ":ttl": epochSeconds(keepUntil),
+      },
+    };
+    try {
+      await this.db.send(
+        new TransactWriteCommand({
+          TransactItems: [
+            { Update: tenantUpdate },
+            {
+              Update: {
+                TableName: this.table,
+                Key: SETTINGS_KEY,
+                UpdateExpression: "ADD activeTenants :minusOne",
+                ConditionExpression: "activeTenants > :zero",
+                ExpressionAttributeValues: { ":minusOne": -1, ":zero": 0 },
+              },
+            },
+          ],
+        }),
+      );
+      return true;
+    } catch (error) {
+      if (!(error instanceof TransactionCanceledException)) throw error;
+      const reasons = cancellationCodes(error);
+      if (reasons[0] === "ConditionalCheckFailed") return false;
+      if (reasons[1] !== "ConditionalCheckFailed") throw error;
+    }
+    try {
+      await this.db.send(new UpdateCommand(tenantUpdate));
+      return true;
+    } catch (error) {
+      if (isConditionFailure(error)) return false;
+      throw error;
+    }
   }
 
   /**

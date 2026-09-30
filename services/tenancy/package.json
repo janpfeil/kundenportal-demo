@@ -16,6 +16,7 @@
     "@aws-sdk/client-eventbridge": "^3.1142.0",
     "@aws-sdk/client-s3": "^3.1142.0",
     "@aws-sdk/client-scheduler": "^3.1142.0",
+    "@aws-sdk/client-sns": "^3.1142.0",
     "@aws-sdk/client-ssm": "^3.1142.0",
     "@aws-sdk/lib-dynamodb": "^3.1142.0",
     "@kundenportal/events": "workspace:*",

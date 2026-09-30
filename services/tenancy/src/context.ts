@@ -2,6 +2,7 @@ import type { TenancyConfig } from "./model.js";
 import type {
   ExpirySchedules,
   LegacyTenants,
+  OwnerHints,
   TenantAccounts,
   TenantTables,
   TenantUploads,
@@ -21,6 +22,7 @@ export interface TenancyContext {
   legacy: LegacyTenants;
   schedules: ExpirySchedules;
   uploads: TenantUploads;
+  ownerHints: OwnerHints;
   config: TenancyConfig;
   now: () => Date;
   newId: () => string;

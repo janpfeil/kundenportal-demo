@@ -12,6 +12,7 @@ import {
   type Pass,
   type PlatformTenant,
   type QuotaUsage,
+  type Settings,
   type TenantStatus,
 } from "./model.js";
 import { newDemoPassword, newInvitationToken, newTenantId, sha256 } from "./secrets.js";
@@ -46,6 +47,7 @@ export function plusAddress(email: string, tenantId: string): string {
 const conflict = (detail: string) => new HttpError(409, "Conflict", detail);
 const gone = (detail: string) => new HttpError(410, "Gone", detail);
 const unavailable = (detail: string) => new HttpError(503, "Service Unavailable", detail);
+const allInUse = () => unavailable("All demo instances are in use. Please try again later.");
 
 /** Owner and pass-holder use cases of the API. */
 export class Passes {
@@ -177,10 +179,8 @@ export class Passes {
     if (Date.parse(invitation.expiresAt) <= now.getTime()) {
       throw gone("The invitation link has expired");
     }
-    const live = (await repository.listTenants()).filter((t) => t.status !== "deleted");
-    if (live.length >= settings.maxTenants) {
-      throw unavailable("All demo instances are in use. Please try again later.");
-    }
+    // Fast refusal only; the transaction below enforces the cap atomically.
+    if ((await this.activeTenants(settings)) >= settings.maxTenants) throw allInUse();
     if (await repository.hasPassFor(invitation.email)) {
       throw conflict("This address already has a demo pass");
     }
@@ -216,9 +216,10 @@ export class Passes {
       demoPassword: newDemoPassword(),
       ...flags,
     };
-    const issued = await repository.issuePass(tokenHash, now, pass, tenant);
+    const issued = await repository.issuePass(tokenHash, now, pass, tenant, settings.maxTenants);
     if (issued === "invitation-gone") throw conflict("The invitation link has already been used");
     if (issued === "email-taken") throw conflict("This address already has a demo pass");
+    if (issued === "tenants-full") throw allInUse();
 
     await this.ctx.events.publish(DemoPassIssued, {
       eventId: deterministicUuid("DemoPassIssued", passId),
@@ -234,5 +235,16 @@ export class Passes {
       },
     });
     return { passId, statusUrl: `${config.portalUrl}/pass` };
+  }
+
+  /**
+   * The counter of tenants that are not deleted. Before the first redeem with the counter
+   * it is missing; then it is seeded from the tenant items (only if still missing).
+   */
+  private async activeTenants(settings: Settings): Promise<number> {
+    if (settings.activeTenants !== undefined) return settings.activeTenants;
+    const live = (await this.ctx.repository.listTenants()).filter((t) => t.status !== "deleted");
+    await this.ctx.repository.setActiveTenants(live.length, undefined);
+    return live.length;
   }
 }

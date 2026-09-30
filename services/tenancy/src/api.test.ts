@@ -7,6 +7,7 @@ import { Altcha } from "./altcha.js";
 import { CLIENT_IP_HEADER, createApi, createPublicApi, groupsOf } from "./api.js";
 import { Passes, plusAddress } from "./passes.js";
 import { sha256 } from "./secrets.js";
+import { PlatformSettings } from "./settings.js";
 import { CONFIG, testContext } from "./testing.js";
 
 const OWNER = { sub: "owner-sub", "cognito:groups": "[owner]" };
@@ -20,7 +21,7 @@ function setup() {
     ...t,
     passes,
     altcha,
-    api: createApi(passes),
+    api: createApi(passes, new PlatformSettings(t.repository, CONFIG, t.ctx.now)),
     publicApi: createPublicApi(passes, altcha, t.repository, CONFIG, t.ctx.now),
   };
 }
@@ -205,12 +206,41 @@ describe("redeem", () => {
     expect(capped.statusCode).toBe(503);
     expect(body(capped).detail).toMatch(/in use/);
 
-    const first = [...s.repository.tenants.values()][0];
-    if (first) first.status = "deleted";
+    expect(s.repository.settings.activeTenants).toBe(3);
+
+    const first = [...s.repository.tenants.keys()][0] ?? "";
+    await s.repository.markTenantDeleted(first, s.ctx.now(), s.ctx.now());
+    expect(s.repository.settings.activeTenants).toBe(2);
     await s.repository.closeRedemption(s.ctx.now(), "budget");
     const closed = await redeem(s, await invite(s, "e@example.org"));
     expect(closed.statusCode).toBe(503);
     expect(body(closed).detail).toMatch(/paused/);
+  });
+
+  it("never exceeds the cap with simultaneous redeems (atomic counter)", async () => {
+    const s = setup();
+    s.repository.settings.maxTenants = 2;
+    const tokens = await Promise.all(
+      ["a@example.org", "b@example.org", "c@example.org", "d@example.org"].map((email) =>
+        invite(s, email),
+      ),
+    );
+    // The redeems interleave at every await, so several pass the fast check with the same
+    // counter value; only the transaction's condition keeps the cap.
+    const results = await Promise.all(tokens.map((token) => redeem(s, token)));
+    const codes = results.map((result) => result.statusCode).sort();
+    expect(codes).toEqual([202, 202, 503, 503]);
+    expect(s.repository.tenants.size).toBe(2);
+    expect(s.repository.settings.activeTenants).toBe(2);
+    expect(s.types().filter((type) => type === "DemoPassIssued")).toHaveLength(2);
+  });
+
+  it("seeds a missing counter from the tenant items before the first redeem", async () => {
+    const s = setup();
+    await redeem(s, await invite(s, "a@example.org"));
+    delete s.repository.settings.activeTenants;
+    await redeem(s, await invite(s, "b@example.org"));
+    expect(s.repository.settings.activeTenants).toBe(2);
   });
 
   it("allows one pass per address and none for existing portal accounts", async () => {
