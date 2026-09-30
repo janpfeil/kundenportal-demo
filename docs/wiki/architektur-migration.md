@@ -61,12 +61,20 @@ des Portals.
    [Custom Attributes](glossar.md#custom-attribute) `legacy_ref`
    (`utility:V-1000123`) und `migration_mode` (`lazy`). Cognito legt den
    Nutzer mit dem eingegebenen Passwort an; der Hash verlässt das Altsystem nie.
-3. Der [Post-Authentication-Trigger](glossar.md#post-authentication-trigger)
-   kennt nun die neue `sub`, liest das Altsystem erneut und veröffentlicht
+3. Die neue `sub` steht erst nach dem Migrate-User-Trigger fest. Die
+   AWS-Dokumentation lässt offen, ob bei genau dieser Anmeldung der
+   [Post-Authentication-Trigger](glossar.md#post-authentication-trigger) läuft
+   (in der Tabelle für Managed Login fehlt er); der Pre-Token-Trigger läuft,
+   weil Tokens ausgestellt werden [A]. Deshalb versuchen **beide**, die Übernahme
+   zu melden: Sie lesen das Altsystem erneut und veröffentlichen
    `LegacyAccountMigrated` (Quelle `kundenportal.identity`) mit Stammdaten und
-   Verträgen. Ein Merker (`SUBJ#<sub>` / `IDENTITY#LEGACY`) verhindert
-   Wiederholungen; scheitert das Veröffentlichen, versucht es die nächste
-   Anmeldung erneut. Die Anmeldung selbst scheitert daran nie.
+   Verträgen. Ein Merker (`SUBJ#<sub>` / `IDENTITY#LEGACY`) sorgt dafür, dass es
+   einmal geschieht; die Ereignis-ID ist aus dem Altkonto abgeleitet, eine
+   Wiederholung ist also dasselbe Ereignis. Scheitert das Veröffentlichen,
+   versucht es die nächste Anmeldung oder Token-Erneuerung erneut; die Anmeldung
+   selbst scheitert daran nie. Der App-Client erlaubt den Passwort-Flow
+   (`USER_PASSWORD_AUTH`), den AWS für den Migrate-User-Trigger voraussetzt
+   [B: https://docs.aws.amazon.com/cognito/latest/developerguide/user-pool-lambda-migrate-user.html].
 4. Der Pre-Token-Trigger setzt zusätzlich den Claim `origin`. Ruft die Shell
    `/me` auf, bevor das Ereignis verarbeitet ist, legt `customer` das Profil
    mit dieser Herkunft und der aus der Identität abgeleiteten Kunden-ID an
@@ -103,13 +111,19 @@ DLQ und gibt sie mit der eingetragenen Korrektur (z. B. fehlende
 Postleitzahl) erneut an den Processor; das Altsystem bleibt unverändert.
 
 Passwort-Hashes: Telko-Hashes lassen sich ohne den Pepper nirgends prüfen,
-also nie importieren. bcrypt-Hashes des Versorgers kann Cognito grundsätzlich
-per CSV-Importauftrag übernehmen
-[B: https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-pools-using-import-tool.html];
-das Demo setzt auch dort auf die Reset-Aufforderung (Grund
-`hash-import-unavailable`), weil ein Importauftrag eine eigene IAM-Rolle, eine
-CSV über S3 und einen asynchronen Auftrag je Lauf bräuchte — die offene
-Folgefrage steht in der [Übersicht](uebersicht.md).
+also nie importieren. bcrypt-Hashes des Versorgers kann Cognito seit 07/2026
+per CSV-Importauftrag übernehmen (Spalte `password_hash`, `$2b$` bis Aufwand
+12; importierte Nutzer sind sofort `CONFIRMED`, zählen beim Import nicht als
+MAU) — aber nur in User Pools auf der neuen Cognito-Infrastruktur, ohne
+Einstellung, mit der man das selbst herbeiführen kann
+[B: https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-pools-using-import-tool.html].
+Ein Auftrag braucht außerdem eine IAM-Rolle für CloudWatch Logs, eine CSV über
+eine vorsignierte URL und darf nur einzeln je Konto laufen; ein Passwort-Hash
+für einzelne Nutzer per API existiert nicht
+[B: https://docs.aws.amazon.com/cognito-user-identity-pools/latest/APIReference/API_AdminSetUserPassword.html].
+Das Demo setzt deshalb auch beim Versorger auf die Reset-Aufforderung (Grund
+`hash-import-unavailable`); die offene Folgefrage steht in der
+[Übersicht](uebersicht.md).
 
 ## 3. Dubletten und Account-Linking (J3)
 

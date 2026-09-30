@@ -2,7 +2,9 @@ import type { PostAuthenticationTriggerEvent } from "aws-lambda";
 import { customerIdFor, type LegacyAccountMigratedDetail } from "@kundenportal/events";
 import { describe, expect, it, vi } from "vitest";
 import type { AnnouncementRepository } from "./announcements.js";
+import { createAnnouncer } from "./announce.js";
 import { createHandler } from "./post-authentication.js";
+import { createHandler as createPreToken } from "./pre-token-generation.js";
 import type { IdentityEvents } from "./publisher.js";
 import { fakeLegacy } from "./testing.js";
 
@@ -44,13 +46,13 @@ function setup(options: { announced?: boolean; publishFails?: boolean; down?: bo
       published.push(detail);
     }),
   } as unknown as IdentityEvents;
-  const handler = createHandler({
+  const announce = createAnnouncer({
     access: async () => fakeLegacy({ down: options.down ?? false }),
     announcements,
     events,
     now: () => new Date("2026-09-30T12:00:00Z"),
   });
-  return { handler, published, marks };
+  return { handler: createHandler(announce), preToken: createPreToken(announce), published, marks };
 }
 
 const lazyAnna = { "custom:legacy_ref": "utility:V-1000123", "custom:migration_mode": "lazy" };
@@ -96,5 +98,31 @@ describe("post authentication trigger", () => {
     const down = setup({ down: true });
     await expect(down.handler(trigger(lazyAnna))).resolves.toBeDefined();
     expect(down.published).toHaveLength(0);
+  });
+
+  it("also announces from the pre token trigger, which fires on every sign-in", async () => {
+    const { preToken, published } = setup();
+    const event = {
+      version: "2",
+      triggerSource: "TokenGeneration_Authentication",
+      request: {
+        userAttributes: { sub: SUB, email: "anna.becker@example.org", ...lazyAnna },
+        scopes: [],
+      },
+      response: { claimsAndScopeOverrideDetails: null },
+    } as never;
+    const result = await preToken(event);
+    expect(published).toHaveLength(1);
+    expect(
+      (
+        result as {
+          response: {
+            claimsAndScopeOverrideDetails: {
+              accessTokenGeneration: { claimsToAddOrOverride: object };
+            };
+          };
+        }
+      ).response.claimsAndScopeOverrideDetails.accessTokenGeneration.claimsToAddOrOverride,
+    ).toMatchObject({ origin: "legacy-utility" });
   });
 });

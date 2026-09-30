@@ -526,12 +526,12 @@ describe("migration (phase 3)", () => {
         );
       }
     }
-    // user migration + post authentication; migration API, worker and processor
+    // user migration, post authentication, pre token; migration API, worker and processor
     const count = (template: Template) =>
       Object.values(template.findResources("AWS::Lambda::Function")).filter(
         (fn) => fn.Properties.Environment?.Variables?.LEGACY_TELCO_URL_PARAM,
       ).length;
-    expect(count(base)).toBe(2);
+    expect(count(base)).toBe(3);
     expect(count(application)).toBe(3);
   });
 

@@ -9,7 +9,7 @@ import {
   LEGACY_REF_ATTRIBUTE,
   MIGRATION_MODE_ATTRIBUTE,
 } from "./legacy-account.js";
-import { DEFAULT_TENANT } from "./pre-token-generation.js";
+import { DEFAULT_TENANT } from "./announce.js";
 
 let access: Promise<LegacyAccess> | undefined;
 

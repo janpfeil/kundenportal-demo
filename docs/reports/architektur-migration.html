@@ -100,20 +100,28 @@ des Portals.</p>
    <a href="glossar.html#custom-attribute">Custom Attributes</a> <code>legacy_ref</code>
    (<code>utility:V-1000123</code>) und <code>migration_mode</code> (<code>lazy</code>). Cognito legt den
    Nutzer mit dem eingegebenen Passwort an; der <a class="term" href="glossar.html#passwort-hash" title="Einweg-verschlüsselte Form eines Passworts; alte Systeme nutzen oft schwache Verfahren (MD5, SHA-1), die bei der Migration einen Passwort-Reset erzwingen">Hash</a> verlässt das <a class="term" href="glossar.html#legacy-system" title="bestehendes Altsystem mit Kundendaten, das abgelöst werden soll; im Demo simuliert">Altsystem</a> nie.</li>
-<li>Der <a href="glossar.html#post-authentication-trigger">Post-Authentication-Trigger</a>
-   kennt nun die neue <code>sub</code>, liest das Altsystem erneut und veröffentlicht
+<li>Die neue <code>sub</code> steht erst nach dem <a class="term" href="glossar.html#migrate-user-trigger" title="Cognito-Trigger für die Lazy Migration: meldet sich ein unbekannter Nutzer mit Passwort an, prüft die Lambda die Daten beim Altsystem; bei Erfolg legt Cognito den Nutzer mit demsel">Migrate-User-Trigger</a> fest. Die
+   <a class="term" href="glossar.html#aws" title="Cloud-Plattform von Amazon mit über 200 Diensten (Rechenleistung, Datenbanken, Netzwerk, Messaging …), abgerechnet nach Nutzung">AWS</a>-Dokumentation lässt offen, ob bei genau dieser Anmeldung der
+   <a href="glossar.html#post-authentication-trigger">Post-Authentication-Trigger</a> läuft
+   (in der Tabelle für Managed Login fehlt er); der <a class="term" href="glossar.html#pre-token-generation-trigger" title="Lambda, die Cognito vor dem Ausstellen der Tokens aufruft; in Version 2 kann sie dem Access Token eigene Claims hinzufügen (im Demo tenant_id, email, locale, name)">Pre-Token-Trigger</a> läuft,
+   weil <a class="term" href="glossar.html#token" title="digitaler Ausweis, den ein Identitätsdienst ausstellt und den eine App bei jedem API-Aufruf mitschickt">Tokens</a> ausgestellt werden [A]. Deshalb versuchen <strong>beide</strong>, die Übernahme
+   zu melden: Sie lesen das Altsystem erneut und veröffentlichen
    <code>LegacyAccountMigrated</code> (Quelle <code>kundenportal.identity</code>) mit Stammdaten und
-   Verträgen. Ein Merker (<code>SUBJ#&lt;sub&gt;</code> / <code>IDENTITY#LEGACY</code>) verhindert
-   <a class="term" href="glossar.html#retry" title="erneuter Verarbeitungsversuch nach einem Fehler">Wiederholungen</a>; scheitert das Veröffentlichen, versucht es die nächste
-   Anmeldung erneut. Die Anmeldung selbst scheitert daran nie.</li>
-<li>Der <a class="term" href="glossar.html#pre-token-generation-trigger" title="Lambda, die Cognito vor dem Ausstellen der Tokens aufruft; in Version 2 kann sie dem Access Token eigene Claims hinzufügen (im Demo tenant_id, email, locale, name)">Pre-Token-Trigger</a> setzt zusätzlich den <a class="term" href="glossar.html#claims" title="einzelne Angaben in einem JWT (z. B. sub, email, eigene Rollen)">Claim</a> <code>origin</code>. Ruft die <a class="term" href="glossar.html#shell" title="Rahmenanwendung, die Navigation, Login und Layout stellt und die Micro-Frontends einbindet">Shell</a>
-   <code>/me</code> auf, bevor das <a class="term" href="glossar.html#event" title="Nachricht, dass etwas passiert ist (z. B. „Zählerstand erfasst&quot;); Empfänger reagieren darauf, ohne dass der Absender sie kennt">Ereignis</a> verarbeitet ist, legt <code>customer</code> das Profil
+   Verträgen. Ein Merker (<code>SUBJ#&lt;sub&gt;</code> / <code>IDENTITY#LEGACY</code>) sorgt dafür, dass es
+   einmal geschieht; die <a class="term" href="glossar.html#event" title="Nachricht, dass etwas passiert ist (z. B. „Zählerstand erfasst&quot;); Empfänger reagieren darauf, ohne dass der Absender sie kennt">Ereignis</a>-ID ist aus dem <a class="term" href="glossar.html#altkonto" title="Kundenkonto im Altsystem des Versorgers oder der Telko, das ins neue Portal übernommen wird (nicht zu verwechseln mit einem alten AWS-Konto)">Altkonto</a> abgeleitet, eine
+   <a class="term" href="glossar.html#retry" title="erneuter Verarbeitungsversuch nach einem Fehler">Wiederholung</a> ist also dasselbe Ereignis. Scheitert das Veröffentlichen,
+   versucht es die nächste Anmeldung oder Token-Erneuerung erneut; die Anmeldung
+   selbst scheitert daran nie. Der <a class="term" href="glossar.html#app-client" title="Eintrag einer Anwendung im User Pool mit Client-ID, erlaubten Rückkehr-Adressen und Abläufen; ein vertraulicher Client (hier die Next.js-Shell) hat zusätzlich ein Geheimnis, das nu">App-Client</a> erlaubt den Passwort-Flow
+   (<code>USER_PASSWORD_AUTH</code>), den AWS für den Migrate-User-Trigger voraussetzt
+   [B: <a href="https://docs.aws.amazon.com/cognito/latest/developerguide/user-pool-lambda-migrate-user.html">https://docs.aws.amazon.com/cognito/latest/developerguide/user-pool-lambda-migrate-user.html</a>].</li>
+<li>Der Pre-Token-Trigger setzt zusätzlich den <a class="term" href="glossar.html#claims" title="einzelne Angaben in einem JWT (z. B. sub, email, eigene Rollen)">Claim</a> <code>origin</code>. Ruft die <a class="term" href="glossar.html#shell" title="Rahmenanwendung, die Navigation, Login und Layout stellt und die Micro-Frontends einbindet">Shell</a>
+   <code>/me</code> auf, bevor das Ereignis verarbeitet ist, legt <code>customer</code> das Profil
    mit dieser Herkunft und der aus der Identität abgeleiteten Kunden-ID an
    (<code>customerIdFor</code>) — ohne Demo-Verträge. Der Worker von <code>customer</code> ergänzt
    dann Anschrift und Telefon; <code>contract</code> übernimmt die Verträge mit dem
    bisherigen <a class="term" href="glossar.html#abschlag" title="monatliche Vorauszahlung auf die Energie-Jahresrechnung; wird nach neuem Zählerstand angepasst">Abschlag</a> und dem letzten abgerechneten Zählerstand als Bezug.</li>
 </ol>
-<p>Fehlt einem <a class="term" href="glossar.html#altkonto" title="Kundenkonto im Altsystem des Versorgers oder der Telko, das ins neue Portal übernommen wird (nicht zu verwechseln mit einem alten AWS-Konto)">Altkonto</a> die E-Mail-Adresse (Emil), lehnt der Trigger ab: ein
+<p>Fehlt einem Altkonto die E-Mail-Adresse (Emil), lehnt der Trigger ab: ein
 <a href="glossar.html#klärfall">Klärfall</a>, kein Portal-Konto.</p>
 <h2 id="2-bulk-import-der-inaktiven-j7">2. Bulk-Import der Inaktiven (J7)<a class="anchor" href="#2-bulk-import-der-inaktiven-j7" title="Permanent link">#</a></h2>
 <p>Der Inhaber startet im Cockpit den Import eines <a class="term" href="glossar.html#legacy-system" title="bestehendes Altsystem mit Kundendaten, das abgelöst werden soll; im Demo simuliert">Altsystems</a>
@@ -139,13 +147,19 @@ mit Zählern). <strong><a class="term" href="glossar.html#redrive" title="Zurüc
 DLQ und gibt sie mit der eingetragenen Korrektur (z. B. fehlende
 Postleitzahl) erneut an den Processor; das Altsystem bleibt unverändert.</p>
 <p><a class="term" href="glossar.html#passwort-hash" title="Einweg-verschlüsselte Form eines Passworts; alte Systeme nutzen oft schwache Verfahren (MD5, SHA-1), die bei der Migration einen Passwort-Reset erzwingen">Passwort-Hashes</a>: Telko-Hashes lassen sich ohne den <a class="term" href="glossar.html#pepper" title="geheimer Wert, der beim Hashen zusätzlich zum Salt einfließt und nicht bei den Daten liegt; Hashes lassen sich ohne ihn nirgends prüfen — deshalb kann das Portal Telko-Passwörter n">Pepper</a> nirgends prüfen,
-also nie importieren. <a class="term" href="glossar.html#bcrypt" title="verbreitetes Passwort-Hashverfahren mit Salt und einstellbarem Aufwand; das Versorger-Altsystem speichert Passwörter so">bcrypt-Hashes</a> des <a class="term" href="glossar.html#multi-sparten-versorger" title="Unternehmen, das mehrere Versorgungs- und Kommunikationsprodukte anbietet (Strom, Gas, Wasser, Wärme, Internet, Mobilfunk) – typisch für Stadtwerke">Versorgers</a> kann Cognito grundsätzlich
-per <a class="term" href="glossar.html#csv" title="einfache Tabellendatei mit durch Komma getrennten Werten, lesbar mit LibreOffice Calc oder Excel">CSV</a>-Importauftrag übernehmen
-[B: <a href="https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-pools-using-import-tool.html">https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-pools-using-import-tool.html</a>];
-das Demo setzt auch dort auf die Reset-Aufforderung (Grund
-<code>hash-import-unavailable</code>), weil ein Importauftrag eine eigene <a class="term" href="glossar.html#iam" title="Rechteverwaltung von AWS: Rollen und Richtlinien legen fest, wer (Mensch, Dienst, Lambda) was mit welcher Ressource darf">IAM-Rolle</a>, eine
-CSV über <a class="term" href="glossar.html#s3" title="Objektspeicher für Dateien beliebiger Größe in „Buckets&quot;; Standard für statische Websites, Uploads, Build-Artefakte">S3</a> und einen asynchronen Auftrag je Lauf bräuchte — die offene
-Folgefrage steht in der <a href="index.html">Übersicht</a>.</p>
+also nie importieren. <a class="term" href="glossar.html#bcrypt" title="verbreitetes Passwort-Hashverfahren mit Salt und einstellbarem Aufwand; das Versorger-Altsystem speichert Passwörter so">bcrypt-Hashes</a> des <a class="term" href="glossar.html#multi-sparten-versorger" title="Unternehmen, das mehrere Versorgungs- und Kommunikationsprodukte anbietet (Strom, Gas, Wasser, Wärme, Internet, Mobilfunk) – typisch für Stadtwerke">Versorgers</a> kann Cognito seit 07/2026
+per <a class="term" href="glossar.html#csv" title="einfache Tabellendatei mit durch Komma getrennten Werten, lesbar mit LibreOffice Calc oder Excel">CSV</a>-Importauftrag übernehmen (Spalte <code>password_hash</code>, <code>$2b$</code> bis Aufwand
+12; importierte Nutzer sind sofort <code>CONFIRMED</code>, zählen beim Import nicht als
+<a class="term" href="glossar.html#mau" title="Zahl der Nutzer, die sich in einem Monat mindestens einmal anmelden oder ihr Konto ändern; Preisgrundlage bei Cognito (Essentials: 10.000 frei) und Auth0">MAU</a>) — aber nur in <a class="term" href="glossar.html#user-pool" title="Nutzerverzeichnis in Cognito mit eigenen Nutzern, Gruppen, App-Clients und Triggern; zugleich OIDC-Aussteller">User Pools</a> auf der neuen Cognito-Infrastruktur, ohne
+Einstellung, mit der man das selbst herbeiführen kann
+[B: <a href="https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-pools-using-import-tool.html">https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-pools-using-import-tool.html</a>].
+Ein Auftrag braucht außerdem eine <a class="term" href="glossar.html#iam" title="Rechteverwaltung von AWS: Rollen und Richtlinien legen fest, wer (Mensch, Dienst, Lambda) was mit welcher Ressource darf">IAM-Rolle</a> für <a class="term" href="glossar.html#cloudwatch" title="AWS-Dienst für Logs, Metriken und Alarme">CloudWatch Logs</a>, eine CSV über
+eine <a class="term" href="glossar.html#presigned-url" title="zeitlich begrenzter, signierter Link, mit dem der Browser direkt in S3 hoch- oder herunterlädt, ohne AWS-Zugangsdaten">vorsignierte URL</a> und darf nur einzeln je Konto laufen; ein Passwort-Hash
+für einzelne Nutzer per <a class="term" href="glossar.html#api" title="Programmierschnittstelle, über die Programme miteinander sprechen">API</a> existiert nicht
+[B: <a href="https://docs.aws.amazon.com/cognito-user-identity-pools/latest/APIReference/API_AdminSetUserPassword.html">https://docs.aws.amazon.com/cognito-user-identity-pools/latest/APIReference/API_AdminSetUserPassword.html</a>].
+Das Demo setzt deshalb auch beim Versorger auf die Reset-Aufforderung (Grund
+<code>hash-import-unavailable</code>); die offene Folgefrage steht in der
+<a href="index.html">Übersicht</a>.</p>
 <h2 id="3-dubletten-und-account-linking-j3">3. Dubletten und Account-Linking (J3)<a class="anchor" href="#3-dubletten-und-account-linking-j3" title="Permanent link">#</a></h2>
 <p>Nach jeder Übernahme durchsucht der migration-Worker den Export des jeweils
 anderen <a class="term" href="glossar.html#legacy-system" title="bestehendes Altsystem mit Kundendaten, das abgelöst werden soll; im Demo simuliert">Altsystems</a>. Als dieselbe Person gilt nur, wer im Namen übereinstimmt
@@ -212,6 +226,6 @@ Abfrage (einige Dutzend Einträge im Demo); ein Index hätte eigene Kapazität
 aus den 25 freien Einheiten gebraucht [E]. <a class="term" href="glossar.html#bulk-import" title="Übernahme vieler Konten auf einmal; bei Cognito per CSV-Import oder AdminCreateUser, im Demo ohne Passwörter (Nutzer müssen zurücksetzen); Hash-Import (u. a. bcrypt) ist noch nicht">Bulk-Import</a> und Reset schreiben in
 Schüben; bei 5 <a class="term" href="glossar.html#wcu" title="Schreib-Kapazitätseinheit von DynamoDB: 1 Schreibvorgang pro Sekunde bis 1 KB">WCU</a> drosselt <a class="term" href="glossar.html#dynamodb" title="vollständig verwaltete NoSQL-Datenbank (Schlüssel-Wert/Dokument) mit Antwortzeiten im Millisekundenbereich, ohne Server und ohne Verbindungs-Pool">DynamoDB</a> kurz, die <a class="term" href="glossar.html#sdk" title="Software Development Kit: Bibliothek für den Zugriff auf einen Dienst (z. B. AWS SDK)">SDK</a>-<a class="term" href="glossar.html#retry" title="erneuter Verarbeitungsversuch nach einem Fehler">Wiederholungen</a> bzw. die
 Wiederholung unverarbeiteter Löschungen fangen das ab [E].</p></main></div>
-<footer class="site"><a href="../wiki/architektur-migration.md">Markdown-Quelle</a> · Generiert 2026-09-30 11:44 aus <code>docs/wiki</code> mit <code>scripts/build_reports.py</code></footer>
+<footer class="site"><a href="../wiki/architektur-migration.md">Markdown-Quelle</a> · Generiert 2026-09-30 11:50 aus <code>docs/wiki</code> mit <code>scripts/build_reports.py</code></footer>
 </body>
 </html>

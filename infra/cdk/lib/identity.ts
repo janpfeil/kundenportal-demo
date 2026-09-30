@@ -77,18 +77,6 @@ export class Identity extends Construct {
       removalPolicy: RemovalPolicy.DESTROY,
     });
 
-    const tokenClaims = new ServiceFunction(this, "PreTokenGeneration", {
-      entry: "services/identity/src/pre-token-generation.ts",
-      description: "Adds tenant, verified email, locale and name to access tokens",
-      reservedConcurrency: props.reservedConcurrency,
-      timeout: Duration.seconds(5),
-    });
-    this.userPool.addTrigger(
-      UserPoolOperation.PRE_TOKEN_GENERATION_CONFIG,
-      tokenClaims,
-      LambdaVersion.V2_0,
-    );
-
     // Lazy migration (J2): unknown users are checked against the legacy systems.
     const migrateUser = new ServiceFunction(this, "UserMigration", {
       entry: "services/identity/src/user-migration.ts",
@@ -100,28 +88,48 @@ export class Identity extends Construct {
     grantLegacyAccess(migrateUser);
     this.userPool.addTrigger(UserPoolOperation.USER_MIGRATION, migrateUser);
 
-    // After the first sign-in of a migrated user: publish LegacyAccountMigrated.
-    const postAuthentication = new ServiceFunction(this, "PostAuthentication", {
-      entry: "services/identity/src/post-authentication-handler.ts",
-      description: "Announces lazily migrated accounts (LegacyAccountMigrated)",
-      reservedConcurrency: props.reservedConcurrency,
-      timeout: Duration.seconds(5),
-      environment: { TABLE_NAME: props.table.tableName, EVENT_BUS_NAME },
-    });
-    grantLegacyAccess(postAuthentication);
-    props.table.grantReadWriteData(postAuthentication);
-    // The bus lives in the app stack; the name is fixed, so no reference between the stacks.
-    postAuthentication.addToRolePolicy(
-      new PolicyStatement({
-        actions: ["events:PutEvents"],
-        resources: [
-          Stack.of(this).formatArn({
-            service: "events",
-            resource: "event-bus",
-            resourceName: EVENT_BUS_NAME,
-          }),
-        ],
-      }),
+    // After the first sign-in of a migrated user: publish LegacyAccountMigrated. Both
+    // triggers try (the documentation leaves open which fires on the migrating sign-in);
+    // a marker in the table makes it happen once.
+    const announcer = (id: string, entry: string, description: string) => {
+      const fn = new ServiceFunction(this, id, {
+        entry,
+        description,
+        reservedConcurrency: props.reservedConcurrency,
+        timeout: Duration.seconds(5),
+        environment: { TABLE_NAME: props.table.tableName, EVENT_BUS_NAME },
+      });
+      grantLegacyAccess(fn);
+      props.table.grantReadWriteData(fn);
+      // The bus lives in the app stack; the name is fixed, so no reference between the stacks.
+      fn.addToRolePolicy(
+        new PolicyStatement({
+          actions: ["events:PutEvents"],
+          resources: [
+            Stack.of(this).formatArn({
+              service: "events",
+              resource: "event-bus",
+              resourceName: EVENT_BUS_NAME,
+            }),
+          ],
+        }),
+      );
+      return fn;
+    };
+    const tokenClaims = announcer(
+      "PreTokenGeneration",
+      "services/identity/src/pre-token-generation-handler.ts",
+      "Adds tenant, email, locale, name, origin to access tokens; announces lazy migrations",
+    );
+    this.userPool.addTrigger(
+      UserPoolOperation.PRE_TOKEN_GENERATION_CONFIG,
+      tokenClaims,
+      LambdaVersion.V2_0,
+    );
+    const postAuthentication = announcer(
+      "PostAuthentication",
+      "services/identity/src/post-authentication-handler.ts",
+      "Announces lazily migrated accounts (LegacyAccountMigrated)",
     );
     this.userPool.addTrigger(UserPoolOperation.POST_AUTHENTICATION, postAuthentication);
 
@@ -152,7 +160,9 @@ export class Identity extends Construct {
     const localhost = props.allowLocalhostCallback ? ["http://localhost:3000"] : [];
     this.client = this.userPool.addClient("ShellClient", {
       generateSecret: true,
-      authFlows: {},
+      // Password flow: the migrate user trigger only runs for password-based sign-ins
+      // (not SRP); AWS asks to allow it on the client before adding the trigger.
+      authFlows: { userPassword: true },
       oAuth: {
         flows: { authorizationCodeGrant: true },
         scopes: [OAuthScope.OPENID, OAuthScope.EMAIL, OAuthScope.PROFILE, ...apiScopes],
