@@ -47,7 +47,7 @@ dauerhaft laufen (Variante Z2 in Abschnitt 4).
   {"label": "SNS (inkl. E-Mail)", "cells": ["j","n","n"]},
   {"label": "EventBridge Scheduler", "cells": ["j","n","n"]},
   {"label": "CloudWatch (kurze Retention)", "cells": ["j","n","n"]},
-  {"label": "IAM, ACM, Budgets, SSM, KMS", "cells": ["j","n","n"]},
+  {"label": "IAM, STS, ACM, Budgets, SSM, KMS", "cells": ["j","n","n"]},
   {"label": "Cognito (Essentials, ≤ 10.000 MAU)", "cells": ["j","n","n"]},
   {"label": "CloudFormation (CDK)", "cells": ["j","n","n"]},
   {"label": "API Gateway (HTTP API)", "cells": ["n","j","n"]},
@@ -67,7 +67,7 @@ dauerhaft laufen (Variante Z2 in Abschnitt 4).
 | SNS | 1 Mio. Publishes, 1.000 E-Mails [D] | Benachrichtigungen, Kill-Switch | 0 $ |
 | EventBridge Scheduler | 14 Mio. Aufrufe [B] | tägliche Datenvolumen-Prüfung (≈ 30 Aufrufe/Monat) | 0 $ |
 | CloudWatch | Logs ≈ 5 GB, 10 Metriken, 10 Alarme [D] | Logs mit 3–7 Tagen Retention | 0 $ |
-| IAM, ACM, AWS Budgets, SSM Parameter Store (Standard), KMS mit AWS-verwalteten Schlüsseln | kostenlos [B/A] | Rechte, Zertifikat, Kostenalarm, Konfiguration | 0 $ |
+| IAM, STS, ACM, AWS Budgets, SSM Parameter Store (Standard), KMS mit AWS-verwalteten Schlüsseln | kostenlos [B/A] | Rechte, kurzlebige Anmeldedaten je Mandant, Zertifikat, Kostenalarm, Konfiguration | 0 $ |
 | CloudFormation | für AWS-eigene Ressourcen kostenlos [A] | CDK-Deployments | 0 $ |
 | **API Gateway (HTTP API)** | nur 12 Monate für Neukonten [B] | alle REST-Aufrufe | ≈ 1 $ pro Mio. → 0,01 $ je 10.000 Aufrufe [B] |
 | **EventBridge (eigene Events)** | **kein** Freikontingent [B] | Domänen-Events | 1 $ pro Mio. → 0,01 $ je 10.000 Events [B] |
@@ -153,6 +153,35 @@ Zonen ([Architektur](architektur.md) §6):
 - **Eigene Infrastruktur statt AWS:** Altsysteme (zwei Container mit
   SQLite) und der Keycloak-Realm laufen auf dem eigenen Server; ihre
   Pipelines laufen in GitLab (Abschnitt 3).
+
+**Ergänzungen aus Phase 4 (Stand 30.09.2026)** — Mandanten und Demo-Pass
+([Mandanten & Demo-Pass](architektur-mandanten.md) §6):
+
+- **[STS](glossar.md#sts):** Jede geteilte Lambda holt sich für einen
+  Pass-Mandanten per `AssumeRole` kurzlebige Anmeldedaten (Token Vending,
+  15 Minuten, gecacht). STS ist kostenlos [B].
+- **EventBridge Scheduler:** je Pass ein **einmaliger** Zeitplan
+  (`at(…)`, wird nach dem Auslösen gelöscht) und ein täglicher Abgleich
+  (03:30) — zusammen wenige Dutzend Aufrufe im Monat von 14 Mio. freien [B].
+- **DynamoDB:** je Pass-Mandant eine eigene Tabelle, provisioned 5 RCU/5 WCU.
+  Die 25 freien Einheiten je Konto und Region reichen für die Tabelle der
+  Base und **3** Pass-Tabellen (5 + 3 × 5 = 20); daher die Obergrenze von 3
+  gleichzeitigen Pass-Mandanten. `CreateTable` und `DeleteTable` sind
+  Steuerungsaufrufe und kosten nichts [B].
+- **ALTCHA:** Das Rätsel vor dem Einlösen erzeugt und prüft eine eigene
+  Lambda — kein Drittanbieter, kein Konto, 0 $. Gelöste Rätsel liegen bis
+  zu ihrem Ablauf als TTL-Eintrag in der Tabelle der Base.
+- **Cognito:** je Pass ein Konto des Pass-Inhabers plus die Demo-Personen,
+  die er anmeldet; weit unter 10.000 aktiven Nutzern. Die einzige
+  Systemmail ist das Einmal-Passwort über den Cognito-Standardversand.
+- **EventBridge (eigene Events):** sechs neue Ereignisarten des
+  Tenancy-Service, eine Regel zählt die Ereignisse der Pass-Mandanten;
+  weiterhin Bruchteile eines Cents [A].
+- **Lambda:** 24 Funktionen mit Reservierung (Base 4, App 20); API-Funktionen
+  jetzt mit 5 statt 2 — das erhöht nur die Obergrenze gleichzeitiger
+  Ausführungen, nicht die Kosten.
+- **Kill-Switch:** Der Budget-Alarm sperrt über SNS das Einlösen neuer
+  Pässe; laufende Pässe bleiben nutzbar.
 
 ## 3. Was auf eigene Infrastruktur wandert
 

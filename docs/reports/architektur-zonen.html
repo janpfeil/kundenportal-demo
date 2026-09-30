@@ -19,11 +19,12 @@
 <li><a href="#5-laufzeit-widget-glocke">5. Laufzeit-Widget „Glocke"</a></li>
 <li><a href="#6-component-library-und-storybook">6. Component Library und Storybook</a></li>
 <li><a href="#7-messwerte">7. Messwerte</a></li>
+<li><a href="#8-seiten-für-mandanten-und-demo-pass-phase-4">8. Seiten für Mandanten und Demo-Pass (Phase 4)</a></li>
 <li><a href="#quellen">Quellen</a></li>
 </ul>
 </div>
 </nav><main><h1 id="architektur-zonen-und-frontend">Architektur: Zonen und Frontend<a class="anchor" href="#architektur-zonen-und-frontend" title="Permanent link">#</a></h1>
-<p>Stand: 2026-09-30 · Beschreibt den <strong>Ist-Stand</strong> des Codes (Phase 2 abgeschlossen), nicht die Zielarchitektur. Kennzeichnung: <strong>[B]</strong> belegt (offizielle Quelle oder Messung), <strong>[A]</strong> Annahme, <strong>[E]</strong> Einschätzung.</p>
+<p>Stand: 2026-09-30 · Beschreibt den <strong>Ist-Stand</strong> des Codes (Phase 2 abgeschlossen; Seiten für <a class="term" href="glossar.html#mandant" title="abgeschotteter Bereich eines Kunden in einer gemeinsam betriebenen Anwendung; im Demo je Demo-Pass ein Mandant">Mandanten</a> und <a class="term" href="glossar.html#demo-pass" title="im Demo: zeitlich begrenzte Berechtigung (7 Tage, Kontingent) für eine eigene Instanz; ausgestellt per Einladungslink oder für den Inhaber">Demo-Pass</a> aus Phase 4 in Abschnitt 8), nicht die Zielarchitektur. Kennzeichnung: <strong>[B]</strong> belegt (offizielle Quelle oder Messung), <strong>[A]</strong> Annahme, <strong>[E]</strong> Einschätzung.</p>
 <p>Fachbegriffe sind in jedem Abschnitt beim ersten Vorkommen mit dem <a href="glossar.html">Glossar</a> verlinkt (Erklärung und Entsprechung außerhalb von <a class="term" href="glossar.html#aws" title="Cloud-Plattform von Amazon mit über 200 Diensten (Rechenleistung, Datenbanken, Netzwerk, Messaging …), abgerechnet nach Nutzung">AWS</a>).</p>
 <p>Diese Seite ergänzt die <a href="architektur.html">Architektur</a> um die <a class="term" href="glossar.html#ui" title="Benutzeroberfläche">Oberfläche</a>:
 wie das Portal in mehrere <a class="term" href="glossar.html#nextjs" title="React-Framework (von Vercel) mit Routing, Server-Rendering, API-Routen und Build-Optimierung">Next.js</a>-Apps zerfällt, wie der <a class="term" href="glossar.html#browser" title="Programm zum Anzeigen von Webseiten; „Browser-App&quot; = Anwendung, die im Browser läuft">Browser</a> schreibt,
@@ -50,7 +51,7 @@ genau einer Stelle, der Registry <code>infra/cdk/lib/zones.ts</code>; App-<a cla
 <td><a class="term" href="glossar.html#shell" title="Rahmenanwendung, die Navigation, Login und Layout stellt und die Micro-Frontends einbindet">Shell</a></td>
 <td><code>/</code> (alles, was keine Zone ist)</td>
 <td><code>apps/shell</code></td>
-<td>Startseite, Anmeldung, Konto mit Profil-Bearbeitung, <a class="term" href="glossar.html#demo-postfach" title="im Portal angezeigtes Postfach der Demo-Personen; ersetzt echte E-Mails, damit die Demo niemanden anschreibt">Demo-Postfach</a> mit „als gelesen markieren", Glocke</td>
+<td>Startseite, Anmeldung, Konto mit Profil-Bearbeitung, <a class="term" href="glossar.html#demo-postfach" title="im Portal angezeigtes Postfach der Demo-Personen; ersetzt echte E-Mails, damit die Demo niemanden anschreibt">Demo-Postfach</a> mit „als gelesen markieren", Glocke; seit Phase 4 <a class="term" href="glossar.html#demo-pass" title="im Demo: zeitlich begrenzte Berechtigung (7 Tage, Kontingent) für eine eigene Instanz; ausgestellt per Einladungslink oder für den Inhaber">Demo-Pass</a> einlösen und Pass-Status (Abschnitt 8)</td>
 </tr>
 <tr>
 <td><code>contracts</code></td>
@@ -67,8 +68,8 @@ genau einer Stelle, der Registry <code>infra/cdk/lib/zones.ts</code>; App-<a cla
 <tr>
 <td><code>cockpit</code></td>
 <td><code>/cockpit</code></td>
-<td>—</td>
-<td>kommt in Phase 3 (<a class="term" href="glossar.html#migrations-cockpit" title="im Demo geplantes Micro-Frontend, das den Fortschritt der Kontenübernahme, Ereignisse und DLQ-Fälle live zeigt">Migrations-Cockpit</a>)</td>
+<td><code>apps/cockpit</code></td>
+<td><a class="term" href="glossar.html#migrations-cockpit" title="im Demo geplantes Micro-Frontend, das den Fortschritt der Kontenübernahme, Ereignisse und DLQ-Fälle live zeigt">Migrations-Cockpit</a> (Phase 3, <a href="architektur-migration.html">Altsysteme &amp; Migration</a>); seit Phase 4 Pass-Verwaltung unter <code>/cockpit/paesse</code></td>
 </tr>
 </tbody>
 </table></div>
@@ -319,6 +320,83 @@ ohne <a class="term" href="glossar.html#s3" title="Objektspeicher für Dateien b
 </table></div>
 <p>Weitere Messwerte, auch der Deploy mit allen Services, stehen in
 <a href="architektur.html">Architektur</a> §9.</p>
+<h2 id="8-seiten-für-mandanten-und-demo-pass-phase-4">8. Seiten für Mandanten und Demo-Pass (Phase 4)<a class="anchor" href="#8-seiten-für-mandanten-und-demo-pass-phase-4" title="Permanent link">#</a></h2>
+<p>Die Architektur dahinter steht in
+<a href="architektur-mandanten.html">Architektur: Mandanten und Demo-Pass</a>.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Route</th>
+<th>Zone</th>
+<th>Art</th>
+<th>Wer</th>
+<th>Zweck</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/pass/einloesen</code></td>
+<td><a class="term" href="glossar.html#shell" title="Rahmenanwendung, die Navigation, Login und Layout stellt und die Micro-Frontends einbindet">Shell</a></td>
+<td>Seite</td>
+<td>öffentlich</td>
+<td><a class="term" href="glossar.html#einladungslink" title="persönlicher, einmal verwendbarer Link, der einen Demo-Pass ausstellt">Einladungslink</a> einlösen: <a class="term" href="glossar.html#token" title="digitaler Ausweis, den ein Identitätsdienst ausstellt und den eine App bei jedem API-Aufruf mitschickt">Token</a> nur im <a class="term" href="glossar.html#url" title="Internetadresse einer Seite oder eines API-Endpunkts">URL</a>-Fragment (<code>#…</code>), <a href="glossar.html#altcha">ALTCHA</a>-<a class="term" href="glossar.html#widget" title="kleiner, eingebetteter Oberflächenbaustein">Widget</a>, danach Hinweis auf das Einmal-Passwort</td>
+</tr>
+<tr>
+<td><code>/pass/einloesen/challenge</code></td>
+<td>Shell</td>
+<td><a href="glossar.html#route-handler">Route Handler</a>, <a class="term" href="glossar.html#http-methoden" title="Arten von REST-Aufrufen: lesen (GET), anlegen (POST), teilweise ändern (PATCH), ersetzen (PUT), löschen (DELETE)">GET</a></td>
+<td>öffentlich</td>
+<td>holt das Rätsel von <code>GET /api/tenancy/challenge</code></td>
+</tr>
+<tr>
+<td><code>/pass/einloesen/api</code></td>
+<td>Shell</td>
+<td><a class="term" href="glossar.html#route-handler" title="Datei route.ts im Next.js-App-Router, die eine HTTP-Schnittstelle (GET, POST, PATCH …) statt einer Seite bereitstellt">Route Handler</a>, POST</td>
+<td>öffentlich</td>
+<td>prüft den <a href="glossar.html#origin-header">Origin-Header</a> (sonst 403), gibt die <a class="term" href="glossar.html#ip-adresse" title="Internetadresse eines Geräts; dient zur Begrenzung von Anfragen je Absender">IP</a> des Besuchers als <code>x-kp-client-ip</code> weiter, ruft <code>POST /api/tenancy/redeem</code></td>
+</tr>
+<tr>
+<td><code>/pass</code></td>
+<td>Shell</td>
+<td>Seite</td>
+<td>Gruppe <code>pass</code></td>
+<td>Status des eigenen <a class="term" href="glossar.html#demo-pass" title="im Demo: zeitlich begrenzte Berechtigung (7 Tage, Kontingent) für eine eigene Instanz; ausgestellt per Einladungslink oder für den Inhaber">Passes</a>: Einrichtung, gültig bis, <a class="term" href="glossar.html#free-tier" title="Sammelbegriff für kostenlose Nutzungsmengen bei AWS">Kontingente</a> als <code>Meter</code> (neu in <code>packages/ui</code>), <a class="term" href="glossar.html#demo-person" title="im Demo vorbereitete fiktive Kundinnen und Kunden mit festgelegter Geschichte (z. B. Anna Becker: Altkundin, Lazy Migration)">Demo-Personen</a> mit Anmeldenamen und Demo-Passwort</td>
+</tr>
+<tr>
+<td><code>/cockpit/paesse</code></td>
+<td>Cockpit</td>
+<td>Seite</td>
+<td>Gruppe <code>owner</code></td>
+<td>Einladungen erzeugen (Link wird genau einmal angezeigt), Pässe mit Status und Kontingent, Widerruf</td>
+</tr>
+<tr>
+<td><code>/cockpit/api/invitations</code></td>
+<td>Cockpit</td>
+<td>Route Handler, POST</td>
+<td>Gruppe <code>owner</code></td>
+<td><code>POST /api/tenancy/invitations</code></td>
+</tr>
+<tr>
+<td><code>/cockpit/api/passes/&lt;id&gt;/revoke</code></td>
+<td>Cockpit</td>
+<td>Route Handler, POST</td>
+<td>Gruppe <code>owner</code></td>
+<td><code>POST /api/tenancy/passes/{id}/revoke</code></td>
+</tr>
+<tr>
+<td><code>/cockpit</code></td>
+<td>Cockpit</td>
+<td>Seite</td>
+<td>Gruppe <code>pass</code></td>
+<td>Migrationsansichten <strong>des eigenen</strong> <a class="term" href="glossar.html#mandant" title="abgeschotteter Bereich eines Kunden in einer gemeinsam betriebenen Anwendung; im Demo je Demo-Pass ein Mandant">Mandanten</a> (Mandant aus dem Token)</td>
+</tr>
+</tbody>
+</table></div>
+<p>Die Navigation der Shell hat dafür den Eintrag „Demo-Pass". Die beiden
+öffentlichen Route Handler brauchen keine Sitzung; sie laufen wie alle
+schreibenden Aufrufe über <code>sendJson</code> mit <a class="term" href="glossar.html#payload-hash" title="SHA-256 des Anfrage-Bodys; CloudFront braucht ihn vom Absender, um Anfragen mit Body per SigV4 zu signieren">Payload-Hash</a> (Abschnitt 4).
+Die Kontingent-Zahlen auf <code>/pass/einloesen</code> sind fester Text (offen:
+aus der Konfiguration lesen).</p>
 <h2 id="quellen">Quellen<a class="anchor" href="#quellen" title="Permanent link">#</a></h2>
 <ul class="sources">
 <li>CloudFront OAC für Lambda Function URLs (Payload-Hash bei PUT/POST): <a href="https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/private-content-restricting-access-to-lambda.html">https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/private-content-restricting-access-to-lambda.html</a></li>
@@ -327,6 +405,6 @@ ohne <a class="term" href="glossar.html#s3" title="Objektspeicher für Dateien b
 <li>Custom Elements (MDN): <a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_custom_elements">https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_custom_elements</a></li>
 <li>Cookie-Attribut SameSite (MDN): <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Set-Cookie#samesitesamesite-value">https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Set-Cookie#samesitesamesite-value</a></li>
 </ul></main></div>
-<footer class="site"><a href="../wiki/architektur-zonen.md">Markdown-Quelle</a> · Generiert 2026-09-30 19:54 aus <code>docs/wiki</code> mit <code>scripts/build_reports.py</code></footer>
+<footer class="site"><a href="../wiki/architektur-zonen.md">Markdown-Quelle</a> · Generiert 2026-09-30 21:33 aus <code>docs/wiki</code> mit <code>scripts/build_reports.py</code></footer>
 </body>
 </html>

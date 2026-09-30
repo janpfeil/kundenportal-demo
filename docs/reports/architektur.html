@@ -30,11 +30,12 @@
 <li><a href="#8-pipelines">8. Pipelines</a></li>
 <li><a href="#9-messwerte">9. Messwerte</a></li>
 <li><a href="#10-altsysteme-und-migration-phase-3">10. Altsysteme und Migration (Phase 3)</a></li>
+<li><a href="#11-mandanten-und-demo-pass-phase-4">11. Mandanten und Demo-Pass (Phase 4)</a></li>
 <li><a href="#quellen">Quellen</a></li>
 </ul>
 </div>
 </nav><main><h1 id="architektur-ist-stand-des-portals">Architektur — Ist-Stand des Portals<a class="anchor" href="#architektur-ist-stand-des-portals" title="Permanent link">#</a></h1>
-<p>Stand: 2026-09-30 · Beschreibt den <strong>Ist-Stand</strong> des Codes (Phase 1 bis 3 abgeschlossen), nicht die Zielarchitektur. Kennzeichnung: <strong>[B]</strong> belegt (offizielle Quelle oder Messung), <strong>[A]</strong> Annahme, <strong>[E]</strong> Einschätzung.</p>
+<p>Stand: 2026-09-30 · Beschreibt den <strong>Ist-Stand</strong> des Codes (Phase 1 bis 4 abgeschlossen, Release v0.4.0), nicht die Zielarchitektur. Kennzeichnung: <strong>[B]</strong> belegt (offizielle Quelle oder Messung), <strong>[A]</strong> Annahme, <strong>[E]</strong> Einschätzung.</p>
 <p>Fachbegriffe sind in jedem Abschnitt beim ersten Vorkommen mit dem <a href="glossar.html">Glossar</a> verlinkt (Erklärung und Entsprechung außerhalb von <a class="term" href="glossar.html#aws" title="Cloud-Plattform von Amazon mit über 200 Diensten (Rechenleistung, Datenbanken, Netzwerk, Messaging …), abgerechnet nach Nutzung">AWS</a>).</p>
 <p>Die Zielarchitektur steht in <a href="machbarkeit-kosten.html">Machbarkeit &amp; Kosten</a>;
 diese Seite zeigt, was davon tatsächlich gebaut ist:</p>
@@ -51,6 +52,10 @@ diese Seite zeigt, was davon tatsächlich gebaut ist:</p>
   simulierte <a class="term" href="glossar.html#legacy-system" title="bestehendes Altsystem mit Kundendaten, das abgelöst werden soll; im Demo simuliert">Altsysteme</a>, Übernahme der Kundenkonten per <a class="term" href="glossar.html#migrate-user-trigger" title="Cognito-Trigger für die Lazy Migration: meldet sich ein unbekannter Nutzer mit Passwort an, prüft die Lambda die Daten beim Altsystem; bei Erfolg legt Cognito den Nutzer mit demsel">Migrate-User-Trigger</a>
   und <a class="term" href="glossar.html#bulk-import" title="Übernahme vieler Konten auf einmal; bei Cognito per CSV-Import oder AdminCreateUser, im Demo ohne Passwörter (Nutzer müssen zurücksetzen); Hash-Import (u. a. bcrypt) ist noch nicht">Bulk-Import</a>, Dublettenerkennung mit <a class="term" href="glossar.html#account-linking" title="mehrere Identitäten derselben Person (z. B. Google-Login und Altkonto) zu einem Konto zusammenführen">Account-Linking</a>, <a class="term" href="glossar.html#migrations-cockpit" title="im Demo geplantes Micro-Frontend, das den Fortschritt der Kontenübernahme, Ereignisse und DLQ-Fälle live zeigt">Migrations-Cockpit</a>
   (<a href="architektur-migration.html">Architektur: Altsysteme und Migration</a>).</li>
+<li><strong>Phase 4 (abgeschlossen, v0.4.0):</strong> <a class="term" href="glossar.html#einladungslink" title="persönlicher, einmal verwendbarer Link, der einen Demo-Pass ausstellt">Einladungslinks</a> und <a class="term" href="glossar.html#demo-pass" title="im Demo: zeitlich begrenzte Berechtigung (7 Tage, Kontingent) für eine eigene Instanz; ausgestellt per Einladungslink oder für den Inhaber">Demo-Pass</a> mit
+  eigenem <a class="term" href="glossar.html#mandant" title="abgeschotteter Bereich eines Kunden in einer gemeinsam betriebenen Anwendung; im Demo je Demo-Pass ein Mandant">Mandanten</a> je Besucher im <a class="term" href="glossar.html#bridge-modell" title="Mandantenmodell: Rechenleistung geteilt, Daten und Ereignisse je Mandant getrennt">Bridge-Modell</a>, Isolation per <a class="term" href="glossar.html#token" title="digitaler Ausweis, den ein Identitätsdienst ausstellt und den eine App bei jedem API-Aufruf mitschickt">Token</a>
+  Vending, <a class="term" href="glossar.html#free-tier" title="Sammelbegriff für kostenlose Nutzungsmengen bei AWS">Kontingente</a>, automatischer Ablauf und <a class="term" href="glossar.html#teardown" title="vollständiges Entfernen aller Demo-Ressourcen per cdk destroy und terraform destroy">Rückbau</a> (Abschnitt 11,
+  <a href="architektur-mandanten.html">Architektur: Mandanten und Demo-Pass</a>).</li>
 </ul>
 <p>Wie der Kontoinhaber das Ganze aufbaut, steht in der
 <a href="anleitung-fundament.html">Anleitung Fundament</a> und der
@@ -145,7 +150,7 @@ Outputs: <code>PortalUrl</code> und <code>DistributionDomain</code> (Ziel des <a
 <tbody>
 <tr>
 <td><code>tenant_id</code></td>
-<td>Attribut <code>custom:tenant_id</code> (unveränderlich, nur die Plattform setzt es); fehlt es, gilt in Phase 1 der <a class="term" href="glossar.html#mandant" title="abgeschotteter Bereich eines Kunden in einer gemeinsam betriebenen Anwendung; im Demo je Demo-Pass ein Mandant">Mandant</a> <code>owner</code></td>
+<td>Attribut <code>custom:tenant_id</code> (unveränderlich, nur die Plattform setzt es); fehlt es, gilt der <a class="term" href="glossar.html#mandant" title="abgeschotteter Bereich eines Kunden in einer gemeinsam betriebenen Anwendung; im Demo je Demo-Pass ein Mandant">Mandant</a> <code>owner</code>. Seit Phase 4 tragen Konten eines <a class="term" href="glossar.html#demo-pass" title="im Demo: zeitlich begrenzte Berechtigung (7 Tage, Kontingent) für eine eigene Instanz; ausgestellt per Einladungslink oder für den Inhaber">Pass</a>-Mandanten dessen Kennung, und der Trigger lehnt Anmeldungen zu nicht mehr nutzbaren Pässen ab</td>
 </tr>
 <tr>
 <td><code>email</code></td>
@@ -170,8 +175,9 @@ ausstellen. Der Mandant kommt <strong>nie</strong> aus der <a class="term" href=
 den nötigen <a class="term" href="glossar.html#resource-server" title="in Cognito die Beschreibung einer API mit eigenen Scopes (Berechtigungen wie kundenportal/profile.read); das Access Token trägt die gewährten Scopes, der JWT-Authorizer verlangt si">Scope</a>. Die <a class="term" href="glossar.html#cdk" title="Infrastruktur als Programmcode (TypeScript, Java, Python …): man schreibt Klassen wie new Table(...), CDK erzeugt daraus CloudFormation-Vorlagen und legt die Ressourcen an">CDK</a>-App liest ihn und erzeugt daraus</p>
 <ul>
 <li>den <a href="glossar.html#resource-server">Resource Server</a> <code>kundenportal</code> mit
-  zehn Scopes, je Bereich <code>.read</code> und <code>.write</code>: <code>profile</code>, <code>notifications</code>
-  (Phase 1) sowie <code>contracts</code>, <code>readings</code>, <code>documents</code> (Phase 2);</li>
+  14 Scopes, je Bereich <code>.read</code> und <code>.write</code>: <code>profile</code>, <code>notifications</code>
+  (Phase 1), <code>contracts</code>, <code>readings</code>, <code>documents</code> (Phase 2), <code>migration</code>
+  (Phase 3) sowie <code>tenancy.read</code> und <code>tenancy.admin</code> (Phase 4);</li>
 <li>je Route einen Eintrag im <a class="term" href="glossar.html#http-api" title="schlanke, günstige Variante des API Gateway (≈ 1 $/Mio. Aufrufe) mit eingebautem JWT-Authorizer; im Demo gewählt">HTTP API</a> mit
   <a href="glossar.html#jwt-authorizer">JWT-Authorizer</a> (Aussteller = <a class="term" href="glossar.html#user-pool" title="Nutzerverzeichnis in Cognito mit eigenen Nutzern, Gruppen, App-Clients und Triggern; zugleich OIDC-Aussteller">User Pool</a>,
   Zielgruppe = <a class="term" href="glossar.html#client-id" title="öffentliche Kennung einer Anwendung bei einem Identitätsdienst wie Cognito oder Keycloak (nicht geheim, im Gegensatz zum Client Secret)">Client-ID</a>) und den verlangten Scopes.</li>
@@ -222,9 +228,29 @@ den nötigen <a class="term" href="glossar.html#resource-server" title="in Cogni
 <td><code>documents.read</code> / <code>documents.write</code></td>
 <td>documents</td>
 </tr>
+<tr>
+<td><code>createInvitation</code>, <code>listPasses</code>, <code>revokePass</code></td>
+<td><code>POST /tenancy/invitations</code>, <code>GET /tenancy/passes</code>, <code>POST /tenancy/passes/{id}/revoke</code></td>
+<td><code>tenancy.admin</code> (zusätzlich Gruppe <code>owner</code>)</td>
+<td>tenancy</td>
+</tr>
+<tr>
+<td><code>getOwnPass</code></td>
+<td><code>GET /tenancy/pass</code></td>
+<td><code>tenancy.read</code></td>
+<td>tenancy</td>
+</tr>
+<tr>
+<td><code>getRedeemChallenge</code>, <code>redeemInvitation</code></td>
+<td><code>GET /tenancy/challenge</code>, <code>POST /tenancy/redeem</code></td>
+<td>keiner (<code>security: []</code>, ohne <a class="term" href="glossar.html#jwt-authorizer" title="Prüfschritt im API Gateway, der Signatur, Aussteller und Zielgruppe eines JWT prüft, bevor die Lambda aufgerufen wird">Authorizer</a>)</td>
+<td>tenancy</td>
+</tr>
 </tbody>
 </table></div>
 <p>Fehlt ein Scope, antwortet das <a class="term" href="glossar.html#api-gateway" title="verwalteter Eingangspunkt für APIs: nimmt HTTP-Anfragen an, prüft Authentifizierung, drosselt, leitet an Lambda weiter">API Gateway</a> mit 403, bevor eine <a class="term" href="glossar.html#lambda" title="führt eine einzelne Funktion (z. B. einen HTTP-Handler) bei Bedarf aus; Abrechnung pro Aufruf und Laufzeit, skaliert automatisch von 0 auf viele Instanzen">Lambda</a> läuft.
+Die beiden öffentlichen Tenancy-Operationen sind die einzigen Routen ohne
+<a class="term" href="glossar.html#jwt" title="signiertes Token im JSON-Format mit Angaben (Claims) wie Nutzer-ID und Ablaufzeit; der Empfänger prüft die Signatur ohne Rückfrage beim Aussteller">JWT</a>; sie schützen sich selbst (<a class="term" href="glossar.html#altcha" title="selbst gehostetes, quelloffenes CAPTCHA ohne Bilderrätsel: der Browser löst ein kleines Rechenrätsel (Proof-of-Work), der Server prüft es mit einem geheimen HMAC-Schlüssel; im Demo">ALTCHA</a>, Begrenzung je <a class="term" href="glossar.html#ip-adresse" title="Internetadresse eines Geräts; dient zur Begrenzung von Anfragen je Absender">IP</a>, einmaliger Link).
 Die <a class="term" href="glossar.html#shell" title="Rahmenanwendung, die Navigation, Login und Layout stellt und die Micro-Frontends einbindet">Shell</a> fordert <code>openid email profile</code> und alle <a class="term" href="glossar.html#api" title="Programmierschnittstelle, über die Programme miteinander sprechen">API</a>-Scopes an (der
 <a class="term" href="glossar.html#ssm-parameter-store" title="Ablage für Konfigurationswerte und (verschlüsselt als SecureString) Geheimnisse; Standard-Stufe kostenlos. Im Demo auch Übergabestelle zwischen Terraform und CDK">SSM-Parameter</a> <code>/kundenportal/base/oidc-scopes</code> enthält die Liste).</p>
 <h2 id="5-daten">5. Daten<a class="anchor" href="#5-daten" title="Permanent link">#</a></h2>
@@ -567,7 +593,7 @@ Uploads eine Pause der Anwendung überstehen:</p>
 </tr>
 <tr>
 <td>Kostendeckel <a class="term" href="glossar.html#lambda" title="führt eine einzelne Funktion (z. B. einen HTTP-Handler) bei Bedarf aus; Abrechnung pro Aufruf und Laufzeit, skaliert automatisch von 0 auf viele Instanzen">Lambda</a></td>
-<td><a href="glossar.html#reserved-concurrency">Reserved Concurrency</a> je Funktion: Services aus <a class="term" href="glossar.html#cdk" title="Infrastruktur als Programmcode (TypeScript, Java, Python …): man schreibt Klassen wie new Table(...), CDK erzeugt daraus CloudFormation-Vorlagen und legt die Ressourcen an">CDK</a>-Kontext <code>reservedConcurrency</code> (Standard 2, <code>0</code> = nicht setzen), <a class="term" href="glossar.html#nextjs" title="React-Framework (von Vercel) mit Routing, Server-Rendering, API-Routen und Build-Optimierung">Next.js</a>-Funktionen (Shell, <a class="term" href="glossar.html#multi-zones" title="Next.js-Ansatz, mehrere Next.js-Apps unter einer Domain zu betreiben, aufgeteilt nach Pfaden">Zonen</a>) <code>webReservedConcurrency</code> (Standard 5); Stand Phase 3: 16 Services × 2 + 4 Next.js-Funktionen × 5 = 52 (Phase 2: 35, Phase 1: 10)</td>
+<td><a href="glossar.html#reserved-concurrency">Reserved Concurrency</a> je Funktion: Worker und Trigger aus <a class="term" href="glossar.html#cdk" title="Infrastruktur als Programmcode (TypeScript, Java, Python …): man schreibt Klassen wie new Table(...), CDK erzeugt daraus CloudFormation-Vorlagen und legt die Ressourcen an">CDK</a>-Kontext <code>reservedConcurrency</code> (Standard 2, <code>0</code> = gar nicht reservieren), <a class="term" href="glossar.html#api" title="Programmierschnittstelle, über die Programme miteinander sprechen">API</a>-Funktionen <code>apiReservedConcurrency</code> (Standard 5, seit Phase 4), <a class="term" href="glossar.html#nextjs" title="React-Framework (von Vercel) mit Routing, Server-Rendering, API-Routen und Build-Optimierung">Next.js</a>-Funktionen (Shell, <a class="term" href="glossar.html#multi-zones" title="Next.js-Ansatz, mehrere Next.js-Apps unter einer Domain zu betreiben, aufgeteilt nach Pfaden">Zonen</a>) <code>webReservedConcurrency</code> (Standard 5); Stand Phase 4: Base 4 × 2 + App-Worker 8 × 2 + API-Funktionen 8 × 5 + Next.js 4 × 5 = 84 (Phase 3: 52, Phase 2: 35, Phase 1: 10)</td>
 </tr>
 <tr>
 <td>Kostendeckel <a class="term" href="glossar.html#api" title="Programmierschnittstelle, über die Programme miteinander sprechen">API</a></td>
@@ -601,15 +627,18 @@ Kontokapazität minus 100" reservieren
 Neue Konten haben oft ein Limit von 10
 [B: <a href="https://docs.aws.amazon.com/lambda/latest/dg/gettingstarted-limits.html">https://docs.aws.amazon.com/lambda/latest/dg/gettingstarted-limits.html</a>];
 dann ist gar keine Reservierung möglich. Faustregel: <a class="term" href="glossar.html#service-quotas" title="AWS-Dienst, der die Obergrenzen eines Kontos je Dienst und Region anzeigt (z. B. Lambda „Concurrent executions“) und Erhöhungen per Antrag ermöglicht; der Antrag ist kostenlos">Kontolimit</a> ≥ 100 +
-Summe der Reservierungen, derzeit also ≥ 152; jede weitere Service-Funktion
-erhöht den Wert um 2, jede weitere Zone um 5. Das Konto hat nach genehmigter
+Summe der Reservierungen, derzeit also ≥ 100 + 8 + 16 + 40 + 20 = 184; jeder
+weitere Worker erhöht den Wert um 2, jede weitere API-Funktion oder Zone um 5. Das Konto hat nach genehmigter
 Erhöhung ein Limit von 1.000 [B]. Weg bei zu kleinem Limit: Quotenerhöhung
 oder <code>reservedConcurrency=0</code> (Anleitung Kapitel 4.5).</p>
-<p>Die 17 Funktionen im App-<a class="term" href="glossar.html#stack" title="Einheit in CloudFormation/CDK: eine Gruppe von Ressourcen, die gemeinsam angelegt und gelöscht wird">Stack</a>: customer-API und -Worker, notification-API,
-notification-<a class="term" href="glossar.html#konsument" title="Dienst, der Nachrichten oder Events empfängt und verarbeitet">Konsument</a>, je API-Funktion und Worker von contract,
-consumption und documents, migration-API, -Worker und -Record-Processor,
-Shell und drei Zonen. Im Base-Stack die drei <a class="term" href="glossar.html#lambda-trigger-cognito" title="Lambda-Funktion, die Cognito an festen Punkten aufruft (vor Registrierung, vor/nach Login, Token-Erzeugung, Migration); im Demo in services/identity">Cognito-Trigger</a>: <a class="term" href="glossar.html#pre-token-generation-trigger" title="Lambda, die Cognito vor dem Ausstellen der Tokens aufruft; in Version 2 kann sie dem Access Token eigene Claims hinzufügen (im Demo tenant_id, email, locale, name)">Pre Token
-Generation</a>, <a class="term" href="glossar.html#migrate-user-trigger" title="Cognito-Trigger für die Lazy Migration: meldet sich ein unbekannter Nutzer mit Passwort an, prüft die Lambda die Daten beim Altsystem; bei Erfolg legt Cognito den Nutzer mit demsel">Migrate User</a> und <a class="term" href="glossar.html#post-authentication-trigger" title="Cognito-Lambda nach jeder erfolgreichen Anmeldung; hier meldet sie die Übernahme eines Altkontos einmalig als Ereignis, weil erst dann die neue Identität (sub) feststeht">Post Authentication</a>.</p>
+<p>Die 20 Funktionen im App-<a class="term" href="glossar.html#stack" title="Einheit in CloudFormation/CDK: eine Gruppe von Ressourcen, die gemeinsam angelegt und gelöscht wird">Stack</a>: acht API-Funktionen (customer,
+notification, contract, consumption, documents, migration, tenancy-API und
+die öffentliche Einlöse-Funktion von tenancy), acht Worker (customer-Worker,
+notification-<a class="term" href="glossar.html#konsument" title="Dienst, der Nachrichten oder Events empfängt und verarbeitet">Konsument</a>, Worker von contract, consumption, documents,
+migration-Worker und -Record-Processor, tenancy-Worker), Shell und drei
+Zonen. Im Base-Stack vier: die drei <a class="term" href="glossar.html#lambda-trigger-cognito" title="Lambda-Funktion, die Cognito an festen Punkten aufruft (vor Registrierung, vor/nach Login, Token-Erzeugung, Migration); im Demo in services/identity">Cognito-Trigger</a> (<a class="term" href="glossar.html#pre-token-generation-trigger" title="Lambda, die Cognito vor dem Ausstellen der Tokens aufruft; in Version 2 kann sie dem Access Token eigene Claims hinzufügen (im Demo tenant_id, email, locale, name)">Pre Token Generation</a>,
+<a class="term" href="glossar.html#migrate-user-trigger" title="Cognito-Trigger für die Lazy Migration: meldet sich ein unbekannter Nutzer mit Passwort an, prüft die Lambda die Daten beim Altsystem; bei Erfolg legt Cognito den Nutzer mit demsel">Migrate User</a>, <a class="term" href="glossar.html#post-authentication-trigger" title="Cognito-Lambda nach jeder erfolgreichen Anmeldung; hier meldet sie die Übernahme eines Altkontos einmalig als Ereignis, weil erst dann die neue Identität (sub) feststeht">Post Authentication</a>) und die Aufräum-Funktion der
+<a class="term" href="glossar.html#demo-pass" title="im Demo: zeitlich begrenzte Berechtigung (7 Tage, Kontingent) für eine eigene Instanz; ausgestellt per Einladungslink oder für den Inhaber">Pass</a>-<a class="term" href="glossar.html#mandant" title="abgeschotteter Bereich eines Kunden in einer gemeinsam betriebenen Anwendung; im Demo je Demo-Pass ein Mandant">Mandanten</a> (Abschnitt 11).</p>
 <p>Zusätzlich legt CDK Hilfs-Lambdas an (Kopieren der statischen Dateien nach S3,
 Leeren des Buckets beim Löschen, regionsübergreifende Werte zwischen den zwei
 Stacks). Sie laufen nur beim <a class="term" href="glossar.html#deployment" title="Ausliefern einer neuen Version in eine Umgebung">Deploy</a> bzw. Abbau und haben keine Reserved
@@ -634,8 +663,8 @@ Concurrency [E].</p>
 <tr>
 <td><code>KundenportalBase</code></td>
 <td>eu-central-1</td>
-<td><a class="term" href="glossar.html#amazon-cognito" title="AWS-Identitätsdienst für Registrierung, Login, MFA und Benutzerverwaltung; im Demo der Portal-Login (Entscheidung 29.09.2026), angelegt per CDK">Cognito</a> (<a class="term" href="glossar.html#user-pool" title="Nutzerverzeichnis in Cognito mit eigenen Nutzern, Gruppen, App-Clients und Triggern; zugleich OIDC-Aussteller">User Pool</a>, Client, Trigger), <a class="term" href="glossar.html#dynamodb" title="vollständig verwaltete NoSQL-Datenbank (Schlüssel-Wert/Dokument) mit Antwortzeiten im Millisekundenbereich, ohne Server und ohne Verbindungs-Pool">DynamoDB</a>, <a class="term" href="glossar.html#upload" title="Hochladen einer Datei vom Browser zum Server bzw. nach S3">Upload</a>-<a class="term" href="glossar.html#s3" title="Objektspeicher für Dateien beliebiger Größe in „Buckets&quot;; Standard für statische Websites, Uploads, Build-Artefakte">Bucket</a>, Hinweis-<a class="term" href="glossar.html#sns" title="Publish/Subscribe-Dienst: eine Nachricht an ein Topic geht an alle Abonnenten (E-Mail, SQS, Lambda, HTTP, SMS)">Topic</a></td>
-<td>dauerhaft — Nutzer, Daten, Uploads (bis zu 7 Tage) und bestätigtes Abo bleiben</td>
+<td><a class="term" href="glossar.html#amazon-cognito" title="AWS-Identitätsdienst für Registrierung, Login, MFA und Benutzerverwaltung; im Demo der Portal-Login (Entscheidung 29.09.2026), angelegt per CDK">Cognito</a> (<a class="term" href="glossar.html#user-pool" title="Nutzerverzeichnis in Cognito mit eigenen Nutzern, Gruppen, App-Clients und Triggern; zugleich OIDC-Aussteller">User Pool</a>, Client, Trigger), <a class="term" href="glossar.html#dynamodb" title="vollständig verwaltete NoSQL-Datenbank (Schlüssel-Wert/Dokument) mit Antwortzeiten im Millisekundenbereich, ohne Server und ohne Verbindungs-Pool">DynamoDB</a>, <a class="term" href="glossar.html#upload" title="Hochladen einer Datei vom Browser zum Server bzw. nach S3">Upload</a>-<a class="term" href="glossar.html#s3" title="Objektspeicher für Dateien beliebiger Größe in „Buckets&quot;; Standard für statische Websites, Uploads, Build-Artefakte">Bucket</a>, Hinweis-<a class="term" href="glossar.html#sns" title="Publish/Subscribe-Dienst: eine Nachricht an ein Topic geht an alle Abonnenten (E-Mail, SQS, Lambda, HTTP, SMS)">Topic</a>; seit Phase 4 die <a class="term" href="glossar.html#mandant" title="abgeschotteter Bereich eines Kunden in einer gemeinsam betriebenen Anwendung; im Demo je Demo-Pass ein Mandant">Mandanten</a>-Rolle für <a class="term" href="glossar.html#token" title="digitaler Ausweis, den ein Identitätsdienst ausstellt und den eine App bei jedem API-Aufruf mitschickt">Token</a> Vending, die Zeitplangruppe <code>kundenportal-passes</code> und <code>Custom::PassTenantCleanup</code></td>
+<td>dauerhaft — Nutzer, Daten, Uploads (bis zu 7 Tage), <a class="term" href="glossar.html#demo-pass" title="im Demo: zeitlich begrenzte Berechtigung (7 Tage, Kontingent) für eine eigene Instanz; ausgestellt per Einladungslink oder für den Inhaber">Pass</a>-Mandanten und bestätigtes Abo bleiben</td>
 </tr>
 <tr>
 <td><code>KundenportalApp</code></td>
@@ -860,7 +889,7 @@ der <a class="term" href="glossar.html#github" title="Plattform für Git-Reposit
 <td>17 App-Funktionen, 3 <a class="term" href="glossar.html#lambda-trigger-cognito" title="Lambda-Funktion, die Cognito an festen Punkten aufruft (vor Registrierung, vor/nach Login, Token-Erzeugung, Migration); im Demo in services/identity">Cognito-Trigger</a>; gleiche <a class="term" href="glossar.html#distribution" title="eine CloudFront-Konfiguration mit eigener Domain, Ursprüngen und Regeln">Distribution</a>, keine DNS-Änderung</td>
 </tr>
 <tr>
-<td>E2E gesamt (16 <a class="term" href="glossar.html#customer-journey" title="Weg eines Kunden durch das Portal: Registrierung → Onboarding → angemeldeter Bereich">Journeys</a> inkl. <a class="term" href="glossar.html#journey-kürzel" title="Nummern der neun Demo-Abläufe im Fachkonzept (J1 Registrierung … J9 Demo-Pass)">J2</a>, J3, J7, J8)</td>
+<td>E2E gesamt (16 <a class="term" href="glossar.html#customer-journey" title="Weg eines Kunden durch das Portal: Registrierung → Onboarding → angemeldeter Bereich">Journeys</a> inkl. J2, J3, J7, <a class="term" href="glossar.html#journey-kürzel" title="Nummern der neun Demo-Abläufe im Fachkonzept (J1 Registrierung … J9 Demo-Pass)">J8</a>)</td>
 <td>1,8 min</td>
 <td class="num">30.09.2026</td>
 <td>warm; direkt nach dem Neuaufbau brauchte J4 länger als die 5 s der Prüfung (Wartezeit auf 30 s erhöht)</td>
@@ -880,10 +909,39 @@ der <a class="term" href="glossar.html#github" title="Plattform für Git-Reposit
 die pnpm-Symlinks behalten (eigenes Zip statt <a class="term" href="glossar.html#cdk" title="Infrastruktur als Programmcode (TypeScript, Java, Python …): man schreibt Klassen wie new Table(...), CDK erzeugt daraus CloudFormation-Vorlagen und legt die Ressourcen an">CDK</a>-Kopie).</p>
 <h2 id="10-altsysteme-und-migration-phase-3">10. Altsysteme und Migration (Phase 3)<a class="anchor" href="#10-altsysteme-und-migration-phase-3" title="Permanent link">#</a></h2>
 <p>Zwei simulierte <a class="term" href="glossar.html#legacy-system" title="bestehendes Altsystem mit Kundendaten, das abgelöst werden soll; im Demo simuliert">Altsysteme</a> auf eigenem <a class="term" href="glossar.html#server" title="Rechner oder Prozess, der Anfragen beantwortet">Server</a>, Übernahme der Kundenkonten per
-<a class="term" href="glossar.html#migrate-user-trigger" title="Cognito-Trigger für die Lazy Migration: meldet sich ein unbekannter Nutzer mit Passwort an, prüft die Lambda die Daten beim Altsystem; bei Erfolg legt Cognito den Nutzer mit demsel">Migrate-User-Trigger</a> (<a class="term" href="glossar.html#journey-kürzel" title="Nummern der neun Demo-Abläufe im Fachkonzept (J1 Registrierung … J9 Demo-Pass)">J2</a>) und <a class="term" href="glossar.html#bulk-import" title="Übernahme vieler Konten auf einmal; bei Cognito per CSV-Import oder AdminCreateUser, im Demo ohne Passwörter (Nutzer müssen zurücksetzen); Hash-Import (u. a. bcrypt) ist noch nicht">Bulk-Import</a> mit <a class="term" href="glossar.html#dlq" title="Ablage für Nachrichten, die nach mehreren Versuchen nicht verarbeitet werden konnten, zur Analyse und Nachverarbeitung">DLQ</a> und <a class="term" href="glossar.html#redrive" title="Zurückführen von Nachrichten aus der DLQ in die Ursprungs-Queue, nachdem der Fehler behoben ist">Redrive</a> (J7),
-Dublettenerkennung und <a class="term" href="glossar.html#account-linking" title="mehrere Identitäten derselben Person (z. B. Google-Login und Altkonto) zu einem Konto zusammenführen">Account-Linking</a> (J3) sowie das <a class="term" href="glossar.html#migrations-cockpit" title="im Demo geplantes Micro-Frontend, das den Fortschritt der Kontenübernahme, Ereignisse und DLQ-Fälle live zeigt">Migrations-Cockpit</a> (J8)
+<a class="term" href="glossar.html#migrate-user-trigger" title="Cognito-Trigger für die Lazy Migration: meldet sich ein unbekannter Nutzer mit Passwort an, prüft die Lambda die Daten beim Altsystem; bei Erfolg legt Cognito den Nutzer mit demsel">Migrate-User-Trigger</a> (J2) und <a class="term" href="glossar.html#bulk-import" title="Übernahme vieler Konten auf einmal; bei Cognito per CSV-Import oder AdminCreateUser, im Demo ohne Passwörter (Nutzer müssen zurücksetzen); Hash-Import (u. a. bcrypt) ist noch nicht">Bulk-Import</a> mit <a class="term" href="glossar.html#dlq" title="Ablage für Nachrichten, die nach mehreren Versuchen nicht verarbeitet werden konnten, zur Analyse und Nachverarbeitung">DLQ</a> und <a class="term" href="glossar.html#redrive" title="Zurückführen von Nachrichten aus der DLQ in die Ursprungs-Queue, nachdem der Fehler behoben ist">Redrive</a> (J7),
+Dublettenerkennung und <a class="term" href="glossar.html#account-linking" title="mehrere Identitäten derselben Person (z. B. Google-Login und Altkonto) zu einem Konto zusammenführen">Account-Linking</a> (J3) sowie das <a class="term" href="glossar.html#migrations-cockpit" title="im Demo geplantes Micro-Frontend, das den Fortschritt der Kontenübernahme, Ereignisse und DLQ-Fälle live zeigt">Migrations-Cockpit</a> (<a class="term" href="glossar.html#journey-kürzel" title="Nummern der neun Demo-Abläufe im Fachkonzept (J1 Registrierung … J9 Demo-Pass)">J8</a>)
 beschreibt die eigene Seite
 <a href="architektur-migration.html">Architektur: Altsysteme und Migration</a>.</p>
+<h2 id="11-mandanten-und-demo-pass-phase-4">11. Mandanten und Demo-Pass (Phase 4)<a class="anchor" href="#11-mandanten-und-demo-pass-phase-4" title="Permanent link">#</a></h2>
+<p>Jeder eingeladene Besucher bekommt einen eigenen
+<a href="glossar.html#mandant">Mandanten</a> im <a href="glossar.html#bridge-modell">Bridge-Modell</a>:
+geteilte <a class="term" href="glossar.html#lambda" title="führt eine einzelne Funktion (z. B. einen HTTP-Handler) bei Bedarf aus; Abrechnung pro Aufruf und Laufzeit, skaliert automatisch von 0 auf viele Instanzen">Lambdas</a>, <a class="term" href="glossar.html#api" title="Programmierschnittstelle, über die Programme miteinander sprechen">API</a> und Bus; eigene Tabelle <code>kp-tenant-&lt;kennung&gt;</code>,
+eigener <a class="term" href="glossar.html#legacy-system" title="bestehendes Altsystem mit Kundendaten, das abgelöst werden soll; im Demo simuliert">Altsystem</a>-Datenstand, eigenes <a class="term" href="glossar.html#upload" title="Hochladen einer Datei vom Browser zum Server bzw. nach S3">Upload</a>-Präfix und eigene Konten.</p>
+<ul>
+<li><strong>Service <code>tenancy</code>:</strong> API für den Inhaber (Einladungen, Pässe, Widerruf)
+  und den <a class="term" href="glossar.html#demo-pass" title="im Demo: zeitlich begrenzte Berechtigung (7 Tage, Kontingent) für eine eigene Instanz; ausgestellt per Einladungslink oder für den Inhaber">Pass-Inhaber</a> (eigener Pass), öffentliche Einlöse-Funktion ohne
+  <a class="term" href="glossar.html#jwt-authorizer" title="Prüfschritt im API Gateway, der Signatur, Aussteller und Zielgruppe eines JWT prüft, bevor die Lambda aufgerufen wird">Authorizer</a>, Worker für Einrichtung (<code>DemoPassIssued</code>), Ablauf per
+  einmaligem <a href="glossar.html#eventbridge-scheduler">EventBridge Scheduler</a>-Zeitplan,
+  täglichen Abgleich 03:30 und <a class="term" href="glossar.html#event" title="Nachricht, dass etwas passiert ist (z. B. „Zählerstand erfasst&quot;); Empfänger reagieren darauf, ohne dass der Absender sie kennt">Ereignis</a>-<a class="term" href="glossar.html#free-tier" title="Sammelbegriff für kostenlose Nutzungsmengen bei AWS">Kontingent</a>; der <a class="term" href="glossar.html#aws-budgets" title="kostenloser Dienst für Kostengrenzen mit E-Mail-/SNS-Alarm bei Überschreitung; kein harter Stopp, Daten kommen Stunden verzögert">Budget-Alarm</a> sperrt
+  per <a class="term" href="glossar.html#sns" title="Publish/Subscribe-Dienst: eine Nachricht an ein Topic geht an alle Abonnenten (E-Mail, SQS, Lambda, HTTP, SMS)">SNS</a> das Einlösen (<a href="glossar.html#kill-switch">Kill-Switch</a>).</li>
+<li><strong><a href="glossar.html#token-vending-machine">Token Vending</a> in <code>service-kit</code>:</strong>
+  <code>tenantData(tenantId)</code> nimmt per <a href="glossar.html#sts">STS</a> die <a class="term" href="glossar.html#mandant" title="abgeschotteter Bereich eines Kunden in einer gemeinsam betriebenen Anwendung; im Demo je Demo-Pass ein Mandant">Mandanten</a>-Rolle
+  aus der Base mit <a class="term" href="glossar.html#sitzungs-tag" title="Schlüssel-Wert-Paar, das beim Annehmen einer IAM-Rolle mitgegeben wird; Richtlinien können Ressourcennamen daraus bilden (z. B. nur die Tabelle des eigenen Mandanten)">Sitzungs-Tag</a> <code>tenant</code> an; deren Richtlinie erlaubt nur
+  <code>table/kp-tenant-${aws:PrincipalTag/tenant}</code> und
+  <code>uploads/${aws:PrincipalTag/tenant}/*</code>. Der Inhaber-Mandant <code>owner</code> bleibt
+  in der Tabelle der Base. Der Router zählt API-Aufrufe je Pass-Mandant
+  (429 an der Grenze, 403 wenn nicht aktiv).</li>
+<li><strong>Aufräumen beim Vollabbau:</strong> Die
+  <a href="glossar.html#custom-resource">Custom Resource</a> <code>Custom::PassTenantCleanup</code>
+  im Base-<a class="term" href="glossar.html#stack" title="Einheit in CloudFormation/CDK: eine Gruppe von Ressourcen, die gemeinsam angelegt und gelöscht wird">Stack</a> baut vor Tabelle, <a class="term" href="glossar.html#user-pool" title="Nutzerverzeichnis in Cognito mit eigenen Nutzern, Gruppen, App-Clients und Triggern; zugleich OIDC-Aussteller">User Pool</a> und <a class="term" href="glossar.html#s3" title="Objektspeicher für Dateien beliebiger Größe in „Buckets&quot;; Standard für statische Websites, Uploads, Build-Artefakte">Bucket</a> alle Pass-Mandanten
+  zurück; <a class="term" href="glossar.html#cloudformation" title="AWS-eigener Dienst, der Ressourcen aus einer JSON/YAML-Vorlage anlegt, ändert und löscht; Grundlage von CDK und SAM">CloudFormation</a> kennt die zur Laufzeit angelegten Tabellen sonst
+  nicht.</li>
+</ul>
+<p>Einrichtung ≈ 10 s, <a class="term" href="glossar.html#teardown" title="vollständiges Entfernen aller Demo-Ressourcen per cdk destroy und terraform destroy">Rückbau</a> ≈ 10 s nach Ablauf, <a class="term" href="glossar.html#playwright" title="Werkzeug, das echte Browser fernsteuert; prüft die Journeys am laufenden Portal">E2E</a> 23/23 grün
+[B: 30.09.2026]. Einzelheiten, Messwerte und offene Punkte:
+<a href="architektur-mandanten.html">Architektur: Mandanten und Demo-Pass</a>; die
+Seiten in <a class="term" href="glossar.html#shell" title="Rahmenanwendung, die Navigation, Login und Layout stellt und die Micro-Frontends einbindet">Shell</a> und Cockpit: <a href="architektur-zonen.html">Zonen &amp; Frontend</a> §8.</p>
 <h2 id="quellen">Quellen<a class="anchor" href="#quellen" title="Permanent link">#</a></h2>
 <ul class="sources">
 <li>Lambda Reserved Concurrency (höchstens Kontokapazität minus 100): <a href="https://docs.aws.amazon.com/lambda/latest/dg/configuration-concurrency.html">https://docs.aws.amazon.com/lambda/latest/dg/configuration-concurrency.html</a></li>
@@ -894,6 +952,6 @@ beschreibt die eigene Seite
 <li>EventBridge, Wiederholungen und DLQ am Regelziel: <a href="https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-rule-dlq.html">https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-rule-dlq.html</a></li>
 <li>S3-Ereignisse über EventBridge: <a href="https://docs.aws.amazon.com/AmazonS3/latest/userguide/EventBridge.html">https://docs.aws.amazon.com/AmazonS3/latest/userguide/EventBridge.html</a></li>
 </ul></main></div>
-<footer class="site"><a href="../wiki/architektur.md">Markdown-Quelle</a> · Generiert 2026-09-30 19:53 aus <code>docs/wiki</code> mit <code>scripts/build_reports.py</code></footer>
+<footer class="site"><a href="../wiki/architektur.md">Markdown-Quelle</a> · Generiert 2026-09-30 21:33 aus <code>docs/wiki</code> mit <code>scripts/build_reports.py</code></footer>
 </body>
 </html>

@@ -30,6 +30,11 @@ It is a portfolio project that demonstrates, in one coherent system:
 > trigger, telco passwords checked against an own Keycloak) or by a bulk import with a
 > dead-letter queue and redrive; duplicates are offered for linking; a migration cockpit
 > shows the progress.
+>
+> Phase 4 (tenants and demo pass) is released as v0.4.0: the owner creates invitation links
+> in the cockpit; redeeming one (behind a self-hosted ALTCHA proof of work) sets up an own
+> tenant in about ten seconds — own DynamoDB table reached through token vending, own
+> legacy data, own accounts — with quotas, and tears it down completely after seven days.
 
 ## Documentation
 
@@ -46,11 +51,11 @@ The concept, decisions and research are written in German:
 | `apps/shell`                    | Next.js shell zone: start page, OIDC sign-in (BFF), account with profile editing, demo mailbox                      |
 | `apps/contracts`                | Next.js zone under `/vertraege` (contracts and invoices), own Lambda, reads the shell's session                     |
 | `apps/consumption`              | Next.js zone under `/verbrauch` (meter readings and data volume), own Lambda                                        |
-| `apps/cockpit`                  | Next.js zone under `/cockpit`: migration cockpit for the owner (progress, clarification, DLQ, timeline)             |
+| `apps/cockpit`                  | Next.js zone under `/cockpit`: migration cockpit (progress, clarification, DLQ, timeline), demo-pass administration |
 | `packages/api-contract`         | OpenAPI contract, typed client, routes and scopes for the gateway; OpenAPI of both legacy systems (`legacy/`)       |
 | `packages/events`               | domain event envelope and schemas (zod)                                                                             |
 | `packages/legacy`               | clients of the two legacy systems and the telco Keycloak, mapping to the migration events                           |
-| `packages/service-kit`          | shared Lambda helpers: routing, problem details, caller from JWT                                                    |
+| `packages/service-kit`          | shared Lambda helpers: routing, problem details, caller from JWT, per-tenant data access, quota guard               |
 | `packages/ui`                   | component library: React components, design tokens (light/dark), shared DE/EN texts, Storybook                      |
 | `packages/web-auth`             | session, API client, sign-in URL and CSRF check for shell and zones; `sendJson` for browser writes                  |
 | `packages/widget-notifications` | runtime widget `<kp-bell>` (custom element): unread messages, served from `/widgets/bell.js`                        |
@@ -61,6 +66,7 @@ The concept, decisions and research are written in German:
 | `services/notification`         | SQS consumer with DLQ, demo mailbox API (DE/EN), owner hints via SNS                                                |
 | `services/identity`             | Cognito triggers: access token claims, migrate user (lazy migration), post authentication                           |
 | `services/migration`            | bulk import with DLQ and redrive, duplicates and account linking, cockpit status and timeline, demo reset           |
+| `services/tenancy`              | invitations, demo passes, redeeming with ALTCHA, tenant set-up, expiry and teardown                                 |
 | `infra/cdk`                     | AWS CDK application in four stacks (certificate, base, app, edge) and the zone registry                             |
 | `infra/terraform`               | foundation: OIDC trust for CI, budget, SSM incl. the legacy systems' access data (run by a private GitLab pipeline) |
 | `tests/e2e`                     | Playwright run against the live portal                                                                              |

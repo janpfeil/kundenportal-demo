@@ -22,10 +22,13 @@
 <li><a href="#7-ablauf-und-rückbau">7. Ablauf und Rückbau</a></li>
 <li><a href="#8-ereignisse">8. Ereignisse</a></li>
 <li><a href="#9-ausblick-silo-für-den-inhaber">9. Ausblick: Silo für den Inhaber</a></li>
+<li><a href="#10-messwerte">10. Messwerte</a></li>
+<li><a href="#11-befunde-aus-dem-live-test">11. Befunde aus dem Live-Test</a></li>
+<li><a href="#offen">Offen</a></li>
 </ul>
 </div>
 </nav><main><h1 id="architektur-mandanten-und-demo-pass">Architektur: Mandanten und Demo-Pass<a class="anchor" href="#architektur-mandanten-und-demo-pass" title="Permanent link">#</a></h1>
-<p>Stand: 2026-09-30 · Phase 4, <strong>Entwurf</strong> (wird mit der Umsetzung zum Ist-Stand). Ergänzt die <a href="architektur.html">Architektur</a>, <a href="architektur-zonen.html">Zonen &amp; Frontend</a> und <a href="architektur-migration.html">Altsysteme &amp; Migration</a>; Anforderungen und Grundentscheidung (<a class="term" href="glossar.html#bridge-modell" title="Mandantenmodell: Rechenleistung geteilt, Daten und Ereignisse je Mandant getrennt">Bridge-Modell</a>) stehen in <a href="demo-pass.html">Demo-Pass</a>. Kennzeichnung: <strong>[B]</strong> belegt, <strong>[A]</strong> Annahme, <strong>[E]</strong> Einschätzung.</p>
+<p>Stand: 2026-09-30 · Beschreibt den <strong>Ist-Stand</strong> des Codes (Phase 4 abgeschlossen, Release v0.4.0), live geprüft am 30.09.2026. Ergänzt die <a href="architektur.html">Architektur</a>, <a href="architektur-zonen.html">Zonen &amp; Frontend</a> und <a href="architektur-migration.html">Altsysteme &amp; Migration</a>; Anforderungen und Grundentscheidung (<a class="term" href="glossar.html#bridge-modell" title="Mandantenmodell: Rechenleistung geteilt, Daten und Ereignisse je Mandant getrennt">Bridge-Modell</a>) stehen in <a href="demo-pass.html">Demo-Pass</a>. Kennzeichnung: <strong>[B]</strong> belegt, <strong>[A]</strong> Annahme, <strong>[E]</strong> Einschätzung.</p>
 <p>Fachbegriffe sind in jedem Abschnitt beim ersten Vorkommen mit dem <a href="glossar.html">Glossar</a> verlinkt (Erklärung und Entsprechung außerhalb von <a class="term" href="glossar.html#aws" title="Cloud-Plattform von Amazon mit über 200 Diensten (Rechenleistung, Datenbanken, Netzwerk, Messaging …), abgerechnet nach Nutzung">AWS</a>).</p>
 <h2 id="überblick">Überblick<a class="anchor" href="#überblick" title="Permanent link">#</a></h2>
 <p>Der Inhaber stellt <strong><a class="term" href="glossar.html#einladungslink" title="persönlicher, einmal verwendbarer Link, der einen Demo-Pass ausstellt">Einladungslinks</a></strong> aus. Wer einen Link einlöst, erhält
@@ -34,7 +37,13 @@ einen <strong><a class="term" href="glossar.html#demo-pass" title="im Demo: zeit
 Die <a class="term" href="glossar.html#lambda" title="führt eine einzelne Funktion (z. B. einen HTTP-Handler) bei Bedarf aus; Abrechnung pro Aufruf und Laufzeit, skaliert automatisch von 0 auf viele Instanzen">Lambdas</a>, das <a class="term" href="glossar.html#api" title="Programmierschnittstelle, über die Programme miteinander sprechen">API</a> und der Ereignisbus sind geteilt; Daten, <a class="term" href="glossar.html#legacy-system" title="bestehendes Altsystem mit Kundendaten, das abgelöst werden soll; im Demo simuliert">Altsystem</a>-
 Datenstand, <a class="term" href="glossar.html#upload" title="Hochladen einer Datei vom Browser zum Server bzw. nach S3">Uploads</a> und Konten gehören dem <a class="term" href="glossar.html#mandant" title="abgeschotteter Bereich eines Kunden in einer gemeinsam betriebenen Anwendung; im Demo je Demo-Pass ein Mandant">Mandanten</a> allein. Nach Ablauf baut
 das System den Mandanten vollständig zurück.</p>
-<figure class="chart"><figcaption>Lebenszyklus eines Mandanten</figcaption><svg viewBox="0 0 1000 220" role="img" aria-label="Lebenszyklus eines Mandanten" preserveAspectRatio="xMinYMin meet"><line class="axis" x1="162" y1="10" x2="162" y2="210"/><g tabindex="0" data-tip="Einladung: Inhaber erzeugt im Cockpit einen Link für eine E-Mail-Adresse (einmalig, 14 Tage)"><text x="144.0" y="26.0" class="t-ink2" font-size="13" text-anchor="end" font-weight="600">Einladung</text><circle class="f-s1 ring" cx="162" cy="21" r="6"/><text x="180.0" y="26.0" class="t-ink" font-size="14" text-anchor="start">Inhaber erzeugt im Cockpit einen Link für eine E-Mail-Adresse (einmalig, 14 Tage)</text></g><g tabindex="0" data-tip="Einlösen: Besucher öffnet den Link, löst das ALTCHA-Rätsel; Pass wird ausgestellt"><text x="144.0" y="60.0" class="t-ink2" font-size="13" text-anchor="end" font-weight="600">Einlösen</text><circle class="f-s1 ring" cx="162" cy="55" r="6"/><text x="180.0" y="60.0" class="t-ink" font-size="14" text-anchor="start">Besucher öffnet den Link, löst das ALTCHA-Rätsel; Pass wird ausgestellt</text></g><g tabindex="0" data-tip="Einrichtung: Tabelle, Altsystem-Datenstand, Konto des Pass-Inhabers, Ablauf-Zeitplan (Ziel unter 1 Minute)"><text x="144.0" y="94.0" class="t-ink2" font-size="13" text-anchor="end" font-weight="600">Einrichtung</text><circle class="f-s1 ring" cx="162" cy="89" r="6"/><text x="180.0" y="94.0" class="t-ink" font-size="14" text-anchor="start">Tabelle, Altsystem-Datenstand, Konto des Pass-Inhabers, Ablauf-Zeitplan (Ziel unter 1 Minute)</text></g><g tabindex="0" data-tip="Tag 1–7: Nutzung mit den Demo-Personen des Mandanten; Kontingent sichtbar"><text x="144.0" y="128.0" class="t-ink2" font-size="13" text-anchor="end" font-weight="600">Tag 1–7</text><circle class="f-s1 ring" cx="162" cy="123" r="6"/><text x="180.0" y="128.0" class="t-ink" font-size="14" text-anchor="start">Nutzung mit den Demo-Personen des Mandanten; Kontingent sichtbar</text></g><g tabindex="0" data-tip="Tag 7: Zeitplan oder täglicher Abgleich meldet den Ablauf"><text x="144.0" y="162.0" class="t-ink2" font-size="13" text-anchor="end" font-weight="600">Tag 7</text><circle class="f-s1 ring" cx="162" cy="157" r="6"/><text x="180.0" y="162.0" class="t-ink" font-size="14" text-anchor="start">Zeitplan oder täglicher Abgleich meldet den Ablauf</text></g><g tabindex="0" data-tip="Rückbau: Tabelle, Altsystem-Daten, Uploads, Konten, Zeitplan, Plattform-Einträge"><text x="144.0" y="196.0" class="t-ink2" font-size="13" text-anchor="end" font-weight="600">Rückbau</text><circle class="f-s1 ring" cx="162" cy="191" r="6"/><text x="180.0" y="196.0" class="t-ink" font-size="14" text-anchor="start">Tabelle, Altsystem-Daten, Uploads, Konten, Zeitplan, Plattform-Einträge</text></g></svg><details><summary>Daten als Tabelle</summary><div class="table-wrap"><div class="table-wrap"><table><thead><tr><th>Datum</th><th>Ereignis</th></tr></thead><tbody><tr><td>Einladung</td><td>Inhaber erzeugt im Cockpit einen Link für eine E-Mail-Adresse (einmalig, 14 Tage)</td></tr><tr><td>Einlösen</td><td>Besucher öffnet den Link, löst das ALTCHA-Rätsel; Pass wird ausgestellt</td></tr><tr><td>Einrichtung</td><td>Tabelle, Altsystem-Datenstand, Konto des Pass-Inhabers, Ablauf-Zeitplan (Ziel unter 1 Minute)</td></tr><tr><td>Tag 1–7</td><td>Nutzung mit den Demo-Personen des Mandanten; Kontingent sichtbar</td></tr><tr><td>Tag 7</td><td>Zeitplan oder täglicher Abgleich meldet den Ablauf</td></tr><tr><td><a class="term" href="glossar.html#teardown" title="vollständiges Entfernen aller Demo-Ressourcen per cdk destroy und terraform destroy">Rückbau</a></td><td>Tabelle, Altsystem-Daten, Uploads, Konten, Zeitplan, Plattform-Einträge</td></tr></tbody></table></div></div></details></figure>
+<p>Gebaut ist das im Service <code>services/tenancy</code> (API, öffentliche Einlöse-
+Funktionen, Worker), in <code>packages/service-kit</code> (<code>tenantData</code>,
+<code>TenantDirectory</code>, Kontingent-Wächter im Router), in den <a class="term" href="glossar.html#lambda-trigger-cognito" title="Lambda-Funktion, die Cognito an festen Punkten aufruft (vor Registrierung, vor/nach Login, Token-Erzeugung, Migration); im Demo in services/identity">Cognito-Triggern</a>
+(<code>services/identity</code>), in beiden Altsystemen (Datenstand je Mandant) und in
+<a class="term" href="glossar.html#shell" title="Rahmenanwendung, die Navigation, Login und Layout stellt und die Micro-Frontends einbindet">Shell</a> und Cockpit (<a href="architektur-zonen.html">Zonen &amp; Frontend</a> §8).</p>
+<div class="stats"><div class="stat"><div class="v">≈ 10 s</div><div class="l">vom Einlösen bis zum nutzbaren Mandanten (Ziel &lt; 1 min)</div></div><div class="stat"><div class="v">≈ 10 s</div><div class="l"><a class="term" href="glossar.html#teardown" title="vollständiges Entfernen aller Demo-Ressourcen per cdk destroy und terraform destroy">Rückbau</a> nach Ablauf</div></div><div class="stat"><div class="v">23/23</div><div class="l"><a class="term" href="glossar.html#playwright" title="Werkzeug, das echte Browser fernsteuert; prüft die Journeys am laufenden Portal">E2E</a>-Schritte grün, inkl. J2/J3/<a class="term" href="glossar.html#journey-kürzel" title="Nummern der neun Demo-Abläufe im Fachkonzept (J1 Registrierung … J9 Demo-Pass)">J4</a>/J6 im Pass-Mandanten</div></div><div class="stat"><div class="v">3</div><div class="l">gleichzeitige Pass-Mandanten höchstens</div></div></div>
+<figure class="chart"><figcaption>Lebenszyklus eines Mandanten</figcaption><svg viewBox="0 0 1000 220" role="img" aria-label="Lebenszyklus eines Mandanten" preserveAspectRatio="xMinYMin meet"><line class="axis" x1="162" y1="10" x2="162" y2="210"/><g tabindex="0" data-tip="Einladung: Inhaber erzeugt im Cockpit einen Link für eine E-Mail-Adresse (einmalig, 14 Tage)"><text x="144.0" y="26.0" class="t-ink2" font-size="13" text-anchor="end" font-weight="600">Einladung</text><circle class="f-s1 ring" cx="162" cy="21" r="6"/><text x="180.0" y="26.0" class="t-ink" font-size="14" text-anchor="start">Inhaber erzeugt im Cockpit einen Link für eine E-Mail-Adresse (einmalig, 14 Tage)</text></g><g tabindex="0" data-tip="Einlösen: Besucher öffnet den Link, löst das ALTCHA-Rätsel; Pass wird ausgestellt"><text x="144.0" y="60.0" class="t-ink2" font-size="13" text-anchor="end" font-weight="600">Einlösen</text><circle class="f-s1 ring" cx="162" cy="55" r="6"/><text x="180.0" y="60.0" class="t-ink" font-size="14" text-anchor="start">Besucher öffnet den Link, löst das ALTCHA-Rätsel; Pass wird ausgestellt</text></g><g tabindex="0" data-tip="Einrichtung: Tabelle, Altsystem-Datenstand, Konto des Pass-Inhabers, Ablauf-Zeitplan (gemessen ≈ 10 s)"><text x="144.0" y="94.0" class="t-ink2" font-size="13" text-anchor="end" font-weight="600">Einrichtung</text><circle class="f-s1 ring" cx="162" cy="89" r="6"/><text x="180.0" y="94.0" class="t-ink" font-size="14" text-anchor="start">Tabelle, Altsystem-Datenstand, Konto des Pass-Inhabers, Ablauf-Zeitplan (gemessen ≈ 10 s)</text></g><g tabindex="0" data-tip="Tag 1–7: Nutzung mit den Demo-Personen des Mandanten; Kontingent sichtbar"><text x="144.0" y="128.0" class="t-ink2" font-size="13" text-anchor="end" font-weight="600">Tag 1–7</text><circle class="f-s1 ring" cx="162" cy="123" r="6"/><text x="180.0" y="128.0" class="t-ink" font-size="14" text-anchor="start">Nutzung mit den Demo-Personen des Mandanten; Kontingent sichtbar</text></g><g tabindex="0" data-tip="Tag 7: Einmal-Zeitplan oder täglicher Abgleich (03:30) meldet den Ablauf"><text x="144.0" y="162.0" class="t-ink2" font-size="13" text-anchor="end" font-weight="600">Tag 7</text><circle class="f-s1 ring" cx="162" cy="157" r="6"/><text x="180.0" y="162.0" class="t-ink" font-size="14" text-anchor="start">Einmal-Zeitplan oder täglicher Abgleich (03:30) meldet den Ablauf</text></g><g tabindex="0" data-tip="Rückbau: Tabelle, Altsystem-Daten, Uploads, Konten, Zeitplan, Plattform-Einträge (gemessen ≈ 10 s)"><text x="144.0" y="196.0" class="t-ink2" font-size="13" text-anchor="end" font-weight="600">Rückbau</text><circle class="f-s1 ring" cx="162" cy="191" r="6"/><text x="180.0" y="196.0" class="t-ink" font-size="14" text-anchor="start">Tabelle, Altsystem-Daten, Uploads, Konten, Zeitplan, Plattform-Einträge (gemessen ≈ 10 s)</text></g></svg><details><summary>Daten als Tabelle</summary><div class="table-wrap"><div class="table-wrap"><table><thead><tr><th>Datum</th><th>Ereignis</th></tr></thead><tbody><tr><td>Einladung</td><td>Inhaber erzeugt im Cockpit einen Link für eine E-Mail-Adresse (einmalig, 14 Tage)</td></tr><tr><td>Einlösen</td><td>Besucher öffnet den Link, löst das ALTCHA-Rätsel; Pass wird ausgestellt</td></tr><tr><td>Einrichtung</td><td>Tabelle, Altsystem-Datenstand, Konto des Pass-Inhabers, Ablauf-Zeitplan (gemessen ≈ 10 s)</td></tr><tr><td>Tag 1–7</td><td>Nutzung mit den Demo-Personen des Mandanten; Kontingent sichtbar</td></tr><tr><td>Tag 7</td><td>Einmal-Zeitplan oder täglicher Abgleich (03:30) meldet den Ablauf</td></tr><tr><td><a class="term" href="glossar.html#teardown" title="vollständiges Entfernen aller Demo-Ressourcen per cdk destroy und terraform destroy">Rückbau</a></td><td>Tabelle, Altsystem-Daten, Uploads, Konten, Zeitplan, Plattform-Einträge (gemessen ≈ 10 s)</td></tr></tbody></table></div></div></details></figure>
 <h2 id="1-mandanten-und-kennungen">1. Mandanten und Kennungen<a class="anchor" href="#1-mandanten-und-kennungen" title="Permanent link">#</a></h2>
 <div class="table-wrap"><table>
 <thead>
@@ -85,71 +94,93 @@ Mandanten, <a class="term" href="glossar.html#free-tier" title="Sammelbegriff f�
 <tr>
 <td><code>PASS#&lt;passId&gt;</code></td>
 <td><code>META</code></td>
-<td>Mandant, E-Mail, Status, ausgestellt, gültig bis</td>
+<td>Mandant, E-Mail, Status, ausgestellt, gültig bis; bleibt nach dem <a class="term" href="glossar.html#teardown" title="vollständiges Entfernen aller Demo-Ressourcen per cdk destroy und terraform destroy">Rückbau</a> 30 Tage als Nachweis, dann <a href="glossar.html#dynamodb-ttl">TTL</a></td>
 </tr>
 <tr>
-<td><code>PASS#&lt;passId&gt;</code></td>
+<td><code>TENANT#&lt;kennung&gt;</code></td>
 <td><code>QUOTA#&lt;art&gt;</code></td>
-<td>Zähler (<code>api</code>, <code>events</code>, <code>uploads</code>)</td>
+<td>Zähler <code>used</code> (<code>api</code>, <code>events</code>, <code>uploads</code>) — der Router kennt nur den Mandanten, nicht den Pass</td>
 </tr>
 <tr>
 <td><code>PLATFORM</code></td>
 <td><code>TENANT#&lt;kennung&gt;</code></td>
-<td>Tabelle, Status, Pass — Liste für Abgleich und Cockpit</td>
+<td>Tabelle, Status (<code>provisioning</code>, <code>active</code>, <code>quota-exceeded</code>, <code>tearing-down</code>, <code>deleted</code>), Pass — Liste für Abgleich und Cockpit</td>
 </tr>
 <tr>
 <td><code>PLATFORM</code></td>
 <td><code>SETTINGS</code></td>
-<td>Einlösen offen/gesperrt (<a class="term" href="glossar.html#kill-switch" title="im Demo geplante Automatik: Budget-Alarm → SNS → Lambda setzt Throttling/Concurrency auf 0 und legt die API still">Kill-Switch</a>), Obergrenze</td>
+<td>Einlösen offen/gesperrt (<a href="glossar.html#kill-switch">Kill-Switch</a>), Obergrenze</td>
 </tr>
 <tr>
-<td><code>RATE#&lt;ip-hash&gt;</code></td>
+<td><code>EMAIL#&lt;sha256(adresse)&gt;</code></td>
+<td><code>PASS</code></td>
+<td>ein Pass je E-Mail-Adresse</td>
+</tr>
+<tr>
+<td><code>RATE#&lt;sha256(ip)&gt;</code></td>
 <td><code>REDEEM</code></td>
 <td>Einlöseversuche je <a class="term" href="glossar.html#ip-adresse" title="Internetadresse eines Geräts; dient zur Begrenzung von Anfragen je Absender">IP</a>, TTL 1 h</td>
+</tr>
+<tr>
+<td><code>ALTCHA#&lt;sha256(signatur)&gt;</code></td>
+<td><code>USED</code></td>
+<td>gelöste Rätsel, <a href="glossar.html#replay-schutz">Replay-Schutz</a>, TTL bis zum Ablauf des Rätsels</td>
 </tr>
 </tbody>
 </table></div>
 <h2 id="2-bindung-von-konten-an-den-mandanten">2. Bindung von Konten an den Mandanten<a class="anchor" href="#2-bindung-von-konten-an-den-mandanten" title="Permanent link">#</a></h2>
 <p><code>custom:tenant_id</code> ist in <a class="term" href="glossar.html#amazon-cognito" title="AWS-Identitätsdienst für Registrierung, Login, MFA und Benutzerverwaltung; im Demo der Portal-Login (Entscheidung 29.09.2026), angelegt per CDK">Cognito</a> <strong>unveränderlich</strong> und lässt sich nur beim
-Anlegen eines Kontos setzen. Genau das nutzt der Entwurf — jedes Konto eines
+Anlegen eines Kontos setzen. Genau das nutzt die Umsetzung — jedes Konto eines
 <a class="term" href="glossar.html#demo-pass" title="im Demo: zeitlich begrenzte Berechtigung (7 Tage, Kontingent) für eine eigene Instanz; ausgestellt per Einladungslink oder für den Inhaber">Pass</a>-<a class="term" href="glossar.html#mandant" title="abgeschotteter Bereich eines Kunden in einer gemeinsam betriebenen Anwendung; im Demo je Demo-Pass ein Mandant">Mandanten</a> entsteht durch das System, nie durch Selbstregistrierung:</p>
 <ul>
-<li><strong>Pass-Inhaber:</strong> Das Einlösen legt das Konto per <code>AdminCreateUser</code> an —
-  <a class="term" href="glossar.html#e-mail" title="elektronische Post; SNS verschickt bis 1.000 E-Mails im Monat kostenlos">E-Mail</a> aus der Einladung, <code>custom:tenant_id</code> = Kennung, Gruppe <code>pass</code>.
-  Cognito schickt das Einmal-Passwort an diese Adresse; die erste Anmeldung
-  bestätigt sie. Weitere E-Mails verschickt das System an Pass-Inhaber nicht.</li>
+<li><strong>Pass-Inhaber:</strong> Die Einrichtung (Worker auf <code>DemoPassIssued</code>) legt das
+  Konto per <code>AdminCreateUser</code> an — <a class="term" href="glossar.html#e-mail" title="elektronische Post; SNS verschickt bis 1.000 E-Mails im Monat kostenlos">E-Mail</a> aus der Einladung,
+  <code>custom:tenant_id</code> = Kennung, Gruppe <code>pass</code>. Cognito schickt das
+  Einmal-Passwort an diese Adresse; die erste Anmeldung bestätigt sie. Das
+  ist die <strong>einzige</strong> Systemmail; kurze Test-Pässe des <a class="term" href="glossar.html#playwright" title="Werkzeug, das echte Browser fernsteuert; prüft die Journeys am laufenden Portal">E2E</a>-Laufs
+  unterdrücken auch sie (<code>MessageAction: SUPPRESS</code>).</li>
 <li><strong><a class="term" href="glossar.html#demo-person" title="im Demo vorbereitete fiktive Kundinnen und Kunden mit festgelegter Geschichte (z. B. Anna Becker: Altkundin, Lazy Migration)">Demo-Personen</a>:</strong> Anmeldename mit <a class="term" href="glossar.html#plus-adresse" title="E-Mail-Adresse mit Zusatz nach einem Pluszeichen (anna+p4k7x2qa@…); im Demo trägt der Zusatz die Kennung des Mandanten einer Demo-Person">Plus-Adresse</a>, z. B.
   <code>anna.becker+p4k7x2qa@example.org</code>. Der <a class="term" href="glossar.html#migrate-user-trigger" title="Cognito-Trigger für die Lazy Migration: meldet sich ein unbekannter Nutzer mit Passwort an, prüft die Lambda die Daten beim Altsystem; bei Erfolg legt Cognito den Nutzer mit demsel">Migrate-User-Trigger</a> liest den
   Zusatz, prüft, dass ein aktiver Pass-Mandant dieser Kennung existiert,
   fragt das <a class="term" href="glossar.html#legacy-system" title="bestehendes Altsystem mit Kundendaten, das abgelöst werden soll; im Demo simuliert">Altsystem</a> <strong>dieses</strong> Mandanten mit der Adresse ohne Zusatz und
-  setzt <code>custom:tenant_id</code> beim Anlegen. Der <a class="term" href="glossar.html#bulk-import" title="Übernahme vieler Konten auf einmal; bei Cognito per CSV-Import oder AdminCreateUser, im Demo ohne Passwörter (Nutzer müssen zurücksetzen); Hash-Import (u. a. bcrypt) ist noch nicht">Bulk-Import</a> eines
+  setzt <code>custom:tenant_id</code> beim Anlegen. Plus-Adressen nimmt er <strong>nur für
+  aktive Pass-Mandanten</strong> an; eine unbekannte oder abgelaufene Kennung
+  scheitert wie ein falsches Passwort. Der <a class="term" href="glossar.html#bulk-import" title="Übernahme vieler Konten auf einmal; bei Cognito per CSV-Import oder AdminCreateUser, im Demo ohne Passwörter (Nutzer müssen zurücksetzen); Hash-Import (u. a. bcrypt) ist noch nicht">Bulk-Import</a> eines
   Pass-Mandanten verfährt ebenso. Ohne Zusatz bleibt alles wie bisher
   (Mandant <code>owner</code>).</li>
 <li><strong><a class="term" href="glossar.html#pre-token-generation-trigger" title="Lambda, die Cognito vor dem Ausstellen der Tokens aufruft; in Version 2 kann sie dem Access Token eigene Claims hinzufügen (im Demo tenant_id, email, locale, name)">Pre-Token-Trigger</a>:</strong> unverändert — <code>tenant_id</code> aus <code>custom:tenant_id</code>,
   sonst <code>owner</code>. Zusätzlich lehnt er Anmeldungen ab, deren Pass nicht mehr
-  aktiv ist (Status aus <code>PLATFORM/TENANT#…</code>).</li>
+  nutzbar ist (Status aus <code>PLATFORM/TENANT#…</code>); nach Ablauf und <a class="term" href="glossar.html#teardown" title="vollständiges Entfernen aller Demo-Ressourcen per cdk destroy und terraform destroy">Rückbau</a>
+  kann sich der Pass-Inhaber nicht mehr anmelden [B: E2E 30.09.2026].</li>
 </ul>
 <p><strong>Demo-Passwort je Mandant:</strong> Das Einrichten erzeugt ein zufälliges
 Passwort und übergibt es beiden Altsystemen, die damit den Datenstand des
-Mandanten anlegen. Die Statusseite zeigt es dem Pass-Inhaber zusammen mit
+Mandanten anlegen (ausdrückliches <code>PUT</code> je Mandant; <code>DELETE</code> baut ihn
+zurück; unbekannte Mandanten außer <code>owner</code> beantworten die Altsysteme mit
+404). Die Statusseite zeigt es dem Pass-Inhaber zusammen mit
 den Anmeldenamen der Demo-Personen. So verrät ein Pass nichts über den
 Inhaber-Mandanten. Die Telko-Anmeldung eines Pass-Mandanten prüft das
-Telko-Altsystem direkt (<code>/v2/auth/check</code>); der <a class="term" href="glossar.html#keycloak" title="Open-Source-Identitätsdienst (OIDC, SAML), selbst betrieben; im Demo unter id.rypox.net die Anmeldung des Telko-Altsystems und ab Phase 3 Gegenstelle des Migrate-User-Triggers">Keycloak</a>-<a class="term" href="glossar.html#realm" title="abgeschlossener Bereich in Keycloak mit eigenen Nutzern, Clients und Einstellungen">Realm</a> <code>telko</code> bleibt
+Telko-Altsystem direkt (<code>checkLogin</code>, <code>POST /v2/auth/check</code>); der <a class="term" href="glossar.html#keycloak" title="Open-Source-Identitätsdienst (OIDC, SAML), selbst betrieben; im Demo unter id.rypox.net die Anmeldung des Telko-Altsystems und ab Phase 3 Gegenstelle des Migrate-User-Triggers">Keycloak</a>-<a class="term" href="glossar.html#realm" title="abgeschlossener Bereich in Keycloak mit eigenen Nutzern, Clients und Einstellungen">Realm</a> <code>telko</code> bleibt
 dem Inhaber-Mandanten vorbehalten.</p>
 <h2 id="3-isolation">3. Isolation<a class="anchor" href="#3-isolation" title="Permanent link">#</a></h2>
-<figure class="chart"><figcaption>Zugriff einer geteilten Lambda auf Mandantendaten</figcaption><svg viewBox="0 0 1000 151" role="img" aria-label="Zugriff einer geteilten Lambda auf Mandantendaten" preserveAspectRatio="xMinYMin meet"><defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="edge-head" d="M0,0L10,5L0,10z"/></marker></defs><text x="121.2" y="18.0" class="t-muted" font-size="12" text-anchor="middle" font-weight="600">Mandant</text><rect class="box" x="10.0" y="32" width="222.5" height="69" rx="6"/><text x="20.0" y="53.0" class="t-ink" font-size="13" text-anchor="start" font-weight="600">Token oder Ereignis</text><text x="20.0" y="72.0" class="t-ink2" font-size="12" text-anchor="start">tenant_id aus dem geprüften</text><text x="20.0" y="89.0" class="t-ink2" font-size="12" text-anchor="start">JWT bzw. detail.tenantId</text><text x="373.8" y="18.0" class="t-muted" font-size="12" text-anchor="middle" font-weight="600">Token Vending</text><rect class="box-accent" x="262.5" y="32" width="222.5" height="103" rx="6"/><text x="272.5" y="53.0" class="t-ink" font-size="13" text-anchor="start" font-weight="600">sts:AssumeRole</text><text x="272.5" y="72.0" class="t-ink2" font-size="12" text-anchor="start">Rolle</text><text x="272.5" y="89.0" class="t-ink2" font-size="12" text-anchor="start">kundenportal-tenant-data,</text><text x="272.5" y="106.0" class="t-ink2" font-size="12" text-anchor="start">Sitzungs-Tag tenant, gecacht</text><text x="272.5" y="123.0" class="t-ink2" font-size="12" text-anchor="start">15 min</text><text x="626.2" y="18.0" class="t-muted" font-size="12" text-anchor="middle" font-weight="600">Client</text><rect class="box" x="515.0" y="32" width="222.5" height="69" rx="6"/><text x="525.0" y="53.0" class="t-ink" font-size="13" text-anchor="start" font-weight="600">DynamoDB, S3</text><text x="525.0" y="72.0" class="t-ink2" font-size="12" text-anchor="start">Clients mit diesen</text><text x="525.0" y="89.0" class="t-ink2" font-size="12" text-anchor="start">Anmeldedaten</text><text x="878.8" y="18.0" class="t-muted" font-size="12" text-anchor="middle" font-weight="600">IAM</text><rect class="box-accent" x="767.5" y="32" width="222.5" height="103" rx="6"/><text x="777.5" y="53.0" class="t-ink" font-size="13" text-anchor="start" font-weight="600">Richtlinie</text><text x="777.5" y="72.0" class="t-ink2" font-size="12" text-anchor="start">nur</text><text x="777.5" y="89.0" class="t-ink2" font-size="12" text-anchor="start">table/kp-tenant-${aws:PrincipalTag/tenant}</text><text x="777.5" y="106.0" class="t-ink2" font-size="12" text-anchor="start">und</text><text x="777.5" y="123.0" class="t-ink2" font-size="12" text-anchor="start">uploads/${aws:PrincipalTag/tenant}/*</text><path class="edge" marker-end="url(#ah)" d="M232.5,66.5 C247.5,66.5 247.5,83.5 260.5,83.5"/><path class="edge" marker-end="url(#ah)" d="M485.0,83.5 C500.0,83.5 500.0,66.5 513.0,66.5"/><path class="edge" marker-end="url(#ah)" d="M737.5,66.5 C752.5,66.5 752.5,83.5 765.5,83.5"/></svg><details><summary>Daten als Tabelle</summary><div class="table-wrap"><div class="table-wrap"><table><thead><tr><th>Schicht</th><th>Komponente</th></tr></thead><tbody><tr><td><a class="term" href="glossar.html#mandant" title="abgeschotteter Bereich eines Kunden in einer gemeinsam betriebenen Anwendung; im Demo je Demo-Pass ein Mandant">Mandant</a></td><td>Token oder Ereignis (tenant_id aus dem geprüften JWT bzw. detail.tenantId)</td></tr><tr><td><a class="term" href="glossar.html#token" title="digitaler Ausweis, den ein Identitätsdienst ausstellt und den eine App bei jedem API-Aufruf mitschickt">Token</a> Vending</td><td>sts:AssumeRole (Rolle kundenportal-tenant-data, Sitzungs-Tag tenant, gecacht 15 min)</td></tr><tr><td>Client</td><td>DynamoDB, S3 (Clients mit diesen Anmeldedaten)</td></tr><tr><td><a class="term" href="glossar.html#iam" title="Rechteverwaltung von AWS: Rollen und Richtlinien legen fest, wer (Mensch, Dienst, Lambda) was mit welcher Ressource darf">IAM</a></td><td>Richtlinie (nur table/kp-tenant-${aws:PrincipalTag/tenant} und uploads/${aws:PrincipalTag/tenant}/*)</td></tr></tbody></table></div></div></details></figure>
+<figure class="chart"><figcaption>Zugriff einer geteilten Lambda auf Mandantendaten</figcaption><svg viewBox="0 0 1000 151" role="img" aria-label="Zugriff einer geteilten Lambda auf Mandantendaten" preserveAspectRatio="xMinYMin meet"><defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="edge-head" d="M0,0L10,5L0,10z"/></marker></defs><text x="121.2" y="18.0" class="t-muted" font-size="12" text-anchor="middle" font-weight="600">Mandant</text><rect class="box" x="10.0" y="32" width="222.5" height="69" rx="6"/><text x="20.0" y="53.0" class="t-ink" font-size="13" text-anchor="start" font-weight="600">Token oder Ereignis</text><text x="20.0" y="72.0" class="t-ink2" font-size="12" text-anchor="start">tenant_id aus dem geprüften</text><text x="20.0" y="89.0" class="t-ink2" font-size="12" text-anchor="start">JWT bzw. detail.tenantId</text><text x="373.8" y="18.0" class="t-muted" font-size="12" text-anchor="middle" font-weight="600">Token Vending</text><rect class="box-accent" x="262.5" y="32" width="222.5" height="86" rx="6"/><text x="272.5" y="53.0" class="t-ink" font-size="13" text-anchor="start" font-weight="600">sts:AssumeRole</text><text x="272.5" y="72.0" class="t-ink2" font-size="12" text-anchor="start">Rolle aus der Base,</text><text x="272.5" y="89.0" class="t-ink2" font-size="12" text-anchor="start">Sitzungs-Tag tenant, 15 min,</text><text x="272.5" y="106.0" class="t-ink2" font-size="12" text-anchor="start">gecacht je Mandant</text><text x="626.2" y="18.0" class="t-muted" font-size="12" text-anchor="middle" font-weight="600">Client</text><rect class="box" x="515.0" y="32" width="222.5" height="69" rx="6"/><text x="525.0" y="53.0" class="t-ink" font-size="13" text-anchor="start" font-weight="600">DynamoDB, S3</text><text x="525.0" y="72.0" class="t-ink2" font-size="12" text-anchor="start">Clients mit diesen</text><text x="525.0" y="89.0" class="t-ink2" font-size="12" text-anchor="start">Anmeldedaten</text><text x="878.8" y="18.0" class="t-muted" font-size="12" text-anchor="middle" font-weight="600">IAM</text><rect class="box-accent" x="767.5" y="32" width="222.5" height="103" rx="6"/><text x="777.5" y="53.0" class="t-ink" font-size="13" text-anchor="start" font-weight="600">Richtlinie</text><text x="777.5" y="72.0" class="t-ink2" font-size="12" text-anchor="start">nur</text><text x="777.5" y="89.0" class="t-ink2" font-size="12" text-anchor="start">table/kp-tenant-${aws:PrincipalTag/tenant}</text><text x="777.5" y="106.0" class="t-ink2" font-size="12" text-anchor="start">und</text><text x="777.5" y="123.0" class="t-ink2" font-size="12" text-anchor="start">uploads/${aws:PrincipalTag/tenant}/*</text><path class="edge" marker-end="url(#ah)" d="M232.5,66.5 C247.5,66.5 247.5,75.0 260.5,75.0"/><path class="edge" marker-end="url(#ah)" d="M485.0,75.0 C500.0,75.0 500.0,66.5 513.0,66.5"/><path class="edge" marker-end="url(#ah)" d="M737.5,66.5 C752.5,66.5 752.5,83.5 765.5,83.5"/></svg><details><summary>Daten als Tabelle</summary><div class="table-wrap"><div class="table-wrap"><table><thead><tr><th>Schicht</th><th>Komponente</th></tr></thead><tbody><tr><td><a class="term" href="glossar.html#mandant" title="abgeschotteter Bereich eines Kunden in einer gemeinsam betriebenen Anwendung; im Demo je Demo-Pass ein Mandant">Mandant</a></td><td>Token oder Ereignis (tenant_id aus dem geprüften JWT bzw. detail.tenantId)</td></tr><tr><td><a class="term" href="glossar.html#token" title="digitaler Ausweis, den ein Identitätsdienst ausstellt und den eine App bei jedem API-Aufruf mitschickt">Token</a> Vending</td><td>sts:AssumeRole (Rolle aus der Base, Sitzungs-Tag tenant, 15 min, gecacht je Mandant)</td></tr><tr><td>Client</td><td>DynamoDB, S3 (Clients mit diesen Anmeldedaten)</td></tr><tr><td><a class="term" href="glossar.html#iam" title="Rechteverwaltung von AWS: Rollen und Richtlinien legen fest, wer (Mensch, Dienst, Lambda) was mit welcher Ressource darf">IAM</a></td><td>Richtlinie (nur table/kp-tenant-${aws:PrincipalTag/tenant} und uploads/${aws:PrincipalTag/tenant}/*)</td></tr></tbody></table></div></div></details></figure>
 <ul>
 <li><strong><a href="glossar.html#token-vending-machine">Token Vending Machine</a>:</strong> Die
   <a class="term" href="glossar.html#lambda" title="führt eine einzelne Funktion (z. B. einen HTTP-Handler) bei Bedarf aus; Abrechnung pro Aufruf und Laufzeit, skaliert automatisch von 0 auf viele Instanzen">Lambda</a>-Rollen haben <strong>keine</strong> Rechte an <code>kp-tenant-*</code>-Tabellen. Sie dürfen
-  nur die Rolle <code>kundenportal-tenant-data</code> annehmen und müssen dabei den
+  nur die <a class="term" href="glossar.html#mandant" title="abgeschotteter Bereich eines Kunden in einer gemeinsam betriebenen Anwendung; im Demo je Demo-Pass ein Mandant">Mandanten</a>-Rolle des Base-<a class="term" href="glossar.html#stack" title="Einheit in CloudFormation/CDK: eine Gruppe von Ressourcen, die gemeinsam angelegt und gelöscht wird">Stacks</a> annehmen (<a class="term" href="glossar.html#arn" title="eindeutige Kennung jeder AWS-Ressource, z. B. arn:aws:s3:::mein-bucket">ARN</a> in <a class="term" href="glossar.html#ssm-parameter-store" title="Ablage für Konfigurationswerte und (verschlüsselt als SecureString) Geheimnisse; Standard-Stufe kostenlos. Im Demo auch Übergabestelle zwischen Terraform und CDK">SSM</a>
+  <code>/kundenportal/base/tenant-data-role-arn</code>) und müssen dabei den
   <a class="term" href="glossar.html#sitzungs-tag" title="Schlüssel-Wert-Paar, das beim Annehmen einer IAM-Rolle mitgegeben wird; Richtlinien können Ressourcennamen daraus bilden (z. B. nur die Tabelle des eigenen Mandanten)">Sitzungs-Tag</a> <code>tenant</code> setzen; deren Richtlinie löst den Tabellennamen und
   das <a class="term" href="glossar.html#upload" title="Hochladen einer Datei vom Browser zum Server bzw. nach S3">Upload</a>-Präfix aus dem Tag auf. Ein Programmfehler, der den falschen
   Schlüssel baut, trifft damit höchstens die eigene Tabelle — nie eine
   fremde [B: <a class="term" href="glossar.html#iam" title="Rechteverwaltung von AWS: Rollen und Richtlinien legen fest, wer (Mensch, Dienst, Lambda) was mit welcher Ressource darf">IAM</a>-Richtlinienvariable <code>aws:PrincipalTag</code>].</li>
 <li><strong><code>packages/service-kit</code>:</strong> <code>tenantData(tenantId)</code> liefert Tabellenname
   und Client — <code>owner</code> → Tabelle der Base mit den Rechten der Lambda,
-  sonst Tabelle des <a class="term" href="glossar.html#mandant" title="abgeschotteter Bereich eines Kunden in einer gemeinsam betriebenen Anwendung; im Demo je Demo-Pass ein Mandant">Mandanten</a> mit Vending-Anmeldedaten. Die <a class="term" href="glossar.html#repository" title="von Git verwaltetes Projektverzeichnis, z. B. auf GitHub">Repositories</a> der
-  Services werden je Mandant gebaut statt einmal je <a class="term" href="glossar.html#kaltstart" title="Verzögerung, wenn eine Lambda-Instanz erst gestartet werden muss (bei Node.js meist &lt; 1 s)">Kaltstart</a>.</li>
+  sonst Tabelle des Mandanten mit Vending-Anmeldedaten. Die <a class="term" href="glossar.html#repository" title="von Git verwaltetes Projektverzeichnis, z. B. auf GitHub">Repositories</a> der
+  Services werden je Mandant gebaut statt einmal je <a class="term" href="glossar.html#kaltstart" title="Verzögerung, wenn eine Lambda-Instanz erst gestartet werden muss (bei Node.js meist &lt; 1 s)">Kaltstart</a>; Anmeldedaten
+  und Clients bleiben je Mandant <a class="term" href="glossar.html#cache" title="Zwischenspeicher, der wiederholte Anfragen schneller und billiger beantwortet">gecacht</a>, bis die Sitzung bald abläuft.</li>
+<li><strong><code>TenantDirectory</code></strong> (ebenfalls <code>service-kit</code>) liest den Status eines
+  Mandanten aus <code>PLATFORM/TENANT#…</code> und cacht ihn 30 s; darauf baut der
+  <a class="term" href="glossar.html#free-tier" title="Sammelbegriff für kostenlose Nutzungsmengen bei AWS">Kontingent</a>-Wächter (Abschnitt 5).</li>
 <li><strong><a class="term" href="glossar.html#event" title="Nachricht, dass etwas passiert ist (z. B. „Zählerstand erfasst&quot;); Empfänger reagieren darauf, ohne dass der Absender sie kennt">Ereignisse</a>:</strong> Jedes Ereignis trägt <code>tenantId</code> (Umschlag,
   <code>packages/events</code>); <a class="term" href="glossar.html#konsument" title="Dienst, der Nachrichten oder Events empfängt und verarbeitet">Konsumenten</a> schreiben nur über <code>tenantData</code> des
   Ereignis-Mandanten. Eigene Regeln je Mandant sind nicht nötig und würden
@@ -168,21 +199,36 @@ dem Inhaber-Mandanten vorbehalten.</p>
 </ul>
 <h2 id="4-einlösen-und-missbrauchsschutz">4. Einlösen und Missbrauchsschutz<a class="anchor" href="#4-einlösen-und-missbrauchsschutz" title="Permanent link">#</a></h2>
 <ul>
+<li><strong>Weg:</strong> Die <a class="term" href="glossar.html#shell" title="Rahmenanwendung, die Navigation, Login und Layout stellt und die Micro-Frontends einbindet">Shell</a>-Seite <code>/pass/einloesen</code> liest den <a class="term" href="glossar.html#token" title="digitaler Ausweis, den ein Identitätsdienst ausstellt und den eine App bei jedem API-Aufruf mitschickt">Token</a> nur aus dem
+  <a class="term" href="glossar.html#url" title="Internetadresse einer Seite oder eines API-Endpunkts">URL</a>-Fragment (<code>#…</code>), das nie an einen <a class="term" href="glossar.html#server" title="Rechner oder Prozess, der Anfragen beantwortet">Server</a> oder in ein Log geht. Das
+  <a class="term" href="glossar.html#widget" title="kleiner, eingebetteter Oberflächenbaustein">Widget</a> holt das Rätsel über den <a href="glossar.html#route-handler">Route Handler</a>
+  <code>/pass/einloesen/challenge</code>; <code>/pass/einloesen/api</code> prüft den
+  <a class="term" href="glossar.html#origin-header" title="Header, mit dem der Browser bei schreibenden Anfragen die Herkunft der Seite angibt; der Server prüft ihn gegen die eigene Domain">Origin-Header</a>, reicht die <a class="term" href="glossar.html#ip-adresse" title="Internetadresse eines Geräts; dient zur Begrenzung von Anfragen je Absender">IP</a> des Besuchers als <code>x-kp-client-ip</code> weiter
+  und ruft <code>POST /api/tenancy/redeem</code>. Die beiden öffentlichen Operationen
+  (<code>getRedeemChallenge</code>, <code>redeemInvitation</code>) tragen im Vertrag
+  <code>security: []</code> und laufen damit <strong>ohne</strong> <a class="term" href="glossar.html#jwt-authorizer" title="Prüfschritt im API Gateway, der Signatur, Aussteller und Zielgruppe eines JWT prüft, bevor die Lambda aufgerufen wird">JWT-Authorizer</a>.</li>
 <li><strong><a href="glossar.html#altcha">ALTCHA</a></strong> statt Turnstile/<a class="term" href="glossar.html#captcha" title="Prüfung, ob ein Mensch oder ein Programm eine Seite bedient">hCaptcha</a>: ein
-  <a href="glossar.html#proof-of-work">Proof-of-Work</a>-Rätsel, das der <a class="term" href="glossar.html#browser" title="Programm zum Anzeigen von Webseiten; „Browser-App&quot; = Anwendung, die im Browser läuft">Browser</a> in
-  ungefähr einer Sekunde löst; <a class="term" href="glossar.html#self-hosting" title="Software auf eigener bzw. selbst gewählter Infrastruktur betreiben statt beim Hersteller">selbst gehostet</a>, Open Source (MIT), keine
-  Daten an Dritte, kein Konto beim Anbieter, 0 <a class="term" href="glossar.html#usd" title="Währung, in der AWS abrechnet">$</a>. Der HMAC-Schlüssel liegt
-  als SecureString im <a class="term" href="glossar.html#ssm-parameter-store" title="Ablage für Konfigurationswerte und (verschlüsselt als SecureString) Geheimnisse; Standard-Stufe kostenlos. Im Demo auch Übergabestelle zwischen Terraform und CDK">Parameter Store</a> (<a class="term" href="glossar.html#aws" title="Cloud-Plattform von Amazon mit über 200 Diensten (Rechenleistung, Datenbanken, Netzwerk, Messaging …), abgerechnet nach Nutzung">AWS</a>-verwalteter Schlüssel). Der
-  <a class="term" href="glossar.html#playwright" title="Werkzeug, das echte Browser fernsteuert; prüft die Journeys am laufenden Portal">E2E</a>-Test löst das Rätsel wie ein Browser — es gibt <strong>keine</strong>
+  <a href="glossar.html#proof-of-work">Proof-of-Work</a>-Rätsel; <a class="term" href="glossar.html#self-hosting" title="Software auf eigener bzw. selbst gewählter Infrastruktur betreiben statt beim Hersteller">selbst gehostet</a>, Open
+  Source (MIT), keine Daten an Dritte, kein Konto beim Anbieter, 0 <a class="term" href="glossar.html#usd" title="Währung, in der AWS abrechnet">$</a>.
+  Gemessen: in Node.js ≈ 0,6 s, im <a class="term" href="glossar.html#browser" title="Programm zum Anzeigen von Webseiten; „Browser-App&quot; = Anwendung, die im Browser läuft">Browser</a> löst das Widget es
+  selbsttätig [B: 30.09.2026]. Der HMAC-Schlüssel liegt als SecureString im
+  <a class="term" href="glossar.html#ssm-parameter-store" title="Ablage für Konfigurationswerte und (verschlüsselt als SecureString) Geheimnisse; Standard-Stufe kostenlos. Im Demo auch Übergabestelle zwischen Terraform und CDK">Parameter Store</a> (<a class="term" href="glossar.html#aws" title="Cloud-Plattform von Amazon mit über 200 Diensten (Rechenleistung, Datenbanken, Netzwerk, Messaging …), abgerechnet nach Nutzung">AWS</a>-verwalteter Schlüssel). Jedes gelöste Rätsel gilt
+  nur einmal (<code>ALTCHA#…/USED</code>); ein wiederholtes wird mit 400 abgelehnt.
+  Der <a class="term" href="glossar.html#playwright" title="Werkzeug, das echte Browser fernsteuert; prüft die Journeys am laufenden Portal">E2E</a>-Test löst das Rätsel wie ein Browser — es gibt <strong>keine</strong>
   Umgehung.</li>
-<li>Einladungs-<a class="term" href="glossar.html#token" title="digitaler Ausweis, den ein Identitätsdienst ausstellt und den eine App bei jedem API-Aufruf mitschickt">Token</a>: 32 Byte Zufall, im Link; gespeichert wird nur sein
+<li>Einladungs-Token: 32 Byte Zufall, im Link; gespeichert wird nur sein
   SHA-256. Einlösen per bedingtem Schreiben (<code>attribute_not_exists(redeemedAt)</code>)
   — genau einmal.</li>
-<li>Begrenzung: 10 Einlöseversuche je <a class="term" href="glossar.html#ip-adresse" title="Internetadresse eines Geräts; dient zur Begrenzung von Anfragen je Absender">IP</a> und Stunde; höchstens <strong>3
-  gleichzeitige <a class="term" href="glossar.html#demo-pass" title="im Demo: zeitlich begrenzte Berechtigung (7 Tage, Kontingent) für eine eigene Instanz; ausgestellt per Einladungslink oder für den Inhaber">Pass</a>-<a class="term" href="glossar.html#mandant" title="abgeschotteter Bereich eines Kunden in einer gemeinsam betriebenen Anwendung; im Demo je Demo-Pass ein Mandant">Mandanten</a></strong> (Abschnitt 6); ein Pass je <a class="term" href="glossar.html#e-mail" title="elektronische Post; SNS verschickt bis 1.000 E-Mails im Monat kostenlos">E-Mail</a>-Adresse.</li>
-<li><strong><a class="term" href="glossar.html#kill-switch" title="im Demo geplante Automatik: Budget-Alarm → SNS → Lambda setzt Throttling/Concurrency auf 0 und legt die API still">Kill-Switch</a>:</strong> Der <a class="term" href="glossar.html#aws-budgets" title="kostenloser Dienst für Kostengrenzen mit E-Mail-/SNS-Alarm bei Überschreitung; kein harter Stopp, Daten kommen Stunden verzögert">Budget-Alarm</a> (<a class="term" href="glossar.html#terraform" title="verbreitetes IaC-Werkzeug von HashiCorp: Infrastruktur deklarativ in HCL beschreiben, für viele Anbieter (AWS, Azure, Keycloak, GitHub …) über Provider">Terraform</a>, Thema
+<li>Begrenzung: 10 Einlöseversuche je IP und Stunde; höchstens <strong>3
+  gleichzeitige <a class="term" href="glossar.html#demo-pass" title="im Demo: zeitlich begrenzte Berechtigung (7 Tage, Kontingent) für eine eigene Instanz; ausgestellt per Einladungslink oder für den Inhaber">Pass</a>-<a class="term" href="glossar.html#mandant" title="abgeschotteter Bereich eines Kunden in einer gemeinsam betriebenen Anwendung; im Demo je Demo-Pass ein Mandant">Mandanten</a></strong> (Abschnitt 6); ein Pass je <a class="term" href="glossar.html#e-mail" title="elektronische Post; SNS verschickt bis 1.000 E-Mails im Monat kostenlos">E-Mail</a>-Adresse
+  (<code>EMAIL#…/PASS</code>). Ein unbekannter Link ergibt 404.</li>
+<li><strong><a class="term" href="glossar.html#kill-switch" title="automatische Notbremse bei Kostenalarm; im Demo (seit Phase 4): Budget-Alarm → SNS → Tenancy-Lambda sperrt das Einlösen neuer Demo-Pässe (503), laufende Pässe bleiben nutzbar">Kill-Switch</a>:</strong> Der <a class="term" href="glossar.html#aws-budgets" title="kostenloser Dienst für Kostengrenzen mit E-Mail-/SNS-Alarm bei Überschreitung; kein harter Stopp, Daten kommen Stunden verzögert">Budget-Alarm</a> (<a class="term" href="glossar.html#terraform" title="verbreitetes IaC-Werkzeug von HashiCorp: Infrastruktur deklarativ in HCL beschreiben, für viele Anbieter (AWS, Azure, Keycloak, GitHub …) über Provider">Terraform</a>, Thema
   <code>kundenportal-budget-alerts</code>) ruft zusätzlich die Tenancy-<a class="term" href="glossar.html#lambda" title="führt eine einzelne Funktion (z. B. einen HTTP-Handler) bei Bedarf aus; Abrechnung pro Aufruf und Laufzeit, skaliert automatisch von 0 auf viele Instanzen">Lambda</a> auf, die
-  <code>PLATFORM/SETTINGS</code> auf „gesperrt" setzt. Laufende Pässe bleiben nutzbar.</li>
+  <code>PLATFORM/SETTINGS</code> auf „gesperrt" setzt (<a class="term" href="glossar.html#sns" title="Publish/Subscribe-Dienst: eine Nachricht an ein Topic geht an alle Abonnenten (E-Mail, SQS, Lambda, HTTP, SMS)">SNS</a>-Abo auf das Budget-Thema).
+  Einlösen antwortet dann mit 503; laufende Pässe bleiben nutzbar
+  [B: live 30.09.2026].</li>
+<li><strong><a class="term" href="glossar.html#einladungslink" title="persönlicher, einmal verwendbarer Link, der einen Demo-Pass ausstellt">Einladungslink</a>:</strong> Das Cockpit zeigt ihn genau einmal; der Inhaber
+  schickt ihn selbst. Das System verschickt keine Einladungs-E-Mails.</li>
 </ul>
 <h2 id="5-kontingente">5. Kontingente<a class="anchor" href="#5-kontingente" title="Permanent link">#</a></h2>
 <div class="table-wrap"><table>
@@ -201,23 +247,23 @@ dem Inhaber-Mandanten vorbehalten.</p>
 </tr>
 <tr>
 <td><a class="term" href="glossar.html#api" title="Programmierschnittstelle, über die Programme miteinander sprechen">API</a>-Aufrufe</td>
-<td class="num">5.000</td>
-<td><code>service-kit</code>-Router, atomares <code>ADD</code> mit Bedingung, sonst 429</td>
+<td>5.000 (<code>QUOTA_API_CALLS</code>)</td>
+<td><code>service-kit</code>-Router vor jeder Route eines <a class="term" href="glossar.html#demo-pass" title="im Demo: zeitlich begrenzte Berechtigung (7 Tage, Kontingent) für eine eigene Instanz; ausgestellt per Einladungslink oder für den Inhaber">Pass</a>-<a class="term" href="glossar.html#mandant" title="abgeschotteter Bereich eines Kunden in einer gemeinsam betriebenen Anwendung; im Demo je Demo-Pass ein Mandant">Mandanten</a>: atomares <code>ADD</code> auf <code>TENANT#&lt;kennung&gt;/QUOTA#api</code> der Base mit Bedingung, an der Grenze 429; Mandant nicht <code>active</code> → 403 (<code>quota-exceeded</code> → 429), Status 30 s <a class="term" href="glossar.html#cache" title="Zwischenspeicher, der wiederholte Anfragen schneller und billiger beantwortet">gecacht</a> (<code>TenantDirectory</code>). Die Tenancy-Routen selbst umgehen den Wächter, damit Statusseite und Cockpit erreichbar bleiben</td>
 </tr>
 <tr>
 <td>Domänen-<a class="term" href="glossar.html#event" title="Nachricht, dass etwas passiert ist (z. B. „Zählerstand erfasst&quot;); Empfänger reagieren darauf, ohne dass der Absender sie kennt">Ereignisse</a></td>
 <td class="num">1.000</td>
-<td><a class="term" href="glossar.html#timeline" title="zeitliche Liste von Ereignissen in der Oberfläche">Timeline</a>-<a class="term" href="glossar.html#konsument" title="Dienst, der Nachrichten oder Events empfängt und verarbeitet">Konsument</a> der Migration zählt; bei Überschreitung Status „<a class="term" href="glossar.html#free-tier" title="Sammelbegriff für kostenlose Nutzungsmengen bei AWS">Kontingent</a> erschöpft" → API 429</td>
+<td><strong>eine</strong> Regel „alle <code>kundenportal.*</code>-Ereignisse mit <code>detail.tenantId</code> Präfix <code>p</code>" an den Tenancy-Worker; der zählt <code>QUOTA#events</code>, das erste Ereignis über der Grenze setzt <code>quota-exceeded</code> → API 429</td>
 </tr>
 <tr>
 <td><a class="term" href="glossar.html#upload" title="Hochladen einer Datei vom Browser zum Server bzw. nach S3">Uploads</a></td>
 <td>20, je ≤ 5 <a class="term" href="glossar.html#gb" title="Gigabyte / Terabyte (1 TB = 1.000 GB)">MB</a>, nur JPEG/PNG/<a class="term" href="glossar.html#pdf" title="Dokumentformat, hier für Rechnungen">PDF</a></td>
-<td>Documents beim Ausstellen der <a class="term" href="glossar.html#url" title="Internetadresse einer Seite oder eines API-Endpunkts">URL</a></td>
+<td>Größe und Typ prüft Documents; die Zahl 20 wird <strong>noch nicht</strong> durchgesetzt (Offen)</td>
 </tr>
 <tr>
 <td>Gleichzeitige Instanzen</td>
-<td>1 je <a class="term" href="glossar.html#demo-pass" title="im Demo: zeitlich begrenzte Berechtigung (7 Tage, Kontingent) für eine eigene Instanz; ausgestellt per Einladungslink oder für den Inhaber">Pass</a></td>
-<td>ein <a class="term" href="glossar.html#mandant" title="abgeschotteter Bereich eines Kunden in einer gemeinsam betriebenen Anwendung; im Demo je Demo-Pass ein Mandant">Mandant</a> je Pass</td>
+<td>1 je Pass</td>
+<td>ein Mandant je Pass</td>
 </tr>
 <tr>
 <td><a class="term" href="glossar.html#e-mail" title="elektronische Post; SNS verschickt bis 1.000 E-Mails im Monat kostenlos">E-Mails</a></td>
@@ -227,7 +273,8 @@ dem Inhaber-Mandanten vorbehalten.</p>
 </tbody>
 </table></div>
 <p>Bei Überschreitung erscheint <code>QuotaExceeded</code>; die <a class="term" href="glossar.html#shell" title="Rahmenanwendung, die Navigation, Login und Layout stellt und die Micro-Frontends einbindet">Shell</a> zeigt
-„Kontingent: … übrig · gültig bis …" aus <code>GET /pass</code>.</p>
+„<a class="term" href="glossar.html#free-tier" title="Sammelbegriff für kostenlose Nutzungsmengen bei AWS">Kontingent</a>: … übrig · gültig bis …" aus <code>GET /api/tenancy/pass</code> auf der
+Seite <code>/pass</code> (Komponente <code>Meter</code> aus <code>packages/ui</code>).</p>
 <h2 id="6-kosten-und-obergrenze">6. Kosten und Obergrenze<a class="anchor" href="#6-kosten-und-obergrenze" title="Permanent link">#</a></h2>
 <div class="table-wrap"><table>
 <thead>
@@ -244,12 +291,17 @@ dem Inhaber-Mandanten vorbehalten.</p>
 <td><a class="term" href="glossar.html#always-free" title="Freikontingente, die unbefristet jeden Monat gelten, z. B. 1 Mio. Lambda-Aufrufe">Always Free</a>: 25 <a class="term" href="glossar.html#rcu" title="Lese-Kapazitätseinheit von DynamoDB: 1 stark konsistenter Lesevorgang pro Sekunde bis 4 KB">RCU</a>/25 <a class="term" href="glossar.html#wcu" title="Schreib-Kapazitätseinheit von DynamoDB: 1 Schreibvorgang pro Sekunde bis 1 KB">WCU</a> je Konto und <a class="term" href="glossar.html#region" title="geografischer Standort mit eigenen Rechenzentren; eu-central-1 = Frankfurt, us-east-1 = Nord-Virginia (dort müssen manche globalen Einstellungen, z. B. CloudFront-Zertifikate, lieg">Region</a>; Base 5/5 + 3 × 5/5 = 20 [B]</td>
 </tr>
 <tr>
+<td>Einmal-Zeitplan je <a class="term" href="glossar.html#demo-pass" title="im Demo: zeitlich begrenzte Berechtigung (7 Tage, Kontingent) für eine eigene Instanz; ausgestellt per Einladungslink oder für den Inhaber">Pass</a></td>
+<td>0 $</td>
+<td><a href="glossar.html#eventbridge-scheduler">EventBridge Scheduler</a>, wird nach dem Auslösen gelöscht</td>
+</tr>
+<tr>
 <td>STS <a class="term" href="glossar.html#sts" title="AWS-Dienst, der kurzlebige Anmeldedaten für eine Rolle ausgibt; kostenlos">AssumeRole</a></td>
 <td>0 $</td>
 <td>STS ist kostenlos [B]</td>
 </tr>
 <tr>
-<td><a class="term" href="glossar.html#eventbridge-scheduler" title="zeitgesteuertes Auslösen von Zielen (einmalig oder wiederkehrend); 14 Mio. Aufrufe/Monat frei">EventBridge Scheduler</a></td>
+<td><a class="term" href="glossar.html#eventbridge-scheduler" title="zeitgesteuertes Auslösen von Zielen (einmalig oder wiederkehrend); 14 Mio. Aufrufe/Monat frei">EventBridge Scheduler</a> (Zeitpläne und täglicher Abgleich)</td>
 <td>0 $</td>
 <td>14 Mio. Aufrufe/Monat frei [B]</td>
 </tr>
@@ -270,25 +322,35 @@ dem Inhaber-Mandanten vorbehalten.</p>
 </tr>
 </tbody>
 </table></div>
-<p>Daraus die <strong>Obergrenze von 3 gleichzeitigen <a class="term" href="glossar.html#demo-pass" title="im Demo: zeitlich begrenzte Berechtigung (7 Tage, Kontingent) für eine eigene Instanz; ausgestellt per Einladungslink oder für den Inhaber">Pass</a>-Mandanten</strong> (änderbar in
+<p>Daraus die <strong>Obergrenze von 3 gleichzeitigen Pass-Mandanten</strong> (änderbar in
 <code>PLATFORM/SETTINGS</code>). Mehr Mandanten trüge im <a class="term" href="glossar.html#free-plan" title="AWS-Kontoplan für Neukonten seit 15.07.2025: garantiert keine Kosten, aber nur ausgewählte Dienste und automatische Kontoschließung nach 6 Monaten oder aufgebrauchtem Guthaben">Free Plan</a> das <a class="term" href="glossar.html#guthaben" title="Gutschrift in US-Dollar, die mit Rechnungsbeträgen verrechnet wird; bei Neukonten bis 200 $, verfällt nach 12 Monaten">Guthaben</a>, danach
 kostete jede weitere Tabelle 5 × (0,00065 + 0,00013) $/h ≈ 2,85 $/Monat [A].</p>
 <h2 id="7-ablauf-und-rückbau">7. Ablauf und Rückbau<a class="anchor" href="#7-ablauf-und-rückbau" title="Permanent link">#</a></h2>
 <ul>
 <li><strong>Zeitplan:</strong> Die Einrichtung legt einen einmaligen Zeitplan
-  (<code>at(…)</code>, <code>ActionAfterCompletion: DELETE</code>) in der Gruppe
+  (<code>at(…)</code>, <code>ActionAfterCompletion: DELETE</code>, Ziel: Tenancy-Worker) in der Gruppe
   <code>kundenportal-passes</code> an. Die Gruppe liegt im Base-Stack, damit eine Pause
   (Abbau des App-<a class="term" href="glossar.html#stack" title="Einheit in CloudFormation/CDK: eine Gruppe von Ressourcen, die gemeinsam angelegt und gelöscht wird">Stacks</a>) sie nicht löscht.</li>
-<li><strong>Täglicher Abgleich:</strong> Ein Lauf findet abgelaufene, hängende
+<li><strong>Täglicher Abgleich</strong> (03:30 Europe/Berlin): Ein Lauf findet abgelaufene, hängende
   (Einrichtung &gt; 10 min) und verwaiste <a class="term" href="glossar.html#mandant" title="abgeschotteter Bereich eines Kunden in einer gemeinsam betriebenen Anwendung; im Demo je Demo-Pass ein Mandant">Mandanten</a> (z. B. Zeitplan während
   einer Pause ins Leere gelaufen) und baut sie zurück.</li>
+<li><strong>Ablauf:</strong> Zeitplan, Abgleich oder Widerruf im Cockpit setzen den
+  Mandanten auf <code>tearing-down</code> und veröffentlichen <code>DemoPassExpired</code>; dessen
+  <a class="term" href="glossar.html#lambda-handler" title="die Einstiegsfunktion einer Lambda, die das Ereignis (HTTP-Request, Queue-Nachricht) erhält">Handler</a> baut zurück. Gemessen: ≈ 10 s nach Ablauf ist alles weg
+  [B: 30.09.2026]; <a class="term" href="glossar.html#legacy-system" title="bestehendes Altsystem mit Kundendaten, das abgelöst werden soll; im Demo simuliert">Altsystem</a>-Daten des gelöschten Mandanten antworten
+  danach mit 404.</li>
 <li><strong><a class="term" href="glossar.html#teardown" title="vollständiges Entfernen aller Demo-Ressourcen per cdk destroy und terraform destroy">Rückbau</a></strong> (<a class="term" href="glossar.html#idempotenz" title="Eigenschaft einer Verarbeitung, bei mehrfacher Ausführung dasselbe Ergebnis zu liefern wie bei einfacher; nötig, weil Ereignisse doppelt zugestellt werden können">idempotent</a>, jeder Schritt überspringt Fehlendes): <a class="term" href="glossar.html#amazon-cognito" title="AWS-Identitätsdienst für Registrierung, Login, MFA und Benutzerverwaltung; im Demo der Portal-Login (Entscheidung 29.09.2026), angelegt per CDK">Cognito</a>-
-  Konten mit <code>custom:tenant_id</code> = Kennung löschen; <a class="term" href="glossar.html#legacy-system" title="bestehendes Altsystem mit Kundendaten, das abgelöst werden soll; im Demo simuliert">Altsysteme</a>
+  Konten mit <code>custom:tenant_id</code> = Kennung löschen; Altsysteme
   <code>DELETE …/mandant</code> bzw. <code>…/tenant</code>; <a class="term" href="glossar.html#upload" title="Hochladen einer Datei vom Browser zum Server bzw. nach S3">Upload</a>-Präfix löschen; Tabelle
   löschen; Zeitplan löschen; Plattform-Einträge auf „gelöscht" (<a class="term" href="glossar.html#demo-pass" title="im Demo: zeitlich begrenzte Berechtigung (7 Tage, Kontingent) für eine eigene Instanz; ausgestellt per Einladungslink oder für den Inhaber">Pass</a> bleibt
   30 Tage als Nachweis, dann <a class="term" href="glossar.html#dynamodb-ttl" title="Attribut ttl mit Ablaufzeitpunkt; DynamoDB löscht solche Einträge selbst und kostenlos (hier die Cockpit-Timeline nach 7 Tagen)">TTL</a>); <code>TenantDeleted</code>.</li>
-<li><strong><code>scripts/teardown.sh --all</code></strong> löscht zusätzlich alle Tabellen
-  <code>kp-tenant-*</code> und die Zeitplangruppe; eine Pause lässt sie bestehen.</li>
+<li><strong>Vollabbau:</strong> Pass-Mandanten entstehen zur Laufzeit; <a class="term" href="glossar.html#cloudformation" title="AWS-eigener Dienst, der Ressourcen aus einer JSON/YAML-Vorlage anlegt, ändert und löscht; Grundlage von CDK und SAM">CloudFormation</a>
+  kennt sie nicht. Deshalb liegt im Base-Stack die
+  <a href="glossar.html#custom-resource">Custom Resource</a> <code>Custom::PassTenantCleanup</code>.
+  Beim Löschen des Base-Stacks (<code>scripts/teardown.sh --all</code>) baut sie
+  <strong>zuerst</strong> alle Pass-Mandanten zurück — Tabellen, Altsystem-Daten,
+  Konten, Uploads —, erst danach gehen Tabelle, <a class="term" href="glossar.html#user-pool" title="Nutzerverzeichnis in Cognito mit eigenen Nutzern, Gruppen, App-Clients und Triggern; zugleich OIDC-Aussteller">User Pool</a> und <a class="term" href="glossar.html#s3" title="Objektspeicher für Dateien beliebiger Größe in „Buckets&quot;; Standard für statische Websites, Uploads, Build-Artefakte">Bucket</a>. Eine
+  Pause (nur App-Stack) lässt Mandanten und Zeitplangruppe bestehen.</li>
 </ul>
 <h2 id="8-ereignisse">8. Ereignisse<a class="anchor" href="#8-ereignisse" title="Permanent link">#</a></h2>
 <div class="table-wrap"><table>
@@ -332,14 +394,98 @@ kostete jede weitere Tabelle 5 × (0,00065 + 0,00013) $/h ≈ 2,85 $/Monat [A].<
 </tr>
 </tbody>
 </table></div>
-<p><code>tenantId</code> im Umschlag ist bei allen die Kennung des <a class="term" href="glossar.html#demo-pass" title="im Demo: zeitlich begrenzte Berechtigung (7 Tage, Kontingent) für eine eigene Instanz; ausgestellt per Einladungslink oder für den Inhaber">Pass</a>-Mandanten; das
-Postfach des Inhabers erhält <code>DemoPassIssued</code> und <code>TenantDeleted</code> als
-Hinweis.</p>
+<p><code>tenantId</code> im Umschlag ist bei allen die Kennung des <a class="term" href="glossar.html#demo-pass" title="im Demo: zeitlich begrenzte Berechtigung (7 Tage, Kontingent) für eine eigene Instanz; ausgestellt per Einladungslink oder für den Inhaber">Pass</a>-Mandanten.
+<code>DemoPassIssued</code> startet die Einrichtung, <code>DemoPassExpired</code> den Rückbau
+(beides im Tenancy-Worker). Geplant war zusätzlich ein Hinweis im Postfach
+des Inhabers zu <code>DemoPassIssued</code> und <code>TenantDeleted</code>; er ist <strong>nicht</strong>
+gebaut (Offen).</p>
 <h2 id="9-ausblick-silo-für-den-inhaber">9. Ausblick: Silo für den Inhaber<a class="anchor" href="#9-ausblick-silo-für-den-inhaber" title="Permanent link">#</a></h2>
 <p>Ein vollständiger eigener <a class="term" href="glossar.html#stack" title="Einheit in CloudFormation/CDK: eine Gruppe von Ressourcen, die gemeinsam angelegt und gelöscht wird">Stack</a> je Instanz (<a class="term" href="glossar.html#silo-modell" title="Mandantenmodell: jeder Mandant bekommt eigene, vollständige Infrastruktur">Silo</a>) zeigt <a class="term" href="glossar.html#iac" title="Infrastruktur (Server, Datenbanken, Rechte) wird in Dateien beschrieben, versioniert und automatisch angelegt statt per Klick">Infrastruktur als
 Code</a> am deutlichsten, dauert aber 2–5 Minuten und belegt je Instanz einen
 Bus und eine <a class="term" href="glossar.html#distribution" title="eine CloudFront-Konfiguration mit eigener Domain, Ursprüngen und Regeln">Distribution</a>. Er bleibt eine Option für den Inhaber und ist
-nicht Teil von Phase 4.</p></main></div>
-<footer class="site"><a href="../wiki/architektur-mandanten.md">Markdown-Quelle</a> · Generiert 2026-09-30 19:54 aus <code>docs/wiki</code> mit <code>scripts/build_reports.py</code></footer>
+nicht Teil von Phase 4.</p>
+<h2 id="10-messwerte">10. Messwerte<a class="anchor" href="#10-messwerte" title="Permanent link">#</a></h2>
+<p>Gemessen am 30.09.2026 gegen die Live-Umgebung (<a class="term" href="glossar.html#playwright" title="Werkzeug, das echte Browser fernsteuert; prüft die Journeys am laufenden Portal">Playwright</a>, <a class="term" href="glossar.html#cloudwatch" title="AWS-Dienst für Logs, Metriken und Alarme">CloudWatch</a>-Logs,
+<code>curl</code>).</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Messgröße</th>
+<th>Wert</th>
+<th>Anmerkung</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Einlösen → <a class="term" href="glossar.html#mandant" title="abgeschotteter Bereich eines Kunden in einer gemeinsam betriebenen Anwendung; im Demo je Demo-Pass ein Mandant">Mandant</a> <code>active</code></td>
+<td>≈ 10 s</td>
+<td>davon Worker 9,6 s (Tabelle, <a class="term" href="glossar.html#legacy-system" title="bestehendes Altsystem mit Kundendaten, das abgelöst werden soll; im Demo simuliert">Altsysteme</a>, Konto, Zeitplan); Ziel &lt; 1 min erreicht</td>
+</tr>
+<tr>
+<td>Ablauf → <a class="term" href="glossar.html#teardown" title="vollständiges Entfernen aller Demo-Ressourcen per cdk destroy und terraform destroy">Rückbau</a> abgeschlossen</td>
+<td>≈ 10 s</td>
+<td>kurzer Test-<a class="term" href="glossar.html#demo-pass" title="im Demo: zeitlich begrenzte Berechtigung (7 Tage, Kontingent) für eine eigene Instanz; ausgestellt per Einladungslink oder für den Inhaber">Pass</a>, Zeitplan löst aus</td>
+</tr>
+<tr>
+<td><a class="term" href="glossar.html#altcha" title="selbst gehostetes, quelloffenes CAPTCHA ohne Bilderrätsel: der Browser löst ein kleines Rechenrätsel (Proof-of-Work), der Server prüft es mit einem geheimen HMAC-Schlüssel; im Demo">ALTCHA</a> lösen</td>
+<td>≈ 0,6 s</td>
+<td>Node.js im E2E-Test; im <a class="term" href="glossar.html#browser" title="Programm zum Anzeigen von Webseiten; „Browser-App&quot; = Anwendung, die im Browser läuft">Browser</a> selbsttätig</td>
+</tr>
+<tr>
+<td><a class="term" href="glossar.html#playwright" title="Werkzeug, das echte Browser fernsteuert; prüft die Journeys am laufenden Portal">E2E</a> gesamt</td>
+<td>23/23 grün</td>
+<td>inkl. J2, J3, <a class="term" href="glossar.html#journey-kürzel" title="Nummern der neun Demo-Abläufe im Fachkonzept (J1 Registrierung … J9 Demo-Pass)">J4</a>, J6 im Pass-Mandanten, Isolation im Cockpit, Ablauf und Löschung, Anmeldung danach abgelehnt</td>
+</tr>
+<tr>
+<td><a class="term" href="glossar.html#kill-switch" title="automatische Notbremse bei Kostenalarm; im Demo (seit Phase 4): Budget-Alarm → SNS → Tenancy-Lambda sperrt das Einlösen neuer Demo-Pässe (503), laufende Pässe bleiben nutzbar">Kill-Switch</a> aktiv → Einlösen</td>
+<td class="num">503</td>
+<td></td>
+</tr>
+<tr>
+<td>wiederholtes <a class="term" href="glossar.html#altcha" title="selbst gehostetes, quelloffenes CAPTCHA ohne Bilderrätsel: der Browser löst ein kleines Rechenrätsel (Proof-of-Work), der Server prüft es mit einem geheimen HMAC-Schlüssel; im Demo">ALTCHA</a></td>
+<td class="num">400</td>
+<td><a class="term" href="glossar.html#replay-schutz" title="Schutz dagegen, dass eine einmal gültige Nachricht (z. B. ein gelöstes Rätsel oder ein Einladungs-Token) ein zweites Mal verwendet wird; im Demo merkt sich die Plattform jedes gelö">Replay-Schutz</a></td>
+</tr>
+<tr>
+<td>unbekannter Link</td>
+<td class="num">404</td>
+<td></td>
+</tr>
+<tr>
+<td><a class="term" href="glossar.html#legacy-system" title="bestehendes Altsystem mit Kundendaten, das abgelöst werden soll; im Demo simuliert">Altsystem</a>-Daten eines gelöschten <a class="term" href="glossar.html#mandant" title="abgeschotteter Bereich eines Kunden in einer gemeinsam betriebenen Anwendung; im Demo je Demo-Pass ein Mandant">Mandanten</a></td>
+<td class="num">404</td>
+<td>beide Altsysteme</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="11-befunde-aus-dem-live-test">11. Befunde aus dem Live-Test<a class="anchor" href="#11-befunde-aus-dem-live-test" title="Permanent link">#</a></h2>
+<p>Drei Fehler fielen erst live auf und sind behoben:</p>
+<ul>
+<li><strong><a class="term" href="glossar.html#amazon-cognito" title="AWS-Identitätsdienst für Registrierung, Login, MFA und Benutzerverwaltung; im Demo der Portal-Login (Entscheidung 29.09.2026), angelegt per CDK">Cognito</a> <code>ListUsers</code></strong> lehnt benutzerdefinierte Attribute in
+  <code>AttributesToGet</code> ab. Die Konten eines <a class="term" href="glossar.html#mandant" title="abgeschotteter Bereich eines Kunden in einer gemeinsam betriebenen Anwendung; im Demo je Demo-Pass ein Mandant">Mandanten</a> werden deshalb ohne
+  diesen Parameter gelistet.</li>
+<li><strong>Typen der <a class="term" href="glossar.html#ui" title="Benutzeroberfläche">Oberfläche</a></strong> waren vom <a class="term" href="glossar.html#api" title="Programmierschnittstelle, über die Programme miteinander sprechen">API</a>-Vertrag abgewichen (<a class="term" href="glossar.html#demo-pass" title="im Demo: zeitlich begrenzte Berechtigung (7 Tage, Kontingent) für eine eigene Instanz; ausgestellt per Einladungslink oder für den Inhaber">Pass</a>-Liste
+  unter einem anderen Schlüssel). <a class="term" href="glossar.html#shell" title="Rahmenanwendung, die Navigation, Login und Layout stellt und die Micro-Frontends einbindet">Shell</a> und Cockpit verwenden jetzt die
+  Typen aus <code>packages/api-contract</code>.</li>
+<li><strong><a class="term" href="glossar.html#reserved-concurrency" title="feste Obergrenze gleichzeitiger Ausführungen einer Lambda; wirkt im Demo als harte Kostenbremse (0 = Funktion abgeschaltet). Reservieren lässt sich höchstens das Kontolimit minus 1">Reserved Concurrency</a> 2</strong> drosselte parallele Aufrufe eines
+  Seitenaufbaus. API-Funktionen haben jetzt 5 wie die <a class="term" href="glossar.html#nextjs" title="React-Framework (von Vercel) mit Routing, Server-Rendering, API-Routen und Build-Optimierung">Next.js</a>-Funktionen,
+  Worker weiter 2 (<a href="architektur.html">Architektur</a> §7).</li>
+</ul>
+<h2 id="offen">Offen<a class="anchor" href="#offen" title="Permanent link">#</a></h2>
+<ul>
+<li>Die Obergrenze von 3 wird <strong>vor</strong> der Transaktion gezählt; zwei
+  gleichzeitige Einlösungen könnten sie überschreiten.</li>
+<li>Das <a class="term" href="glossar.html#upload" title="Hochladen einer Datei vom Browser zum Server bzw. nach S3">Upload</a>-<a class="term" href="glossar.html#free-tier" title="Sammelbegriff für kostenlose Nutzungsmengen bei AWS">Kontingent</a> (20) setzt Documents noch nicht durch.</li>
+<li>Hinweise im Postfach des Inhabers zu <code>DemoPassIssued</code> und <code>TenantDeleted</code>
+  fehlen.</li>
+<li>Der <a class="term" href="glossar.html#demo-reset" title="Cockpit-Funktion des Inhabers: entfernt die von der Migration angelegten Konten, Migrationsstände und die DLQ, damit sich die Journeys wiederholen lassen">Demo-Reset</a> des <strong>Inhaber</strong>-<a class="term" href="glossar.html#mandant" title="abgeschotteter Bereich eines Kunden in einer gemeinsam betriebenen Anwendung; im Demo je Demo-Pass ein Mandant">Mandanten</a> lässt migrierte Profile in der
+  Tabelle der Base stehen. <a class="term" href="glossar.html#demo-pass" title="im Demo: zeitlich begrenzte Berechtigung (7 Tage, Kontingent) für eine eigene Instanz; ausgestellt per Einladungslink oder für den Inhaber">Pass</a>-Mandanten werden vollständig gelöscht; für
+  Besucher ist der Hinweis aus Phase 3 damit erledigt.</li>
+<li>Die Startseite ist nicht im <a class="term" href="glossar.html#cdn" title="Netz verteilter Server, das Inhalte nah beim Nutzer zwischenspeichert">CDN</a> zwischenspeicherbar, weil das gemeinsame
+  Layout <a class="term" href="glossar.html#cookie" title="kleine Datei, die der Browser bei jeder Anfrage mitschickt; httpOnly heißt: für JavaScript unsichtbar und damit vor XSS geschützt">Cookies</a> liest.</li>
+<li>Die Kontingent-Zahlen auf der Einlöse-Seite sind fester Text, nicht aus
+  der Konfiguration gelesen.</li>
+</ul></main></div>
+<footer class="site"><a href="../wiki/architektur-mandanten.md">Markdown-Quelle</a> · Generiert 2026-09-30 21:33 aus <code>docs/wiki</code> mit <code>scripts/build_reports.py</code></footer>
 </body>
 </html>

@@ -138,9 +138,10 @@ Anmeldedaten [B: `aws logout help`]; danach das Profil `kundenportal` aus
 ### 4.5 Lambda-Kontolimit prüfen 👁 und ggf. erhöhen ✎
 
 Ziel: Die Anwendung setzt je Lambda-Funktion eine
-[Reserved Concurrency](glossar.md#reserved-concurrency) von 2 als harte
-Kostenbremse (Stand Phase 2: 13 Funktionen = 26; Phase 1: fünf Funktionen
-= 10; jede weitere Zone oder jeder weitere Service bringt 2 dazu). AWS lässt aber höchstens „nicht reservierte
+[Reserved Concurrency](glossar.md#reserved-concurrency) als harte
+Kostenbremse: 2 je Worker und Trigger, 5 je API-Funktion und je
+Next.js-Funktion (Stand Phase 4: zusammen 84; Phase 3: 52; Phase 2: 35;
+Phase 1: 10). AWS lässt aber höchstens „nicht reservierte
 Kontokapazität **minus 100**" reservieren; 100 bleiben immer für Funktionen
 ohne Reservierung frei
 [B: https://docs.aws.amazon.com/lambda/latest/dg/configuration-concurrency.html].
@@ -164,13 +165,23 @@ Prüfen 👁 (Kommandozeile, nach 4.4):
 → `AccountLimit.ConcurrentExecutions` (Limit) und
 `UnreservedConcurrentExecutions`.
 
-Nötig ist: **Limit ≥ 100 + Summe aller Reservierungen** (2 je Service,
-5 je Next.js-Funktion). Die Zahlen stehen in der [Architektur](architektur.md)
-§7 (Stand Phase 3: 16 × 2 + 4 × 5 = 52, also ≥ 152; Phase 2: ≥ 135).
+Nötig ist: **Limit ≥ 100 + Summe aller Reservierungen**. Die Zahlen
+stehen in der [Architektur](architektur.md) §7. Stand Phase 4:
+
+| Funktionen | Anzahl | je Funktion | Summe |
+|---|---|---|---|
+| Base-Stack: drei Cognito-Trigger und Aufräum-Funktion der Pass-Mandanten | 4 | 2 | 8 |
+| App-Stack: Worker | 8 | 2 | 16 |
+| App-Stack: API-Funktionen | 8 | 5 | 40 |
+| Next.js: Shell und drei Zonen | 4 | 5 | 20 |
+| **Reservierungen gesamt** | | | **84** |
+
+Also **Limit ≥ 100 + 8 + 16 + 40 + 20 = 184** (Phase 3: ≥ 152; Phase 2:
+≥ 135).
 
 | Angezeigtes Limit | Folge |
 |---|---|
-| ≥ 100 + Summe der Reservierungen (Stand Phase 3: ≥ 152) | nichts zu tun; die Standardwerte passen (≥ 100 bleiben frei) |
+| ≥ 100 + Summe der Reservierungen (Stand Phase 4: ≥ 184) | nichts zu tun; die Standardwerte passen (≥ 100 bleiben frei) |
 | darunter (bei Neukonten typisch 10) | Weg A oder B |
 
 Stand des Kontos: Die Erhöhung auf **1.000** ist genehmigt; das reicht mit
@@ -197,8 +208,8 @@ liest den Wert aus der GitHub-Variable `RESERVED_CONCURRENCY` (Standard 2):
 GitHub → Repository → **Settings** → **Secrets and variables** → **Actions**
 → Reiter **Variables** → **New repository variable**, Name
 `RESERVED_CONCURRENCY`, Wert `0`. Rückweg: Variable löschen, sobald das Limit
-erhöht ist; der nächste Deploy reserviert dann wieder (2 je Service, 5 je
-Next.js-Funktion).
+erhöht ist; der nächste Deploy reserviert dann wieder (2 je Worker und
+Trigger, 5 je API- und Next.js-Funktion).
 
 Notieren: angezeigtes Limit, gewählter Weg, Datum des Antrags und der
 Genehmigung.
