@@ -1,0 +1,217 @@
+openapi: 3.1.0
+info:
+  title: Altsystem Telko
+  version: 2.0.0
+  description: >-
+    REST interface of the telco's simulated legacy customer system (private GitLab
+    repository `legacy-telko`, runs on the owner's server). Portal sign-ins of telco
+    customers are checked against the telco's Keycloak realm; this interface serves the
+    customer read and the bulk export. Formats differ from the utility on purpose: one
+    address line with abbreviations, `Nachname, Vorname`, German dates, prices as numbers.
+    Passwords use the telco's own peppered scheme and cannot be imported elsewhere. Each
+    tenant has its own database, selected by `X-Tenant`.
+  license:
+    name: MIT
+    identifier: MIT
+servers:
+  - url: https://legacy-telko.kundenportal-demo.rypox.com
+security:
+  - apiKey: []
+paths:
+  /health:
+    get:
+      operationId: health
+      summary: Liveness check
+      security: []
+      responses:
+        "200":
+          description: Service is up
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status: { type: string, const: UP }
+  /v2/auth/check:
+    post:
+      operationId: checkLogin
+      summary: Check a sign-in with the telco's own password scheme
+      parameters:
+        - $ref: "#/components/parameters/Tenant"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [login, password]
+              properties:
+                login: { type: string, maxLength: 254, description: Mail address }
+                password: { type: string, maxLength: 200 }
+      responses:
+        "200":
+          description: Password correct
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [subscriberId]
+                properties:
+                  subscriberId: { $ref: "#/components/schemas/SubscriberId" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+  /v2/subscribers:
+    get:
+      operationId: findSubscriber
+      summary: Find a subscriber by mail address
+      parameters:
+        - $ref: "#/components/parameters/Tenant"
+        - name: mail
+          in: query
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Zero or one subscriber
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    maxItems: 1
+                    items: { $ref: "#/components/schemas/Subscriber" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+  /v2/subscribers/{subscriberId}:
+    get:
+      operationId: getSubscriber
+      summary: Read a subscriber with products
+      parameters:
+        - $ref: "#/components/parameters/Tenant"
+        - name: subscriberId
+          in: path
+          required: true
+          description: URL-encoded, e.g. `T%2F88-4711`
+          schema: { $ref: "#/components/schemas/SubscriberId" }
+      responses:
+        "200":
+          description: Subscriber
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Subscriber" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /v2/subscribers/export:
+    get:
+      operationId: exportSubscribers
+      summary: Export all subscribers in slices, including salt and hash
+      parameters:
+        - $ref: "#/components/parameters/Tenant"
+        - name: offset
+          in: query
+          schema: { type: integer, minimum: 0, default: 0 }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
+      responses:
+        "200":
+          description: One slice, ordered by subscriber id
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [total, offset, nextOffset, items]
+                properties:
+                  total: { type: integer }
+                  offset: { type: integer }
+                  nextOffset: { type: [integer, "null"], description: Null after the last slice }
+                  items:
+                    type: array
+                    items:
+                      allOf:
+                        - $ref: "#/components/schemas/Subscriber"
+                        - type: object
+                          required: [pwdSalt, pwdHash]
+                          properties:
+                            pwdSalt: { type: string }
+                            pwdHash:
+                              type: string
+                              description: HMAC-SHA256 with a secret pepper; not checkable outside the telco
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+  /v2/admin/reset:
+    post:
+      operationId: resetTenant
+      summary: Recreate the tenant's sample data (demo reset)
+      parameters:
+        - $ref: "#/components/parameters/Tenant"
+      responses:
+        "200":
+          description: Sample data recreated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string }
+        "401": { $ref: "#/components/responses/Error" }
+components:
+  securitySchemes:
+    apiKey:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: "`ApiKey <key>`"
+  parameters:
+    Tenant:
+      name: X-Tenant
+      in: header
+      description: Tenant; default `owner`
+      schema: { type: string, pattern: "^[a-z0-9][a-z0-9-]{0,39}$" }
+  responses:
+    Error:
+      description: Error
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [error]
+            properties:
+              error: { type: string, examples: [unauthorized, invalid_credentials, not_found] }
+  schemas:
+    SubscriberId:
+      type: string
+      pattern: "^T/\\d{2}-\\d{4}$"
+      examples: [T/88-4711]
+    Subscriber:
+      type: object
+      required: [subscriberId, name, mail, msisdn, addressLine, dob, lastLoginAt, products]
+      properties:
+        subscriberId: { $ref: "#/components/schemas/SubscriberId" }
+        name: { type: string, description: "`Nachname, Vorname`" }
+        mail: { type: string, description: Not validated by the legacy system }
+        msisdn: { type: [string, "null"] }
+        addressLine:
+          type: string
+          description: One line, e.g. `Hauptstr. 5, 04103 Leipzig`; postal code may be missing
+        dob: { type: string, description: "`DD.MM.YYYY` or empty" }
+        lastLoginAt: { type: integer, description: Unix time in seconds }
+        products:
+          type: array
+          items: { $ref: "#/components/schemas/Product" }
+    Product:
+      type: object
+      required: [productId, type, plan, monthlyFee, dataVolumeGb, activeSince]
+      properties:
+        productId: { type: string, examples: [DSL-300455, MOB-812233] }
+        type: { type: string, enum: [DSL, MOBILE] }
+        plan:
+          type: string
+          examples: [DSL 100, DSL 250, Glasfaser 1000, Mobil 10 GB, Mobil 20 GB, Mobil 40 GB]
+        monthlyFee: { type: number, description: Euros }
+        dataVolumeGb: { type: [integer, "null"] }
+        activeSince: { type: string, description: "`DD.MM.YYYY`" }

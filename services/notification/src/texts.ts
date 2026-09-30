@@ -1,12 +1,17 @@
 import type {
+  AccountsLinkedDetail,
   ContractChangedDetail,
+  CustomerOrigin,
   DataVolumeThresholdReachedDetail,
   Division,
   DocumentUploadedDetail,
+  DuplicateCandidateFoundDetail,
   InstallmentAdjustedDetail,
+  LegacySystem,
   Locale,
   MeterReadingSubmittedDetail,
   MeterUnit,
+  PasswordResetRequiredDetail,
 } from "@kundenportal/events";
 
 type Text = { title: string; body: string };
@@ -21,6 +26,23 @@ export const welcomeText: Record<Locale, (name: string) => Text> = {
     title: "Welcome to the customer portal",
     body: `Hello ${name}, your account is ready. All messages from the portal will appear here in the demo mailbox.`,
   }),
+};
+
+/** Welcome text for accounts taken over from a legacy system (lazy or bulk migration). */
+export const migratedWelcomeText: Record<Locale, (name: string, origin: CustomerOrigin) => Text> = {
+  de: (name, origin) => ({
+    title: "Willkommen im neuen Kundenportal",
+    body: `Hallo ${name}, Ihr Kundenkonto ${origin === "legacy-telco" ? "der Telko" : "des Versorgers"} wurde in das neue Portal übernommen – mit Ihren Stammdaten und Verträgen. Eine neue Registrierung ist nicht nötig.`,
+  }),
+  en: (name, origin) => ({
+    title: "Welcome to the new customer portal",
+    body: `Hello ${name}, your ${origin === "legacy-telco" ? "telco" : "utility"} customer account has been moved to the new portal, with your details and contracts. There is no need to register again.`,
+  }),
+};
+
+const SYSTEM: Record<Locale, Record<LegacySystem, string>> = {
+  de: { utility: "beim Versorger", telco: "bei der Telko" },
+  en: { utility: "with the utility", telco: "with the telco" },
 };
 
 const TAG: Record<Locale, string> = { de: "de-DE", en: "en-GB" };
@@ -137,5 +159,45 @@ export function documentText(locale: Locale, { payload: p }: DocumentUploadedDet
     : {
         title: "Document uploaded",
         body: `We received your file "${p.fileName}"; it is kept for seven days.`,
+      };
+}
+
+export function passwordResetText(locale: Locale, _detail: PasswordResetRequiredDetail): Text {
+  return locale === "de"
+    ? {
+        title: "Bitte neues Passwort vergeben",
+        body: "Ihr Kundenkonto wurde in das neue Portal übernommen. Ihr bisheriges Passwort ließ sich aus Sicherheitsgründen nicht übertragen. Bitte wählen Sie bei der Anmeldung „Passwort vergessen?“ und vergeben Sie ein neues Passwort.",
+      }
+    : {
+        title: "Please choose a new password",
+        body: 'Your customer account has been moved to the new portal. For security reasons your previous password could not be transferred. Please select "Forgot password?" when signing in and choose a new one.',
+      };
+}
+
+export function duplicateCandidateText(
+  locale: Locale,
+  { payload: p }: DuplicateCandidateFoundDetail,
+): Text {
+  return locale === "de"
+    ? {
+        title: "Weiteres Kundenkonto gefunden",
+        body: `Wir haben ${SYSTEM.de[p.candidate.system]} ein Kundenkonto auf Ihren Namen gefunden (${p.candidateSummary.address}, Kundennummer ${p.candidate.customerNumber}). Unter „Konto“ können Sie es mit diesem Konto verknüpfen und sehen dann alle Verträge an einem Ort.`,
+      }
+    : {
+        title: "Another customer account found",
+        body: `We found a customer account in your name ${SYSTEM.en[p.candidate.system]} (${p.candidateSummary.address}, customer number ${p.candidate.customerNumber}). Under "Account" you can link it to this account and see all contracts in one place.`,
+      };
+}
+
+export function accountsLinkedText(locale: Locale, { payload: p }: AccountsLinkedDetail): Text {
+  const divisions = [...new Set(p.contracts.map((c) => DIVISION[locale][c.division]))].join(", ");
+  return locale === "de"
+    ? {
+        title: "Konten verknüpft",
+        body: `Ihr Kundenkonto ${p.linked.customerNumber} ${SYSTEM.de[p.linked.system]} ist jetzt mit diesem Konto verknüpft.${divisions ? ` Übernommene Verträge: ${divisions}.` : ""}`,
+      }
+    : {
+        title: "Accounts linked",
+        body: `Your customer account ${p.linked.customerNumber} ${SYSTEM.en[p.linked.system]} is now linked to this account.${divisions ? ` Contracts taken over: ${divisions}.` : ""}`,
       };
 }

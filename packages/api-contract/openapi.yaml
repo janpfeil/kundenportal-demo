@@ -264,6 +264,135 @@ paths:
         "400": { $ref: "#/components/responses/Problem" }
         "401": { $ref: "#/components/responses/Problem" }
         "409": { $ref: "#/components/responses/Problem" }
+  /me/links:
+    get:
+      operationId: listLinks
+      summary: Offers to link a second legacy account, and confirmed links
+      description: >-
+        After a migration the portal looks for the same person in the other legacy system
+        (name plus normalised address, birth date or email). Each hit is an offer here and
+        in the mailbox (`DuplicateCandidateFound`).
+      security:
+        - oidc: [kundenportal/profile.read]
+      responses:
+        "200":
+          description: Link offers of the signed-in customer
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [links]
+                properties:
+                  links:
+                    type: array
+                    items: { $ref: "#/components/schemas/LinkOffer" }
+        "401": { $ref: "#/components/responses/Problem" }
+    post:
+      operationId: confirmLink
+      summary: Link an offered legacy account (proof by its password)
+      description: >-
+        The password of the other legacy account proves ownership; it is checked by that
+        legacy system (utility REST or the telco's Keycloak) and never stored. The
+        account's contracts move to the signed-in customer (`AccountsLinked`). Repeating
+        a confirmed link answers the link again.
+      security:
+        - oidc: [kundenportal/profile.write]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LinkRequest" }
+      responses:
+        "200":
+          description: The link
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LinkOffer" }
+        "400": { $ref: "#/components/responses/Problem" }
+        "401": { $ref: "#/components/responses/Problem" }
+        "403": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+        "409": { $ref: "#/components/responses/Problem" }
+  /migration/status:
+    get:
+      operationId: getMigrationStatus
+      summary: Migration cockpit — progress, clarification cases, dead letters, timeline
+      description: Owner only (Cognito group `owner`).
+      security:
+        - oidc: [kundenportal/migration.read]
+      responses:
+        "200":
+          description: Cockpit data of the caller's tenant
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MigrationStatus" }
+        "401": { $ref: "#/components/responses/Problem" }
+        "403": { $ref: "#/components/responses/Problem" }
+  /migration/bulk:
+    post:
+      operationId: startBulkMigration
+      summary: Start the bulk import of the inactive accounts of one legacy system
+      description: >-
+        Owner only. Accounts without sign-in for 12 months are taken over without their
+        password (`PasswordResetRequired`); active ones wait for their first sign-in
+        (lazy migration). Runs asynchronously; progress in `/migration/status`.
+      security:
+        - oidc: [kundenportal/migration.write]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [system]
+              additionalProperties: false
+              properties:
+                system: { $ref: "#/components/schemas/LegacySystem" }
+      responses:
+        "202":
+          description: Run started
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MigrationRun" }
+        "400": { $ref: "#/components/responses/Problem" }
+        "401": { $ref: "#/components/responses/Problem" }
+        "403": { $ref: "#/components/responses/Problem" }
+        "409": { $ref: "#/components/responses/Problem" }
+  /migration/dlq/{recordId}/redrive:
+    post:
+      operationId: redriveMigrationRecord
+      summary: Process a failed record again, optionally with corrections
+      description: >-
+        Owner only. Takes the record's task out of the migration dead-letter queue and
+        hands it to the processor again. Corrections (e.g. a missing postal code) apply
+        to the takeover only; the legacy system stays untouched.
+      security:
+        - oidc: [kundenportal/migration.write]
+      parameters:
+        - name: recordId
+          in: path
+          required: true
+          description: Opaque id from `MigrationStatus.deadLetters[].id`
+          schema: { type: string }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                corrections: { $ref: "#/components/schemas/MigrationCorrections" }
+      responses:
+        "202":
+          description: Record queued again
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MigrationRecord" }
+        "400": { $ref: "#/components/responses/Problem" }
+        "401": { $ref: "#/components/responses/Problem" }
+        "403": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+        "409": { $ref: "#/components/responses/Problem" }
 components:
   parameters:
     ContractId:
@@ -302,6 +431,20 @@ components:
           type: string
           enum: [registration, legacy-utility, legacy-telco]
         createdAt: { type: string, format: date-time }
+        address: { $ref: "#/components/schemas/PostalAddress" }
+        phone: { type: string, description: Taken over from a legacy system }
+        legacyAccounts:
+          type: array
+          description: Legacy accounts behind this customer, e.g. `utility:V-1000123`
+          items: { type: string }
+    PostalAddress:
+      type: object
+      required: [street, houseNumber, postalCode, city]
+      properties:
+        street: { type: string }
+        houseNumber: { type: string }
+        postalCode: { type: string, pattern: "^\\d{5}$" }
+        city: { type: string }
     CustomerUpdate:
       type: object
       minProperties: 1
@@ -461,6 +604,138 @@ components:
           description: Headers the upload must send unchanged (part of the signature)
           additionalProperties: { type: string }
         expiresAt: { type: string, format: date-time }
+    LegacySystem:
+      type: string
+      enum: [utility, telco]
+    LegacyAccount:
+      type: object
+      required: [system, customerNumber]
+      properties:
+        system: { $ref: "#/components/schemas/LegacySystem" }
+        customerNumber: { type: string, examples: [V-1000123, T/88-4711] }
+    LinkOffer:
+      type: object
+      required:
+        [customerId, account, candidate, displayName, address, matchedOn, score, status, offeredAt]
+      properties:
+        customerId: { type: string }
+        account: { $ref: "#/components/schemas/LegacyAccount" }
+        candidate: { $ref: "#/components/schemas/LegacyAccount" }
+        displayName: { type: string }
+        address: { type: string, examples: ["Hauptstraße 5, 04103 Leipzig"] }
+        matchedOn:
+          type: array
+          items: { type: string, enum: [name, address, birthDate, email, phone] }
+        score: { type: number, minimum: 0, maximum: 1 }
+        status: { type: string, enum: [offered, linked] }
+        offeredAt: { type: string, format: date-time }
+        linkedAt: { type: string, format: date-time }
+    LinkRequest:
+      type: object
+      required: [system, customerNumber, password]
+      additionalProperties: false
+      properties:
+        system: { $ref: "#/components/schemas/LegacySystem" }
+        customerNumber: { type: string }
+        password: { type: string, maxLength: 200 }
+    MigrationCorrections:
+      type: object
+      additionalProperties: false
+      properties:
+        email: { type: string, format: email }
+        postalCode: { type: string, pattern: "^\\d{5}$" }
+        street: { type: string }
+        houseNumber: { type: string }
+        city: { type: string }
+    MigrationRecordStatus:
+      type: string
+      enum: [pending-lazy, queued, migrated, linked, clarification, failed]
+    MigrationRecord:
+      type: object
+      required: [id, system, customerNumber, displayName, status, attempts, updatedAt]
+      properties:
+        id: { type: string }
+        system: { $ref: "#/components/schemas/LegacySystem" }
+        customerNumber: { type: string }
+        displayName: { type: string }
+        status: { $ref: "#/components/schemas/MigrationRecordStatus" }
+        code:
+          type: string
+          enum:
+            [
+              missing-required-field,
+              invalid-field,
+              legacy-unavailable,
+              identity-conflict,
+              unexpected,
+            ]
+        message: { type: string }
+        fields: { type: array, items: { type: string } }
+        attempts: { type: integer }
+        updatedAt: { type: string, format: date-time }
+    MigrationCounts:
+      type: object
+      required: [read, migrated, skippedActive, alreadyMigrated, clarification, failed]
+      properties:
+        read: { type: integer }
+        migrated: { type: integer }
+        skippedActive: { type: integer }
+        alreadyMigrated: { type: integer }
+        clarification: { type: integer }
+        failed: { type: integer }
+    MigrationRun:
+      type: object
+      required: [runId, system, status, startedAt, startedBy, processed, counts]
+      properties:
+        runId: { type: string }
+        system: { $ref: "#/components/schemas/LegacySystem" }
+        status: { type: string, enum: [running, completed] }
+        startedAt: { type: string, format: date-time }
+        startedBy: { type: string }
+        completedAt: { type: string, format: date-time }
+        dispatched: { type: integer }
+        processed: { type: integer }
+        counts: { $ref: "#/components/schemas/MigrationCounts" }
+    MigrationStatus:
+      type: object
+      required: [systems, clarifications, deadLetters, runs, timeline]
+      properties:
+        systems:
+          type: array
+          items:
+            type: object
+            required: [system, counts]
+            properties:
+              system: { $ref: "#/components/schemas/LegacySystem" }
+              total:
+                {
+                  type: integer,
+                  description: Records in the legacy system; missing while it is unreachable,
+                }
+              counts:
+                type: object
+                additionalProperties: { type: integer }
+                description: Number of records per `MigrationRecordStatus`
+        clarifications:
+          type: array
+          items: { $ref: "#/components/schemas/MigrationRecord" }
+        deadLetters:
+          type: array
+          items: { $ref: "#/components/schemas/MigrationRecord" }
+        runs:
+          type: array
+          items: { $ref: "#/components/schemas/MigrationRun" }
+        timeline:
+          type: array
+          items:
+            type: object
+            required: [eventId, source, detailType, occurredAt, summary]
+            properties:
+              eventId: { type: string }
+              source: { type: string }
+              detailType: { type: string }
+              occurredAt: { type: string, format: date-time }
+              summary: { type: string, description: Ids and accounts only, no personal data }
     Problem:
       type: object
       required: [title, status]

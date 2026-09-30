@@ -46,4 +46,11 @@ describe("pre token generation", () => {
       tenant_id: "pass-42",
     });
   });
+
+  it("marks accounts taken over from a legacy system with their origin", async () => {
+    expect(await accessClaims({ "custom:legacy_ref": "telco:T/88-4711" })).toMatchObject({
+      origin: "legacy-telco",
+    });
+    expect(await accessClaims({})).not.toHaveProperty("origin");
+  });
 });

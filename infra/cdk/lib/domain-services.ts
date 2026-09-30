@@ -46,6 +46,9 @@ export class DomainServices extends Construct {
   readonly contractApi: IFunction;
   readonly consumptionApi: IFunction;
   readonly documentsApi: IFunction;
+  /** The contract worker and its DLQ; phase 3 routes the migration events to it. */
+  readonly contractWorker: IFunction;
+  readonly contractDlq: Queue;
 
   private readonly props: DomainServicesProps;
 
@@ -74,6 +77,8 @@ export class DomainServices extends Construct {
     });
     table.grantReadWriteData(contractWorker);
     bus.grantPutEventsTo(contractWorker);
+    this.contractWorker = contractWorker;
+    this.contractDlq = contractDlq;
     for (const event of [CustomerRegistered, MeterReadingSubmitted]) {
       this.route(`${event.detailType}ToContract`, event, "contract", [
         this.invoke(contractWorker, contractDlq),

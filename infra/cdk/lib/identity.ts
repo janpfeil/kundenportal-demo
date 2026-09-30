@@ -1,7 +1,10 @@
 import { Duration, RemovalPolicy, Stack } from "aws-cdk-lib";
+import type { ITable } from "aws-cdk-lib/aws-dynamodb";
+import { PolicyStatement } from "aws-cdk-lib/aws-iam";
 import {
   AccountRecovery,
   CfnManagedLoginBranding,
+  CfnUserPoolGroup,
   ClientAttributes,
   FeaturePlan,
   LambdaVersion,
@@ -17,6 +20,12 @@ import {
 } from "aws-cdk-lib/aws-cognito";
 import { Construct } from "constructs";
 import { ServiceFunction } from "./functions.js";
+import { grantLegacyAccess } from "./legacy-access.js";
+
+/** Name of the EventBridge bus of the app stack; the identity triggers publish to it. */
+export const EVENT_BUS_NAME = "kundenportal";
+/** Cognito group of the portal owner (migration cockpit). */
+export const OWNER_GROUP = "owner";
 
 export interface IdentityProps {
   domainName: string;
@@ -25,6 +34,8 @@ export interface IdentityProps {
   reservedConcurrency: number;
   /** API scopes from the OpenAPI contract, e.g. `kundenportal/profile.read`. */
   apiScopes: { resourceServer: string; name: string }[];
+  /** Single table; the post authentication trigger keeps its marker there. */
+  table: ITable;
 }
 
 /**
@@ -55,6 +66,10 @@ export class Identity extends Construct {
       // Set only by the platform (later: when a demo pass creates a tenant), never by users.
       customAttributes: {
         tenant_id: new StringAttribute({ minLen: 1, maxLen: 40, mutable: false }),
+        // Phase 3: the legacy account a user came from (`utility:V-1000123`) and how
+        // (`lazy` at the first sign-in, `bulk` by the import). Set only by the platform.
+        legacy_ref: new StringAttribute({ minLen: 1, maxLen: 64, mutable: false }),
+        migration_mode: new StringAttribute({ minLen: 1, maxLen: 8, mutable: false }),
       },
       passwordPolicy: { minLength: 12, requireSymbols: false },
       accountRecovery: AccountRecovery.EMAIL_ONLY,
@@ -73,6 +88,48 @@ export class Identity extends Construct {
       tokenClaims,
       LambdaVersion.V2_0,
     );
+
+    // Lazy migration (J2): unknown users are checked against the legacy systems.
+    const migrateUser = new ServiceFunction(this, "UserMigration", {
+      entry: "services/identity/src/user-migration.ts",
+      description: "Lazy migration: checks unknown users at the legacy systems",
+      reservedConcurrency: props.reservedConcurrency,
+      // Cognito waits at most 5 seconds for a trigger.
+      timeout: Duration.seconds(5),
+    });
+    grantLegacyAccess(migrateUser);
+    this.userPool.addTrigger(UserPoolOperation.USER_MIGRATION, migrateUser);
+
+    // After the first sign-in of a migrated user: publish LegacyAccountMigrated.
+    const postAuthentication = new ServiceFunction(this, "PostAuthentication", {
+      entry: "services/identity/src/post-authentication-handler.ts",
+      description: "Announces lazily migrated accounts (LegacyAccountMigrated)",
+      reservedConcurrency: props.reservedConcurrency,
+      timeout: Duration.seconds(5),
+      environment: { TABLE_NAME: props.table.tableName, EVENT_BUS_NAME },
+    });
+    grantLegacyAccess(postAuthentication);
+    props.table.grantReadWriteData(postAuthentication);
+    // The bus lives in the app stack; the name is fixed, so no reference between the stacks.
+    postAuthentication.addToRolePolicy(
+      new PolicyStatement({
+        actions: ["events:PutEvents"],
+        resources: [
+          Stack.of(this).formatArn({
+            service: "events",
+            resource: "event-bus",
+            resourceName: EVENT_BUS_NAME,
+          }),
+        ],
+      }),
+    );
+    this.userPool.addTrigger(UserPoolOperation.POST_AUTHENTICATION, postAuthentication);
+
+    new CfnUserPoolGroup(this, "OwnerGroup", {
+      userPoolId: this.userPool.userPoolId,
+      groupName: OWNER_GROUP,
+      description: "Portal owner: migration cockpit",
+    });
 
     this.domain = this.userPool.addDomain("Domain", {
       cognitoDomain: { domainPrefix: props.cognitoDomainPrefix },

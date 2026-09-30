@@ -1,0 +1,243 @@
+openapi: 3.1.0
+info:
+  title: Altsystem Versorger
+  version: 1.0.0
+  description: >-
+    REST interface of the utility's simulated legacy customer system (private GitLab
+    repository `legacy-versorger`, runs on the owner's server). The portal uses it for the
+    lazy migration (sign-in check, customer read) and the bulk import (paged export).
+    Field names and formats are the legacy system's own (German, street and house number
+    separate, euros as decimal strings). Each tenant has its own database, selected by
+    `X-Mandant`.
+  license:
+    name: MIT
+    identifier: MIT
+servers:
+  - url: https://legacy-versorger.kundenportal-demo.rypox.com
+security:
+  - apiKey: []
+paths:
+  /health:
+    get:
+      operationId: health
+      summary: Liveness check
+      security: []
+      responses:
+        "200":
+          description: Service is up
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status: { type: string, const: ok }
+  /api/v1/anmeldung/pruefen:
+    post:
+      operationId: anmeldungPruefen
+      summary: Check a sign-in against the stored bcrypt hash
+      parameters:
+        - $ref: "#/components/parameters/Mandant"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, passwort]
+              properties:
+                email: { type: string, maxLength: 254 }
+                passwort: { type: string, maxLength: 200 }
+      responses:
+        "200":
+          description: Password correct
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [kundennummer]
+                properties:
+                  kundennummer: { $ref: "#/components/schemas/Kundennummer" }
+        "400": { $ref: "#/components/responses/Fehler" }
+        "401": { $ref: "#/components/responses/Fehler" }
+  /api/v1/kunden:
+    get:
+      operationId: kundeSuchen
+      summary: Find a customer by email address
+      parameters:
+        - $ref: "#/components/parameters/Mandant"
+        - name: email
+          in: query
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Zero or one customer
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [kunden]
+                properties:
+                  kunden:
+                    type: array
+                    maxItems: 1
+                    items: { $ref: "#/components/schemas/Kunde" }
+        "400": { $ref: "#/components/responses/Fehler" }
+        "401": { $ref: "#/components/responses/Fehler" }
+  /api/v1/kunden/{kundennummer}:
+    get:
+      operationId: kundeLesen
+      summary: Read a customer with contracts
+      parameters:
+        - $ref: "#/components/parameters/Mandant"
+        - name: kundennummer
+          in: path
+          required: true
+          schema: { $ref: "#/components/schemas/Kundennummer" }
+      responses:
+        "200":
+          description: Customer
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Kunde" }
+        "401": { $ref: "#/components/responses/Fehler" }
+        "404": { $ref: "#/components/responses/Fehler" }
+  /api/v1/kunden/export:
+    get:
+      operationId: kundenExportieren
+      summary: Export all customers page by page, including the bcrypt hashes
+      parameters:
+        - $ref: "#/components/parameters/Mandant"
+        - name: seite
+          in: query
+          schema: { type: integer, minimum: 1, default: 1 }
+        - name: groesse
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
+      responses:
+        "200":
+          description: One page, ordered by customer number
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [seite, groesse, gesamt, kunden]
+                properties:
+                  seite: { type: integer }
+                  groesse: { type: integer }
+                  gesamt: { type: integer, description: Number of customers in total }
+                  kunden:
+                    type: array
+                    items:
+                      allOf:
+                        - $ref: "#/components/schemas/Kunde"
+                        - type: object
+                          required: [passwortHash]
+                          properties:
+                            passwortHash:
+                              type: string
+                              description: bcrypt hash (`$2b$…`)
+        "400": { $ref: "#/components/responses/Fehler" }
+        "401": { $ref: "#/components/responses/Fehler" }
+  /api/v1/verwaltung/zuruecksetzen:
+    post:
+      operationId: mandantZuruecksetzen
+      summary: Recreate the tenant's sample data (demo reset)
+      parameters:
+        - $ref: "#/components/parameters/Mandant"
+      responses:
+        "200":
+          description: Sample data recreated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string }
+        "401": { $ref: "#/components/responses/Fehler" }
+components:
+  securitySchemes:
+    apiKey:
+      type: apiKey
+      in: header
+      name: X-Api-Key
+  parameters:
+    Mandant:
+      name: X-Mandant
+      in: header
+      description: Tenant; default `owner`
+      schema: { type: string, pattern: "^[a-z0-9][a-z0-9-]{0,39}$" }
+  responses:
+    Fehler:
+      description: Error
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [fehler]
+            properties:
+              fehler: { type: string }
+  schemas:
+    Kundennummer:
+      type: string
+      pattern: "^V-\\d{7}$"
+      examples: [V-1000123]
+    Kunde:
+      type: object
+      required:
+        [
+          kundennummer,
+          anrede,
+          vorname,
+          nachname,
+          email,
+          telefon,
+          geburtsdatum,
+          strasse,
+          hausnummer,
+          plz,
+          ort,
+          letzteAnmeldung,
+          vertraege,
+        ]
+      properties:
+        kundennummer: { $ref: "#/components/schemas/Kundennummer" }
+        anrede: { type: string, enum: [Frau, Herr, ""] }
+        vorname: { type: string }
+        nachname: { type: string }
+        email: { type: [string, "null"], description: Missing for some old customers }
+        telefon: { type: [string, "null"], description: Partly in outdated formats (`0341/445566`) }
+        geburtsdatum: { type: [string, "null"], format: date }
+        strasse: { type: string }
+        hausnummer: { type: string }
+        plz: { type: string }
+        ort: { type: string }
+        letzteAnmeldung: { type: string, format: date-time }
+        vertraege:
+          type: array
+          items: { $ref: "#/components/schemas/Vertrag" }
+    Vertrag:
+      type: object
+      required:
+        [vertragsnummer, sparte, tarif, abschlag, zaehlernummer, letzterZaehlerstand, beginn]
+      properties:
+        vertragsnummer: { type: string, examples: [SV-778812] }
+        sparte: { type: string, enum: [STROM, GAS, WASSER] }
+        tarif:
+          {
+            type: string,
+            examples: [Strom Klassik, Strom Öko, Gas Komfort, Gas Klima, Wasser Basis],
+          }
+        abschlag:
+          type: string
+          pattern: "^\\d+\\.\\d{2}$"
+          description: Monthly installment in euros as decimal string
+        zaehlernummer: { type: string }
+        letzterZaehlerstand:
+          type: object
+          required: [wert, ablesedatum]
+          properties:
+            wert: { type: integer, description: kWh (electricity) or m³ (gas, water) }
+            ablesedatum: { type: string, format: date }
+        beginn: { type: string, format: date }

@@ -9,6 +9,7 @@ import {
   UpdateCommand,
 } from "@aws-sdk/lib-dynamodb";
 import { tenantKey } from "@kundenportal/service-kit";
+import type { PostalAddress } from "@kundenportal/events";
 import { Customer, type CustomerUpdate } from "./customer.js";
 
 /**
@@ -72,6 +73,9 @@ export class CustomerRepository {
                   PK: tenantKey(tenantId, "CUST", customer.customerId),
                   SK: "PROFILE",
                   ...customer,
+                  ...(customer.legacyAccounts
+                    ? { legacyAccounts: new Set(customer.legacyAccounts) }
+                    : {}),
                 },
                 ConditionExpression: "attribute_not_exists(PK)",
               },
@@ -109,5 +113,36 @@ export class CustomerRepository {
       }
       throw error;
     }
+  }
+
+  /**
+   * Adds data from a legacy system: address and phone only where the profile has none
+   * yet, the legacy account to the set of accounts (idempotent).
+   */
+  async addLegacyData(
+    tenantId: string,
+    customerId: string,
+    data: { address?: PostalAddress; phone?: string; legacyAccount: string },
+  ): Promise<void> {
+    const sets = [
+      ...(data.address ? ["address = if_not_exists(address, :address)"] : []),
+      ...(data.phone ? ["phone = if_not_exists(phone, :phone)"] : []),
+    ];
+    await this.db.send(
+      new UpdateCommand({
+        TableName: this.table,
+        Key: { PK: tenantKey(tenantId, "CUST", customerId), SK: "PROFILE" },
+        UpdateExpression: [
+          ...(sets.length ? [`SET ${sets.join(", ")}`] : []),
+          "ADD legacyAccounts :account",
+        ].join(" "),
+        ExpressionAttributeValues: {
+          ":account": new Set([data.legacyAccount]),
+          ...(data.address ? { ":address": data.address } : {}),
+          ...(data.phone ? { ":phone": data.phone } : {}),
+        },
+        ConditionExpression: "attribute_exists(PK)",
+      }),
+    );
   }
 }

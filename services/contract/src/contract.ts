@@ -6,11 +6,19 @@ import {
   deterministicUuid,
   InstallmentAdjusted,
   IsoDate,
+  type LegacyContract,
   METERED_DIVISIONS,
   MeterUnit,
 } from "@kundenportal/events";
 import { z } from "zod";
-import { addDays, addMonths, recommendedInstallment, TARIFFS, tariffOption } from "./tariffs.js";
+import {
+  addDays,
+  addMonths,
+  annualConsumptionFromInstallment,
+  recommendedInstallment,
+  TARIFFS,
+  tariffOption,
+} from "./tariffs.js";
 
 const Reading = z.object({ value: z.number().nonnegative(), readAt: IsoDate });
 
@@ -34,6 +42,8 @@ export const ContractRecord = z.object({
   /** Last recalculation, kept to re-publish it if the event is redelivered. */
   lastAdjustment: InstallmentAdjusted.detail.optional(),
   dataVolumeMb: z.number().int().positive().optional(),
+  /** Contract number in the legacy system the contract was taken over from. */
+  legacyContractId: z.string().optional(),
   startDate: IsoDate,
   minimumTermMonths: z.number().int().positive(),
   status: z.enum(["active", "terminated"]),
@@ -204,6 +214,55 @@ export function demoContracts(
         monthlyInstallmentCent: installment.installmentCent,
         installmentMinCent: installment.minCent,
         installmentMaxCent: installment.maxCent,
+      });
+    }
+    return record;
+  });
+}
+
+/**
+ * Contracts taken over from a legacy system (`LegacyAccountMigrated`, `AccountsLinked`).
+ * The installment stays as the legacy system billed it; the allowed range follows the
+ * consumption that installment implies. The last billed reading becomes the reference
+ * for the next estimate. Ids derive from tenant and legacy contract number (idempotent).
+ */
+export function legacyContracts(
+  tenantId: string,
+  customerId: string,
+  contracts: LegacyContract[],
+  occurredAt: string,
+): ContractRecord[] {
+  return contracts.map((legacy) => {
+    const tariff = TARIFFS[legacy.division];
+    const option = tariffOption(legacy.division, legacy.tariffOption) ?? tariff.options[0];
+    if (!option) throw new Error(`No tariff options for ${legacy.division}`);
+    const record: ContractRecord = {
+      contractId: deterministicUuid(tenantId, "legacy-contract", legacy.legacyContractId),
+      customerId,
+      division: legacy.division,
+      tariffName: tariff.tariffName,
+      tariffOption: option.id,
+      monthlyInstallmentCent: legacy.monthlyInstallmentCent,
+      legacyContractId: legacy.legacyContractId,
+      startDate: legacy.startDate,
+      minimumTermMonths: tariff.minimumTermMonths,
+      status: "active",
+      version: 1,
+      createdAt: occurredAt,
+      updatedAt: occurredAt,
+    };
+    const dataVolumeMb = legacy.dataVolumeMb ?? option.dataVolumeMb;
+    if (dataVolumeMb) record.dataVolumeMb = dataVolumeMb;
+    if (tariff.unit && isMetered(legacy.division)) {
+      const annual = annualConsumptionFromInstallment(legacy.monthlyInstallmentCent, option);
+      const range = recommendedInstallment(annual, option);
+      Object.assign(record, {
+        unit: legacy.unit ?? tariff.unit,
+        estimatedAnnualConsumption: annual,
+        installmentMinCent: Math.min(range.minCent, legacy.monthlyInstallmentCent),
+        installmentMaxCent: Math.max(range.maxCent, legacy.monthlyInstallmentCent),
+        ...(legacy.meterNumber ? { meterNumber: legacy.meterNumber } : {}),
+        ...(legacy.lastReading ? { startReading: legacy.lastReading } : {}),
       });
     }
     return record;

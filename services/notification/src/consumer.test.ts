@@ -174,6 +174,55 @@ describe("notes from other domains", () => {
       ["Dokument hochgeladen", "„zaehler.jpg“"],
       ["Document uploaded", '"zaehler.jpg"'],
     ],
+    [
+      "PasswordResetRequired",
+      domainEvent("kundenportal.migration", "PasswordResetRequired", {
+        customerId: "c-1",
+        subject: "sub-1",
+        email: "carla.schulz@example.net",
+        account: { system: "telco", customerNumber: "T/88-4712" },
+        reason: "hash-not-transferable",
+      }),
+      "warning",
+      ["Bitte neues Passwort vergeben", "„Passwort vergessen?“"],
+      ["Please choose a new password", '"Forgot password?"'],
+    ],
+    [
+      "DuplicateCandidateFound",
+      domainEvent("kundenportal.migration", "DuplicateCandidateFound", {
+        customerId: "c-1",
+        subject: "sub-1",
+        account: { system: "utility", customerNumber: "V-1000124" },
+        candidate: { system: "telco", customerNumber: "T/88-4711" },
+        candidateSummary: { displayName: "Bernd Yilmaz", address: "Hauptstraße 5, 04103 Leipzig" },
+        matchedOn: ["name", "address"],
+        score: 0.9,
+      }),
+      "info",
+      ["Weiteres Kundenkonto gefunden", "bei der Telko ein Kundenkonto auf Ihren Namen"],
+      ["Another customer account found", "with the telco (Hauptstraße 5, 04103 Leipzig"],
+    ],
+    [
+      "AccountsLinked",
+      domainEvent("kundenportal.migration", "AccountsLinked", {
+        customerId: "c-1",
+        subject: "sub-1",
+        account: { system: "utility", customerNumber: "V-1000124" },
+        linked: { system: "telco", customerNumber: "T/88-4711" },
+        contracts: [
+          {
+            legacyContractId: "DSL-300455",
+            division: "internet",
+            tariffOption: "250",
+            monthlyInstallmentCent: 4499,
+            startDate: "2020-03-01",
+          },
+        ],
+      }),
+      "info",
+      ["Konten verknüpft", "Übernommene Verträge: Internet."],
+      ["Accounts linked", "Contracts taken over: internet."],
+    ],
   ])("turns %s into a note in the customer's language", async (_name, body, kind, de, en) => {
     await consumer(event(record("m-de", body)));
     dbMock
@@ -239,6 +288,17 @@ describe("notification consumer", () => {
     expect(snsMock.commandCalls(PublishCommand)[0]?.args[0].input.Message).not.toContain(
       "david@example.org",
     );
+  });
+
+  it("welcomes a migrated customer with a note about the takeover", async () => {
+    const migrated = {
+      ...detail,
+      payload: { ...detail.payload, locale: "de", origin: "legacy-telco" },
+    };
+    await consumer(event(record("m-1", registered(migrated))));
+    const note = dbMock.commandCalls(PutCommand)[2]?.args[0].input.Item;
+    expect(note).toMatchObject({ kind: "welcome", title: "Willkommen im neuen Kundenportal" });
+    expect(note?.body).toContain("der Telko");
   });
 
   it("is idempotent: a redelivered event neither duplicates the note nor re-notifies the owner", async () => {

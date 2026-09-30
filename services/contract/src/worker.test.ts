@@ -189,6 +189,107 @@ describe("MeterReadingSubmitted", () => {
   });
 });
 
+const legacyContracts = [
+  {
+    legacyContractId: "SV-778812",
+    division: "electricity",
+    tariffOption: "oeko",
+    monthlyInstallmentCent: 8700,
+    meterNumber: "1EMH0012345678",
+    unit: "kWh",
+    lastReading: { value: 18234, readAt: "2026-04-03" },
+    startDate: "2019-04-01",
+  },
+  {
+    legacyContractId: "MOB-812233",
+    division: "mobile",
+    tariffOption: "20gb",
+    monthlyInstallmentCent: 1999,
+    dataVolumeMb: 20480,
+    startDate: "2021-02-15",
+  },
+];
+const migrated = {
+  ...registered,
+  payload: {
+    customerId: "c-legacy",
+    subject: "sub-anna",
+    email: "anna.becker@example.org",
+    displayName: "Anna Becker",
+    locale: "de",
+    account: { system: "utility", customerNumber: "V-1000123" },
+    mode: "lazy",
+    passwordMigrated: true,
+    profile: {
+      firstName: "Anna",
+      lastName: "Becker",
+      address: { street: "Lindenweg", houseNumber: "12", postalCode: "04109", city: "Leipzig" },
+    },
+    contracts: legacyContracts,
+  },
+};
+
+describe("LegacyAccountMigrated", () => {
+  it("links the identity and takes over the legacy contracts with their installments", async () => {
+    await worker(envelope("kundenportal.identity", "LegacyAccountMigrated", migrated));
+    const puts = dbMock.commandCalls(PutCommand).map((call) => call.args[0].input.Item ?? {});
+    expect(puts[0]).toMatchObject({ PK: "TENANT#owner#SUBJ#sub-anna", customerId: "c-legacy" });
+    expect(puts[1]).toMatchObject({
+      customerId: "c-legacy",
+      division: "electricity",
+      tariffName: "Strom Klassik",
+      tariffOption: "oeko",
+      monthlyInstallmentCent: 8700,
+      legacyContractId: "SV-778812",
+      startReading: { value: 18234, readAt: "2026-04-03" },
+    });
+    expect(puts[1]?.installmentMinCent).toBeLessThanOrEqual(8700);
+    expect(puts[1]?.installmentMaxCent).toBeGreaterThanOrEqual(8700);
+    expect(puts[2]).toMatchObject({
+      division: "mobile",
+      dataVolumeMb: 20480,
+      monthlyInstallmentCent: 1999,
+    });
+    const events = published();
+    expect(events.map((e) => e.type)).toEqual(["ContractChanged", "ContractChanged"]);
+    expect(ContractChanged.detail.parse(events[0]?.detail).payload.contract.customerId).toBe(
+      "c-legacy",
+    );
+  });
+
+  it("is idempotent across sources and redeliveries (same contract and event ids)", async () => {
+    await worker(envelope("kundenportal.identity", "LegacyAccountMigrated", migrated));
+    const first = published().map((e) => e.detail.eventId);
+    ebMock.resetHistory();
+    dbMock
+      .on(PutCommand, { ConditionExpression: "attribute_not_exists(PK)" })
+      .rejects(new ConditionalCheckFailedException({ message: "x", $metadata: {} }));
+    await worker(envelope("kundenportal.migration", "LegacyAccountMigrated", migrated));
+    expect(published().map((e) => e.detail.eventId)).toEqual(first);
+  });
+
+  it("moves the contracts of a linked account to the confirming customer", async () => {
+    await worker(
+      envelope("kundenportal.migration", "AccountsLinked", {
+        ...registered,
+        payload: {
+          customerId: "c-bernd",
+          subject: "sub-bernd",
+          account: { system: "utility", customerNumber: "V-1000124" },
+          linked: { system: "telco", customerNumber: "T/88-4711" },
+          contracts: [legacyContracts[1]],
+        },
+      }),
+    );
+    const put = dbMock.commandCalls(PutCommand)[0]?.args[0].input.Item;
+    expect(put).toMatchObject({
+      customerId: "c-bernd",
+      division: "mobile",
+      legacyContractId: "MOB-812233",
+    });
+  });
+});
+
 describe("failures", () => {
   it.each([
     ["no EventBridge envelope", { hello: "world" }],

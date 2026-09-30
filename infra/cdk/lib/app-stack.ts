@@ -10,6 +10,7 @@ import { Api } from "./api.js";
 import type { PortalConfig } from "./config.js";
 import { DomainServices } from "./domain-services.js";
 import { Events } from "./events.js";
+import { Migration } from "./migration.js";
 import { ServiceFunction } from "./functions.js";
 import { PARAM } from "./parameters.js";
 import { NextLambda } from "./next-lambda.js";
@@ -78,6 +79,16 @@ export class AppStack extends Stack {
       reservedConcurrency,
     });
 
+    const migration = new Migration(this, "Migration", {
+      table,
+      bus: events.bus,
+      ownerTopic,
+      userPoolId,
+      contractWorker: domains.contractWorker,
+      contractDlq: domains.contractDlq,
+      reservedConcurrency,
+    });
+
     const api = new Api(this, "Api", {
       routes: loadApiRoutes(),
       handlers: {
@@ -93,6 +104,11 @@ export class AppStack extends Stack {
         getDataUsage: domains.consumptionApi,
         listDocuments: domains.documentsApi,
         createUploadUrl: domains.documentsApi,
+        listLinks: migration.api,
+        confirmLink: migration.api,
+        getMigrationStatus: migration.api,
+        startBulkMigration: migration.api,
+        redriveMigrationRecord: migration.api,
       },
       issuer,
       audience: [clientId],

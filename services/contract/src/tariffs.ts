@@ -99,6 +99,22 @@ export function recommendedInstallment(
   };
 }
 
+/**
+ * Annual consumption an installment was calculated for (inverse of
+ * {@link recommendedInstallment}); used for contracts taken over from a legacy system,
+ * which bring an installment but no estimate.
+ */
+export function annualConsumptionFromInstallment(
+  installmentCent: number,
+  option: TariffOption,
+): number {
+  if (!option.workPriceCent) return 0;
+  return Math.max(
+    0,
+    Math.round((12 * (installmentCent - option.monthlyPriceCent)) / option.workPriceCent),
+  );
+}
+
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /** Whole days between two ISO dates (`to` minus `from`). */

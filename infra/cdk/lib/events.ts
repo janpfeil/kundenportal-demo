@@ -6,11 +6,14 @@ import { SqsQueue } from "aws-cdk-lib/aws-events-targets";
 import type { ITopic } from "aws-cdk-lib/aws-sns";
 import { Queue, QueueEncryption } from "aws-cdk-lib/aws-sqs";
 import {
+  AccountsLinked,
   ContractChanged,
   DataVolumeThresholdReached,
   DocumentUploaded,
+  DuplicateCandidateFound,
   InstallmentAdjusted,
   MeterReadingSubmitted,
+  PasswordResetRequired,
 } from "@kundenportal/events";
 import { Construct } from "constructs";
 
@@ -66,6 +69,10 @@ export class Events extends Construct {
       ContractChanged,
       DataVolumeThresholdReached,
       DocumentUploaded,
+      // Phase 3: reset request, link offer, link confirmation.
+      PasswordResetRequired,
+      DuplicateCandidateFound,
+      AccountsLinked,
     ]) {
       new Rule(this, `${event.detailType}ToNotification`, {
         eventBus: this.bus,

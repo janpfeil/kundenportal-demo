@@ -1,4 +1,4 @@
-import { CustomerOrigin, Locale } from "@kundenportal/events";
+import { CustomerOrigin, Locale, PostalAddress } from "@kundenportal/events";
 import { z } from "zod";
 
 export const Customer = z.object({
@@ -8,6 +8,14 @@ export const Customer = z.object({
   locale: Locale,
   origin: CustomerOrigin,
   createdAt: z.iso.datetime({ offset: true }),
+  /** Taken over from a legacy system. */
+  address: PostalAddress.optional(),
+  phone: z.string().optional(),
+  /** Legacy accounts behind this customer, e.g. `utility:V-1000123` (DynamoDB string set). */
+  legacyAccounts: z
+    .union([z.set(z.string()), z.array(z.string())])
+    .transform((refs) => [...refs].sort())
+    .optional(),
 });
 export type Customer = z.infer<typeof Customer>;
 

@@ -16,6 +16,19 @@ export const PARAM = {
     ownerTopicArn: "/kundenportal/base/owner-topic-arn",
     uploadBucketName: "/kundenportal/base/upload-bucket-name",
   },
+  /**
+   * Access to the legacy systems (phase 3). Written by Terraform from GitLab CI variables;
+   * API keys and the Keycloak client secret as SecureString with the AWS managed key.
+   */
+  legacy: {
+    utilityUrl: "/kundenportal/legacy/utility/url",
+    utilityApiKey: "/kundenportal/legacy/utility/api-key",
+    telcoUrl: "/kundenportal/legacy/telco/url",
+    telcoApiKey: "/kundenportal/legacy/telco/api-key",
+    keycloakIssuer: "/kundenportal/legacy/keycloak/issuer",
+    keycloakClientId: "/kundenportal/legacy/keycloak/client-id",
+    keycloakClientSecret: "/kundenportal/legacy/keycloak/client-secret",
+  },
   app: {
     shellFunctionArn: "/kundenportal/app/shell-function-arn",
     shellOriginDomain: "/kundenportal/app/shell-origin-domain",

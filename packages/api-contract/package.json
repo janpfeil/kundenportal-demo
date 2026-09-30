@@ -2,7 +2,7 @@
   "name": "@kundenportal/api-contract",
   "version": "0.1.0",
   "private": true,
-  "description": "OpenAPI contract of the portal REST API and the typed client generated from it",
+  "description": "OpenAPI contracts of the portal REST API and the legacy systems, and the typed client generated from the portal contract",
   "license": "MIT",
   "type": "module",
   "exports": {
@@ -14,11 +14,14 @@
     "./routes": {
       "types": "./dist/routes.d.ts",
       "default": "./dist/routes.js"
-    }
+    },
+    "./legacy/versorger.openapi.yaml": "./legacy/versorger.openapi.yaml",
+    "./legacy/telko.openapi.yaml": "./legacy/telko.openapi.yaml"
   },
   "files": [
     "dist",
-    "openapi.yaml"
+    "openapi.yaml",
+    "legacy"
   ],
   "scripts": {
     "generate": "openapi-typescript openapi.yaml -o src/generated/schema.ts",

@@ -38,6 +38,11 @@ describe("OpenAPI contract", () => {
       "GET /contracts/{contractId}/usage kundenportal/readings.read",
       "GET /documents kundenportal/documents.read",
       "POST /documents/upload-url kundenportal/documents.write",
+      "GET /me/links kundenportal/profile.read",
+      "POST /me/links kundenportal/profile.write",
+      "GET /migration/status kundenportal/migration.read",
+      "POST /migration/bulk kundenportal/migration.write",
+      "POST /migration/dlq/{recordId}/redrive kundenportal/migration.write",
     ]);
   });
 
@@ -47,6 +52,8 @@ describe("OpenAPI contract", () => {
       "contracts.write",
       "documents.read",
       "documents.write",
+      "migration.read",
+      "migration.write",
       "notifications.read",
       "notifications.write",
       "profile.read",

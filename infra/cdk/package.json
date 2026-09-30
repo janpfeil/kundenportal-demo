@@ -24,6 +24,7 @@
     "@kundenportal/customer": "workspace:*",
     "@kundenportal/documents": "workspace:*",
     "@kundenportal/identity": "workspace:*",
+    "@kundenportal/migration": "workspace:*",
     "@kundenportal/notification": "workspace:*",
     "@kundenportal/shell": "workspace:*",
     "@kundenportal/widget-notifications": "workspace:*",

@@ -11,6 +11,8 @@ export interface Caller {
   email?: string;
   name?: string;
   locale?: string;
+  /** `legacy-utility` or `legacy-telco` for accounts taken over from a legacy system. */
+  origin?: string;
 }
 
 const TENANT_PATTERN = /^[a-z0-9-]{1,40}$/;
@@ -35,9 +37,11 @@ export function callerFrom(event: ApiEvent): Caller {
   const email = claim(claims, "email");
   const name = claim(claims, "name");
   const locale = claim(claims, "locale");
+  const origin = claim(claims, "origin");
   if (email) caller.email = email;
   if (name) caller.name = name;
   if (locale) caller.locale = locale;
+  if (origin) caller.origin = origin;
   return caller;
 }
 

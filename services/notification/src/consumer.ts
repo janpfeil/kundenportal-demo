@@ -1,13 +1,16 @@
 import {
+  AccountsLinked,
   ContractChanged,
   CustomerRegistered,
   DataVolumeThresholdReached,
   DocumentUploaded,
+  DuplicateCandidateFound,
   EventBridgeEnvelope,
   type EventMetadata,
   InstallmentAdjusted,
   type Locale,
   MeterReadingSubmitted,
+  PasswordResetRequired,
 } from "@kundenportal/events";
 import { log } from "@kundenportal/service-kit";
 import type { SQSBatchResponse, SQSEvent, SQSRecord } from "aws-lambda";
@@ -15,11 +18,15 @@ import type { z } from "zod";
 import { type Mailbox, type Notification, notificationId } from "./mailbox.js";
 import type { OwnerHints } from "./owner-hints.js";
 import {
+  accountsLinkedText,
   contractChangedText,
   dataVolumeText,
   documentText,
+  duplicateCandidateText,
   installmentText,
   meterReadingText,
+  migratedWelcomeText,
+  passwordResetText,
   welcomeText,
 } from "./texts.js";
 
@@ -60,6 +67,10 @@ const NOTE_RULES: NoteRule<Detail>[] = [
   }),
   rule({ event: DataVolumeThresholdReached, kind: "warning", text: dataVolumeText }),
   rule({ event: DocumentUploaded, kind: "info", text: documentText }),
+  // Migration (phase 3): reset request after a bulk import, link offer, link confirmation.
+  rule({ event: PasswordResetRequired, kind: "warning", text: passwordResetText }),
+  rule({ event: DuplicateCandidateFound, kind: "info", text: duplicateCandidateText }),
+  rule({ event: AccountsLinked, kind: "info", text: accountsLinkedText }),
 ];
 
 export function createConsumer(mailbox: Mailbox, ownerHints: OwnerHints) {
@@ -74,7 +85,9 @@ export function createConsumer(mailbox: Mailbox, ownerHints: OwnerHints) {
     const created = await mailbox.add(tenantId, payload.customerId, {
       notificationId: notificationId(occurredAt, eventId),
       kind: "welcome",
-      ...welcomeText[payload.locale](payload.displayName),
+      ...(payload.origin === "registration"
+        ? welcomeText[payload.locale](payload.displayName)
+        : migratedWelcomeText[payload.locale](payload.displayName, payload.origin)),
       createdAt: occurredAt,
       read: false,
     });

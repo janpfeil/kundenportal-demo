@@ -1,7 +1,10 @@
 import {
+  type AccountsLinkedDetail,
   type CustomerRegisteredDetail,
   deterministicUuid,
   type InstallmentAdjustedDetail,
+  type LegacyAccountMigratedDetail,
+  type LegacyContract,
   type MeterReadingSubmittedDetail,
 } from "@kundenportal/events";
 import { type Caller, HttpError, log, notFound } from "@kundenportal/service-kit";
@@ -11,6 +14,7 @@ import {
   type ContractView,
   demoContracts,
   isMetered,
+  legacyContracts,
   toSnapshot,
   toView,
 } from "./contract.js";
@@ -151,6 +155,42 @@ export class ContractService {
       })),
     );
     log("info", "Demo contracts ready", { tenantId, customerId: payload.customerId });
+  }
+
+  /**
+   * `LegacyAccountMigrated`: takes over the contracts the customer had in the legacy
+   * system (phase 3). Redelivery creates nothing twice and re-publishes the same events.
+   */
+  async onLegacyAccountMigrated(event: LegacyAccountMigratedDetail): Promise<void> {
+    const { tenantId, payload } = event;
+    await this.repository.linkSubject(tenantId, payload.subject, payload.customerId);
+    await this.takeOver(event, payload.customerId, payload.contracts);
+  }
+
+  /** `AccountsLinked`: the linked account's contracts move to the confirming customer. */
+  async onAccountsLinked(event: AccountsLinkedDetail): Promise<void> {
+    await this.takeOver(event, event.payload.customerId, event.payload.contracts);
+  }
+
+  private async takeOver(
+    event: { tenantId: string; eventId: string; occurredAt: string; correlationId: string },
+    customerId: string,
+    contracts: LegacyContract[],
+  ): Promise<void> {
+    const { tenantId, occurredAt, correlationId } = event;
+    const records = legacyContracts(tenantId, customerId, contracts, occurredAt);
+    if (records.length === 0) return;
+    for (const record of records) await this.repository.create(tenantId, record);
+    await this.events.contractChanged(
+      ...records.map((record) => ({
+        eventId: deterministicUuid(record.contractId, "created"),
+        tenantId,
+        occurredAt,
+        correlationId,
+        payload: { changeType: "created" as const, changes: [], contract: toSnapshot(record) },
+      })),
+    );
+    log("info", "Legacy contracts taken over", { tenantId, customerId, count: records.length });
   }
 
   /**

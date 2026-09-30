@@ -1,0 +1,109 @@
+import { ConditionalCheckFailedException, DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import {
+  DynamoDBDocumentClient,
+  PutCommand,
+  QueryCommand,
+  UpdateCommand,
+} from "@aws-sdk/lib-dynamodb";
+import { mockClient } from "aws-sdk-client-mock";
+import { beforeEach, describe, expect, it } from "vitest";
+import { MigrationRepository } from "./repository.js";
+
+const dbMock = mockClient(DynamoDBDocumentClient);
+const repository = new MigrationRepository(
+  DynamoDBDocumentClient.from(new DynamoDBClient({})),
+  "table",
+);
+const record = {
+  account: { system: "telco" as const, customerNumber: "T/88-4712" },
+  displayName: "Carla Schulz",
+  status: "queued" as const,
+  attempts: 0,
+  updatedAt: "2026-09-30T12:00:00.000Z",
+};
+
+beforeEach(() => dbMock.reset());
+
+describe("migration repository", () => {
+  it("keys records per tenant and never lets a late task undo a migration", async () => {
+    dbMock.on(PutCommand).resolves({});
+    await repository.putRecord("owner", record);
+    const input = dbMock.commandCalls(PutCommand)[0]?.args[0].input;
+    expect(input?.Item).toMatchObject({ PK: "TENANT#owner#MIGRATION", SK: "REC#telco#T/88-4712" });
+    expect(input?.ConditionExpression).toBe(
+      "attribute_not_exists(PK) OR NOT (#status IN (:m, :l))",
+    );
+
+    await repository.putRecord("owner", { ...record, status: "migrated" }, true);
+    expect(dbMock.commandCalls(PutCommand)[1]?.args[0].input.ConditionExpression).toBeUndefined();
+
+    dbMock
+      .on(PutCommand)
+      .rejects(new ConditionalCheckFailedException({ message: "x", $metadata: {} }));
+    expect(await repository.putRecord("owner", record)).toBe(false);
+  });
+
+  it("adds to run counters atomically and sets the number of dispatched records", async () => {
+    const run = {
+      runId: "r1",
+      system: "telco",
+      status: "running",
+      startedAt: "x",
+      startedBy: "s",
+      processed: 1,
+      counts: {
+        read: 4,
+        migrated: 0,
+        skippedActive: 1,
+        alreadyMigrated: 0,
+        clarification: 0,
+        failed: 0,
+      },
+      dispatched: 3,
+    };
+    dbMock.on(UpdateCommand).resolves({ Attributes: run });
+    await repository.countRun("owner", "r1", { read: 4, skippedActive: 1 }, { dispatched: 3 });
+    const input = dbMock.commandCalls(UpdateCommand)[0]?.args[0].input;
+    expect(input?.UpdateExpression).toBe(
+      "SET dispatched = :dispatched ADD #counts.#read :read, #counts.#skippedActive :skippedActive",
+    );
+    await repository.countRun("owner", "r1", { failed: 1 }, { processed: 1 });
+    expect(dbMock.commandCalls(UpdateCommand)[1]?.args[0].input.UpdateExpression).toBe(
+      "ADD #counts.#failed :failed, processed :processed",
+    );
+  });
+
+  it("writes timeline entries that expire after seven days and reads them newest first", async () => {
+    dbMock.on(PutCommand).resolves({});
+    dbMock.on(QueryCommand).resolves({ Items: [] });
+    await repository.addTimeline("owner", {
+      eventId: "e1",
+      source: "kundenportal.migration",
+      detailType: "BulkMigrationStarted",
+      occurredAt: "2026-09-30T12:00:00.000Z",
+      summary: "telco",
+    });
+    const item = dbMock.commandCalls(PutCommand)[0]?.args[0].input.Item;
+    expect(item).toMatchObject({
+      PK: "TENANT#owner#TIMELINE",
+      SK: "EVT#2026-09-30T12:00:00.000Z#e1",
+      ttl: Date.parse("2026-10-07T12:00:00.000Z") / 1000,
+    });
+    await repository.listTimeline("owner");
+    expect(dbMock.commandCalls(QueryCommand)[0]?.args[0].input.ScanIndexForward).toBe(false);
+  });
+
+  it("keeps link offers with the customer's identity and links them once", async () => {
+    dbMock
+      .on(UpdateCommand)
+      .resolvesOnce({})
+      .rejects(new ConditionalCheckFailedException({ message: "x", $metadata: {} }));
+    const candidate = { system: "telco" as const, customerNumber: "T/88-4711" };
+    expect(await repository.markOfferLinked("owner", "sub-b", candidate, "now")).toBe(true);
+    expect(await repository.markOfferLinked("owner", "sub-b", candidate, "now")).toBe(false);
+    expect(dbMock.commandCalls(UpdateCommand)[0]?.args[0].input.Key).toEqual({
+      PK: "TENANT#owner#SUBJ#sub-b",
+      SK: "LINK#telco#T/88-4711",
+    });
+  });
+});

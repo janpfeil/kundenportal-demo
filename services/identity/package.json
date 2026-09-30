@@ -2,7 +2,7 @@
   "name": "@kundenportal/identity",
   "version": "0.1.0",
   "private": true,
-  "description": "Identity service: Amazon Cognito Lambda triggers (access token claims; later legacy user migration)",
+  "description": "Identity service: Amazon Cognito Lambda triggers (access token claims, lazy migration of legacy accounts)",
   "license": "MIT",
   "type": "module",
   "scripts": {
@@ -11,6 +11,16 @@
     "test": "vitest run"
   },
   "devDependencies": {
-    "@types/aws-lambda": "^8.10.164"
+    "@types/aws-lambda": "^8.10.164",
+    "aws-sdk-client-mock": "^4.1.0"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.1142.0",
+    "@aws-sdk/client-eventbridge": "^3.1142.0",
+    "@aws-sdk/client-ssm": "^3.1142.0",
+    "@aws-sdk/lib-dynamodb": "^3.1142.0",
+    "@kundenportal/events": "workspace:*",
+    "@kundenportal/legacy": "workspace:*",
+    "@kundenportal/service-kit": "workspace:*"
   }
 }

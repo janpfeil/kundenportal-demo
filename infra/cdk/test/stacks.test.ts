@@ -85,10 +85,11 @@ describe("guard rails", () => {
           },
         }),
       ).length;
-    expect(own(base, 2)).toBe(1);
-    // Services: customer, notification API + consumer, API + worker for contract,
-    // consumption and documents.
-    expect(own(application, 2)).toBe(9);
+    // Cognito triggers: pre token generation, migrate user, post authentication.
+    expect(own(base, 2)).toBe(3);
+    // Services: customer API + worker, notification API + consumer, API + worker for
+    // contract, consumption and documents, migration API + worker + record processor.
+    expect(own(application, 2)).toBe(13);
     // Next.js functions (shell and zones) get more headroom for bursty page loads.
     expect(own(application, 5)).toBe(1 + ZONES.length);
     for (const template of all())
@@ -211,9 +212,11 @@ describe("domain services", () => {
     const sources = queues.filter((queue) => queue.Properties.RedrivePolicy);
     expect(sources).toHaveLength(1);
     expect(sources[0]?.Properties.RedrivePolicy.maxReceiveCount).toBe(3);
-    // DLQs of notification, contract, consumption and documents
-    expect(queues.length - sources.length).toBe(4);
-    expect(Object.keys(application.findResources("AWS::CloudWatch::Alarm"))).toHaveLength(4);
+    // DLQs of notification, contract, consumption, documents, customer, migration worker
+    // and the migration record DLQ (expected failures of the demo, shown in the cockpit,
+    // therefore without alarm)
+    expect(queues.length - sources.length).toBe(7);
+    expect(Object.keys(application.findResources("AWS::CloudWatch::Alarm"))).toHaveLength(6);
     const mappings = Object.values(application.findResources("AWS::Lambda::EventSourceMapping"));
     expect(mappings).toHaveLength(1);
     expect(mappings[0]?.Properties.FunctionResponseTypes).toEqual(["ReportBatchItemFailures"]);
@@ -224,8 +227,10 @@ describe("domain services", () => {
     const lambdaTargets = rules
       .flatMap((rule) => rule.Properties.Targets as Record<string, unknown>[])
       .filter((target) => !JSON.stringify(target.Arn).includes("NotificationQueue"));
-    // contract 2, consumption 2, documents 2 (CustomerRegistered, S3 upload)
-    expect(lambdaTargets).toHaveLength(6);
+    // contract 4 (CustomerRegistered, MeterReadingSubmitted, LegacyAccountMigrated,
+    // AccountsLinked), consumption 2, documents 2 (CustomerRegistered, S3 upload),
+    // customer 2 (LegacyAccountMigrated, AccountsLinked), migration 1 (all events)
+    expect(lambdaTargets).toHaveLength(11);
     for (const target of lambdaTargets) {
       expect(target.RetryPolicy).toEqual({
         MaximumRetryAttempts: 8,
@@ -237,30 +242,45 @@ describe("domain services", () => {
 
   it("routes each event only to the domains that react to it", () => {
     const rules = Object.values(application.findResources("AWS::Events::Rule")).map((rule) =>
-      [rule.Properties.EventPattern.source[0], rule.Properties.EventPattern["detail-type"][0]].join(
-        " ",
-      ),
+      [
+        JSON.stringify(rule.Properties.EventPattern.source),
+        rule.Properties.EventPattern["detail-type"]?.[0] ?? "*",
+      ].join(" "),
     );
+    const one = (source: string) => JSON.stringify([source]);
     const count = (pattern: string) => rules.filter((rule) => rule === pattern).length;
     // notification, contract, consumption, documents
-    expect(count("kundenportal.customer CustomerRegistered")).toBe(4);
+    expect(count(`${one("kundenportal.customer")} CustomerRegistered`)).toBe(4);
     // notification, contract
-    expect(count("kundenportal.consumption MeterReadingSubmitted")).toBe(2);
+    expect(count(`${one("kundenportal.consumption")} MeterReadingSubmitted`)).toBe(2);
     // notification, consumption (projection)
-    expect(count("kundenportal.contract ContractChanged")).toBe(2);
+    expect(count(`${one("kundenportal.contract")} ContractChanged`)).toBe(2);
+    // customer, contract — from both publishers (identity: lazy, migration: bulk)
+    const bothSources = JSON.stringify(["kundenportal.identity", "kundenportal.migration"]);
+    expect(count(`${bothSources} LegacyAccountMigrated`)).toBe(2);
+    // notification, customer, contract
+    expect(count(`${one("kundenportal.migration")} AccountsLinked`)).toBe(3);
     for (const pattern of [
-      "kundenportal.contract InstallmentAdjusted",
-      "kundenportal.consumption DataVolumeThresholdReached",
-      "kundenportal.documents DocumentUploaded",
-      "aws.s3 Object Created",
+      `${one("kundenportal.contract")} InstallmentAdjusted`,
+      `${one("kundenportal.consumption")} DataVolumeThresholdReached`,
+      `${one("kundenportal.documents")} DocumentUploaded`,
+      `${one("kundenportal.migration")} PasswordResetRequired`,
+      `${one("kundenportal.migration")} DuplicateCandidateFound`,
+      `${one("aws.s3")} Object Created`,
+      // the migration worker sees every event of the portal (timeline)
+      `${JSON.stringify([{ prefix: "kundenportal." }])} *`,
     ])
       expect(count(pattern)).toBe(1);
   });
 
   it("hands failed asynchronous invocations of the workers to a DLQ", () => {
     const configs = Object.values(application.findResources("AWS::Lambda::EventInvokeConfig"));
-    expect(configs).toHaveLength(3); // contract, consumption, documents
-    for (const config of configs) {
+    // contract, consumption, documents, customer, migration worker; plus the record
+    // processor, which does not retry (see the migration tests)
+    expect(configs).toHaveLength(6);
+    const workers = configs.filter((c) => c.Properties.MaximumRetryAttempts !== 0);
+    expect(workers).toHaveLength(5);
+    for (const config of workers) {
       expect(config.Properties.MaximumRetryAttempts).toBe(2);
       expect(config.Properties.DestinationConfig.OnFailure.Destination).toBeDefined();
     }
@@ -464,5 +484,85 @@ describe("runtime widget", () => {
       DestinationBucketKeyPrefix: "widgets",
       DistributionPaths: ["/widgets/*"],
     });
+  });
+});
+
+describe("migration (phase 3)", () => {
+  it("adds the migrate user and post authentication triggers to the user pool", () => {
+    base.hasResourceProperties("AWS::Cognito::UserPool", {
+      LambdaConfig: Match.objectLike({
+        UserMigration: Match.anyValue(),
+        PostAuthentication: Match.anyValue(),
+        PreTokenGenerationConfig: Match.anyValue(),
+      }),
+      Schema: Match.arrayWith([
+        Match.objectLike({ Name: "legacy_ref", Mutable: false }),
+        Match.objectLike({ Name: "migration_mode", Mutable: false }),
+      ]),
+    });
+    base.hasResourceProperties("AWS::Lambda::Function", {
+      Description: Match.stringLikeRegexp("^Lazy migration"),
+      Timeout: 5,
+    });
+  });
+
+  it("gives the owner a Cognito group and the table a TTL attribute", () => {
+    base.hasResourceProperties("AWS::Cognito::UserPoolGroup", { GroupName: "owner" });
+    base.hasResourceProperties("AWS::DynamoDB::Table", {
+      TimeToLiveSpecification: { AttributeName: "ttl", Enabled: true },
+    });
+  });
+
+  it("passes only the names of the legacy parameters, never secrets", () => {
+    for (const template of [base, application]) {
+      const functions = Object.values(template.findResources("AWS::Lambda::Function"));
+      const legacy = functions.filter(
+        (fn) => fn.Properties.Environment?.Variables?.LEGACY_UTILITY_API_KEY_PARAM,
+      );
+      expect(legacy.length).toBeGreaterThan(0);
+      for (const fn of legacy) {
+        expect(fn.Properties.Environment.Variables.LEGACY_UTILITY_API_KEY_PARAM).toBe(
+          PARAM.legacy.utilityApiKey,
+        );
+      }
+    }
+    // user migration + post authentication; migration API, worker and processor
+    const count = (template: Template) =>
+      Object.values(template.findResources("AWS::Lambda::Function")).filter(
+        (fn) => fn.Properties.Environment?.Variables?.LEGACY_TELCO_URL_PARAM,
+      ).length;
+    expect(count(base)).toBe(2);
+    expect(count(application)).toBe(3);
+  });
+
+  it("hands failed record tasks to the migration DLQ without retries", () => {
+    application.hasResourceProperties("AWS::Lambda::EventInvokeConfig", {
+      MaximumRetryAttempts: 0,
+      DestinationConfig: { OnFailure: { Destination: Match.anyValue() } },
+    });
+  });
+
+  it("lets only the record processor create Cognito users", () => {
+    const policies = Object.values(application.findResources("AWS::IAM::Policy"));
+    const creating = policies.filter((policy) =>
+      JSON.stringify(policy.Properties.PolicyDocument).includes("cognito-idp:AdminCreateUser"),
+    );
+    expect(creating).toHaveLength(1);
+    expect(JSON.stringify(creating[0]?.Properties.Roles)).toContain("MigrationProcessor");
+  });
+
+  it("serves the links and the cockpit with their scopes", () => {
+    const routes = Object.values(application.findResources("AWS::ApiGatewayV2::Route")).map(
+      (route) => `${route.Properties.RouteKey} ${route.Properties.AuthorizationScopes.join(",")}`,
+    );
+    expect(routes).toEqual(
+      expect.arrayContaining([
+        "GET /me/links kundenportal/profile.read",
+        "POST /me/links kundenportal/profile.write",
+        "GET /migration/status kundenportal/migration.read",
+        "POST /migration/bulk kundenportal/migration.write",
+        "POST /migration/dlq/{recordId}/redrive kundenportal/migration.write",
+      ]),
+    );
   });
 });

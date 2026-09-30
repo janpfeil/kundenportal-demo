@@ -20,14 +20,6 @@ export class BaseStack extends Stack {
     super(scope, id, props);
     const { config } = props;
 
-    const identity = new Identity(this, "Identity", {
-      domainName: config.domainName,
-      cognitoDomainPrefix: config.cognitoDomainPrefix,
-      allowLocalhostCallback: config.allowLocalhostCallback,
-      reservedConcurrency: config.reservedConcurrency,
-      apiScopes: apiScopes(loadApiRoutes()),
-    });
-
     // Single table (fachkonzept §7.1); provisioned 5/5 stays inside the always-free 25 RCU/WCU.
     const table = new Table(this, "Table", {
       partitionKey: { name: "PK", type: AttributeType.STRING },
@@ -36,7 +28,18 @@ export class BaseStack extends Stack {
       readCapacity: 5,
       writeCapacity: 5,
       encryption: TableEncryption.AWS_MANAGED,
+      // Items with `ttl` (epoch seconds) expire, e.g. the cockpit timeline; deletes by TTL are free.
+      timeToLiveAttribute: "ttl",
       removalPolicy: RemovalPolicy.DESTROY,
+    });
+
+    const identity = new Identity(this, "Identity", {
+      domainName: config.domainName,
+      cognitoDomainPrefix: config.cognitoDomainPrefix,
+      allowLocalhostCallback: config.allowLocalhostCallback,
+      reservedConcurrency: config.reservedConcurrency,
+      apiScopes: apiScopes(loadApiRoutes()),
+      table,
     });
 
     // Uploads outlive an app teardown like the table; the lifecycle rule empties the bucket.
