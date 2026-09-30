@@ -18,7 +18,7 @@ const request = (origin: string | undefined, body?: unknown) =>
   new Request("https://kundenportal-demo.rypox.com/x", {
     method: "POST",
     headers: { "content-type": "application/json", ...(origin ? { origin } : {}) },
-    body: body === undefined ? undefined : JSON.stringify(body),
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   });
 const params = { params: Promise.resolve({ notificationId: "n-1" }) };
 
