@@ -26,7 +26,7 @@ It is a portfolio project that demonstrates, in one coherent system:
 The concept, decisions and research are written in German:
 
 - Markdown wiki (source): [`docs/wiki/`](docs/wiki/)
-- Rendered reports: [`docs/reports/`](docs/reports/) (published via GitHub Pages)
+- Rendered reports: https://janpfeil.github.io/kundenportal-demo/ (source [`docs/reports/`](docs/reports/), published by the `Pages` workflow)
 
 ## Repository layout
 
