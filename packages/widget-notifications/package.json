@@ -1,0 +1,17 @@
+{
+  "name": "@kundenportal/widget-notifications",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Runtime widget <kp-bell>: unread notifications, loaded by the shell and every zone",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "jsdom": "^30.1.1"
+  }
+}

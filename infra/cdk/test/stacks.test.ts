@@ -258,3 +258,17 @@ describe("zones", () => {
     );
   });
 });
+
+describe("runtime widget", () => {
+  it("publishes the bell under /widgets/ and invalidates it on deploy", () => {
+    const config = Object.values(edge.findResources("AWS::CloudFront::Distribution"))[0]?.Properties
+      .DistributionConfig;
+    expect(config.CacheBehaviors.map((b: { PathPattern: string }) => b.PathPattern)).toContain(
+      "/widgets/*",
+    );
+    edge.hasResourceProperties("Custom::CDKBucketDeployment", {
+      DestinationBucketKeyPrefix: "widgets",
+      DistributionPaths: ["/widgets/*"],
+    });
+  });
+});

@@ -22,6 +22,7 @@
     "@kundenportal/identity": "workspace:*",
     "@kundenportal/notification": "workspace:*",
     "@kundenportal/shell": "workspace:*",
+    "@kundenportal/widget-notifications": "workspace:*",
     "@kundenportal/zone-consumption": "workspace:*",
     "@kundenportal/zone-contracts": "workspace:*",
     "aws-cdk": "^2.1143.0",

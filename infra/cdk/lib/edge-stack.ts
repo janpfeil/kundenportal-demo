@@ -67,6 +67,7 @@ export class EdgeStack extends Stack {
         originAccessControlId: lambdaOac.attrId,
       });
 
+    const assetsOrigin = S3BucketOrigin.withOriginAccessControl(assets);
     const distribution = new Distribution(this, "Distribution", {
       comment: "Kundenportal demo",
       priceClass: PriceClass.PRICE_CLASS_100,
@@ -84,7 +85,14 @@ export class EdgeStack extends Stack {
       },
       additionalBehaviors: {
         "/_next/static/*": {
-          origin: S3BucketOrigin.withOriginAccessControl(assets),
+          origin: assetsOrigin,
+          viewerProtocolPolicy: ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+          cachePolicy: CachePolicy.CACHING_OPTIMIZED,
+          responseHeadersPolicy: ResponseHeadersPolicy.SECURITY_HEADERS,
+        },
+        // Runtime widgets (e.g. <kp-bell>), loaded by shell and zones; invalidated on deploy.
+        "/widgets/*": {
+          origin: assetsOrigin,
           viewerProtocolPolicy: ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
           cachePolicy: CachePolicy.CACHING_OPTIMIZED,
           responseHeadersPolicy: ResponseHeadersPolicy.SECURITY_HEADERS,
@@ -158,6 +166,20 @@ export class EdgeStack extends Stack {
       prune: false,
       memoryLimit: 256,
       logGroup: new LogGroup(this, "DeployStaticLogs", {
+        retention: RetentionDays.THREE_DAYS,
+        removalPolicy: RemovalPolicy.DESTROY,
+      }),
+    });
+
+    new BucketDeployment(this, "DeployWidgets", {
+      sources: [Source.asset(path.join(REPO_ROOT, "packages", "widget-notifications", "dist"))],
+      destinationBucket: assets,
+      destinationKeyPrefix: "widgets",
+      // Widget files keep their names, so CloudFront must drop its copies on every deploy.
+      distribution,
+      distributionPaths: ["/widgets/*"],
+      memoryLimit: 256,
+      logGroup: new LogGroup(this, "DeployWidgetsLogs", {
         retention: RetentionDays.THREE_DAYS,
         removalPolicy: RemovalPolicy.DESTROY,
       }),
