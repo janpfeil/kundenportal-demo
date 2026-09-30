@@ -1,6 +1,6 @@
 # Architektur — Ist-Stand des Portals
 
-Stand: 2026-09-30 · Beschreibt den **Ist-Stand** des Codes (Phase 1 und 2 abgeschlossen, Phase 3 im Code fertig), nicht die Zielarchitektur. Kennzeichnung: **[B]** belegt (offizielle Quelle oder Messung), **[A]** Annahme, **[E]** Einschätzung.
+Stand: 2026-09-30 · Beschreibt den **Ist-Stand** des Codes (Phase 1 bis 3 abgeschlossen), nicht die Zielarchitektur. Kennzeichnung: **[B]** belegt (offizielle Quelle oder Messung), **[A]** Annahme, **[E]** Einschätzung.
 
 Fachbegriffe sind in jedem Abschnitt beim ersten Vorkommen mit dem [Glossar](glossar.md) verlinkt (Erklärung und Entsprechung außerhalb von AWS).
 
@@ -15,7 +15,7 @@ diese Seite zeigt, was davon tatsächlich gebaut ist:
   täglicher Zeitplan, das Zonen-Muster mit zwei Zonen, der Schreibweg aus dem
   Browser, das Laufzeit-Widget „Glocke" und die Component Library. Die
   Oberfläche beschreibt die Seite [Architektur: Zonen und Frontend](architektur-zonen.md).
-- **Phase 3 (im Code fertig, Inbetriebnahme der Altsysteme ausstehend):** zwei
+- **Phase 3 (abgeschlossen, v0.3.0):** zwei
   simulierte Altsysteme, Übernahme der Kundenkonten per Migrate-User-Trigger
   und Bulk-Import, Dublettenerkennung mit Account-Linking, Migrations-Cockpit
   ([Architektur: Altsysteme und Migration](architektur-migration.md)).
@@ -412,6 +412,10 @@ Playwright-Lauf gegen die Live-Umgebung).
 | Deploy mit den Services aus Phase 2 | 484 s | 30.09.2026 | Build 42 s, Kern 302 s, Edge 140 s |
 | Deploy nur der Zonen (lokal) | 212 s | 30.09.2026 | [Zonen und Frontend](architektur-zonen.md) §7 |
 | Erstanmeldung → Willkommensnachricht, kaltes System | 7,3 s | 30.09.2026 | Playwright gegen ein kaltes System; mehr Kaltstarts als in Phase 1 (1,9 s / 3,3 s) |
+| Pause mit Phase 3 (Abbau App-Stack) | 257 s | 30.09.2026 | GitHub-Workflow `Teardown`; Portal antwortet währenddessen 403 |
+| Neuaufbau mit Phase 3 | 464 s | 30.09.2026 | 17 App-Funktionen, 3 Cognito-Trigger; gleiche Distribution, keine DNS-Änderung |
+| E2E gesamt (16 Journeys inkl. J2, J3, J7, J8) | 1,8 min | 30.09.2026 | warm; direkt nach dem Neuaufbau brauchte J4 länger als die 5 s der Prüfung (Wartezeit auf 30 s erhöht) |
+| Migrations-Journeys allein (9 Schritte) | 1,3 min | 30.09.2026 | lokal gegen live, inkl. zweimal Demo-Reset, Bulk-Import beider Altsysteme und Redrive |
 
 Befunde beim ersten Deploy, jetzt im Code berücksichtigt: GitHub signiert
 OIDC-Tokens mit unveränderlichen IDs (`repo:owner@id/name@id`), die

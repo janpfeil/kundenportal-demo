@@ -25,7 +25,7 @@ It is a portfolio project that demonstrates, in one coherent system:
 > contract, consumption and documents services with their events, uploads to S3, the
 > `<kp-bell>` widget and the component library with Storybook.
 >
-> Phase 3 (legacy systems and migration) is complete in code: customers of two simulated
+> Phase 3 (legacy systems and migration) is released as v0.3.0: customers of two simulated
 > legacy systems keep their accounts — lazily at their first sign-in (Cognito migrate user
 > trigger, telco passwords checked against an own Keycloak) or by a bulk import with a
 > dead-letter queue and redrive; duplicates are offered for linking; a migration cockpit

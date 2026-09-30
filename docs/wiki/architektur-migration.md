@@ -1,6 +1,6 @@
 # Architektur: Altsysteme und Migration
 
-Stand: 2026-09-30 · Phase 3 im Code fertig; Altsysteme und Keycloak-Realm laufen ([Anleitung Altsysteme](anleitung-altsysteme.md)). Ergänzt die [Architektur](architektur.md) (Ist-Stand Phase 1 und 2). Kennzeichnung: **[B]** belegt, **[A]** Annahme, **[E]** Einschätzung.
+Stand: 2026-09-30 · Phase 3 abgeschlossen (Release v0.3.0), live per E2E geprüft; Altsysteme und Keycloak-Realm laufen ([Anleitung Altsysteme](anleitung-altsysteme.md)). Ergänzt die [Architektur](architektur.md) (Ist-Stand Phase 1 und 2). Kennzeichnung: **[B]** belegt, **[A]** Annahme, **[E]** Einschätzung.
 
 Fachbegriffe sind in jedem Abschnitt beim ersten Vorkommen mit dem [Glossar](glossar.md) verlinkt (Erklärung und Entsprechung außerhalb von AWS).
 

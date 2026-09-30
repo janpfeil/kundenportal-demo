@@ -63,7 +63,8 @@ test("J4: a meter reading is stored and confirmed in the mailbox", async ({ page
   await page.waitForLoadState("networkidle");
   const readings = page.getByTestId("readings").first();
   // The history streams in; wait until the latest value is there before computing a new one.
-  await expect(readings).toHaveAttribute("data-latest-value", /\d/);
+  // Right after a rebuild every function starts cold, so allow more than the default 5 s.
+  await expect(readings).toHaveAttribute("data-latest-value", /\d/, { timeout: 30_000 });
   const latest = Number(await readings.getAttribute("data-latest-value"));
   await form
     .getByRole("spinbutton")

@@ -126,7 +126,7 @@ kostenlos — siehe [Demo-Pass](demo-pass.md) §5.
 Single-Table-Design: Partition Key `PK`, Sort Key `SK`, ein globaler
 Sekundärindex `GSI1` für Suchen [E].
 
-**Abgleich mit dem Code (Stand 30.09.2026, Phase 3 im Code fertig):** Bis zum
+**Abgleich mit dem Code (Stand 30.09.2026, Phase 3 abgeschlossen):** Bis zum
 Demo-Pass (Phase 4) gibt es genau **eine** Tabelle für alle Mandanten. Jeder
 Schlüssel beginnt deshalb mit dem Mandanten (`TENANT#<t>#…`, Helfer
 `tenantKey` in `packages/service-kit`); mit einer eigenen Tabelle je Mandant
