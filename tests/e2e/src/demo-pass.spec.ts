@@ -12,10 +12,12 @@ import {
 
 /**
  * Phase 4 journey: demo pass from invitation to deletion, against the live portal.
- * A throw-away owner invites a throw-away address with a short test duration (3 minutes);
+ * A throw-away owner invites a throw-away address with a short test duration (5 minutes);
  * a fresh browser redeems the link (the ALTCHA puzzle is solved by the browser, there is
  * no bypass); the pass holder signs in, sees the pass status, quota, demo persons and the
- * tenant's demo password; the tenant's Anna is migrated inside the tenant; the cockpits
+ * tenant's demo password; the tenant's Anna is migrated inside the tenant and changes her
+ * installment (J6) and submits a reading (J4), the tenant's Bernd links his telco account
+ * (J3, checked at the tenant's telco data, not Keycloak); the cockpits
  * of owner and pass holder stay apart; after the test duration the tenant is deleted.
  *
  * Test passes suppress the Cognito mail, so the pass holder's password is set through the
@@ -23,7 +25,8 @@ import {
  * pass page.
  */
 const EVENTUALLY = { timeout: 90_000, intervals: [2_000, 3_000, 5_000] };
-const TEST_MINUTES = 3;
+// Long enough for J2/J3/J4/J6 inside the tenant before the pass runs out.
+const TEST_MINUTES = 5;
 
 let poolId: string;
 let owner: TestUser;
@@ -33,6 +36,13 @@ let link = "";
 let tenant = "";
 let demoPassword = "";
 let anna = "";
+
+async function expectMailboxMessage(page: Page, text: RegExp) {
+  await expect(async () => {
+    await page.goto("/postfach");
+    await expect(page.getByTestId("mailbox")).toContainText(text);
+  }).toPass(EVENTUALLY);
+}
 
 test.use({ locale: "de-DE" });
 test.describe.configure({ mode: "serial" });
@@ -149,6 +159,63 @@ test("the tenant's Anna is taken over inside the tenant with her contracts", asy
     await expect(page.getByTestId("contracts")).toContainText("Strom");
     await expect(page.getByTestId("contracts")).toContainText("Gas");
   }).toPass(EVENTUALLY);
+
+  // J6 inside the tenant: the installment change reaches the tenant's mailbox.
+  await page.getByTestId("contracts").getByRole("link").first().click();
+  const installment = page.getByTestId("contract-installment-form");
+  await expect(installment).toBeVisible();
+  await page.waitForLoadState("networkidle");
+  const amount = installment.getByRole("spinbutton").first();
+  const current = Number((await amount.inputValue()).replace(",", "."));
+  await amount.fill(String(Math.round(current) + 1));
+  await installment.getByRole("button").first().click();
+  await expect(page.getByRole("status")).toBeVisible();
+  await expectMailboxMessage(page, /Abschlag|installment/i);
+
+  // J4 inside the tenant: a reading on top of the legacy meter reading.
+  await page.goto("/verbrauch");
+  const reading = page.getByTestId("reading-form").first();
+  await expect(reading).toBeVisible();
+  await page.waitForLoadState("networkidle");
+  const readings = page.getByTestId("readings").first();
+  await expect(readings).toHaveAttribute("data-latest-value", /\d/, { timeout: 30_000 });
+  const latest = Number(await readings.getAttribute("data-latest-value"));
+  await reading
+    .getByRole("spinbutton")
+    .first()
+    .fill(String(Math.floor(latest) + 150));
+  await reading.getByRole("button").first().click();
+  await expect(page.getByRole("status")).toBeVisible();
+  await expectMailboxMessage(page, /Zählerstand|meter reading/i);
+  await page.context().close();
+});
+
+test("J3 inside the tenant: Bernd links his telco account with the tenant's password", async ({
+  browser,
+}) => {
+  const page = await freshPage(browser);
+  const bernd = `bernd.yilmaz+${tenant}@example.org`;
+  await page.goto("/konto");
+  await signIn(page, bernd, demoPassword);
+  await page.waitForURL(/\/konto$/);
+  await expect(async () => {
+    await page.goto("/konto");
+    await expect(page.getByTestId("link-offers")).toContainText("T/88-4711");
+  }).toPass(EVENTUALLY);
+  await page.waitForLoadState("networkidle");
+  const offer = page.getByTestId("link-offer").filter({ hasText: "T/88-4711" });
+  await offer.getByLabel("Passwort des anderen Kontos").fill(demoPassword);
+  await offer.getByRole("button", { name: "Verknüpfen" }).click();
+  await expect(page.getByTestId("link-offer").filter({ hasText: "T/88-4711" })).toHaveAttribute(
+    "data-status",
+    "linked",
+    { timeout: 15_000 },
+  );
+  await expect(async () => {
+    await page.goto("/vertraege");
+    for (const division of ["Strom", "Internet", "Mobilfunk"])
+      await expect(page.getByTestId("contracts")).toContainText(division);
+  }).toPass(EVENTUALLY);
   await page.context().close();
 });
 
@@ -181,7 +248,7 @@ test("after the test duration the tenant is deleted and the holder cannot sign i
   page,
   browser,
 }) => {
-  test.setTimeout(9 * 60_000);
+  test.setTimeout(11 * 60_000);
   await openPasses(page);
   await expect(async () => {
     await page.goto("/cockpit/paesse");
@@ -189,7 +256,7 @@ test("after the test duration the tenant is deleted and the holder cannot sign i
       "data-status",
       "deleted",
     );
-  }).toPass({ timeout: 7 * 60_000, intervals: [10_000, 15_000, 20_000] });
+  }).toPass({ timeout: 9 * 60_000, intervals: [10_000, 15_000, 20_000] });
 
   const holder = await freshPage(browser);
   await holder.goto("/konto");
