@@ -210,8 +210,14 @@ Generator liest beide Dateien und erzeugt daraus **eine** Glossar-Seite.
 | Silo-Modell | Silo | Mandantenmodell: jeder Mandant bekommt eigene, vollständige Infrastruktur | eigene VM/Datenbank je Kunde |
 | Bridge-Modell | Bridge | Mandantenmodell: Rechenleistung geteilt, Daten und Ereignisse je Mandant getrennt | Schema je Mandant in PostgreSQL |
 | Pool-Modell | Pool | Mandantenmodell: alles geteilt, Trennung nur über die Mandanten-Kennung in jedem Datensatz | Spalte `tenant_id` |
-| CAPTCHA | hCaptcha, Cloudflare Turnstile, Bot-Prüfung | Prüfung, ob ein Mensch oder ein Programm eine Seite bedient | Google reCAPTCHA, Friendly Captcha |
+| CAPTCHA | hCaptcha, Cloudflare Turnstile, Bot-Prüfung, ALTCHA-Rätsel | Prüfung, ob ein Mensch oder ein Programm eine Seite bedient | Google reCAPTCHA, Friendly Captcha |
 | Cloudflare | | CDN- und Sicherheitsanbieter; hier nur wegen des kostenlosen CAPTCHA-Dienstes Turnstile genannt | — |
+| ALTCHA | | selbst gehostetes, quelloffenes CAPTCHA ohne Bilderrätsel: der Browser löst ein kleines Rechenrätsel (Proof-of-Work), der Server prüft es mit einem geheimen HMAC-Schlüssel; im Demo vor dem Einlösen eines Einladungslinks | Friendly Captcha, mCaptcha |
+| Proof-of-Work | Rechenrätsel | Nachweis, dass ein Gerät eine bestimmte Rechenarbeit geleistet hat; für einen Besucher ein Moment, für massenhafte Bot-Anfragen teuer | Hashcash |
+| Token Vending Machine | Token-Vending | Muster für Mandantentrennung: eine geteilte Funktion holt sich je Anfrage kurzlebige Anmeldedaten, die nur die Daten eines Mandanten erlauben | Row-Level Security in PostgreSQL, Hibernate-Filter |
+| Sitzungs-Tag | Session Tag, Principal Tag, aws:PrincipalTag | Schlüssel-Wert-Paar, das beim Annehmen einer IAM-Rolle mitgegeben wird; Richtlinien können Ressourcennamen daraus bilden (z. B. nur die Tabelle des eigenen Mandanten) | Claims in einem Token, die eine Datenbank-Policy auswertet |
+| STS | AWS STS, Security Token Service, AssumeRole | AWS-Dienst, der kurzlebige Anmeldedaten für eine Rolle ausgibt; kostenlos | Keycloak Token Exchange, HashiCorp Vault |
+| Plus-Adresse | Plus-Adressierung, Subaddressing | E-Mail-Adresse mit Zusatz nach einem Pluszeichen (`anna+p4k9@…`); im Demo trägt der Zusatz die Kennung des Mandanten einer Demo-Person | — |
 | IP-Adresse | IP | Internetadresse eines Geräts; dient zur Begrenzung von Anfragen je Absender | — |
 | Spam | Spam-Schleuder | unerwünschte Massen-Nachrichten; hier: Missbrauch der Demo zum Versand an Dritte | — |
 | Infrastruktur-Automatisierung | Bereitstellung auf Knopfdruck | Anlegen vollständiger Umgebungen per Programm statt per Hand | — |
