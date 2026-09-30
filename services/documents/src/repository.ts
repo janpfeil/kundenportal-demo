@@ -1,0 +1,83 @@
+import {
+  type DynamoDBDocumentClient,
+  GetCommand,
+  PutCommand,
+  QueryCommand,
+} from "@aws-sdk/lib-dynamodb";
+import { tenantKey } from "@kundenportal/service-kit";
+import { Document } from "./model.js";
+
+const PAGE_SIZE = 50;
+
+const documentKey = (tenantId: string, customerId: string, id: string) => ({
+  PK: tenantKey(tenantId, "CUST", customerId),
+  SK: `DOC#${id}`,
+});
+
+/**
+ * Items of the documents domain in the single table (fachkonzept §7.1):
+ * - `TENANT#<t>#CUST#<customerId>` / `DOC#<documentId>` — document metadata; the id
+ *   starts with the creation time, so the sort key orders by date as in §7.1
+ * - `TENANT#<t>#SUBJ#<subject>` / `DOCUMENTS` — own projection of `CustomerRegistered`
+ */
+export class DocumentRepository {
+  constructor(
+    private readonly db: DynamoDBDocumentClient,
+    private readonly table: string,
+  ) {}
+
+  async linkSubject(tenantId: string, subject: string, customerId: string): Promise<void> {
+    await this.db.send(
+      new PutCommand({
+        TableName: this.table,
+        Item: { PK: tenantKey(tenantId, "SUBJ", subject), SK: "DOCUMENTS", customerId },
+      }),
+    );
+  }
+
+  async customerOf(tenantId: string, subject: string): Promise<string | undefined> {
+    const result = await this.db.send(
+      new GetCommand({
+        TableName: this.table,
+        Key: { PK: tenantKey(tenantId, "SUBJ", subject), SK: "DOCUMENTS" },
+      }),
+    );
+    return result.Item?.customerId as string | undefined;
+  }
+
+  async list(tenantId: string, customerId: string): Promise<Document[]> {
+    const result = await this.db.send(
+      new QueryCommand({
+        TableName: this.table,
+        KeyConditionExpression: "PK = :pk AND begins_with(SK, :doc)",
+        ExpressionAttributeValues: {
+          ":pk": tenantKey(tenantId, "CUST", customerId),
+          ":doc": "DOC#",
+        },
+        ScanIndexForward: false,
+        Limit: PAGE_SIZE,
+      }),
+    );
+    return (result.Items ?? []).map((item) => Document.parse(item));
+  }
+
+  async get(tenantId: string, customerId: string, id: string): Promise<Document | undefined> {
+    const result = await this.db.send(
+      new GetCommand({
+        TableName: this.table,
+        Key: documentKey(tenantId, customerId, id),
+        ConsistentRead: true,
+      }),
+    );
+    return result.Item ? Document.parse(result.Item) : undefined;
+  }
+
+  async save(tenantId: string, customerId: string, document: Document): Promise<void> {
+    await this.db.send(
+      new PutCommand({
+        TableName: this.table,
+        Item: { ...documentKey(tenantId, customerId, document.documentId), ...document },
+      }),
+    );
+  }
+}

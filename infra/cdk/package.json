@@ -14,11 +14,15 @@
   },
   "dependencies": {
     "@kundenportal/api-contract": "workspace:*",
+    "@kundenportal/events": "workspace:*",
     "aws-cdk-lib": "^2.271.0",
     "constructs": "^10.8.1"
   },
   "devDependencies": {
+    "@kundenportal/consumption": "workspace:*",
+    "@kundenportal/contract": "workspace:*",
     "@kundenportal/customer": "workspace:*",
+    "@kundenportal/documents": "workspace:*",
     "@kundenportal/identity": "workspace:*",
     "@kundenportal/notification": "workspace:*",
     "@kundenportal/shell": "workspace:*",
