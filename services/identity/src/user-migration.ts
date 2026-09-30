@@ -1,7 +1,7 @@
 import { SSMClient } from "@aws-sdk/client-ssm";
 import type { UserMigrationTriggerEvent } from "aws-lambda";
 import { log } from "@kundenportal/service-kit";
-import { type LegacyAccess, loadLegacyAccess } from "@kundenportal/legacy";
+import { cachedLegacyAccess, type LegacyAccess } from "@kundenportal/legacy";
 import {
   authenticateLegacy,
   findLegacyByEmail,
@@ -10,8 +10,6 @@ import {
   MIGRATION_MODE_ATTRIBUTE,
 } from "./legacy-account.js";
 import { DEFAULT_TENANT } from "./announce.js";
-
-let access: Promise<LegacyAccess> | undefined;
 
 /**
  * Cognito "migrate user" trigger (lazy migration, journey J2). Cognito calls it when a
@@ -66,4 +64,4 @@ export function createHandler(getAccess: () => Promise<LegacyAccess>) {
   };
 }
 
-export const handler = createHandler(() => (access ??= loadLegacyAccess(new SSMClient({}))));
+export const handler = createHandler(cachedLegacyAccess(new SSMClient({})));

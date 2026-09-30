@@ -59,3 +59,22 @@ export async function loadLegacyAccess(ssm: SSMClient, timeoutMs = 1500): Promis
     }),
   };
 }
+
+/**
+ * `loadLegacyAccess` once per execution environment, but a failed load (parameters not
+ * there yet, throttling) is forgotten, so the next invocation tries again instead of
+ * failing until the environment is recycled.
+ */
+export function cachedLegacyAccess(
+  ssm: SSMClient,
+  timeoutMs?: number,
+): () => Promise<LegacyAccess> {
+  let pending: Promise<LegacyAccess> | undefined;
+  return () => {
+    pending ??= loadLegacyAccess(ssm, timeoutMs).catch((error: unknown) => {
+      pending = undefined;
+      throw error;
+    });
+    return pending;
+  };
+}

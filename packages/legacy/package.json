@@ -24,5 +24,8 @@
     "@aws-sdk/client-ssm": "^3.1142.0",
     "@kundenportal/events": "workspace:*",
     "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "aws-sdk-client-mock": "^4.1.0"
   }
 }
