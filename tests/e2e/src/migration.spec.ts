@@ -142,10 +142,11 @@ test("J7: the bulk import takes over inactive telco accounts, one record ends in
   const row = page.getByTestId("dead-letters").getByRole("row", { name: /T\/88-4714/ });
   await row.getByLabel("Postleitzahl (Korrektur)").fill("04229");
   await row.getByRole("button", { name: "Erneut verarbeiten" }).click();
-  await expect(row.getByRole("status")).toBeVisible();
+  // The page reloads after the redrive; the record leaves the DLQ and is taken over.
   await expect(async () => {
     await page.goto("/cockpit");
     await expect(page.getByTestId("dead-letters")).not.toContainText("T/88-4714");
+    await expect(page.getByTestId("timeline")).toContainText("telco:T/88-4714 bulk");
   }).toPass(EVENTUALLY);
 });
 
@@ -170,7 +171,12 @@ test("J3: Bernd is offered his telco account and links it with its password", as
   const offer = page.getByTestId("link-offer").filter({ hasText: "T/88-4711" });
   await offer.getByLabel("Passwort des anderen Kontos").fill(DEMO_PASSWORD);
   await offer.getByRole("button", { name: "Verknüpfen" }).click();
-  await expect(offer.getByRole("status")).toContainText("verknüpft");
+  // The page reloads after the link; the offer then shows as linked.
+  await expect(page.getByTestId("link-offer").filter({ hasText: "T/88-4711" })).toHaveAttribute(
+    "data-status",
+    "linked",
+    { timeout: 15_000 },
+  );
   await expectContracts(page, ["Strom", "Internet", "Mobilfunk"]);
 });
 
