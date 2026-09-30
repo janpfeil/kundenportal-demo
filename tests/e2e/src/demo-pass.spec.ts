@@ -1,4 +1,4 @@
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { type Browser, expect, type Page, test } from "@playwright/test";
 import { openSignedIn, signIn } from "./sign-in.js";
 import {
@@ -194,20 +194,27 @@ test("the upload quota of the pass holds: the 21st upload is refused", async ({ 
   const page = await freshPage(browser);
   await openSignedIn(page, "/verbrauch", anna, demoPassword);
   const origin = new URL(page.url()).origin;
+  const body = JSON.stringify({
+    fileName: "zaehler.png",
+    contentType: "image/png",
+    sizeBytes: 68,
+    category: "meter-photo",
+  });
+  // Like sendJson in the browser: CloudFront signs the body for the function URL only
+  // with its hash in x-amz-content-sha256.
   const announce = () =>
     page.request.post(`${origin}/verbrauch/api/documents/upload-url`, {
-      headers: { origin, "content-type": "application/json" },
-      data: {
-        fileName: "zaehler.png",
-        contentType: "image/png",
-        sizeBytes: 68,
-        category: "meter-photo",
+      headers: {
+        origin,
+        "content-type": "application/json",
+        "x-amz-content-sha256": createHash("sha256").update(body).digest("hex"),
       },
+      data: body,
     });
   const statuses: number[] = [];
   for (let i = 0; i < 21; i++) statuses.push((await announce()).status());
   // Each announcement counts, whether or not the file is uploaded afterwards.
-  expect(statuses.slice(0, 20).every((status) => status >= 200 && status < 300)).toBe(true);
+  expect(statuses.slice(0, 20), statuses.join(",")).toEqual(Array(20).fill(201));
   expect(statuses[20]).toBe(429);
   await page.context().close();
 });
