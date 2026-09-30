@@ -76,23 +76,21 @@ austauschbar.
   Ablauf nach 7 Tagen und Bot-Prüfung schützen vor Missbrauch. Details in
   [Demo-Pass](demo-pass.md).
 
-## Nächste Schritte nach der Entscheidung
+## Roadmap
 
-1. Fachkonzept: Personas, Journeys, Domänen-Events, Datenmodell (Single Table).
-2. Repository-Struktur (Monorepo: `apps/`, `packages/ui`, `services/`, `infra/cdk`, `infra/terraform`).
-3. Fundament per Terraform (GitLab CI, State im GitLab-managed Terraform State — kein State-Bucket):
-   OIDC-Vertrauensstellungen für GitHub Actions und GitLab CI, Budget mit
-   SNS-Grundlage für den Kill-Switch, SSM-Grundwerte.
-4. Durchstich: Login über Cognito → geschützter API-Call → Event → SNS-Mail,
-   deployt per GitHub Actions (CDK inklusive Cognito User Pool).
-5. Ab Phase 3: Anbindung der Altsysteme — Migrate-User-Trigger gegen Keycloak
-   (Telko) und die REST-Schnittstelle des Versorger-Altsystems; Keycloak-Konfiguration
-   per Terraform.
+Jede Phase endet mit einem lauffähigen, deployten Stand.
 
-Für den Durchstich (Phase 1) beschreiben die [Anleitung Fundament](anleitung-fundament.md)
-(Kapitel 4–5) und die [Anleitung Anwendung](anleitung-anwendung.md)
-(Kapitel 6–10) alle Handgriffe des Kontoinhabers; den gebauten Stand zeigt
-[Architektur Phase 1](architektur.md).
+| Phase | Inhalt | Stand |
+|---|---|---|
+| **1 – Fundament und Durchstich** | Monorepo, CI/CD, Fundament per Terraform (OIDC-Vertrauensstellungen, Budget), Identität mit Amazon Cognito, Shell-Zone mit Login (Deutsch/Englisch), Services `customer` und `notification`, Ereignisfluss über EventBridge und SQS, unbeaufsichtigter Auf- und Abbau | **abgeschlossen (30.09.2026)** — Release v0.1.0, live unter https://kundenportal-demo.rypox.com; Aufbau in [Architektur Phase 1](architektur.md) |
+| 2 – Zonen und Component Library | Zonen „Verträge & Rechnungen" und „Verbrauch", Laufzeit-Widget „Glocke", Component Library mit Storybook, Uploads (S3) | geplant |
+| 3 – Altsysteme und Migration | zwei simulierte Altsysteme auf eigenem Server, Telko-Anmeldung über den eigenen Keycloak, Lazy Migration per Cognito-Migrate-User-Trigger, Bulk-Import, Dublettenerkennung, Migrations-Cockpit | geplant |
+| 4 – Mandanten und Demo-Pass | Einladungslinks, eigener Mandant je Besucher im Bridge-Modell, Kontingente, automatischer Ablauf ([Demo-Pass](demo-pass.md)) | geplant |
+| 5 – Feinschliff | 5-Minuten-Demo, Video, Messungen, Abschluss der Dokumentation | geplant |
+
+Alle Handgriffe des Kontoinhabers für Phase 1 beschreiben die
+[Anleitung Fundament](anleitung-fundament.md) (Kapitel 4–5) und die
+[Anleitung Anwendung](anleitung-anwendung.md) (Kapitel 6–10).
 
 ## Offene Folgefragen aus Entscheidung Nr. 10
 
