@@ -31,6 +31,10 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   ];
   return (
     <html lang={locale}>
+      <head>
+        {/* Runtime widget, published by the edge; loaded at runtime so it can change on its own. */}
+        <script type="module" src="/widgets/bell.js" async />
+      </head>
       <body>
         {/* Plain GET links for language and sign-in/out: the shell accepts no POST requests (CloudFront OAC to Lambda). */}
         <AppShell
@@ -49,6 +53,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
               : { href: "/auth/login", label: t.auth.login }
           }
           linkComponent={ShellLink}
+          widget={session ? <kp-bell label={t.nav.mailbox} /> : undefined}
           footer={<a href={t.footer.href}>{t.footer.text}</a>}
         >
           {children}
