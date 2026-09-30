@@ -47,6 +47,20 @@ export function configFromEnv(): TenancyConfig {
   };
 }
 
+/**
+ * ARN of the worker the expiry schedules call. CDK cannot pass the function its own ARN
+ * (a reference cycle), so it passes the account and the worker builds it from the
+ * function name Lambda sets; `WORKER_ARN` wins where given (cleanup, tests).
+ */
+export function workerArn(env: NodeJS.ProcessEnv = process.env): string {
+  if (env.WORKER_ARN) return env.WORKER_ARN;
+  const region = env.AWS_REGION;
+  const account = env.ACCOUNT_ID;
+  const name = env.AWS_LAMBDA_FUNCTION_NAME;
+  if (!region || !account || !name) throw new Error("WORKER_ARN or ACCOUNT_ID is not set");
+  return `arn:aws:lambda:${region}:${account}:function:${name}`;
+}
+
 const db = () =>
   DynamoDBDocumentClient.from(new DynamoDBClient({}), {
     marshallOptions: { removeUndefinedValues: true },
@@ -79,7 +93,7 @@ function baseContext(config: TenancyConfig, lifecycle: boolean): TenancyContext 
           legacy: new LegacySystemTenants(cachedLegacyAccess(new SSMClient({}), 10_000)),
           schedules: new SchedulerExpiry(new SchedulerClient({}), {
             groupName: requireEnv("PASS_SCHEDULE_GROUP"),
-            workerArn: requireEnv("WORKER_ARN"),
+            workerArn: workerArn(),
             roleArn: requireEnv("SCHEDULER_ROLE_ARN"),
           }),
           uploads: new S3TenantUploads(new S3Client({}), requireEnv("UPLOAD_BUCKET")),

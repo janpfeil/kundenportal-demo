@@ -39,33 +39,38 @@ function owner(event: ApiEvent): Caller {
 
 /** Routes behind the JWT authorizer. */
 export function createApi(passes: Passes): ApiHandler {
-  return router({
-    "POST /tenancy/invitations": async (event) =>
-      json(
-        201,
-        await passes.invite(
-          owner(event),
-          parseBody(event, InvitationRequest),
-          event.requestContext.requestId,
+  return router(
+    {
+      "POST /tenancy/invitations": async (event) =>
+        json(
+          201,
+          await passes.invite(
+            owner(event),
+            parseBody(event, InvitationRequest),
+            event.requestContext.requestId,
+          ),
         ),
-      ),
-    "GET /tenancy/passes": async (event) => {
-      owner(event);
-      return json(200, { passes: await passes.list() });
+      "GET /tenancy/passes": async (event) => {
+        owner(event);
+        return json(200, { passes: await passes.list() });
+      },
+      "POST /tenancy/passes/{passId}/revoke": async (event) => {
+        owner(event);
+        const passId = event.pathParameters?.passId;
+        if (!passId) throw badRequest("passId is missing");
+        return json(202, await passes.revoke(passId, event.requestContext.requestId));
+      },
+      "GET /tenancy/pass": async (event) => {
+        const caller = callerFrom(event);
+        const groups = groupsOf(event);
+        const privileged = groups.includes(PASS_GROUP) || groups.includes(OWNER_GROUP);
+        return json(200, await passes.own(caller, privileged));
+      },
     },
-    "POST /tenancy/passes/{passId}/revoke": async (event) => {
-      owner(event);
-      const passId = event.pathParameters?.passId;
-      if (!passId) throw badRequest("passId is missing");
-      return json(202, await passes.revoke(passId, event.requestContext.requestId));
-    },
-    "GET /tenancy/pass": async (event) => {
-      const caller = callerFrom(event);
-      const groups = groupsOf(event);
-      const privileged = groups.includes(PASS_GROUP) || groups.includes(OWNER_GROUP);
-      return json(200, await passes.own(caller, privileged));
-    },
-  });
+    // Pass holders must see their pass in every state (being set up, quota used up), so
+    // these routes are neither counted nor refused by the API quota guard.
+    { tenantGuard: false },
+  );
 }
 
 /** Header in which the portal's server passes the visitor's address (see `clientKey`). */
@@ -93,26 +98,31 @@ export function createPublicApi(
   config: TenancyConfig,
   now: () => Date = () => new Date(),
 ): ApiHandler {
-  return router({
-    "GET /tenancy/challenge": async () => json(200, await altcha.challenge()),
-    "POST /tenancy/redeem": async (event) => {
-      const { client, source } = clientAddresses(event);
-      const at = now();
-      if (!(await repository.countAttempt(sha256(client), config.redeemPerClient, at))) {
-        throw tooManyRequests();
-      }
-      if (
-        !(await repository.countAttempt(sha256(`source:${source}`), config.redeemPerSource, at))
-      ) {
-        throw tooManyRequests();
-      }
-      const body = parseBody(event, RedeemRequest);
-      const check = await altcha.verify(body.altcha);
-      if (!check.ok) throw badRequest(check.reason);
-      if (!(await repository.useChallenge(check.signature, check.expiresAt))) {
-        throw badRequest("ALTCHA challenge was already used");
-      }
-      return json(202, await passes.redeem(body.token, event.requestContext.requestId));
+  return router(
+    {
+      "GET /tenancy/challenge": async () => json(200, await altcha.challenge()),
+      "POST /tenancy/redeem": async (event) => {
+        const { client, source } = clientAddresses(event);
+        const at = now();
+        if (!(await repository.countAttempt(sha256(client), config.redeemPerClient, at))) {
+          throw tooManyRequests();
+        }
+        if (
+          !(await repository.countAttempt(sha256(`source:${source}`), config.redeemPerSource, at))
+        ) {
+          throw tooManyRequests();
+        }
+        const body = parseBody(event, RedeemRequest);
+        const check = await altcha.verify(body.altcha);
+        if (!check.ok) throw badRequest(check.reason);
+        if (!(await repository.useChallenge(check.signature, check.expiresAt))) {
+          throw badRequest("ALTCHA challenge was already used");
+        }
+        return json(202, await passes.redeem(body.token, event.requestContext.requestId));
+      },
     },
-  });
+    // Pass holders must see their pass in every state (being set up, quota used up), so
+    // these routes are neither counted nor refused by the API quota guard.
+    { tenantGuard: false },
+  );
 }

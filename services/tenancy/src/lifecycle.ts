@@ -157,13 +157,22 @@ export async function teardownTenant(
       );
     }
     if (deleted) {
-      await ctx.events.publish(TenantDeleted, {
-        eventId: deterministicUuid("TenantDeleted", tenant.passId),
-        tenantId,
-        occurredAt: now.toISOString(),
-        correlationId,
-        payload: { passId: tenant.passId, tenantId, deletedAccounts },
-      });
+      // Everything is gone at this point; a missing bus (app stack already removed by a
+      // full teardown) must not fail the teardown itself.
+      await ctx.events
+        .publish(TenantDeleted, {
+          eventId: deterministicUuid("TenantDeleted", tenant.passId),
+          tenantId,
+          occurredAt: now.toISOString(),
+          correlationId,
+          payload: { passId: tenant.passId, tenantId, deletedAccounts },
+        })
+        .catch((error: unknown) =>
+          log("warn", "TenantDeleted could not be published", {
+            tenantId,
+            error: error instanceof Error ? error.message : String(error),
+          }),
+        );
     }
   }
   log("info", "Tenant torn down", { tenantId, deletedAccounts, deletedUploads });
