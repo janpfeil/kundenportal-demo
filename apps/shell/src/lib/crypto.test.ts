@@ -21,6 +21,10 @@ describe("session crypto", () => {
     const key = deriveKey("client-secret", "session");
     expect(await unseal(await seal({}, key, new Date(Date.now() - 1000)), key)).toBeUndefined();
     const sealed = await seal({ sub: "sub-1" }, key, inOneHour());
-    expect(await unseal(`${sealed.slice(0, -2)}AA`, key)).toBeUndefined();
+    // Change a character that carries six full bits of the tag (the last one of a
+    // base64url tag carries only two, so replacing it may leave the bytes unchanged).
+    const at = sealed.length - 5;
+    const tampered = `${sealed.slice(0, at)}${sealed[at] === "A" ? "B" : "A"}${sealed.slice(at + 1)}`;
+    expect(await unseal(tampered, key)).toBeUndefined();
   });
 });
