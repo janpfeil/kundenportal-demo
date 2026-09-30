@@ -147,6 +147,7 @@ export class AppStack extends Stack {
       },
       issuer,
       audience: [clientId],
+      reservedConcurrency: config.apiReservedConcurrency,
     });
 
     const userPoolArn = this.formatArn({

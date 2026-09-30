@@ -1,7 +1,7 @@
 import { HttpApi, HttpMethod, HttpNoneAuthorizer, HttpStage } from "aws-cdk-lib/aws-apigatewayv2";
 import { HttpJwtAuthorizer } from "aws-cdk-lib/aws-apigatewayv2-authorizers";
 import { HttpLambdaIntegration } from "aws-cdk-lib/aws-apigatewayv2-integrations";
-import type { IFunction } from "aws-cdk-lib/aws-lambda";
+import { CfnFunction, type IFunction } from "aws-cdk-lib/aws-lambda";
 import type { ApiRoute } from "@kundenportal/api-contract/routes";
 import { Construct } from "constructs";
 
@@ -14,6 +14,12 @@ export interface ApiProps {
   handlers: Record<string, IFunction>;
   issuer: string;
   audience: string[];
+  /**
+   * Reserved concurrency of the functions behind the API (0 = leave as built). A page
+   * calls several of them at once (contracts, readings, usage) and the E2E run opens
+   * several pages in parallel; 2 throttled such bursts.
+   */
+  reservedConcurrency?: number;
 }
 
 /** HTTP API with a JWT authorizer; routes and required scopes come from the OpenAPI contract. */
@@ -49,6 +55,11 @@ export class Api extends Construct {
       const integration =
         integrations.get(handler) ??
         new HttpLambdaIntegration(`${route.operationId}Integration`, handler);
+      if (!integrations.has(handler) && props.reservedConcurrency) {
+        const cfn = handler.node.defaultChild;
+        if (cfn instanceof CfnFunction)
+          cfn.reservedConcurrentExecutions = props.reservedConcurrency;
+      }
       integrations.set(handler, integration);
       this.httpApi.addRoutes({
         path: route.path,

@@ -88,12 +88,13 @@ describe("guard rails", () => {
     // Cognito triggers: pre token generation, migrate user, post authentication; the
     // cleanup of the pass tenants (custom resource).
     expect(own(base, 2)).toBe(4);
-    // Services: customer API + worker, notification API + consumer, API + worker for
-    // contract, consumption and documents, migration API + worker + record processor,
-    // tenancy API + public + worker.
-    expect(own(application, 2)).toBe(16);
-    // Next.js functions (shell and zones) get more headroom for bursty page loads.
-    expect(own(application, 5)).toBe(1 + ZONES.length);
+    // Workers: customer, notification consumer, contract, consumption, documents,
+    // migration worker + record processor, tenancy worker.
+    expect(own(application, 2)).toBe(8);
+    // Behind the HTTP API (a page calls several at once): customer, notification,
+    // contract, consumption, documents, migration and tenancy API, tenancy public.
+    expect(own(application, 5)).toBe(8 + 1 + ZONES.length);
+    // Next.js functions (shell and zones) get the same headroom for bursty page loads.
     for (const template of all())
       template.allResourcesProperties("AWS::Logs::LogGroup", { RetentionInDays: 3 });
   });

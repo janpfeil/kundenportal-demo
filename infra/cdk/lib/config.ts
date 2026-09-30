@@ -14,6 +14,8 @@ export interface PortalConfig {
    * reservations are disabled.
    */
   webReservedConcurrency: number;
+  /** Functions behind the HTTP API: a page calls several of them at once. */
+  apiReservedConcurrency: number;
   /** SSM parameter (written by Terraform) that holds the owner's e-mail address. */
   ownerEmailParameter: string;
   /** Allows sign-in callbacks to http://localhost:3000 for local development of the shell. */
@@ -34,6 +36,7 @@ export function loadConfig(app: App): PortalConfig {
     cognitoDomainPrefix: String(context("cognitoDomainPrefix") ?? "kundenportal-demo"),
     reservedConcurrency: reserved,
     webReservedConcurrency: reserved > 0 ? Number(context("webReservedConcurrency") ?? 5) : 0,
+    apiReservedConcurrency: reserved > 0 ? Number(context("apiReservedConcurrency") ?? 5) : 0,
     ownerEmailParameter: String(context("ownerEmailParameter") ?? "/kundenportal/owner-email"),
     allowLocalhostCallback: String(context("allowLocalhostCallback") ?? "true") === "true",
   };
