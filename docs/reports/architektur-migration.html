@@ -16,7 +16,10 @@
 <li><a href="#1-lazy-migration-j2">1. Lazy Migration (J2)</a></li>
 <li><a href="#2-bulk-import-der-inaktiven-j7">2. Bulk-Import der Inaktiven (J7)</a></li>
 <li><a href="#3-dubletten-und-account-linking-j3">3. Dubletten und Account-Linking (J3)</a></li>
-<li><a href="#4-migrations-cockpit-j8">4. Migrations-Cockpit (J8)</a></li>
+<li><a href="#4-migrations-cockpit-j8">4. Migrations-Cockpit (J8)</a><ul>
+<li><a href="#demo-reset">Demo-Reset</a></li>
+</ul>
+</li>
 <li><a href="#5-daten-und-kapazität">5. Daten und Kapazität</a></li>
 </ul>
 </div>
@@ -187,9 +190,82 @@ Läufe, <a class="term" href="glossar.html#klärfall" title="Altdatensatz, der o
 <a href="glossar.html#timeline">Timeline</a>: Eine Regel liefert <strong>jedes</strong> Ereignis des
 Busses an den migration-Worker, der es ohne personenbezogene Daten (nur IDs,
 <a class="term" href="glossar.html#altkonto" title="Kundenkonto im Altsystem des Versorgers oder der Telko, das ins neue Portal übernommen wird (nicht zu verwechseln mit einem alten AWS-Konto)">Altkonten</a>, <a class="term" href="glossar.html#sparte" title="Produktbereich eines Versorgers, z. B. Strom, Gas, Mobilfunk; im Demo zentraler Begriff des Datenmodells">Sparten</a>, Zähler) mit <a href="glossar.html#dynamodb-ttl">TTL</a> von 7 Tagen
-ablegt. Die Seite lädt sich alle 10 Sekunden neu. Der
-<a href="glossar.html#demo-reset">Demo-Reset</a> entfernt die von der Migration angelegten
-Konten (nie das eigene), Datensätze, Läufe und die DLQ.</p>
+ablegt. Die Seite lädt sich alle 10 Sekunden neu.</p>
+<h3 id="demo-reset">Demo-Reset<a class="anchor" href="#demo-reset" title="Permanent link">#</a></h3>
+<p>Der <a href="glossar.html#demo-reset">Demo-Reset</a> (<code>POST /migration/reset</code>) entfernt
+die von der Migration angelegten Konten (nie das eigene) samt ihrer
+Portaldaten, damit die <a class="term" href="glossar.html#customer-journey" title="Weg eines Kunden durch das Portal: Registrierung → Onboarding → angemeldeter Bereich">Journeys</a> wieder von vorn laufen. Eine erneute
+Anmeldung derselben Person erzeugt eine neue <code>sub</code> und damit eine neue
+Kundennummer; ohne Aufräumen blieben die alten Daten unerreichbar liegen.
+Schlimmer noch: Altverträge behalten ihre Vertragsnummer
+(<code>deterministicUuid(Mandant, Altvertrag)</code>), sodass Zählerstände und die
+<a class="term" href="glossar.html#projektion" title="eigene, aus Ereignissen aufgebaute Kopie fremder Daten, die ein Service zum Lesen hält, statt die Daten eines anderen Service abzufragen">Vertragsprojektion</a> von <code>consumption</code> beim neuen Konto wieder auftauchten
+bzw. die neue Projektion als „älter" verwürfen [E].</p>
+<p>Ablauf im Migrationsdienst:</p>
+<ol>
+<li>Er sammelt die Identitäten aus seinen Datensätzen (<code>REC#…</code> mit <code>sub</code>,
+   ohne die des Aufrufers) und löscht deren <a class="term" href="glossar.html#amazon-cognito" title="AWS-Identitätsdienst für Registrierung, Login, MFA und Benutzerverwaltung; im Demo der Portal-Login (Entscheidung 29.09.2026), angelegt per CDK">Cognito</a>-Konten.</li>
+<li>Er leert die <a class="term" href="glossar.html#timeline" title="zeitliche Liste von Ereignissen in der Oberfläche">Timeline</a> des <a class="term" href="glossar.html#mandant" title="abgeschotteter Bereich eines Kunden in einer gemeinsam betriebenen Anwendung; im Demo je Demo-Pass ein Mandant">Mandanten</a> (sonst erst per <a class="term" href="glossar.html#dynamodb-ttl" title="Attribut ttl mit Ablaufzeitpunkt; DynamoDB löscht solche Einträge selbst und kostenlos (hier die Cockpit-Timeline nach 7 Tagen)">TTL</a> nach 7 Tagen).</li>
+<li>Er veröffentlicht <code>MigratedAccountsRemoved</code> mit <code>reason: "demo-reset"</code>
+   und je Konto <code>subject</code> und <code>customerId</code>
+   (<code>customerIdFor(tenantId, subject)</code>) — in Schüben zu höchstens 100
+   Konten, weit unter der Grenze von 256 KB je Ereignis und klein genug,
+   dass jeder <a class="term" href="glossar.html#konsument" title="Dienst, der Nachrichten oder Events empfängt und verarbeitet">Konsument</a> einen Schub in einem Aufruf abarbeitet. Auch
+   Identitäten, deren Cognito-Konto schon fehlte, stehen darin: Ihre Daten
+   können noch da sein.</li>
+<li>Er löscht seine Verknüpfungsangebote (<code>SUBJ#&lt;sub&gt;</code> / <code>LINK#…</code>) und den
+   Merker „Übernahme gemeldet" (<code>SUBJ#&lt;sub&gt;</code> / <code>IDENTITY#LEGACY</code>). Der
+   Merker gehört dem Identitätsbereich; der hat aber keinen Worker, der auf
+   Ereignisse reagieren könnte. Der Reset löscht ihn deshalb direkt — so wie
+   er auch die Cognito-Konten des Identitätsbereichs löscht.</li>
+<li>Zuletzt löscht er Datensätze und Läufe und leert — nur beim Inhaber — die
+   gemeinsame DLQ. Scheitert ein Schritt vorher, findet ein zweiter Reset die
+   Identitäten also noch.</li>
+</ol>
+<p>Jeder Bereich löscht seine Daten selbst, im Mandanten des Ereignisses und
+über <code>tenantData</code> (<a class="term" href="glossar.html#demo-pass" title="im Demo: zeitlich begrenzte Berechtigung (7 Tage, Kontingent) für eine eigene Instanz; ausgestellt per Einladungslink oder für den Inhaber">Pass</a>-Mandant: eigene Tabelle, Vending-Anmeldedaten):</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Bereich</th>
+<th>Löscht je Konto</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>customer</td>
+<td><code>CUST#&lt;id&gt;</code> / <code>PROFILE</code>, <code>SUBJ#&lt;sub&gt;</code> / <code>CUSTOMER</code></td>
+</tr>
+<tr>
+<td>contract</td>
+<td><code>CUST#&lt;id&gt;</code> / <code>CONTRACT#…</code>, <code>SUBJ#&lt;sub&gt;</code> / <code>CONTRACTS</code></td>
+</tr>
+<tr>
+<td>consumption</td>
+<td>je Vertrag des Kunden alles unter <code>CONTRACT#&lt;vertrag&gt;</code> (Projektion zuletzt), den Eintrag der Überwachungsliste Datenvolumen (Base), <code>SUBJ#&lt;sub&gt;</code> / <code>CONSUMPTION</code></td>
+</tr>
+<tr>
+<td>documents</td>
+<td>Dateien <code>uploads/&lt;mandant&gt;/&lt;kunde&gt;/&lt;dokument&gt;</code> (<a class="term" href="glossar.html#s3" title="Objektspeicher für Dateien beliebiger Größe in „Buckets&quot;; Standard für statische Websites, Uploads, Build-Artefakte">S3</a>-Client des Mandanten), danach <code>CUST#&lt;id&gt;</code> / <code>DOC#…</code> und <code>SUBJ#&lt;sub&gt;</code> / <code>DOCUMENTS</code></td>
+</tr>
+<tr>
+<td>notification</td>
+<td><code>CUST#&lt;id&gt;</code> / <code>NOTE#…</code> und <code>MAILBOX</code>, <code>SUBJ#&lt;sub&gt;</code> / <code>MAILBOX</code></td>
+</tr>
+</tbody>
+</table></div>
+<p><code>consumption</code> kennt die Verträge eines Kunden nur aus der eigenen Projektion
+unter <code>CONTRACT#&lt;vertrag&gt;</code>; es gibt keinen Index nach Kunde. Der Worker
+sucht sie deshalb mit einem <a href="glossar.html#dynamodb-scan">Scan</a> über die
+Tabelle des Mandanten (Filter auf <code>customerId IN (…)</code>, höchstens 100 Werte
+— daher die Schubgröße). Das kostet Lesekapazität im Umfang der Tabelle,
+beim Inhaber also der Base; im Demo mit einigen hundert Einträgen und dem
+seltenen Reset ist das vertretbar [E]. Alle Löschungen sind <a class="term" href="glossar.html#idempotenz" title="Eigenschaft einer Verarbeitung, bei mehrfacher Ausführung dasselbe Ergebnis zu liefern wie bei einfacher; nötig, weil Ereignisse doppelt zugestellt werden können">idempotent</a>: ein
+wiederholt zugestelltes Ereignis findet nichts mehr und löscht nur die
+Identitäts-Verknüpfungen erneut. Nachzügler-Ereignisse, die nach dem Reset
+noch einen Eintrag eines entfernten Kunden anlegen (z. B. eine späte
+Postfach-Nachricht), bleiben unerreichbar liegen; sie stören keine neue
+Übernahme, weil die neue Kundennummer eine andere ist.</p>
 <h2 id="5-daten-und-kapazität">5. Daten und Kapazität<a class="anchor" href="#5-daten-und-kapazität" title="Permanent link">#</a></h2>
 <div class="table-wrap"><table>
 <thead>
@@ -232,6 +308,6 @@ Abfrage (einige Dutzend Einträge im Demo); ein Index hätte eigene Kapazität
 aus den 25 freien Einheiten gebraucht [E]. <a class="term" href="glossar.html#bulk-import" title="Übernahme vieler Konten auf einmal; bei Cognito per CSV-Import oder AdminCreateUser, im Demo ohne Passwörter (Nutzer müssen zurücksetzen); Hash-Import (u. a. bcrypt) ist noch nicht">Bulk-Import</a> und Reset schreiben in
 Schüben; bei 5 <a class="term" href="glossar.html#wcu" title="Schreib-Kapazitätseinheit von DynamoDB: 1 Schreibvorgang pro Sekunde bis 1 KB">WCU</a> drosselt <a class="term" href="glossar.html#dynamodb" title="vollständig verwaltete NoSQL-Datenbank (Schlüssel-Wert/Dokument) mit Antwortzeiten im Millisekundenbereich, ohne Server und ohne Verbindungs-Pool">DynamoDB</a> kurz, die <a class="term" href="glossar.html#sdk" title="Software Development Kit: Bibliothek für den Zugriff auf einen Dienst (z. B. AWS SDK)">SDK</a>-<a class="term" href="glossar.html#retry" title="erneuter Verarbeitungsversuch nach einem Fehler">Wiederholungen</a> bzw. die
 Wiederholung unverarbeiteter Löschungen fangen das ab [E].</p></main></div>
-<footer class="site"><a href="../wiki/architektur-migration.md">Markdown-Quelle</a> · Generiert 2026-09-30 21:33 aus <code>docs/wiki</code> mit <code>scripts/build_reports.py</code></footer>
+<footer class="site"><a href="../wiki/architektur-migration.md">Markdown-Quelle</a> · Generiert 2026-10-01 00:01 aus <code>docs/wiki</code> mit <code>scripts/build_reports.py</code></footer>
 </body>
 </html>

@@ -173,15 +173,16 @@ stehen in der [Architektur](architektur.md) §7. Stand Phase 4:
 | Base-Stack: drei Cognito-Trigger und Aufräum-Funktion der Pass-Mandanten | 4 | 2 | 8 |
 | App-Stack: Worker | 8 | 2 | 16 |
 | App-Stack: API-Funktionen | 8 | 5 | 40 |
-| Next.js: Shell und drei Zonen | 4 | 5 | 20 |
-| **Reservierungen gesamt** | | | **84** |
+| Next.js: Shell und drei Zonen | 4 | 10 | 40 |
+| **Reservierungen gesamt** | | | **104** |
 
-Also **Limit ≥ 100 + 8 + 16 + 40 + 20 = 184** (Phase 3: ≥ 152; Phase 2:
-≥ 135).
+Also **Limit ≥ 100 + 8 + 16 + 40 + 40 = 204** (v0.4.0: ≥ 184; Phase 3:
+≥ 152; Phase 2: ≥ 135). Die Next.js-Funktionen haben seit v0.4.1 je 10,
+weil ein Seitenaufruf Prefetch- und RSC-Anfragen mitbringt.
 
 | Angezeigtes Limit | Folge |
 |---|---|
-| ≥ 100 + Summe der Reservierungen (Stand Phase 4: ≥ 184) | nichts zu tun; die Standardwerte passen (≥ 100 bleiben frei) |
+| ≥ 100 + Summe der Reservierungen (Stand v0.4.1: ≥ 204) | nichts zu tun; die Standardwerte passen (≥ 100 bleiben frei) |
 | darunter (bei Neukonten typisch 10) | Weg A oder B |
 
 Stand des Kontos: Die Erhöhung auf **1.000** ist genehmigt; das reicht mit

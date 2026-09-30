@@ -327,7 +327,7 @@ Uploads eine Pause der Anwendung überstehen:
 | Leitplanke | Umsetzung |
 |---|---|
 | Laufzeit | Node.js 24, arm64, 256 MB (Shell 1024 MB) |
-| Kostendeckel Lambda | [Reserved Concurrency](glossar.md#reserved-concurrency) je Funktion: Worker und Trigger aus CDK-Kontext `reservedConcurrency` (Standard 2, `0` = gar nicht reservieren), API-Funktionen `apiReservedConcurrency` (Standard 5, seit Phase 4), Next.js-Funktionen (Shell, Zonen) `webReservedConcurrency` (Standard 5); Stand Phase 4: Base 4 × 2 + App-Worker 8 × 2 + API-Funktionen 8 × 5 + Next.js 4 × 5 = 84 (Phase 3: 52, Phase 2: 35, Phase 1: 10) |
+| Kostendeckel Lambda | [Reserved Concurrency](glossar.md#reserved-concurrency) je Funktion: Worker und Trigger aus CDK-Kontext `reservedConcurrency` (Standard 2, `0` = gar nicht reservieren), API-Funktionen `apiReservedConcurrency` (Standard 5, seit Phase 4), Next.js-Funktionen (Shell, Zonen) `webReservedConcurrency` (Standard 10 seit v0.4.1, vorher 5); Stand v0.4.1: Base 4 × 2 + App-Worker 8 × 2 + API-Funktionen 8 × 5 + Next.js 4 × 10 = 104 (v0.4.0: 84, Phase 3: 52, Phase 2: 35, Phase 1: 10) |
 | Kostendeckel API | Throttling der Stage: 10 Anfragen/s, Spitze 20 |
 | Kostendeckel Datenbank | provisioned 5/5 statt On-Demand |
 | Logs | eigene Log-Gruppen mit 3 Tagen Aufbewahrung; Reste löscht der Teardown |
@@ -341,7 +341,7 @@ Kontokapazität minus 100" reservieren
 Neue Konten haben oft ein Limit von 10
 [B: https://docs.aws.amazon.com/lambda/latest/dg/gettingstarted-limits.html];
 dann ist gar keine Reservierung möglich. Faustregel: Kontolimit ≥ 100 +
-Summe der Reservierungen, derzeit also ≥ 100 + 8 + 16 + 40 + 20 = 184; jeder
+Summe der Reservierungen, derzeit also ≥ 100 + 8 + 16 + 40 + 40 = 204; jeder
 weitere Worker erhöht den Wert um 2, jede weitere API-Funktion oder Zone um 5. Das Konto hat nach genehmigter
 Erhöhung ein Limit von 1.000 [B]. Weg bei zu kleinem Limit: Quotenerhöhung
 oder `reservedConcurrency=0` (Anleitung Kapitel 4.5).
@@ -427,6 +427,8 @@ Playwright-Lauf gegen die Live-Umgebung).
 | Erstanmeldung → Willkommensnachricht, kaltes System | 7,3 s | 30.09.2026 | Playwright gegen ein kaltes System; mehr Kaltstarts als in Phase 1 (1,9 s / 3,3 s) |
 | Pause mit Phase 3 (Abbau App-Stack) | 257 s | 30.09.2026 | GitHub-Workflow `Teardown`; Portal antwortet währenddessen 403 |
 | Neuaufbau mit Phase 3 | 464 s | 30.09.2026 | 17 App-Funktionen, 3 Cognito-Trigger; gleiche Distribution, keine DNS-Änderung |
+| Neuaufbau nach Pause (v0.4.1) | 497 s | 30.09.2026 | Edge zurück vom Pausenmodus auf die neuen Ursprünge; keine DNS-Änderung |
+| Pause mit Pausenseite (v0.4.1) | 410 s | 30.09.2026 | GitHub-Workflow `Teardown`: erst Edge in den Pausenmodus, dann App-Stack; Portal antwortet währenddessen mit der Seite „Die Demo pausiert gerade“ (503), `/api/*` mit Problem Details (503) |
 | E2E gesamt (16 Journeys inkl. J2, J3, J7, J8) | 1,8 min | 30.09.2026 | warm; direkt nach dem Neuaufbau brauchte J4 länger als die 5 s der Prüfung (Wartezeit auf 30 s erhöht) |
 | Migrations-Journeys allein (9 Schritte) | 1,3 min | 30.09.2026 | lokal gegen live, inkl. zweimal Demo-Reset, Bulk-Import beider Altsysteme und Redrive |
 
@@ -470,8 +472,24 @@ eigener Altsystem-Datenstand, eigenes Upload-Präfix und eigene Konten.
   zurück; CloudFormation kennt die zur Laufzeit angelegten Tabellen sonst
   nicht.
 
-Einrichtung ≈ 10 s, Rückbau ≈ 10 s nach Ablauf, E2E 23/23 grün
-[B: 30.09.2026]. Einzelheiten, Messwerte und offene Punkte:
+- **Nachgezogen in v0.4.1:** Obergrenze gleichzeitiger Pass-Mandanten
+  atomar (Zähler `activeTenants` in der Einlöse-Transaktion),
+  Upload-Kontingent (20, dann 429), Einstellungen im Cockpit (Einlösen
+  sperren/öffnen, Obergrenze 1–4), öffentliche Angebotsdaten
+  `GET /api/tenancy/offer` für die Einlöseseite, E-Mail-Hinweis an den
+  Inhaber bei eingelöstem und gelöschtem Pass, Demo-Reset räumt über
+  `MigratedAccountsRemoved` die Daten entfernter Konten in allen Domänen ab.
+- **Pause mit Pausenseite:** `teardown.sh` stellt zuerst die Edge in den
+  Pausenmodus — eine [CloudFront Function](glossar.md#cloudfront-functions)
+  beantwortet Seiten mit „Die Demo pausiert gerade“ und `/api/*` mit Problem
+  Details (jeweils 503) — und baut dann den App-Stack ab; der nächste Deploy
+  richtet die Edge wieder auf die Anwendung. Distribution und DNS bleiben.
+- **Kopfzeile:** Jede Seite zeigt die ausgerollte Version (`v0.4.1 · <Commit>`,
+  beim Build aus `package.json` und Commit gesetzt); wer die Cockpit-Rolle hat
+  (Inhaber, Pass-Inhaber), sieht den Cockpit-Link in der Navigation.
+
+Einrichtung ≈ 10 s, Rückbau ≈ 10 s nach Ablauf, E2E 25/25 grün
+[B: 30.09.2026, v0.4.1]. Einzelheiten, Messwerte und offene Punkte:
 [Architektur: Mandanten und Demo-Pass](architektur-mandanten.md); die
 Seiten in Shell und Cockpit: [Zonen & Frontend](architektur-zonen.md) §8.
 

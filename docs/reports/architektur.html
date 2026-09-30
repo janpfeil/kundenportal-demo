@@ -593,7 +593,7 @@ Uploads eine Pause der Anwendung überstehen:</p>
 </tr>
 <tr>
 <td>Kostendeckel <a class="term" href="glossar.html#lambda" title="führt eine einzelne Funktion (z. B. einen HTTP-Handler) bei Bedarf aus; Abrechnung pro Aufruf und Laufzeit, skaliert automatisch von 0 auf viele Instanzen">Lambda</a></td>
-<td><a href="glossar.html#reserved-concurrency">Reserved Concurrency</a> je Funktion: Worker und Trigger aus <a class="term" href="glossar.html#cdk" title="Infrastruktur als Programmcode (TypeScript, Java, Python …): man schreibt Klassen wie new Table(...), CDK erzeugt daraus CloudFormation-Vorlagen und legt die Ressourcen an">CDK</a>-Kontext <code>reservedConcurrency</code> (Standard 2, <code>0</code> = gar nicht reservieren), <a class="term" href="glossar.html#api" title="Programmierschnittstelle, über die Programme miteinander sprechen">API</a>-Funktionen <code>apiReservedConcurrency</code> (Standard 5, seit Phase 4), <a class="term" href="glossar.html#nextjs" title="React-Framework (von Vercel) mit Routing, Server-Rendering, API-Routen und Build-Optimierung">Next.js</a>-Funktionen (Shell, <a class="term" href="glossar.html#multi-zones" title="Next.js-Ansatz, mehrere Next.js-Apps unter einer Domain zu betreiben, aufgeteilt nach Pfaden">Zonen</a>) <code>webReservedConcurrency</code> (Standard 5); Stand Phase 4: Base 4 × 2 + App-Worker 8 × 2 + API-Funktionen 8 × 5 + Next.js 4 × 5 = 84 (Phase 3: 52, Phase 2: 35, Phase 1: 10)</td>
+<td><a href="glossar.html#reserved-concurrency">Reserved Concurrency</a> je Funktion: Worker und Trigger aus <a class="term" href="glossar.html#cdk" title="Infrastruktur als Programmcode (TypeScript, Java, Python …): man schreibt Klassen wie new Table(...), CDK erzeugt daraus CloudFormation-Vorlagen und legt die Ressourcen an">CDK</a>-Kontext <code>reservedConcurrency</code> (Standard 2, <code>0</code> = gar nicht reservieren), <a class="term" href="glossar.html#api" title="Programmierschnittstelle, über die Programme miteinander sprechen">API</a>-Funktionen <code>apiReservedConcurrency</code> (Standard 5, seit Phase 4), <a class="term" href="glossar.html#nextjs" title="React-Framework (von Vercel) mit Routing, Server-Rendering, API-Routen und Build-Optimierung">Next.js</a>-Funktionen (Shell, <a class="term" href="glossar.html#multi-zones" title="Next.js-Ansatz, mehrere Next.js-Apps unter einer Domain zu betreiben, aufgeteilt nach Pfaden">Zonen</a>) <code>webReservedConcurrency</code> (Standard 10 seit v0.4.1, vorher 5); Stand v0.4.1: Base 4 × 2 + App-Worker 8 × 2 + API-Funktionen 8 × 5 + Next.js 4 × 10 = 104 (v0.4.0: 84, Phase 3: 52, Phase 2: 35, Phase 1: 10)</td>
 </tr>
 <tr>
 <td>Kostendeckel <a class="term" href="glossar.html#api" title="Programmierschnittstelle, über die Programme miteinander sprechen">API</a></td>
@@ -627,7 +627,7 @@ Kontokapazität minus 100" reservieren
 Neue Konten haben oft ein Limit von 10
 [B: <a href="https://docs.aws.amazon.com/lambda/latest/dg/gettingstarted-limits.html">https://docs.aws.amazon.com/lambda/latest/dg/gettingstarted-limits.html</a>];
 dann ist gar keine Reservierung möglich. Faustregel: <a class="term" href="glossar.html#service-quotas" title="AWS-Dienst, der die Obergrenzen eines Kontos je Dienst und Region anzeigt (z. B. Lambda „Concurrent executions“) und Erhöhungen per Antrag ermöglicht; der Antrag ist kostenlos">Kontolimit</a> ≥ 100 +
-Summe der Reservierungen, derzeit also ≥ 100 + 8 + 16 + 40 + 20 = 184; jeder
+Summe der Reservierungen, derzeit also ≥ 100 + 8 + 16 + 40 + 40 = 204; jeder
 weitere Worker erhöht den Wert um 2, jede weitere API-Funktion oder Zone um 5. Das Konto hat nach genehmigter
 Erhöhung ein Limit von 1.000 [B]. Weg bei zu kleinem Limit: Quotenerhöhung
 oder <code>reservedConcurrency=0</code> (Anleitung Kapitel 4.5).</p>
@@ -889,7 +889,19 @@ der <a class="term" href="glossar.html#github" title="Plattform für Git-Reposit
 <td>17 App-Funktionen, 3 <a class="term" href="glossar.html#lambda-trigger-cognito" title="Lambda-Funktion, die Cognito an festen Punkten aufruft (vor Registrierung, vor/nach Login, Token-Erzeugung, Migration); im Demo in services/identity">Cognito-Trigger</a>; gleiche <a class="term" href="glossar.html#distribution" title="eine CloudFront-Konfiguration mit eigener Domain, Ursprüngen und Regeln">Distribution</a>, keine DNS-Änderung</td>
 </tr>
 <tr>
-<td>E2E gesamt (16 <a class="term" href="glossar.html#customer-journey" title="Weg eines Kunden durch das Portal: Registrierung → Onboarding → angemeldeter Bereich">Journeys</a> inkl. J2, J3, J7, <a class="term" href="glossar.html#journey-kürzel" title="Nummern der neun Demo-Abläufe im Fachkonzept (J1 Registrierung … J9 Demo-Pass)">J8</a>)</td>
+<td>Neuaufbau nach Pause (v0.4.1)</td>
+<td>497 s</td>
+<td class="num">30.09.2026</td>
+<td>Edge zurück vom Pausenmodus auf die neuen Ursprünge; keine DNS-Änderung</td>
+</tr>
+<tr>
+<td>Pause mit Pausenseite (v0.4.1)</td>
+<td>410 s</td>
+<td class="num">30.09.2026</td>
+<td>GitHub-Workflow <code>Teardown</code>: erst Edge in den Pausenmodus, dann App-Stack; Portal antwortet währenddessen mit der Seite „Die Demo pausiert gerade“ (503), <code>/api/*</code> mit Problem Details (503)</td>
+</tr>
+<tr>
+<td>E2E gesamt (16 <a class="term" href="glossar.html#customer-journey" title="Weg eines Kunden durch das Portal: Registrierung → Onboarding → angemeldeter Bereich">Journeys</a> inkl. J2, J3, <a class="term" href="glossar.html#journey-kürzel" title="Nummern der neun Demo-Abläufe im Fachkonzept (J1 Registrierung … J9 Demo-Pass)">J7</a>, J8)</td>
 <td>1,8 min</td>
 <td class="num">30.09.2026</td>
 <td>warm; direkt nach dem Neuaufbau brauchte J4 länger als die 5 s der Prüfung (Wartezeit auf 30 s erhöht)</td>
@@ -898,7 +910,7 @@ der <a class="term" href="glossar.html#github" title="Plattform für Git-Reposit
 <td>Migrations-<a class="term" href="glossar.html#customer-journey" title="Weg eines Kunden durch das Portal: Registrierung → Onboarding → angemeldeter Bereich">Journeys</a> allein (9 Schritte)</td>
 <td>1,3 min</td>
 <td class="num">30.09.2026</td>
-<td>lokal gegen live, inkl. zweimal <a class="term" href="glossar.html#demo-reset" title="Cockpit-Funktion des Inhabers: entfernt die von der Migration angelegten Konten, Migrationsstände und die DLQ, damit sich die Journeys wiederholen lassen">Demo-Reset</a>, <a class="term" href="glossar.html#bulk-import" title="Übernahme vieler Konten auf einmal; bei Cognito per CSV-Import oder AdminCreateUser, im Demo ohne Passwörter (Nutzer müssen zurücksetzen); Hash-Import (u. a. bcrypt) ist noch nicht">Bulk-Import</a> beider <a class="term" href="glossar.html#legacy-system" title="bestehendes Altsystem mit Kundendaten, das abgelöst werden soll; im Demo simuliert">Altsysteme</a> und <a class="term" href="glossar.html#redrive" title="Zurückführen von Nachrichten aus der DLQ in die Ursprungs-Queue, nachdem der Fehler behoben ist">Redrive</a></td>
+<td>lokal gegen live, inkl. zweimal <a class="term" href="glossar.html#demo-reset" title="Cockpit-Funktion des Inhabers: entfernt die von der Migration angelegten Konten samt ihrer Portaldaten (per Ereignis MigratedAccountsRemoved in jedem Bereich), Migrationsstände, Ti">Demo-Reset</a>, <a class="term" href="glossar.html#bulk-import" title="Übernahme vieler Konten auf einmal; bei Cognito per CSV-Import oder AdminCreateUser, im Demo ohne Passwörter (Nutzer müssen zurücksetzen); Hash-Import (u. a. bcrypt) ist noch nicht">Bulk-Import</a> beider <a class="term" href="glossar.html#legacy-system" title="bestehendes Altsystem mit Kundendaten, das abgelöst werden soll; im Demo simuliert">Altsysteme</a> und <a class="term" href="glossar.html#redrive" title="Zurückführen von Nachrichten aus der DLQ in die Ursprungs-Queue, nachdem der Fehler behoben ist">Redrive</a></td>
 </tr>
 </tbody>
 </table></div>
@@ -909,8 +921,8 @@ der <a class="term" href="glossar.html#github" title="Plattform für Git-Reposit
 die pnpm-Symlinks behalten (eigenes Zip statt <a class="term" href="glossar.html#cdk" title="Infrastruktur als Programmcode (TypeScript, Java, Python …): man schreibt Klassen wie new Table(...), CDK erzeugt daraus CloudFormation-Vorlagen und legt die Ressourcen an">CDK</a>-Kopie).</p>
 <h2 id="10-altsysteme-und-migration-phase-3">10. Altsysteme und Migration (Phase 3)<a class="anchor" href="#10-altsysteme-und-migration-phase-3" title="Permanent link">#</a></h2>
 <p>Zwei simulierte <a class="term" href="glossar.html#legacy-system" title="bestehendes Altsystem mit Kundendaten, das abgelöst werden soll; im Demo simuliert">Altsysteme</a> auf eigenem <a class="term" href="glossar.html#server" title="Rechner oder Prozess, der Anfragen beantwortet">Server</a>, Übernahme der Kundenkonten per
-<a class="term" href="glossar.html#migrate-user-trigger" title="Cognito-Trigger für die Lazy Migration: meldet sich ein unbekannter Nutzer mit Passwort an, prüft die Lambda die Daten beim Altsystem; bei Erfolg legt Cognito den Nutzer mit demsel">Migrate-User-Trigger</a> (J2) und <a class="term" href="glossar.html#bulk-import" title="Übernahme vieler Konten auf einmal; bei Cognito per CSV-Import oder AdminCreateUser, im Demo ohne Passwörter (Nutzer müssen zurücksetzen); Hash-Import (u. a. bcrypt) ist noch nicht">Bulk-Import</a> mit <a class="term" href="glossar.html#dlq" title="Ablage für Nachrichten, die nach mehreren Versuchen nicht verarbeitet werden konnten, zur Analyse und Nachverarbeitung">DLQ</a> und <a class="term" href="glossar.html#redrive" title="Zurückführen von Nachrichten aus der DLQ in die Ursprungs-Queue, nachdem der Fehler behoben ist">Redrive</a> (J7),
-Dublettenerkennung und <a class="term" href="glossar.html#account-linking" title="mehrere Identitäten derselben Person (z. B. Google-Login und Altkonto) zu einem Konto zusammenführen">Account-Linking</a> (J3) sowie das <a class="term" href="glossar.html#migrations-cockpit" title="im Demo geplantes Micro-Frontend, das den Fortschritt der Kontenübernahme, Ereignisse und DLQ-Fälle live zeigt">Migrations-Cockpit</a> (<a class="term" href="glossar.html#journey-kürzel" title="Nummern der neun Demo-Abläufe im Fachkonzept (J1 Registrierung … J9 Demo-Pass)">J8</a>)
+<a class="term" href="glossar.html#migrate-user-trigger" title="Cognito-Trigger für die Lazy Migration: meldet sich ein unbekannter Nutzer mit Passwort an, prüft die Lambda die Daten beim Altsystem; bei Erfolg legt Cognito den Nutzer mit demsel">Migrate-User-Trigger</a> (J2) und <a class="term" href="glossar.html#bulk-import" title="Übernahme vieler Konten auf einmal; bei Cognito per CSV-Import oder AdminCreateUser, im Demo ohne Passwörter (Nutzer müssen zurücksetzen); Hash-Import (u. a. bcrypt) ist noch nicht">Bulk-Import</a> mit <a class="term" href="glossar.html#dlq" title="Ablage für Nachrichten, die nach mehreren Versuchen nicht verarbeitet werden konnten, zur Analyse und Nachverarbeitung">DLQ</a> und <a class="term" href="glossar.html#redrive" title="Zurückführen von Nachrichten aus der DLQ in die Ursprungs-Queue, nachdem der Fehler behoben ist">Redrive</a> (<a class="term" href="glossar.html#journey-kürzel" title="Nummern der neun Demo-Abläufe im Fachkonzept (J1 Registrierung … J9 Demo-Pass)">J7</a>),
+Dublettenerkennung und <a class="term" href="glossar.html#account-linking" title="mehrere Identitäten derselben Person (z. B. Google-Login und Altkonto) zu einem Konto zusammenführen">Account-Linking</a> (J3) sowie das <a class="term" href="glossar.html#migrations-cockpit" title="im Demo geplantes Micro-Frontend, das den Fortschritt der Kontenübernahme, Ereignisse und DLQ-Fälle live zeigt">Migrations-Cockpit</a> (J8)
 beschreibt die eigene Seite
 <a href="architektur-migration.html">Architektur: Altsysteme und Migration</a>.</p>
 <h2 id="11-mandanten-und-demo-pass-phase-4">11. Mandanten und Demo-Pass (Phase 4)<a class="anchor" href="#11-mandanten-und-demo-pass-phase-4" title="Permanent link">#</a></h2>
@@ -932,14 +944,33 @@ eigener <a class="term" href="glossar.html#legacy-system" title="bestehendes Alt
   <code>uploads/${aws:PrincipalTag/tenant}/*</code>. Der Inhaber-Mandant <code>owner</code> bleibt
   in der Tabelle der Base. Der Router zählt API-Aufrufe je Pass-Mandant
   (429 an der Grenze, 403 wenn nicht aktiv).</li>
-<li><strong>Aufräumen beim Vollabbau:</strong> Die
+<li>
+<p><strong>Aufräumen beim Vollabbau:</strong> Die
   <a href="glossar.html#custom-resource">Custom Resource</a> <code>Custom::PassTenantCleanup</code>
   im Base-<a class="term" href="glossar.html#stack" title="Einheit in CloudFormation/CDK: eine Gruppe von Ressourcen, die gemeinsam angelegt und gelöscht wird">Stack</a> baut vor Tabelle, <a class="term" href="glossar.html#user-pool" title="Nutzerverzeichnis in Cognito mit eigenen Nutzern, Gruppen, App-Clients und Triggern; zugleich OIDC-Aussteller">User Pool</a> und <a class="term" href="glossar.html#s3" title="Objektspeicher für Dateien beliebiger Größe in „Buckets&quot;; Standard für statische Websites, Uploads, Build-Artefakte">Bucket</a> alle Pass-Mandanten
   zurück; <a class="term" href="glossar.html#cloudformation" title="AWS-eigener Dienst, der Ressourcen aus einer JSON/YAML-Vorlage anlegt, ändert und löscht; Grundlage von CDK und SAM">CloudFormation</a> kennt die zur Laufzeit angelegten Tabellen sonst
-  nicht.</li>
+  nicht.</p>
+</li>
+<li>
+<p><strong>Nachgezogen in v0.4.1:</strong> Obergrenze gleichzeitiger Pass-Mandanten
+  atomar (Zähler <code>activeTenants</code> in der Einlöse-Transaktion),
+  Upload-Kontingent (20, dann 429), Einstellungen im Cockpit (Einlösen
+  sperren/öffnen, Obergrenze 1–4), öffentliche Angebotsdaten
+  <code>GET /api/tenancy/offer</code> für die Einlöseseite, <a class="term" href="glossar.html#e-mail" title="elektronische Post; SNS verschickt bis 1.000 E-Mails im Monat kostenlos">E-Mail</a>-Hinweis an den
+  Inhaber bei eingelöstem und gelöschtem Pass, <a class="term" href="glossar.html#demo-reset" title="Cockpit-Funktion des Inhabers: entfernt die von der Migration angelegten Konten samt ihrer Portaldaten (per Ereignis MigratedAccountsRemoved in jedem Bereich), Migrationsstände, Ti">Demo-Reset</a> räumt über
+  <code>MigratedAccountsRemoved</code> die Daten entfernter Konten in allen Domänen ab.</p>
+</li>
+<li><strong>Pause mit Pausenseite:</strong> <code>teardown.sh</code> stellt zuerst die <a class="term" href="glossar.html#edge-stack" title="CDK-Stack für alles am Rand des Systems: CloudFront, Zertifikat, CloudFront Functions">Edge</a> in den
+  Pausenmodus — eine <a href="glossar.html#cloudfront-functions">CloudFront Function</a>
+  beantwortet Seiten mit „Die Demo pausiert gerade“ und <code>/api/*</code> mit Problem
+  Details (jeweils 503) — und baut dann den App-Stack ab; der nächste <a class="term" href="glossar.html#deployment" title="Ausliefern einer neuen Version in eine Umgebung">Deploy</a>
+  richtet die Edge wieder auf die Anwendung. <a class="term" href="glossar.html#distribution" title="eine CloudFront-Konfiguration mit eigener Domain, Ursprüngen und Regeln">Distribution</a> und <a class="term" href="glossar.html#dns" title="Telefonbuch des Internets: übersetzt Namen wie energie-demo.rypox.com in Adressen">DNS</a> bleiben.</li>
+<li><strong>Kopfzeile:</strong> Jede Seite zeigt die ausgerollte Version (<code>v0.4.1 · &lt;Commit&gt;</code>,
+  beim <a class="term" href="glossar.html#build" title="Übersetzen und Paketieren des Quellcodes zu auslieferbaren Dateien (Artefakten)">Build</a> aus <code>package.json</code> und <a class="term" href="glossar.html#commit" title="Commit = gespeicherter Änderungsstand in Git; Git-Tag = Name für einen bestimmten Commit, z. B. eine Version v1.2.0 (nicht zu verwechseln mit AWS-Tags)">Commit</a> gesetzt); wer die Cockpit-Rolle hat
+  (Inhaber, Pass-Inhaber), sieht den Cockpit-Link in der Navigation.</li>
 </ul>
-<p>Einrichtung ≈ 10 s, <a class="term" href="glossar.html#teardown" title="vollständiges Entfernen aller Demo-Ressourcen per cdk destroy und terraform destroy">Rückbau</a> ≈ 10 s nach Ablauf, <a class="term" href="glossar.html#playwright" title="Werkzeug, das echte Browser fernsteuert; prüft die Journeys am laufenden Portal">E2E</a> 23/23 grün
-[B: 30.09.2026]. Einzelheiten, Messwerte und offene Punkte:
+<p>Einrichtung ≈ 10 s, <a class="term" href="glossar.html#teardown" title="vollständiges Entfernen aller Demo-Ressourcen per cdk destroy und terraform destroy">Rückbau</a> ≈ 10 s nach Ablauf, <a class="term" href="glossar.html#playwright" title="Werkzeug, das echte Browser fernsteuert; prüft die Journeys am laufenden Portal">E2E</a> 25/25 grün
+[B: 30.09.2026, v0.4.1]. Einzelheiten, Messwerte und offene Punkte:
 <a href="architektur-mandanten.html">Architektur: Mandanten und Demo-Pass</a>; die
 Seiten in <a class="term" href="glossar.html#shell" title="Rahmenanwendung, die Navigation, Login und Layout stellt und die Micro-Frontends einbindet">Shell</a> und Cockpit: <a href="architektur-zonen.html">Zonen &amp; Frontend</a> §8.</p>
 <h2 id="quellen">Quellen<a class="anchor" href="#quellen" title="Permanent link">#</a></h2>
@@ -952,6 +983,6 @@ Seiten in <a class="term" href="glossar.html#shell" title="Rahmenanwendung, die 
 <li>EventBridge, Wiederholungen und DLQ am Regelziel: <a href="https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-rule-dlq.html">https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-rule-dlq.html</a></li>
 <li>S3-Ereignisse über EventBridge: <a href="https://docs.aws.amazon.com/AmazonS3/latest/userguide/EventBridge.html">https://docs.aws.amazon.com/AmazonS3/latest/userguide/EventBridge.html</a></li>
 </ul></main></div>
-<footer class="site"><a href="../wiki/architektur.md">Markdown-Quelle</a> · Generiert 2026-09-30 21:33 aus <code>docs/wiki</code> mit <code>scripts/build_reports.py</code></footer>
+<footer class="site"><a href="../wiki/architektur.md">Markdown-Quelle</a> · Generiert 2026-10-01 00:01 aus <code>docs/wiki</code> mit <code>scripts/build_reports.py</code></footer>
 </body>
 </html>

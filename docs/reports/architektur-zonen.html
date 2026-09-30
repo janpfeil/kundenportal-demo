@@ -20,11 +20,14 @@
 <li><a href="#6-component-library-und-storybook">6. Component Library und Storybook</a></li>
 <li><a href="#7-messwerte">7. Messwerte</a></li>
 <li><a href="#8-seiten-für-mandanten-und-demo-pass-phase-4">8. Seiten für Mandanten und Demo-Pass (Phase 4)</a></li>
+<li><a href="#9-gemeinsame-bausteine-der-zonen">9. Gemeinsame Bausteine der Zonen</a></li>
+<li><a href="#10-content-security-policy">10. Content Security Policy</a></li>
+<li><a href="#11-cachebare-startseite">11. Cachebare Startseite</a></li>
 <li><a href="#quellen">Quellen</a></li>
 </ul>
 </div>
 </nav><main><h1 id="architektur-zonen-und-frontend">Architektur: Zonen und Frontend<a class="anchor" href="#architektur-zonen-und-frontend" title="Permanent link">#</a></h1>
-<p>Stand: 2026-09-30 · Beschreibt den <strong>Ist-Stand</strong> des Codes (Phase 2 abgeschlossen; Seiten für <a class="term" href="glossar.html#mandant" title="abgeschotteter Bereich eines Kunden in einer gemeinsam betriebenen Anwendung; im Demo je Demo-Pass ein Mandant">Mandanten</a> und <a class="term" href="glossar.html#demo-pass" title="im Demo: zeitlich begrenzte Berechtigung (7 Tage, Kontingent) für eine eigene Instanz; ausgestellt per Einladungslink oder für den Inhaber">Demo-Pass</a> aus Phase 4 in Abschnitt 8), nicht die Zielarchitektur. Kennzeichnung: <strong>[B]</strong> belegt (offizielle Quelle oder Messung), <strong>[A]</strong> Annahme, <strong>[E]</strong> Einschätzung.</p>
+<p>Stand: 2026-09-30 · Beschreibt den <strong>Ist-Stand</strong> des Codes (Phase 2 abgeschlossen; Seiten für <a class="term" href="glossar.html#mandant" title="abgeschotteter Bereich eines Kunden in einer gemeinsam betriebenen Anwendung; im Demo je Demo-Pass ein Mandant">Mandanten</a> und <a class="term" href="glossar.html#demo-pass" title="im Demo: zeitlich begrenzte Berechtigung (7 Tage, Kontingent) für eine eigene Instanz; ausgestellt per Einladungslink oder für den Inhaber">Demo-Pass</a> aus Phase 4 in Abschnitt 8; gemeinsame Bausteine, <a class="term" href="glossar.html#csp" title="HTTP-Header, mit dem die Seite dem Browser sagt, woher Skripte, Styles, Verbindungen, Formularziele und Worker kommen dürfen; alles andere blockiert der Browser. Im Demo setzt der ">Content Security Policy</a> und cachebare Startseite in Abschnitt 9–11), nicht die Zielarchitektur. Kennzeichnung: <strong>[B]</strong> belegt (offizielle Quelle oder Messung), <strong>[A]</strong> Annahme, <strong>[E]</strong> Einschätzung.</p>
 <p>Fachbegriffe sind in jedem Abschnitt beim ersten Vorkommen mit dem <a href="glossar.html">Glossar</a> verlinkt (Erklärung und Entsprechung außerhalb von <a class="term" href="glossar.html#aws" title="Cloud-Plattform von Amazon mit über 200 Diensten (Rechenleistung, Datenbanken, Netzwerk, Messaging …), abgerechnet nach Nutzung">AWS</a>).</p>
 <p>Diese Seite ergänzt die <a href="architektur.html">Architektur</a> um die <a class="term" href="glossar.html#ui" title="Benutzeroberfläche">Oberfläche</a>:
 wie das Portal in mehrere <a class="term" href="glossar.html#nextjs" title="React-Framework (von Vercel) mit Routing, Server-Rendering, API-Routen und Build-Optimierung">Next.js</a>-Apps zerfällt, wie der <a class="term" href="glossar.html#browser" title="Programm zum Anzeigen von Webseiten; „Browser-App&quot; = Anwendung, die im Browser läuft">Browser</a> schreibt,
@@ -51,7 +54,7 @@ genau einer Stelle, der Registry <code>infra/cdk/lib/zones.ts</code>; App-<a cla
 <td><a class="term" href="glossar.html#shell" title="Rahmenanwendung, die Navigation, Login und Layout stellt und die Micro-Frontends einbindet">Shell</a></td>
 <td><code>/</code> (alles, was keine Zone ist)</td>
 <td><code>apps/shell</code></td>
-<td>Startseite, Anmeldung, Konto mit Profil-Bearbeitung, <a class="term" href="glossar.html#demo-postfach" title="im Portal angezeigtes Postfach der Demo-Personen; ersetzt echte E-Mails, damit die Demo niemanden anschreibt">Demo-Postfach</a> mit „als gelesen markieren", Glocke; seit Phase 4 <a class="term" href="glossar.html#demo-pass" title="im Demo: zeitlich begrenzte Berechtigung (7 Tage, Kontingent) für eine eigene Instanz; ausgestellt per Einladungslink oder für den Inhaber">Demo-Pass</a> einlösen und Pass-Status (Abschnitt 8)</td>
+<td>Startseite, Anmeldung, Konto mit Profil-Bearbeitung, <a class="term" href="glossar.html#demo-postfach" title="im Portal angezeigtes Postfach der Demo-Personen; ersetzt echte E-Mails, damit die Demo niemanden anschreibt">Demo-Postfach</a> mit „als gelesen markieren", Glocke; seit Phase 4 <a class="term" href="glossar.html#demo-pass" title="im Demo: zeitlich begrenzte Berechtigung (7 Tage, Kontingent) für eine eigene Instanz; ausgestellt per Einladungslink oder für den Inhaber">Demo-Pass</a> einlösen und Pass-Status (Abschnitt 8). Startseite und Einlöseseite sind <a class="term" href="glossar.html#prerendering" title="Next.js erzeugt eine Seite schon beim Build als fertiges HTML, wenn sie weder Cookies noch Header liest; die Seite ist dann für alle Besucher gleich und kann im CDN liegen">vorgerendert</a> und für alle gleich (Abschnitt 11)</td>
 </tr>
 <tr>
 <td><code>contracts</code></td>
@@ -69,7 +72,7 @@ genau einer Stelle, der Registry <code>infra/cdk/lib/zones.ts</code>; App-<a cla
 <td><code>cockpit</code></td>
 <td><code>/cockpit</code></td>
 <td><code>apps/cockpit</code></td>
-<td><a class="term" href="glossar.html#migrations-cockpit" title="im Demo geplantes Micro-Frontend, das den Fortschritt der Kontenübernahme, Ereignisse und DLQ-Fälle live zeigt">Migrations-Cockpit</a> (Phase 3, <a href="architektur-migration.html">Altsysteme &amp; Migration</a>); seit Phase 4 Pass-Verwaltung unter <code>/cockpit/paesse</code></td>
+<td><a class="term" href="glossar.html#migrations-cockpit" title="im Demo geplantes Micro-Frontend, das den Fortschritt der Kontenübernahme, Ereignisse und DLQ-Fälle live zeigt">Migrations-Cockpit</a> (Phase 3, <a href="architektur-migration.html">Altsysteme &amp; Migration</a>); seit Phase 4 Pass-Verwaltung unter <code>/cockpit/paesse</code>, dort auch die Einstellungen (Einlösen offen/gesperrt, Höchstzahl)</td>
 </tr>
 </tbody>
 </table></div>
@@ -105,6 +108,10 @@ Neuladen [E].</p>
 <tr>
 <td><a class="term" href="glossar.html#cloudfront" title="Content Delivery Network (CDN): liefert Inhalte weltweit aus nahen Standorten aus, cacht sie und leitet Pfade an verschiedene Ziele (S3, API Gateway, Lambda) weiter">CloudFront</a></td>
 <td>je Zone <strong>drei</strong> <a href="glossar.html#cache-behavior">Cache-Behaviors</a>: <code>&lt;basePath&gt;</code> und <code>&lt;basePath&gt;/*</code> (alle <a class="term" href="glossar.html#http-methoden" title="Arten von REST-Aufrufen: lesen (GET), anlegen (POST), teilweise ändern (PATCH), ersetzen (PUT), löschen (DELETE)">HTTP-Methoden</a>, kein <a class="term" href="glossar.html#cache" title="Zwischenspeicher, der wiederholte Anfragen schneller und billiger beantwortet">Cache</a>) sowie <code>&lt;basePath&gt;/_next/static/*</code> aus S3 (gecacht; jede neue Fassung einer Datei bekommt einen neuen Namen)</td>
+</tr>
+<tr>
+<td>Proxy</td>
+<td><code>src/proxy.ts</code> mit <code>createCspProxy</code> aus <code>@kundenportal/web-auth/csp</code>: setzt die <a href="glossar.html#csp">Content Security Policy</a> jeder Antwort (Abschnitt 10)</td>
 </tr>
 <tr>
 <td>Signatur</td>
@@ -155,6 +162,10 @@ dieselben Werkzeuge:</p>
 <tr>
 <td><code>isSameOrigin(headers, appUrl)</code></td>
 <td><a href="glossar.html#csrf">CSRF</a>-Prüfung für schreibende <a class="term" href="glossar.html#request" title="einzelne Anfrage an einen Dienst; viele AWS-Dienste rechnen pro Million Requests ab">Anfragen</a> (Abschnitt 4)</td>
+</tr>
+<tr>
+<td><code>currentSession()</code>, <code>requireSession(path)</code></td>
+<td>aus <code>@kundenportal/web-auth/pages</code>: Sitzung einmal je Anfrage lesen bzw. ohne Sitzung zur Anmeldung weiterleiten. Eigener Einstiegspunkt, weil er <code>next/navigation</code> nutzt, das <a class="term" href="glossar.html#route-handler" title="Datei route.ts im Next.js-App-Router, die eine HTTP-Schnittstelle (GET, POST, PATCH …) statt einer Seite bereitstellt">Route Handler</a> nicht laden dürfen</td>
 </tr>
 </tbody>
 </table></div>
@@ -263,7 +274,19 @@ aller <a class="term" href="glossar.html#multi-zones" title="Next.js-Ansatz, meh
 <tbody>
 <tr>
 <td>Komponenten</td>
-<td>13: <code>AppShell</code>/<code>TopBar</code> (mit Platz für die Glocke), <code>Page</code>, <code>Card</code>, <code>Facts</code>, <code>DataTable</code>, <code>Button</code>/<code>ButtonLink</code>, <code>TextField</code>, <code>NumberField</code>, <code>Select</code>, <code>Notice</code>, <code>Badge</code>, <code>EmptyState</code>, <code>Footer</code>; reines <a class="term" href="glossar.html#react" title="JavaScript-Bibliothek für Benutzeroberflächen aus Komponenten">React</a> ohne Client-Zustand, daher alle als <a href="glossar.html#server-components">Server Components</a> nutzbar</td>
+<td><code>AppShell</code>/<code>TopBar</code> (mit Platz für die Glocke), <code>Page</code>, <code>Card</code>, <code>Facts</code>, <code>DataTable</code>, <code>Button</code>/<code>ButtonLink</code>, <code>TextField</code>, <code>NumberField</code>, <code>Select</code>, <code>Notice</code>, <code>Badge</code>, <code>EmptyState</code>, <code>Footer</code>, <code>Meter</code>: reines <a class="term" href="glossar.html#react" title="JavaScript-Bibliothek für Benutzeroberflächen aus Komponenten">React</a> ohne Client-Zustand, daher als <a href="glossar.html#server-components">Server Components</a> nutzbar. Dazu <code>UploadForm</code> (<a href="glossar.html#client-komponente">Client-Komponente</a>, Abschnitt 9)</td>
+</tr>
+<tr>
+<td>Navigation</td>
+<td><code>portalNavigation(texte, {signedIn, current, roles})</code> baut die Hauptnavigation für Shell und Zonen; der Eintrag des aktuellen Bereichs trägt <code>aria-current="page"</code> und ist fett mit dicker Unterstreichung in Akzentfarbe (auch im Kontrastmodus sichtbar). Die Shell leitet den Bereich aus dem Pfad im <a class="term" href="glossar.html#browser" title="Programm zum Anzeigen von Webseiten; „Browser-App&quot; = Anwendung, die im Browser läuft">Browser</a> ab, jede Zone markiert ihren eigenen Eintrag. <code>roles</code> (aus den <a class="term" href="glossar.html#cognito-gruppe" title="Gruppe im User Pool; die Mitgliedschaft steht im Access Token (cognito:groups), die API prüft sie für das Cockpit">Cognito-Gruppen</a> des <a class="term" href="glossar.html#token" title="digitaler Ausweis, den ein Identitätsdienst ausstellt und den eine App bei jedem API-Aufruf mitschickt">Tokens</a>, <code>rolesOf</code> in <code>web-auth</code>; auf <a class="term" href="glossar.html#prerendering" title="Next.js erzeugt eine Seite schon beim Build als fertiges HTML, wenn sie weder Cookies noch Header liest; die Seite ist dann für alle Besucher gleich und kann im CDN liegen">vorgerenderten</a> Seiten aus dem Hinweis-<a class="term" href="glossar.html#cookie" title="kleine Datei, die der Browser bei jeder Anfrage mitschickt; httpOnly heißt: für JavaScript unsichtbar und damit vor XSS geschützt">Cookie</a> <code>kp_ui</code>): Inhaber und <a class="term" href="glossar.html#demo-pass" title="im Demo: zeitlich begrenzte Berechtigung (7 Tage, Kontingent) für eine eigene Instanz; ausgestellt per Einladungslink oder für den Inhaber">Pass-Inhaber</a> sehen „Cockpit“, Pass-Inhaber zusätzlich „Demo-Pass“ — in Shell und allen Zonen gleich</td>
+</tr>
+<tr>
+<td>Version in der Kopfzeile</td>
+<td><code>TopBar</code> zeigt neben der Marke die ausgerollte Version, z. B. <code>v0.4.1 · 1a2b3c4</code>: <code>next.config.ts</code> setzt <code>NEXT_PUBLIC_APP_VERSION</code> beim <a class="term" href="glossar.html#build" title="Übersetzen und Paketieren des Quellcodes zu auslieferbaren Dateien (Artefakten)">Build</a> aus der Version in der Wurzel-<code>package.json</code> und dem <a class="term" href="glossar.html#commit" title="Commit = gespeicherter Änderungsstand in Git; Git-Tag = Name für einen bestimmten Commit, z. B. eine Version v1.2.0 (nicht zu verwechseln mit AWS-Tags)">Commit</a> (<code>GITHUB_SHA</code>, lokal <code>git</code>; <code>scripts/app-version.mjs</code>)</td>
+</tr>
+<tr>
+<td>Hilfsfunktionen</td>
+<td>Formatierung (<code>formatEuro</code>, <code>formatDate</code>, <code>formatDateTime</code>, <code>formatFileSize</code>, <code>formatQuantity</code>, <code>formatDataVolume</code>, <code>formatNumber</code>, <code>percent</code>), <code>fill</code> für Platzhalter in Texten, <code>createZoneLink(basePath, Link)</code></td>
 </tr>
 <tr>
 <td><a href="glossar.html#design-token">Design-Tokens</a></td>
@@ -271,11 +294,11 @@ aller <a class="term" href="glossar.html#multi-zones" title="Next.js-Ansatz, meh
 </tr>
 <tr>
 <td>Übersetzungen</td>
-<td>gemeinsame Texte DE/EN (Navigation, An-/Abmelden, Sprachwechsel, Fußzeile) und Sprachauswahl aus <a class="term" href="glossar.html#cookie" title="kleine Datei, die der Browser bei jeder Anfrage mitschickt; httpOnly heißt: für JavaScript unsichtbar und damit vor XSS geschützt">Cookie</a> und <code>Accept-Language</code>; zonenspezifische Texte bleiben in den Zonen</td>
+<td>gemeinsame Texte DE/EN (Navigation, An-/Abmelden, Sprachwechsel, Fußzeile) und Sprachauswahl aus Cookie und <code>Accept-Language</code>; zonenspezifische Texte bleiben in den Zonen</td>
 </tr>
 <tr>
 <td>Tests</td>
-<td>20 (Vitest, Testing Library)</td>
+<td>37 (Vitest, Testing Library)</td>
 </tr>
 <tr>
 <td><a href="glossar.html#storybook">Storybook</a></td>
@@ -384,6 +407,20 @@ ohne <a class="term" href="glossar.html#s3" title="Objektspeicher für Dateien b
 <td><code>POST /api/tenancy/passes/{id}/revoke</code></td>
 </tr>
 <tr>
+<td><code>/cockpit/api/settings</code></td>
+<td>Cockpit</td>
+<td>Route Handler, PUT</td>
+<td>Gruppe <code>owner</code></td>
+<td><code>PUT /api/tenancy/settings</code>: Einlösen öffnen/sperren, Höchstzahl 1–4</td>
+</tr>
+<tr>
+<td><code>/api/tenancy/offer</code></td>
+<td><a class="term" href="glossar.html#api" title="Programmierschnittstelle, über die Programme miteinander sprechen">API</a></td>
+<td>GET, vom <a class="term" href="glossar.html#browser" title="Programm zum Anzeigen von Webseiten; „Browser-App&quot; = Anwendung, die im Browser läuft">Browser</a></td>
+<td>öffentlich</td>
+<td>aktuelles Angebot für <code>/pass/einloesen</code> (Laufzeit, Kontingente, <a class="term" href="glossar.html#upload" title="Hochladen einer Datei vom Browser zum Server bzw. nach S3">Upload</a>-Größe, Einlösen offen)</td>
+</tr>
+<tr>
 <td><code>/cockpit</code></td>
 <td>Cockpit</td>
 <td>Seite</td>
@@ -395,16 +432,225 @@ ohne <a class="term" href="glossar.html#s3" title="Objektspeicher für Dateien b
 <p>Die Navigation der Shell hat dafür den Eintrag „Demo-Pass". Die beiden
 öffentlichen Route Handler brauchen keine Sitzung; sie laufen wie alle
 schreibenden Aufrufe über <code>sendJson</code> mit <a class="term" href="glossar.html#payload-hash" title="SHA-256 des Anfrage-Bodys; CloudFront braucht ihn vom Absender, um Anfragen mit Body per SigV4 zu signieren">Payload-Hash</a> (Abschnitt 4).
-Die Kontingent-Zahlen auf <code>/pass/einloesen</code> sind fester Text (offen:
-aus der Konfiguration lesen).</p>
+Die Zahlen auf <code>/pass/einloesen</code> (Laufzeit, Kontingente, höchste
+Upload-Größe) holt der Browser von <code>GET /api/tenancy/offer</code>: gleiche
+Herkunft, ohne Token, ohne Umweg über die Shell-<a class="term" href="glossar.html#lambda" title="führt eine einzelne Funktion (z. B. einen HTTP-Handler) bei Bedarf aus; Abrechnung pro Aufruf und Laufzeit, skaliert automatisch von 0 auf viele Instanzen">Lambda</a>. Solange die Antwort
+fehlt, steht „Wird geladen …“ da, bei einem Fehler „nicht abrufbar“; das
+Formular bleibt dann nutzbar. Meldet die API <code>redemptionOpen: false</code>
+(<a class="term" href="glossar.html#kill-switch" title="automatische Notbremse bei Kostenalarm; im Demo (seit Phase 4): Budget-Alarm → SNS → Tenancy-Lambda sperrt das Einlösen neuer Demo-Pässe (503), laufende Pässe bleiben nutzbar">Kill-Switch</a> zu oder alle Plätze belegt), erscheint statt des Formulars der
+Hinweis „Einlösen ist gerade pausiert“.</p>
+<p>Auf <code>/cockpit/paesse</code> sieht der Inhaber die <strong>Einstellungen</strong>: Einlösen
+offen oder gesperrt (mit Zeitpunkt und Grund, z. B. vom <a class="term" href="glossar.html#aws-budgets" title="kostenloser Dienst für Kostengrenzen mit E-Mail-/SNS-Alarm bei Überschreitung; kein harter Stopp, Daten kommen Stunden verzögert">Budget-Alarm</a>),
+Schaltfläche zum Sperren bzw. Wiederöffnen, die Zahl der aktiven
+Pass-Mandanten und die Höchstzahl 1–4 mit Begründung: Jeder Mandant hat eine
+Tabelle mit 5/5 Kapazitätseinheiten, frei sind 25/25 je Konto, die Basis
+belegt 5/5 (<a href="architektur-mandanten.html">Mandanten</a> §6). Ein erschöpftes
+Upload-Kontingent (429 vom Documents-Service) meldet das Upload-Formular mit
+eigenem Text.</p>
+<h2 id="9-gemeinsame-bausteine-der-zonen">9. Gemeinsame Bausteine der Zonen<a class="anchor" href="#9-gemeinsame-bausteine-der-zonen" title="Permanent link">#</a></h2>
+<p>Was jede <a class="term" href="glossar.html#multi-zones" title="Next.js-Ansatz, mehrere Next.js-Apps unter einer Domain zu betreiben, aufgeteilt nach Pfaden">Zone</a> gleich braucht, liegt in den Paketen; in der Zone bleiben nur
+<code>basePath</code>, Texte und Seiten.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Baustein</th>
+<th>Paket</th>
+<th>Zweck</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>forwardWrite(request, parse, call)</code></td>
+<td><code>@kundenportal/web-auth</code></td>
+<td>Schreibweg (Abschnitt 4): <a class="term" href="glossar.html#origin" title="Ziel, von dem CloudFront Inhalte holt (S3-Bucket, API Gateway, Lambda-URL)">Origin</a> prüfen (403), Sitzung (401), Body validieren (400), <a class="term" href="glossar.html#api" title="Programmierschnittstelle, über die Programme miteinander sprechen">API</a> mit dem <a class="term" href="glossar.html#token" title="digitaler Ausweis, den ein Identitätsdienst ausstellt und den eine App bei jedem API-Aufruf mitschickt">Token</a> der Sitzung aufrufen; Status und Problem Details der API gehen unverändert zurück, 204 ohne Body. <code>writePath(deps)</code> baut dieselbe Funktion mit austauschbaren Abhängigkeiten für Tests</td>
+</tr>
+<tr>
+<td><code>problem(status, title, detail?)</code></td>
+<td><code>@kundenportal/web-auth</code></td>
+<td>Fehlerantwort der Zone als RFC 9457 <code>application/problem+json</code></td>
+</tr>
+<tr>
+<td><code>currentSession</code>, <code>requireSession</code></td>
+<td><code>@kundenportal/web-auth/pages</code></td>
+<td>Abschnitt 3</td>
+</tr>
+<tr>
+<td><a class="term" href="glossar.html#upload" title="Hochladen einer Datei vom Browser zum Server bzw. nach S3">Upload</a>-Regeln</td>
+<td><code>@kundenportal/web-auth/upload</code></td>
+<td>erlaubte Typen und Größe, Dateiname bereinigen, Ankündigung im <a class="term" href="glossar.html#browser" title="Programm zum Anzeigen von Webseiten; „Browser-App&quot; = Anwendung, die im Browser läuft">Browser</a> bauen und im <a class="term" href="glossar.html#route-handler" title="Datei route.ts im Next.js-App-Router, die eine HTTP-Schnittstelle (GET, POST, PATCH …) statt einer Seite bereitstellt">Route Handler</a> prüfen; ohne <a class="term" href="glossar.html#server" title="Rechner oder Prozess, der Anfragen beantwortet">Server</a>-APIs, also auch im Browser nutzbar</td>
+</tr>
+<tr>
+<td><code>UploadForm</code></td>
+<td><code>@kundenportal/ui</code></td>
+<td>Upload in zwei Schritten (Ankündigung an die Zone, dann <code>PUT</code> direkt an die <a href="glossar.html#presigned-url">Presigned URL</a>); Texte je Zone, nach dem Upload ruft die Zone <code>router.refresh()</code></td>
+</tr>
+<tr>
+<td>Formatierung, <code>fill</code>, Navigation, <code>createZoneLink</code></td>
+<td><code>@kundenportal/ui</code></td>
+<td>Abschnitt 6</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="10-content-security-policy">10. Content Security Policy<a class="anchor" href="#10-content-security-policy" title="Permanent link">#</a></h2>
+<p><a class="term" href="glossar.html#shell" title="Rahmenanwendung, die Navigation, Login und Layout stellt und die Micro-Frontends einbindet">Shell</a> und <a class="term" href="glossar.html#multi-zones" title="Next.js-Ansatz, mehrere Next.js-Apps unter einer Domain zu betreiben, aufgeteilt nach Pfaden">Zonen</a> senden eine <a href="glossar.html#csp">Content Security Policy</a>
+(<a class="term" href="glossar.html#csp" title="HTTP-Header, mit dem die Seite dem Browser sagt, woher Skripte, Styles, Verbindungen, Formularziele und Worker kommen dürfen; alles andere blockiert der Browser. Im Demo setzt der ">CSP</a>). Gesetzt wird sie im <code>proxy</code> jeder App (<code>src/proxy.ts</code>, ab <a class="term" href="glossar.html#nextjs" title="React-Framework (von Vercel) mit Routing, Server-Rendering, API-Routen und Build-Optimierung">Next.js</a> 16
+der Nachfolger von <code>middleware.ts</code>) über <code>createCspProxy</code> aus
+<code>@kundenportal/web-auth/csp</code>.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Direktive</th>
+<th>Wert</th>
+<th>Grund</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>default-src</code></td>
+<td><code>'self'</code></td>
+<td>alles Übrige nur von der Portal-<a class="term" href="glossar.html#domain" title="Internet-Adresse wie beispiel.de; wird bei einem Registrar für ca. 10–15 €/Jahr registriert">Domain</a></td>
+</tr>
+<tr>
+<td><code>script-src</code></td>
+<td><code>'self'</code> + <a href="glossar.html#nonce">Nonce</a> bzw. <a class="term" href="glossar.html#passwort-hash" title="Einweg-verschlüsselte Form eines Passworts; alte Systeme nutzen oft schwache Verfahren (MD5, SHA-1), die bei der Migration einen Passwort-Reset erzwingen">Hashes</a></td>
+<td>Skriptdateien nur von der eigenen Domain (<code>/_next/static</code>, <code>/widgets/bell.js</code>); Next.js schreibt zusätzlich Inline-Skripte in jede Seite, die nur mit <a class="term" href="glossar.html#nonce" title="Zufallswert, der je Antwort neu entsteht und im CSP-Header sowie an jedem erlaubten Inline-Skript steht; für Seiten, die beim Build entstehen, erlaubt stattdessen der SHA-256-Hash ">Nonce</a> oder Hash laufen</td>
+</tr>
+<tr>
+<td><code>style-src</code></td>
+<td><code>'self' 'unsafe-inline'</code></td>
+<td><a class="term" href="glossar.html#react" title="JavaScript-Bibliothek für Benutzeroberflächen aus Komponenten">React</a> setzt Style-Attribute (z. B. <code>Meter</code>), <a class="term" href="glossar.html#altcha" title="selbst gehostetes, quelloffenes CAPTCHA ohne Bilderrätsel: der Browser löst ein kleines Rechenrätsel (Proof-of-Work), der Server prüft es mit einem geheimen HMAC-Schlüssel; im Demo">ALTCHA</a> fügt ein <code>&lt;style&gt;</code> ein; Styles führen keinen Code aus [E]</td>
+</tr>
+<tr>
+<td><code>img-src</code></td>
+<td><code>'self' data: blob:</code></td>
+<td>eigene Bilder, eingebettete Grafiken</td>
+</tr>
+<tr>
+<td><code>connect-src</code></td>
+<td><code>'self'</code>, in Verträge und Verbrauch zusätzlich <code>&lt;https://*.s3.eu-central-1.amazonaws.com</code>&gt;</td>
+<td><code>fetch</code> nur zur eigenen Domain (<a class="term" href="glossar.html#route-handler" title="Datei route.ts im Next.js-App-Router, die eine HTTP-Schnittstelle (GET, POST, PATCH …) statt einer Seite bereitstellt">Route Handler</a>, <code>/api/*</code>); der <a class="term" href="glossar.html#upload" title="Hochladen einer Datei vom Browser zum Server bzw. nach S3">Upload</a> geht per <code>PUT</code> an die <a class="term" href="glossar.html#presigned-url" title="zeitlich begrenzter, signierter Link, mit dem der Browser direkt in S3 hoch- oder herunterlädt, ohne AWS-Zugangsdaten">Presigned URL</a> des Upload-<a class="term" href="glossar.html#s3" title="Objektspeicher für Dateien beliebiger Größe in „Buckets&quot;; Standard für statische Websites, Uploads, Build-Artefakte">Buckets</a></td>
+</tr>
+<tr>
+<td><code>worker-src</code></td>
+<td><code>'self'</code>, in der Shell zusätzlich <code>blob:</code></td>
+<td>das ALTCHA-<a class="term" href="glossar.html#widget" title="kleiner, eingebetteter Oberflächenbaustein">Widget</a> rechnet in einem Web Worker aus einem Blob</td>
+</tr>
+<tr>
+<td><code>form-action</code></td>
+<td><code>'self'</code>, in der Shell zusätzlich die <a class="term" href="glossar.html#amazon-cognito" title="AWS-Identitätsdienst für Registrierung, Login, MFA und Benutzerverwaltung; im Demo der Portal-Login (Entscheidung 29.09.2026), angelegt per CDK">Cognito</a>-Domain (Herkunft von <code>OIDC_LOGOUT_URL</code>)</td>
+<td>Anmelden und Abmelden leiten zur Cognito-Anmeldeseite weiter</td>
+</tr>
+<tr>
+<td><code>frame-ancestors</code></td>
+<td><code>'none'</code></td>
+<td>keine <a class="term" href="glossar.html#clickjacking" title="Angriff, bei dem eine fremde Seite das Portal unsichtbar in einem Rahmen einbettet und Klicks darauf lenkt; verhindert per CSP frame-ancestors &#x27;none&#x27;">Einbettung in fremde Seiten</a> (<a href="glossar.html#clickjacking">Clickjacking</a>)</td>
+</tr>
+<tr>
+<td><code>base-uri</code>, <code>object-src</code>, <code>manifest-src</code></td>
+<td><code>'self'</code>, <code>'none'</code>, <code>'self'</code></td>
+<td>kein fremdes <code>&lt;base&gt;</code>, keine Plugins</td>
+</tr>
+<tr>
+<td><code>upgrade-insecure-requests</code></td>
+<td>nur hinter <a class="term" href="glossar.html#https" title="verschlüsseltes Web-Protokoll; HTTP ohne Verschlüsselung">HTTPS</a> (<code>APP_URL</code>)</td>
+<td>lokal über <code>&lt;http://localhost</code>&gt; nicht</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Zwei Arten von Seiten:</strong></p>
+<ul>
+<li>Seiten, die je Anfrage entstehen (alle Zonen, Konto, Postfach, <a class="term" href="glossar.html#demo-pass" title="im Demo: zeitlich begrenzte Berechtigung (7 Tage, Kontingent) für eine eigene Instanz; ausgestellt per Einladungslink oder für den Inhaber">Pass</a>), bekommen
+  je Antwort eine neue Nonce (128 bit). Der Proxy setzt die Policy auch in den
+  <a class="term" href="glossar.html#request" title="einzelne Anfrage an einen Dienst; viele AWS-Dienste rechnen pro Million Requests ab">Request</a>-Header; Next.js liest die Nonce dort und hängt sie an seine Skripte.</li>
+<li><a href="glossar.html#prerendering">Vorgerenderte Seiten</a> (<code>/</code>, <code>/pass/einloesen</code>, die
+  404-Seite) entstehen beim <a class="term" href="glossar.html#build" title="Übersetzen und Paketieren des Quellcodes zu auslieferbaren Dateien (Artefakten)">Build</a> und können keine Nonce tragen. Ihr <a class="term" href="glossar.html#html" title="Auszeichnungssprache für Webseiten; JS = JavaScript">HTML</a> ist je
+  Build fest; der Proxy liest die Datei aus <code>.next/server/app</code> einmal je
+  <a class="term" href="glossar.html#lambda" title="führt eine einzelne Funktion (z. B. einen HTTP-Handler) bei Bedarf aus; Abrechnung pro Aufruf und Laufzeit, skaliert automatisch von 0 auf viele Instanzen">Lambda</a>-Instanz und erlaubt genau ihre Inline-Skripte per SHA-256-Hash. Die
+  Hashes der 404-Seite stehen in jeder Policy der Shell, weil jeder Pfad mit
+  ihr antworten kann.</li>
+</ul>
+<p><code>'strict-dynamic'</code> ist nicht gesetzt: Alle Skripte kommen ohnehin von der
+eigenen Domain, und ohne <code>'strict-dynamic'</code> funktionieren Nonce und Hash
+gleich. In <code>next dev</code> kommt <code>'unsafe-eval'</code> hinzu (Fehleranzeige von React).</p>
+<p><strong>Lokal belegt [B: Produktionsbuild, headless Chromium, 30.09.2026]:</strong> keine
+Verletzung und vollständige <a class="term" href="glossar.html#hydration" title="Schritt, in dem React im Browser das vom Server gelieferte HTML übernimmt und interaktiv macht; erst danach reagieren Schaltflächen und Formulare">Hydration</a> auf Startseite (deutsch, englisch per
+<a class="term" href="glossar.html#cookie" title="kleine Datei, die der Browser bei jeder Anfrage mitschickt; httpOnly heißt: für JavaScript unsichtbar und damit vor XSS geschützt">Cookie</a> und per Browsersprache), Einlöseseite (Angebot geladen, ALTCHA im
+Worker gelöst; zweiter Lauf mit pausiertem Einlösen), Konto, Postfach,
+Verträge mit Upload bis zum <code>PUT</code> an eine S3-Adresse, Verbrauch,
+Cockpit-Einstellungen (sperren, öffnen, Höchstzahl ändern) und 404-Seite.
+Gegenprobe: ein eingeschleustes Inline-Skript und ein <code>fetch</code> an eine fremde
+Domain werden blockiert.</p>
+<h2 id="11-cachebare-startseite">11. Cachebare Startseite<a class="anchor" href="#11-cachebare-startseite" title="Permanent link">#</a></h2>
+<p>Bis 30.09.2026 las das gemeinsame Layout der <a class="term" href="glossar.html#shell" title="Rahmenanwendung, die Navigation, Login und Layout stellt und die Micro-Frontends einbindet">Shell</a> <a class="term" href="glossar.html#cookie" title="kleine Datei, die der Browser bei jeder Anfrage mitschickt; httpOnly heißt: für JavaScript unsichtbar und damit vor XSS geschützt">Cookies</a> (Sitzung für die
+Navigation, Sprache); damit war jede Shell-Seite dynamisch und <code>/</code> kam mit
+<code>private, no-store</code>. Jetzt hat die Shell zwei <a class="term" href="glossar.html#route-group" title="Ordner in Klammern ((public)) im Next.js-App-Router: gruppiert Seiten ohne Einfluss auf die URL, z. B. um ihnen ein eigenes Root-Layout zu geben">Root-Layouts</a>
+(<a href="glossar.html#route-group">Route Groups</a>):</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Gruppe</th>
+<th>Seiten</th>
+<th>Layout</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>(public)</code></td>
+<td><code>/</code>, <code>/pass/einloesen</code></td>
+<td>liest weder Cookies noch Header; <a class="term" href="glossar.html#nextjs" title="React-Framework (von Vercel) mit Routing, Server-Rendering, API-Routen und Build-Optimierung">Next.js</a> rendert die Seiten beim <a class="term" href="glossar.html#build" title="Übersetzen und Paketieren des Quellcodes zu auslieferbaren Dateien (Artefakten)">Build</a> vor, das <a class="term" href="glossar.html#html" title="Auszeichnungssprache für Webseiten; JS = JavaScript">HTML</a> ist für alle Besucher gleich</td>
+</tr>
+<tr>
+<td><code>(app)</code></td>
+<td><code>/konto</code>, <code>/postfach</code>, <code>/pass</code></td>
+<td>je Anfrage: Sitzung und Sprache vom <a class="term" href="glossar.html#server" title="Rechner oder Prozess, der Anfragen beantwortet">Server</a>, Rahmen ab dem ersten Byte richtig</td>
+</tr>
+</tbody>
+</table></div>
+<p>Die 404-Seite liefert <code>app/global-not-found.tsx</code> (<a class="term" href="glossar.html#internationalisierung" title="Vorbereitung einer Anwendung auf mehrere Sprachen; Texte liegen in Übersetzungsdateien statt im Code">zweisprachig</a>), weil es
+kein gemeinsames Layout mehr gibt. Ein Wechsel zwischen den Gruppen ist ein
+voller Seitenwechsel, wie zwischen <a class="term" href="glossar.html#multi-zones" title="Next.js-Ansatz, mehrere Next.js-Apps unter einer Domain zu betreiben, aufgeteilt nach Pfaden">Zonen</a>.</p>
+<p><strong>Wie die <a class="term" href="glossar.html#prerendering" title="Next.js erzeugt eine Seite schon beim Build als fertiges HTML, wenn sie weder Cookies noch Header liest; die Seite ist dann für alle Besucher gleich und kann im CDN liegen">vorgerenderten</a> Seiten den Besucher erkennen:</strong></p>
+<ul>
+<li><strong>Sprache:</strong> im <a class="term" href="glossar.html#browser" title="Programm zum Anzeigen von Webseiten; „Browser-App&quot; = Anwendung, die im Browser läuft">Browser</a> aus dem Cookie <code>kp_locale</code> (Sprachwechsel), sonst
+  aus der Browsersprache — dieselbe Regel wie auf dem Server. Das HTML ist
+  deutsch; wer Englisch bevorzugt, sieht nach der
+  <a href="glossar.html#hydration">Hydration</a> kurz den Wechsel [E]. Pfade mit Sprache
+  (<code>/en/…</code>) hätten das vermieden, aber jede Seite, jeden Link und die Zonen
+  verdoppelt.</li>
+<li><strong>Angemeldet:</strong> Die Anmeldung setzt neben dem verschlüsselten
+  <code>kp_session</code> (httpOnly) das lesbare Cookie <code>kp_ui</code> mit derselben Laufzeit
+  (<code>user</code> oder <code>pass</code>); die Abmeldung löscht beide. Es enthält keine
+  Identität und öffnet nichts — es entscheidet nur, welche
+  Navigationseinträge der Browser zeigt; jede Seite dahinter prüft die echte
+  Sitzung. Gewählt statt eines Aufrufs <code>/auth/state</code>, weil es ohne Anfrage an
+  die <a class="term" href="glossar.html#lambda" title="führt eine einzelne Funktion (z. B. einen HTTP-Handler) bei Bedarf aus; Abrechnung pro Aufruf und Laufzeit, skaliert automatisch von 0 auf viele Instanzen">Lambda</a> auskommt. Folge: Sitzungen von vor dieser Änderung zeigen auf <code>/</code>
+  bis zur nächsten Anmeldung „Anmelden“ [E].</li>
+</ul>
+<p><strong>Antwort-Header:</strong> <code>Cache-Control: public, max-age=0, s-maxage=300</code> (setzt der
+Proxy statt Next.js' <code>s-maxage=31536000</code>, damit eine vergessene <a class="term" href="glossar.html#invalidierung" title="Auftrag an CloudFront, zwischengespeicherte Kopien bestimmter Pfade (z. B. /widgets/) zu verwerfen, damit die nächste Anfrage die neue Datei holt">Invalidierung</a>
+höchstens fünf Minuten alte Asset-Namen ausliefert), <code>ETag</code>, dazu
+<code>Vary: rsc, next-router-state-tree, next-router-prefetch,
+next-router-segment-prefetch</code>. Browser fragen jedes Mal nach, <a class="term" href="glossar.html#cloudfront" title="Content Delivery Network (CDN): liefert Inhalte weltweit aus nahen Standorten aus, cacht sie und leitet Pfade an verschiedene Ziele (S3, API Gateway, Lambda) weiter">CloudFront</a> darf
+fünf Minuten halten.</p>
+<p><strong>Was der <a class="term" href="glossar.html#edge-stack" title="CDK-Stack für alles am Rand des Systems: CloudFront, Zertifikat, CloudFront Functions">Edge-Stack</a> dafür braucht</strong> (Stand dieser Seite: noch nicht gebaut):
+eigene <a class="term" href="glossar.html#cache-behavior" title="Regel in CloudFront: welcher Pfad (/api/, /mfe/) an welchen Origin geht und wie gecacht wird">Cache-Behaviors</a> für <code>/</code> und <code>/pass/einloesen</code> zum Shell-<a class="term" href="glossar.html#origin" title="Ziel, von dem CloudFront Inhalte holt (S3-Bucket, API Gateway, Lambda-URL)">Ursprung</a> mit
+einer <a class="term" href="glossar.html#cache" title="Zwischenspeicher, der wiederholte Anfragen schneller und billiger beantwortet">Cache</a> Policy, die den <a class="term" href="glossar.html#origin-header" title="Header, mit dem der Browser bei schreibenden Anfragen die Herkunft der Seite angibt; der Server prüft ihn gegen die eigene Domain">Origin-Header</a> <code>Cache-Control</code> achtet (Min-<a class="term" href="glossar.html#dynamodb-ttl" title="Attribut ttl mit Ablaufzeitpunkt; DynamoDB löscht solche Einträge selbst und kostenlos (hier die Cockpit-Timeline nach 7 Tagen)">TTL</a> 0,
+Default-TTL 0, Max-TTL 300 s), <strong>keine</strong> Cookies und <strong>keine</strong> Header im
+Cache-Schlüssel, aber <strong>alle Query-Strings</strong> (Next.js unterscheidet die
+RSC-<a class="term" href="glossar.html#request" title="einzelne Anfrage an einen Dienst; viele AWS-Dienste rechnen pro Million Requests ab">Anfragen</a> beim Seitenwechsel über <code>?_rsc=…</code>), <a class="term" href="glossar.html#http-methoden" title="Arten von REST-Aufrufen: lesen (GET), anlegen (POST), teilweise ändern (PATCH), ersetzen (PUT), löschen (DELETE)">GET</a>/HEAD; dazu eine
+Invalidierung von <code>/</code> und <code>/pass/einloesen</code> bei jedem <a class="term" href="glossar.html#deployment" title="Ausliefern einer neuen Version in eine Umgebung">Deploy</a>.</p>
 <h2 id="quellen">Quellen<a class="anchor" href="#quellen" title="Permanent link">#</a></h2>
 <ul class="sources">
 <li>CloudFront OAC für Lambda Function URLs (Payload-Hash bei PUT/POST): <a href="https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/private-content-restricting-access-to-lambda.html">https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/private-content-restricting-access-to-lambda.html</a></li>
 <li>Next.js Multi-Zones: <a href="https://nextjs.org/docs/app/guides/multi-zones">https://nextjs.org/docs/app/guides/multi-zones</a></li>
 <li>Next.js <code>basePath</code>: <a href="https://nextjs.org/docs/app/api-reference/config/next-config-js/basePath">https://nextjs.org/docs/app/api-reference/config/next-config-js/basePath</a></li>
+<li>Next.js Content Security Policy (Nonce über Proxy, statische Seiten): <a href="https://nextjs.org/docs/app/guides/content-security-policy">https://nextjs.org/docs/app/guides/content-security-policy</a></li>
+<li>Next.js <code>global-not-found.js</code> bei mehreren Root-Layouts: <a href="https://nextjs.org/docs/app/api-reference/file-conventions/not-found">https://nextjs.org/docs/app/api-reference/file-conventions/not-found</a></li>
+<li>CSP Level 3 (Nonce, Hash-Quellen): <a href="https://www.w3.org/TR/CSP3/">https://www.w3.org/TR/CSP3/</a></li>
+<li>CloudFront: Caching und Origin-Header <code>Cache-Control</code>: <a href="https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/Expiration.html">https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/Expiration.html</a></li>
 <li>Custom Elements (MDN): <a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_custom_elements">https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_custom_elements</a></li>
 <li>Cookie-Attribut SameSite (MDN): <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Set-Cookie#samesitesamesite-value">https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Set-Cookie#samesitesamesite-value</a></li>
 </ul></main></div>
-<footer class="site"><a href="../wiki/architektur-zonen.md">Markdown-Quelle</a> · Generiert 2026-09-30 21:33 aus <code>docs/wiki</code> mit <code>scripts/build_reports.py</code></footer>
+<footer class="site"><a href="../wiki/architektur-zonen.md">Markdown-Quelle</a> · Generiert 2026-10-01 00:01 aus <code>docs/wiki</code> mit <code>scripts/build_reports.py</code></footer>
 </body>
 </html>

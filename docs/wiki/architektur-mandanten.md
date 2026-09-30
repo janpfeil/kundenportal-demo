@@ -330,9 +330,8 @@ Drei Fehler fielen erst live auf und sind behoben:
 
 ## Offen
 
-- Die Startseite ist nicht im CDN zwischenspeicherbar, weil das gemeinsame
-  Layout Cookies liest.
-- Atomare Obergrenze, Upload-Kontingent, Einstellungen, Angebot und
-  Inhaber-Hinweise sind per Unit-Test geprüft, aber noch nicht live
-  (E2E) — ebenso wenig die Einlöse-Seite mit den Zahlen aus
-  `GET /api/tenancy/offer`.
+Keine offenen Punkte. In v0.4.1 nachgezogen und live per E2E geprüft
+(25/25): atomare Obergrenze, Upload-Kontingent, Einstellungen im Cockpit,
+Angebotsdaten auf der Einlöseseite, Hinweise an den Inhaber, Aufräumen beim
+Demo-Reset, CDN-cachebare Startseite, Pausenseite, Version und Cockpit-Link
+in der Kopfzeile.

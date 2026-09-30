@@ -266,19 +266,20 @@ stehen in der <a href="architektur.html">Architektur</a> §7. Stand Phase 4:</p>
 <tr>
 <td>Next.js: <a class="term" href="glossar.html#shell" title="Rahmenanwendung, die Navigation, Login und Layout stellt und die Micro-Frontends einbindet">Shell</a> und drei <a class="term" href="glossar.html#multi-zones" title="Next.js-Ansatz, mehrere Next.js-Apps unter einer Domain zu betreiben, aufgeteilt nach Pfaden">Zonen</a></td>
 <td class="num">4</td>
-<td class="num">5</td>
-<td class="num">20</td>
+<td class="num">10</td>
+<td class="num">40</td>
 </tr>
 <tr>
 <td><strong>Reservierungen gesamt</strong></td>
 <td></td>
 <td></td>
-<td><strong>84</strong></td>
+<td><strong>104</strong></td>
 </tr>
 </tbody>
 </table></div>
-<p>Also <strong>Limit ≥ 100 + 8 + 16 + 40 + 20 = 184</strong> (Phase 3: ≥ 152; Phase 2:
-≥ 135).</p>
+<p>Also <strong>Limit ≥ 100 + 8 + 16 + 40 + 40 = 204</strong> (v0.4.0: ≥ 184; Phase 3:
+≥ 152; Phase 2: ≥ 135). Die Next.js-Funktionen haben seit v0.4.1 je 10,
+weil ein Seitenaufruf Prefetch- und RSC-<a class="term" href="glossar.html#request" title="einzelne Anfrage an einen Dienst; viele AWS-Dienste rechnen pro Million Requests ab">Anfragen</a> mitbringt.</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -288,7 +289,7 @@ stehen in der <a href="architektur.html">Architektur</a> §7. Stand Phase 4:</p>
 </thead>
 <tbody>
 <tr>
-<td>≥ 100 + Summe der Reservierungen (Stand Phase 4: ≥ 184)</td>
+<td>≥ 100 + Summe der Reservierungen (Stand v0.4.1: ≥ 204)</td>
 <td>nichts zu tun; die Standardwerte passen (≥ 100 bleiben frei)</td>
 </tr>
 <tr>
@@ -302,7 +303,7 @@ Abstand für alle geplanten Phasen.</p>
 <p><strong>Weg A — Erhöhung beantragen ✎ (empfohlen):</strong></p>
 <ol>
 <li>In der Zeile <strong>Concurrent executions</strong> auf den Namen klicken,
-   <strong><a class="term" href="glossar.html#request" title="einzelne Anfrage an einen Dienst; viele AWS-Dienste rechnen pro Million Requests ab">Request</a> increase at account level</strong>.</li>
+   <strong>Request increase at account level</strong>.</li>
 <li><strong>Increase quota value</strong>: <code>1000</code>, <strong>Request</strong>.</li>
 <li>Ergebnis: Unter <strong>Quota request history</strong> ein Eintrag mit Status
    „Pending", später „Case opened"/„Approved". Das dauert Stunden bis
@@ -610,6 +611,6 @@ Anwendung) kommt erst beim ersten Deploy (Kapitel 8).</p>
 </tr>
 </tbody>
 </table></div></main></div>
-<footer class="site"><a href="../wiki/anleitung-fundament.md">Markdown-Quelle</a> · Generiert 2026-09-30 21:33 aus <code>docs/wiki</code> mit <code>scripts/build_reports.py</code></footer>
+<footer class="site"><a href="../wiki/anleitung-fundament.md">Markdown-Quelle</a> · Generiert 2026-10-01 00:01 aus <code>docs/wiki</code> mit <code>scripts/build_reports.py</code></footer>
 </body>
 </html>
