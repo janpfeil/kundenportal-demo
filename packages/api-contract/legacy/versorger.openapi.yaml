@@ -8,7 +8,10 @@ info:
     lazy migration (sign-in check, customer read) and the bulk import (paged export).
     Field names and formats are the legacy system's own (German, street and house number
     separate, euros as decimal strings). Each tenant has its own database, selected by
-    `X-Mandant`.
+    `X-Mandant`. Only the owner's tenant (`owner`) exists implicitly; a demo tenant
+    (`pass-…`) is provisioned with `PUT /api/v1/verwaltung/mandant` and its own demo
+    password, and every tenant-scoped call answers 404 `Mandant unbekannt` before that and
+    after `DELETE /api/v1/verwaltung/mandant`.
   license:
     name: MIT
     identifier: MIT
@@ -60,6 +63,7 @@ paths:
                   kundennummer: { $ref: "#/components/schemas/Kundennummer" }
         "400": { $ref: "#/components/responses/Fehler" }
         "401": { $ref: "#/components/responses/Fehler" }
+        "404": { $ref: "#/components/responses/MandantUnbekannt" }
   /api/v1/kunden:
     get:
       operationId: kundeSuchen
@@ -85,6 +89,7 @@ paths:
                     items: { $ref: "#/components/schemas/Kunde" }
         "400": { $ref: "#/components/responses/Fehler" }
         "401": { $ref: "#/components/responses/Fehler" }
+        "404": { $ref: "#/components/responses/MandantUnbekannt" }
   /api/v1/kunden/{kundennummer}:
     get:
       operationId: kundeLesen
@@ -102,7 +107,11 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Kunde" }
         "401": { $ref: "#/components/responses/Fehler" }
-        "404": { $ref: "#/components/responses/Fehler" }
+        "404":
+          description: Customer not found (`Kunde nicht gefunden`) or tenant unknown (`Mandant unbekannt`)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Fehler" }
   /api/v1/kunden/export:
     get:
       operationId: kundenExportieren
@@ -140,12 +149,22 @@ paths:
                               description: bcrypt hash (`$2b$…`)
         "400": { $ref: "#/components/responses/Fehler" }
         "401": { $ref: "#/components/responses/Fehler" }
+        "404": { $ref: "#/components/responses/MandantUnbekannt" }
   /api/v1/verwaltung/zuruecksetzen:
     post:
       operationId: mandantZuruecksetzen
       summary: Recreate the tenant's sample data (demo reset)
+      description: >-
+        The owner's tenant takes no body and keeps the global demo password. A demo tenant
+        needs its demo password again, since the legacy system keeps only hashes of it.
       parameters:
         - $ref: "#/components/parameters/Mandant"
+      requestBody:
+        required: false
+        description: Required for demo tenants, ignored for `owner`
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/Einrichtung" }
       responses:
         "200":
           description: Sample data recreated
@@ -154,8 +173,49 @@ paths:
               schema:
                 type: object
                 properties:
-                  status: { type: string }
+                  status: { type: string, const: zurückgesetzt }
+        "400": { $ref: "#/components/responses/Fehler" }
         "401": { $ref: "#/components/responses/Fehler" }
+        "404": { $ref: "#/components/responses/MandantUnbekannt" }
+  /api/v1/verwaltung/mandant:
+    put:
+      operationId: mandantEinrichten
+      summary: Provision a demo tenant with its own demo password
+      description: >-
+        (Re)creates the tenant's database with sample data whose demo persons sign in with
+        `demoPasswort`. Idempotent: a second call recreates the tenant. The owner's tenant
+        cannot be provisioned.
+      parameters:
+        - $ref: "#/components/parameters/Mandant"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/Einrichtung" }
+      responses:
+        "201":
+          description: Tenant (re)created
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status: { type: string, const: eingerichtet }
+        "400": { $ref: "#/components/responses/Fehler" }
+        "401": { $ref: "#/components/responses/Fehler" }
+        "409": { $ref: "#/components/responses/Fehler" }
+    delete:
+      operationId: mandantLoeschen
+      summary: Delete a demo tenant's database (expired demo pass)
+      description: Idempotent; an unknown tenant counts as deleted. The owner's tenant stays.
+      parameters:
+        - $ref: "#/components/parameters/Mandant"
+      responses:
+        "204":
+          description: Tenant deleted (or did not exist)
+        "401": { $ref: "#/components/responses/Fehler" }
+        "409": { $ref: "#/components/responses/Fehler" }
 components:
   securitySchemes:
     apiKey:
@@ -173,12 +233,29 @@ components:
       description: Error
       content:
         application/json:
-          schema:
-            type: object
-            required: [fehler]
-            properties:
-              fehler: { type: string }
+          schema: { $ref: "#/components/schemas/Fehler" }
+    MandantUnbekannt:
+      description: >-
+        Tenant unknown (`Mandant unbekannt`): a demo tenant that has not been provisioned
+        or was deleted
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Fehler" }
   schemas:
+    Fehler:
+      type: object
+      required: [fehler]
+      properties:
+        fehler: { type: string }
+    Einrichtung:
+      type: object
+      required: [demoPasswort]
+      properties:
+        demoPasswort:
+          type: string
+          minLength: 12
+          maxLength: 128
+          description: Password of the tenant's demo persons, chosen by the portal
     Kundennummer:
       type: string
       pattern: "^V-\\d{7}$"

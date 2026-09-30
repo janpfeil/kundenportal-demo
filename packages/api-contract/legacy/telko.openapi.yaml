@@ -5,11 +5,15 @@ info:
   description: >-
     REST interface of the telco's simulated legacy customer system (private GitLab
     repository `legacy-telko`, runs on the owner's server). Portal sign-ins of telco
-    customers are checked against the telco's Keycloak realm; this interface serves the
-    customer read and the bulk export. Formats differ from the utility on purpose: one
-    address line with abbreviations, `Nachname, Vorname`, German dates, prices as numbers.
-    Passwords use the telco's own peppered scheme and cannot be imported elsewhere. Each
-    tenant has its own database, selected by `X-Tenant`.
+    customers of the owner's tenant are checked against the telco's Keycloak realm, those
+    of a demo tenant here (`/v2/auth/check`); this interface also serves the customer
+    read and the bulk export. Formats differ from the utility on purpose: one address line
+    with abbreviations, `Nachname, Vorname`, German dates, prices as numbers. Passwords
+    use the telco's own peppered scheme and cannot be imported elsewhere. Each tenant has
+    its own database, selected by `X-Tenant`. Only the owner's tenant (`owner`) exists
+    implicitly; a demo tenant (`pass-…`) is provisioned with `PUT /v2/admin/tenant` and
+    its own demo password, and every tenant-scoped call answers 404 `unknown_tenant`
+    before that and after `DELETE /v2/admin/tenant`.
   license:
     name: MIT
     identifier: MIT
@@ -61,6 +65,7 @@ paths:
                   subscriberId: { $ref: "#/components/schemas/SubscriberId" }
         "400": { $ref: "#/components/responses/Error" }
         "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/UnknownTenant" }
   /v2/subscribers:
     get:
       operationId: findSubscriber
@@ -86,6 +91,7 @@ paths:
                     items: { $ref: "#/components/schemas/Subscriber" }
         "400": { $ref: "#/components/responses/Error" }
         "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/UnknownTenant" }
   /v2/subscribers/{subscriberId}:
     get:
       operationId: getSubscriber
@@ -104,7 +110,11 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Subscriber" }
         "401": { $ref: "#/components/responses/Error" }
-        "404": { $ref: "#/components/responses/Error" }
+        "404":
+          description: Subscriber not found (`not_found`) or tenant unknown (`unknown_tenant`)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
   /v2/subscribers/export:
     get:
       operationId: exportSubscribers
@@ -143,12 +153,22 @@ paths:
                               description: HMAC-SHA256 with a secret pepper; not checkable outside the telco
         "400": { $ref: "#/components/responses/Error" }
         "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/UnknownTenant" }
   /v2/admin/reset:
     post:
       operationId: resetTenant
       summary: Recreate the tenant's sample data (demo reset)
+      description: >-
+        The owner's tenant takes no body and keeps the global demo password. A demo tenant
+        needs its demo password again, since the legacy system keeps only hashes of it.
       parameters:
         - $ref: "#/components/parameters/Tenant"
+      requestBody:
+        required: false
+        description: Required for demo tenants, ignored for `owner`
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/Provisioning" }
       responses:
         "200":
           description: Sample data recreated
@@ -157,8 +177,57 @@ paths:
               schema:
                 type: object
                 properties:
-                  status: { type: string }
+                  status: { type: string, const: reset }
+        "400": { $ref: "#/components/responses/Error" }
         "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/UnknownTenant" }
+  /v2/admin/tenant:
+    put:
+      operationId: provisionTenant
+      summary: Provision a demo tenant with its own demo password
+      description: >-
+        (Re)creates the tenant's database with sample data whose demo persons sign in with
+        `demoPassword`. Idempotent: a second call recreates the tenant. The owner's tenant
+        cannot be provisioned.
+      parameters:
+        - $ref: "#/components/parameters/Tenant"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/Provisioning" }
+      responses:
+        "201":
+          description: Tenant (re)created
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status: { type: string, const: provisioned }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "409":
+          description: The owner's tenant is permanent (`owner_tenant_is_permanent`)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+    delete:
+      operationId: removeTenant
+      summary: Delete a demo tenant's database (expired demo pass)
+      description: Idempotent; an unknown tenant counts as deleted. The owner's tenant stays.
+      parameters:
+        - $ref: "#/components/parameters/Tenant"
+      responses:
+        "204":
+          description: Tenant deleted (or did not exist)
+        "401": { $ref: "#/components/responses/Error" }
+        "409":
+          description: The owner's tenant is permanent (`owner_tenant_is_permanent`)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
 components:
   securitySchemes:
     apiKey:
@@ -177,12 +246,31 @@ components:
       description: Error
       content:
         application/json:
-          schema:
-            type: object
-            required: [error]
-            properties:
-              error: { type: string, examples: [unauthorized, invalid_credentials, not_found] }
+          schema: { $ref: "#/components/schemas/Error" }
+    UnknownTenant:
+      description: >-
+        Tenant unknown (`unknown_tenant`): a demo tenant that has not been provisioned or
+        was deleted
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
   schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+          examples: [unauthorized, invalid_credentials, not_found, unknown_tenant]
+    Provisioning:
+      type: object
+      required: [demoPassword]
+      properties:
+        demoPassword:
+          type: string
+          minLength: 12
+          maxLength: 128
+          description: Password of the tenant's demo persons, chosen by the portal
     SubscriberId:
       type: string
       pattern: "^T/\\d{2}-\\d{4}$"

@@ -48,11 +48,63 @@ export class TelcoClient {
     this.fetchImpl = options.fetch ?? fetch;
   }
 
-  private request(tenant: string, path: string) {
+  private request(tenant: string, path: string, init: RequestInit = {}) {
     return callJson(this.fetchImpl, `${this.options.baseUrl}${path}`, {
+      ...init,
       timeoutMs: this.options.timeoutMs ?? 3000,
-      headers: { authorization: `ApiKey ${this.options.apiKey}`, "x-tenant": tenant },
+      headers: {
+        authorization: `ApiKey ${this.options.apiKey}`,
+        "x-tenant": tenant,
+        "content-type": "application/json",
+      },
     });
+  }
+
+  /**
+   * Checks a password with the telco's own scheme (`POST /v2/auth/check`); returns the
+   * subscriber id, or undefined for wrong credentials or an unknown tenant. Demo tenants
+   * are checked here, since the Keycloak realm belongs to the owner's tenant.
+   */
+  async checkLogin(tenant: string, login: string, password: string): Promise<string | undefined> {
+    const { status, body } = await this.request(tenant, "/v2/auth/check", {
+      method: "POST",
+      body: JSON.stringify({ login, password }),
+    });
+    if (status === 401 || status === 400 || status === 404) return undefined;
+    const parsed = z.object({ subscriberId: z.string() }).safeParse(body);
+    if (status !== 200 || !parsed.success)
+      throw new LegacyUnavailableError(`check: HTTP ${status}`);
+    return parsed.data.subscriberId;
+  }
+
+  /**
+   * (Re)creates a demo tenant's sample data; its demo persons sign in with `demoPassword`
+   * (12–128 characters). Idempotent: a second call recreates the tenant.
+   */
+  async provisionTenant(tenant: string, demoPassword: string): Promise<void> {
+    const { status } = await this.request(tenant, "/v2/admin/tenant", {
+      method: "PUT",
+      body: JSON.stringify({ demoPassword }),
+    });
+    if (status !== 201) throw new LegacyUnavailableError(`provision: HTTP ${status}`);
+  }
+
+  /** Deletes a demo tenant's data; idempotent (an unknown tenant counts as removed). */
+  async removeTenant(tenant: string): Promise<void> {
+    const { status } = await this.request(tenant, "/v2/admin/tenant", { method: "DELETE" });
+    if (status !== 204) throw new LegacyUnavailableError(`remove: HTTP ${status}`);
+  }
+
+  /**
+   * Recreates a tenant's sample data. A demo tenant needs its demo password again (the
+   * legacy system keeps only hashes); the owner's tenant takes none.
+   */
+  async resetTenant(tenant: string, demoPassword?: string): Promise<void> {
+    const { status } = await this.request(tenant, "/v2/admin/reset", {
+      method: "POST",
+      ...(demoPassword === undefined ? {} : { body: JSON.stringify({ demoPassword }) }),
+    });
+    if (status !== 200) throw new LegacyUnavailableError(`reset: HTTP ${status}`);
   }
 
   async getSubscriber(tenant: string, subscriberId: string): Promise<Subscriber | undefined> {

@@ -17,9 +17,19 @@ const load = (file: string) =>
   parse(readFileSync(new URL(`../legacy/${file}`, import.meta.url), "utf8")) as Spec;
 
 describe.each([
-  ["versorger.openapi.yaml", "#/components/parameters/Mandant", "/api/v1/kunden/export"],
-  ["telko.openapi.yaml", "#/components/parameters/Tenant", "/v2/subscribers/export"],
-])("legacy contract %s", (file, tenantParameter, exportPath) => {
+  [
+    "versorger.openapi.yaml",
+    "#/components/parameters/Mandant",
+    "/api/v1/kunden/export",
+    "/api/v1/verwaltung/mandant",
+  ],
+  [
+    "telko.openapi.yaml",
+    "#/components/parameters/Tenant",
+    "/v2/subscribers/export",
+    "/v2/admin/tenant",
+  ],
+])("legacy contract %s", (file, tenantParameter, exportPath, tenantPath) => {
   const spec = load(file);
   const operations = Object.entries(spec.paths).flatMap(([path, methods]) =>
     Object.entries(methods).map(([method, operation]) => ({ path, method, operation })),
@@ -42,9 +52,10 @@ describe.each([
     }
   });
 
-  it("offers sign-in check, customer read and a paged export", () => {
+  it("offers sign-in check, customer read, a paged export and tenant provisioning", () => {
     expect(operations.map(({ operation }) => operation.operationId).every(Boolean)).toBe(true);
-    expect(operations.length).toBe(6);
+    expect(operations.length).toBe(8);
     expect(Object.keys(spec.paths)).toContain(exportPath);
+    expect(Object.keys(spec.paths[tenantPath] ?? {}).sort()).toEqual(["delete", "put"]);
   });
 });

@@ -110,6 +110,40 @@ export class UtilityClient {
       throw new LegacyUnavailableError(`export: HTTP ${status}`);
     return parsed.data;
   }
+
+  /**
+   * (Re)creates a demo tenant's sample data; its demo persons sign in with `demoPassword`
+   * (12–128 characters). Idempotent: a second call recreates the tenant.
+   */
+  async provisionTenant(tenant: string, demoPassword: string): Promise<void> {
+    const { status } = await this.request(tenant, "/api/v1/verwaltung/mandant", {
+      method: "PUT",
+      body: JSON.stringify({ demoPasswort: demoPassword }),
+    });
+    if (status !== 201) throw new LegacyUnavailableError(`provision: HTTP ${status}`);
+  }
+
+  /** Deletes a demo tenant's data; idempotent (an unknown tenant counts as removed). */
+  async removeTenant(tenant: string): Promise<void> {
+    const { status } = await this.request(tenant, "/api/v1/verwaltung/mandant", {
+      method: "DELETE",
+    });
+    if (status !== 204) throw new LegacyUnavailableError(`remove: HTTP ${status}`);
+  }
+
+  /**
+   * Recreates a tenant's sample data. A demo tenant needs its demo password again (the
+   * legacy system keeps only hashes); the owner's tenant takes none.
+   */
+  async resetTenant(tenant: string, demoPassword?: string): Promise<void> {
+    const { status } = await this.request(tenant, "/api/v1/verwaltung/zuruecksetzen", {
+      method: "POST",
+      ...(demoPassword === undefined
+        ? {}
+        : { body: JSON.stringify({ demoPasswort: demoPassword }) }),
+    });
+    if (status !== 200) throw new LegacyUnavailableError(`reset: HTTP ${status}`);
+  }
 }
 
 const DIVISIONS: Record<string, { division: Division; unit: MeterUnit }> = {
