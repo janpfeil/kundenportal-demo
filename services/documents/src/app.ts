@@ -8,7 +8,10 @@ export function createApi(service: DocumentService): ApiHandler {
     "POST /documents/upload-url": async (event) => {
       const caller = callerFrom(event);
       const request = parseBody(event, UploadRequest);
-      return json(201, await service.requestUpload(caller, request));
+      return json(
+        201,
+        await service.requestUpload(caller, request, event.requestContext.requestId),
+      );
     },
   });
 }

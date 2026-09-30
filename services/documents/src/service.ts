@@ -13,6 +13,7 @@ import {
   uploadKey,
 } from "./model.js";
 import type { DocumentEvents } from "./publisher.js";
+import type { UploadQuota } from "./quota.js";
 import type { DocumentRepository } from "./repository.js";
 import type { UploadStorage } from "./storage.js";
 
@@ -37,6 +38,7 @@ export class DocumentService {
     private readonly events: DocumentEvents,
     private readonly clock: Clock = { now: () => new Date() },
     private readonly newId: () => string = randomUUID,
+    private readonly quota?: UploadQuota,
   ) {}
 
   async list(caller: Caller): Promise<Document[]> {
@@ -46,13 +48,19 @@ export class DocumentService {
 
   /**
    * Registers a pending document and returns a presigned PUT URL for exactly this file
-   * (content type and size are signed), valid for five minutes.
+   * (content type and size are signed), valid for five minutes. A demo pass pays one
+   * upload of its quota per URL; at the limit the request fails with 429.
    */
-  async requestUpload(caller: Caller, request: UploadRequest): Promise<UploadTicket> {
+  async requestUpload(
+    caller: Caller,
+    request: UploadRequest,
+    correlationId = "upload-url",
+  ): Promise<UploadTicket> {
     const customerId = await this.repository.customerOf(caller.tenantId, caller.subject);
     if (!customerId) {
       throw new HttpError(409, "Conflict", "The account is still being set up; try again shortly");
     }
+    await this.quota?.consume(caller.tenantId, correlationId);
     const now = this.clock.now();
     const createdAt = now.toISOString();
     const document: Document = {

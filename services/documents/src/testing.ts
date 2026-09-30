@@ -3,6 +3,7 @@ import { S3Client } from "@aws-sdk/client-s3";
 import type { TenantDataSource } from "@kundenportal/service-kit";
 import { fixedTenantData } from "@kundenportal/service-kit/testing";
 import { DocumentEvents } from "./publisher.js";
+import { UploadQuota } from "./quota.js";
 import { DocumentRepository } from "./repository.js";
 import { DocumentService } from "./service.js";
 import { UploadStorage } from "./storage.js";
@@ -19,17 +20,19 @@ export const testTenantData = (): TenantDataSource =>
     }),
   });
 
-/** Service with fake credentials and fixed time/ids for the unit tests. */
+/** Service with fake credentials, fixed time/ids and an upload quota of 20 (unit tests). */
 export function testService(
   now: () => Date,
   ids: () => string,
   data: TenantDataSource = testTenantData(),
 ): DocumentService {
+  const events = new DocumentEvents(new EventBridgeClient({}), "bus");
   return new DocumentService(
     new DocumentRepository(data),
     new UploadStorage(data, BUCKET),
-    new DocumentEvents(new EventBridgeClient({}), "bus"),
+    events,
     { now },
     ids,
+    new UploadQuota(data, events, 20, now),
   );
 }

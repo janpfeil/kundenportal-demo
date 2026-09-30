@@ -1,4 +1,5 @@
-import { EventBridgeClient } from "@aws-sdk/client-eventbridge";
+import { ConditionalCheckFailedException } from "@aws-sdk/client-dynamodb";
+import { EventBridgeClient, PutEventsCommand } from "@aws-sdk/client-eventbridge";
 import { S3Client } from "@aws-sdk/client-s3";
 import {
   DynamoDBDocumentClient,
@@ -7,6 +8,7 @@ import {
   QueryCommand,
   UpdateCommand,
 } from "@aws-sdk/lib-dynamodb";
+import { QuotaExceeded } from "@kundenportal/events";
 import { apiEvent, vendedTenantData } from "@kundenportal/service-kit/testing";
 import { mockClient } from "aws-sdk-client-mock";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -192,5 +194,94 @@ describe("POST /documents/upload-url for a demo pass", () => {
       TableName: "base-table",
       Key: { PK: `TENANT#${PASS}`, SK: "QUOTA#api" },
     });
+    // So is the upload, atomically and only below the limit.
+    expect(dbMock.commandCalls(UpdateCommand)[1]?.args[0].input).toMatchObject({
+      TableName: "base-table",
+      Key: { PK: `TENANT#${PASS}`, SK: "QUOTA#uploads" },
+      UpdateExpression: "ADD #used :one",
+      ConditionExpression: "attribute_not_exists(#used) OR #used < :limit",
+      ExpressionAttributeValues: { ":one": 1, ":limit": 20 },
+    });
+  });
+});
+
+describe("upload quota of a demo pass", () => {
+  const PASS = "p4k7x2qa";
+  const uploadsKey = { PK: `TENANT#${PASS}`, SK: "QUOTA#uploads" };
+  const request = { fileName: "a.pdf", contentType: "application/pdf", sizeBytes: 10 };
+  const quotaApi = createApi(
+    testService(
+      () => new Date("2026-09-30T12:00:00.000Z"),
+      () => uuid,
+    ),
+  );
+  const passUpload = () =>
+    quotaApi(
+      apiEvent("POST /documents/upload-url", { body: request, claims: { tenant_id: PASS } }),
+    );
+  const limitReached = () => new ConditionalCheckFailedException({ message: "x", $metadata: {} });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  beforeEach(() => {
+    // The router's API quota guard reads the base table from the environment.
+    vi.stubEnv("TABLE_NAME", "table");
+    dbMock
+      .on(GetCommand, { Key: { PK: "PLATFORM", SK: `TENANT#${PASS}` } })
+      .resolves({ Item: { status: "active", passId: "pass-1" } })
+      .on(GetCommand, { Key: { PK: `TENANT#${PASS}#SUBJ#sub-1`, SK: "DOCUMENTS" } })
+      .resolves({ Item: { customerId: "c-1" } });
+    dbMock.on(UpdateCommand).resolves({});
+    ebMock.on(PutEventsCommand).resolves({ FailedEntryCount: 0 });
+  });
+
+  it("refuses the 21st upload with 429 and reports QuotaExceeded once", async () => {
+    dbMock
+      .on(UpdateCommand, { Key: uploadsKey, UpdateExpression: "ADD #used :one" })
+      .rejects(limitReached())
+      .on(UpdateCommand, { Key: uploadsKey, UpdateExpression: "SET exceededAt = :now" })
+      .resolvesOnce({})
+      .rejects(limitReached());
+
+    const first = await passUpload();
+    expect(first.statusCode).toBe(429);
+    expect(first.headers?.["content-type"]).toBe("application/problem+json");
+    expect(body(first)).toMatchObject({
+      title: "Kontingent erschöpft",
+      detail: "Die 20 Uploads des Demo-Passes sind aufgebraucht",
+    });
+    expect(dbMock.commandCalls(PutCommand)).toHaveLength(0);
+    const entry = ebMock.commandCalls(PutEventsCommand)[0]?.args[0].input.Entries?.[0];
+    expect(entry).toMatchObject({ Source: "kundenportal.tenancy", DetailType: "QuotaExceeded" });
+    expect(QuotaExceeded.detail.parse(JSON.parse(entry?.Detail ?? "{}")).payload).toEqual({
+      passId: "pass-1",
+      tenantId: PASS,
+      kind: "uploads",
+      limit: 20,
+    });
+
+    expect((await passUpload()).statusCode).toBe(429);
+    expect(ebMock.commandCalls(PutEventsCommand)).toHaveLength(1);
+  });
+
+  it("frees the report again if publishing failed, so a later refusal reports", async () => {
+    dbMock
+      .on(UpdateCommand, { Key: uploadsKey, UpdateExpression: "ADD #used :one" })
+      .rejects(limitReached());
+    ebMock.on(PutEventsCommand).rejects(new Error("bus down"));
+    expect((await passUpload()).statusCode).toBe(429);
+    expect(
+      dbMock
+        .commandCalls(UpdateCommand)
+        .some((call) => call.args[0].input.UpdateExpression === "REMOVE exceededAt"),
+    ).toBe(true);
+  });
+
+  it("never counts the owner", async () => {
+    const result = await upload(request);
+    expect(result.statusCode).toBe(201);
+    expect(dbMock.commandCalls(UpdateCommand)).toHaveLength(0);
   });
 });
