@@ -2,6 +2,7 @@ import { ConditionalCheckFailedException } from "@aws-sdk/client-dynamodb";
 import {
   BatchWriteCommand,
   DynamoDBDocumentClient,
+  GetCommand,
   PutCommand,
   QueryCommand,
   UpdateCommand,
@@ -79,7 +80,7 @@ describe("migration repository", () => {
 
   it("writes timeline entries that expire after seven days and reads them newest first", async () => {
     dbMock.on(PutCommand).resolves({});
-    dbMock.on(QueryCommand).resolves({ Items: [] });
+    dbMock.on(QueryCommand).resolves({ Items: [] }).on(GetCommand).resolves({});
     await repository.addTimeline("owner", {
       eventId: "e1",
       source: "kundenportal.migration",
@@ -159,16 +160,28 @@ describe("migration repository", () => {
     ]);
   });
 
-  it("clears the tenant's timeline", async () => {
+  it("starts the timeline again with one marker instead of deleting every entry", async () => {
+    dbMock.on(PutCommand).resolves({});
+    await repository.clearTimeline("owner", "2026-09-30T12:00:00.000Z");
+    expect(dbMock.commandCalls(PutCommand)[0]?.args[0].input.Item).toMatchObject({
+      PK: "TENANT#owner#TIMELINE",
+      SK: "CLEARED",
+      clearedAt: "2026-09-30T12:00:00.000Z",
+    });
+    expect(dbMock.commandCalls(BatchWriteCommand)).toHaveLength(0);
+  });
+
+  it("lists only timeline entries after the last reset", async () => {
     dbMock
+      .on(GetCommand)
+      .resolves({ Item: { clearedAt: "2026-09-30T12:00:00.000Z" } })
       .on(QueryCommand)
-      .resolves({ Items: [{ PK: "TENANT#owner#TIMELINE", SK: "EVT#1" }] })
-      .on(BatchWriteCommand)
-      .resolves({});
-    expect(await repository.clearTimeline("owner")).toBe(1);
+      .resolves({ Items: [] });
+    await repository.listTimeline("owner");
     expect(dbMock.commandCalls(QueryCommand)[0]?.args[0].input.ExpressionAttributeValues).toEqual({
       ":pk": "TENANT#owner#TIMELINE",
-      ":prefix": "EVT#",
+      ":from": "EVT#2026-09-30T12:00:00.000Z",
+      ":to": "EVT#\uffff",
     });
   });
 

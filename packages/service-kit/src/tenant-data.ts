@@ -61,8 +61,18 @@ interface CacheEntry {
 
 const DOCUMENT_OPTIONS = { marshallOptions: { removeUndefinedValues: true } } as const;
 
-function documentClient(credentials?: ConstructorParameters<typeof DynamoDBClient>[0]) {
-  return DynamoDBDocumentClient.from(new DynamoDBClient(credentials ?? {}), DOCUMENT_OPTIONS);
+/**
+ * Every table is provisioned with 5 read and 5 write units (always free). A burst — a
+ * demo reset, a bulk import, parallel page loads — briefly exceeds that; the adaptive
+ * retry mode backs off and slows the client down instead of failing the request.
+ */
+export const DYNAMODB_RETRY = { maxAttempts: 8, retryMode: "adaptive" } as const;
+
+function documentClient(options?: ConstructorParameters<typeof DynamoDBClient>[0]) {
+  return DynamoDBDocumentClient.from(
+    new DynamoDBClient({ ...DYNAMODB_RETRY, ...options }),
+    DOCUMENT_OPTIONS,
+  );
 }
 
 /**

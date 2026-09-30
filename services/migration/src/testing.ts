@@ -188,9 +188,7 @@ export class MemoryRepository {
     return keys.length + 1;
   }
   async clearTimeline() {
-    const count = this.timeline.length;
     this.timeline = [];
-    return count;
   }
   async createRun(_t: string, run: MigrationRun) {
     this.runs.set(run.runId, structuredClone(run));

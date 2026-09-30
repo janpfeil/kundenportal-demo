@@ -8,7 +8,7 @@ import { SNSClient } from "@aws-sdk/client-sns";
 import { SSMClient } from "@aws-sdk/client-ssm";
 import { DynamoDBDocumentClient } from "@aws-sdk/lib-dynamodb";
 import { cachedLegacyAccess } from "@kundenportal/legacy";
-import { log, requireEnv } from "@kundenportal/service-kit";
+import { DYNAMODB_RETRY, log, requireEnv } from "@kundenportal/service-kit";
 import { Altcha, cachedHmacKey } from "./altcha.js";
 import {
   CognitoTenantAccounts,
@@ -78,7 +78,7 @@ export function ownerHintsFromEnv(env: NodeJS.ProcessEnv = process.env): OwnerHi
 }
 
 const db = () =>
-  DynamoDBDocumentClient.from(new DynamoDBClient({}), {
+  DynamoDBDocumentClient.from(new DynamoDBClient({ ...DYNAMODB_RETRY }), {
     marshallOptions: { removeUndefinedValues: true },
   });
 
@@ -105,7 +105,10 @@ function baseContext(config: TenancyConfig, lifecycle: boolean): TenancyContext 
     newId: randomUUID,
     ...(lifecycle
       ? {
-          tables: new DynamoTenantTables(new DynamoDBClient({}), config.tablePrefix),
+          tables: new DynamoTenantTables(
+            new DynamoDBClient({ ...DYNAMODB_RETRY }),
+            config.tablePrefix,
+          ),
           legacy: new LegacySystemTenants(cachedLegacyAccess(new SSMClient({}), 10_000)),
           schedules: new SchedulerExpiry(new SchedulerClient({}), {
             groupName: requireEnv("PASS_SCHEDULE_GROUP"),

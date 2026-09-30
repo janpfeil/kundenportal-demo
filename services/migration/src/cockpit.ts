@@ -196,8 +196,8 @@ export class Cockpit {
     // Also identities whose Cognito user was already gone: their data may still be there.
     const removedAccounts = [...removed].map(([subject, customerId]) => ({ subject, customerId }));
     // Before publishing, so the timeline starts again with the reset's own events.
-    await repository.clearTimeline(tenantId);
     const occurredAt = this.ctx.now().toISOString();
+    await repository.clearTimeline(tenantId, occurredAt);
     for (let i = 0; i < removedAccounts.length; i += MAX_REMOVED_ACCOUNTS_PER_EVENT) {
       await events.publish(MigratedAccountsRemoved, {
         eventId: this.ctx.newId(),

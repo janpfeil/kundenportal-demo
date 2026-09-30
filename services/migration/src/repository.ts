@@ -11,6 +11,7 @@ import {
 } from "./model.js";
 
 const TIMELINE_DAYS = 7;
+const TIMELINE_CLEARED = "CLEARED";
 
 /**
  * Items of the migration domain in the single table (fachkonzept §7.1):
@@ -18,7 +19,7 @@ const TIMELINE_DAYS = 7;
  * - `TENANT#<t>#MIGRATION` / `RUN#<runId>` — a bulk import run with its counters
  * - `TENANT#<t>#SUBJ#<subject>` / `LINK#<system>#<number>` — link offer for a customer
  * - `TENANT#<t>#TIMELINE` / `EVT#<occurredAt>#<eventId>` — cockpit timeline, expires
- *   after seven days (`ttl`)
+ *   after seven days (`ttl`); `CLEARED` marks where a demo reset started it again
  *
  * The demo reset also deletes the identity domain's `TENANT#<t>#SUBJ#<subject>` /
  * `IDENTITY#LEGACY` of the identities it removes (see `clearSubject`).
@@ -105,10 +106,24 @@ export class MigrationRepository {
     return keys.length;
   }
 
-  /** Deletes the cockpit timeline of a tenant (demo reset; TTL would take up to 7 days). */
-  async clearTimeline(tenantId: string): Promise<number> {
-    const table = await this.data(tenantId);
-    return deleteKeys(table, await queryKeys(table, tenantKey(tenantId, "TIMELINE"), "EVT#"));
+  /**
+   * Starts the cockpit timeline of a tenant again (demo reset). Deleting hundreds of
+   * entries one by one would exceed the table's 5 write units; one marker hides the older
+   * entries instead, and their `ttl` removes them free of charge within seven days.
+   */
+  async clearTimeline(tenantId: string, at: string): Promise<void> {
+    const { db, tableName } = await this.data(tenantId);
+    await db.send(
+      new PutCommand({
+        TableName: tableName,
+        Item: {
+          PK: tenantKey(tenantId, "TIMELINE"),
+          SK: TIMELINE_CLEARED,
+          clearedAt: at,
+          ttl: Math.floor(Date.parse(at) / 1000) + TIMELINE_DAYS * 86400,
+        },
+      }),
+    );
   }
 
   async createRun(tenantId: string, run: MigrationRun): Promise<void> {
@@ -303,11 +318,17 @@ export class MigrationRepository {
 
   async listTimeline(tenantId: string, limit = 50): Promise<TimelineEntry[]> {
     const { db, tableName } = await this.data(tenantId);
+    const pk = tenantKey(tenantId, "TIMELINE");
+    const marker = await db.send(
+      new GetCommand({ TableName: tableName, Key: { PK: pk, SK: TIMELINE_CLEARED } }),
+    );
+    const clearedAt = typeof marker.Item?.clearedAt === "string" ? marker.Item.clearedAt : "";
     const result = await db.send(
       new QueryCommand({
         TableName: tableName,
-        KeyConditionExpression: "PK = :pk AND begins_with(SK, :evt)",
-        ExpressionAttributeValues: { ":pk": tenantKey(tenantId, "TIMELINE"), ":evt": "EVT#" },
+        // Only entries after the last demo reset: EVT#<occurredAt> sorts by time.
+        KeyConditionExpression: "PK = :pk AND SK BETWEEN :from AND :to",
+        ExpressionAttributeValues: { ":pk": pk, ":from": `EVT#${clearedAt}`, ":to": "EVT#\uffff" },
         ScanIndexForward: false,
         Limit: limit,
       }),
