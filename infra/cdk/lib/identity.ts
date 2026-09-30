@@ -27,6 +27,9 @@ export const EVENT_BUS_NAME = "kundenportal";
 /** Cognito group of the portal owner (migration cockpit). */
 export const OWNER_GROUP = "owner";
 
+/** Cognito group of demo-pass holders (phase 4): their own tenant's cockpit and pass status. */
+export const PASS_GROUP = "pass";
+
 export interface IdentityProps {
   domainName: string;
   cognitoDomainPrefix: string;
@@ -137,6 +140,12 @@ export class Identity extends Construct {
       userPoolId: this.userPool.userPoolId,
       groupName: OWNER_GROUP,
       description: "Portal owner: migration cockpit",
+    });
+
+    new CfnUserPoolGroup(this, "PassGroup", {
+      userPoolId: this.userPool.userPoolId,
+      groupName: PASS_GROUP,
+      description: "Demo-pass holders: own tenant only",
     });
 
     this.domain = this.userPool.addDomain("Domain", {

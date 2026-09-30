@@ -8,6 +8,7 @@ import type { Construct } from "constructs";
 import type { PortalConfig } from "./config.js";
 import { Identity } from "./identity.js";
 import { PARAM } from "./parameters.js";
+import { TenantData } from "./tenant-data.js";
 import { Uploads } from "./uploads.js";
 
 /**
@@ -48,6 +49,9 @@ export class BaseStack extends Stack {
       allowLocalhost: config.allowLocalhostCallback,
     });
 
+    // Phase 4: token vending role and expiry schedules of the demo-pass tenants.
+    const tenantData = new TenantData(this, "TenantData", { uploadBucket: uploads.bucket });
+
     const ownerTopic = new Topic(this, "OwnerHints", { displayName: "Kundenportal" });
     ownerTopic.addSubscription(
       new EmailSubscription(StringParameter.valueForStringParameter(this, PARAM.ownerEmail)),
@@ -66,6 +70,8 @@ export class BaseStack extends Stack {
     publish(PARAM.base.tableName, table.tableName);
     publish(PARAM.base.ownerTopicArn, ownerTopic.topicArn);
     publish(PARAM.base.uploadBucketName, uploads.bucket.bucketName);
+    publish(PARAM.base.tenantDataRoleArn, tenantData.role.roleArn);
+    publish(PARAM.base.passScheduleGroup, tenantData.scheduleGroup.ref);
 
     new CfnOutput(this, "UserPoolId", { value: identity.userPool.userPoolId });
     new CfnOutput(this, "ManagedLoginUrl", { value: identity.domain.baseUrl() });

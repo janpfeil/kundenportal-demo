@@ -15,6 +15,10 @@ export const PARAM = {
     tableName: "/kundenportal/base/table-name",
     ownerTopicArn: "/kundenportal/base/owner-topic-arn",
     uploadBucketName: "/kundenportal/base/upload-bucket-name",
+    /** Phase 4: role the shared Lambdas assume per pass tenant (token vending). */
+    tenantDataRoleArn: "/kundenportal/base/tenant-data-role-arn",
+    /** Phase 4: schedule group of the one-time pass expiry schedules. */
+    passScheduleGroup: "/kundenportal/base/pass-schedule-group",
   },
   /**
    * Access to the legacy systems (phase 3). Written by Terraform from GitLab CI variables;
