@@ -3,21 +3,15 @@
  * panel (a client component) and the route handler both use these.
  */
 
-/** Platform settings of the demo passes (getSettings/updateSettings in openapi.yaml). */
-export interface TenancySettings {
-  redemption: "open" | "closed";
-  /** When and why redemption was closed; only while closed (e.g. the budget alarm). */
-  closedAt?: string;
-  closedReason?: string;
-  /** Cap of concurrent pass tenants (1–4, free DynamoDB capacity). */
-  maxTenants: number;
-  activeTenants: number;
-}
+import type { components } from "@kundenportal/api-contract";
 
-export interface SettingsUpdate {
-  redemption?: "open" | "closed";
-  maxTenants?: number;
-}
+/**
+ * Platform settings of the demo passes (PlatformSettings of getSettings/updateSettings):
+ * `closedAt` and `closedReason` only while closed (e.g. by the budget alarm), `maxTenants`
+ * is the cap of concurrent pass tenants.
+ */
+export type TenancySettings = components["schemas"]["PlatformSettings"];
+export type SettingsUpdate = components["schemas"]["SettingsUpdate"];
 
 /** Bounds of the cap: each pass tenant has its own table with 5 RCU/5 WCU of the free 25/25. */
 export const MIN_TENANTS = 1;

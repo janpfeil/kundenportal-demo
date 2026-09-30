@@ -1,3 +1,5 @@
+import type { components } from "@kundenportal/api-contract";
+
 /**
  * What a demo pass currently offers, from the public `GET /api/tenancy/offer` (getOffer in
  * openapi.yaml). The redeem page is prerendered and cached at the edge, so the browser
@@ -6,13 +8,11 @@
  */
 export const OFFER_URL = "/api/tenancy/offer";
 
-export interface Offer {
-  passDays: number;
-  quotas: { api: number; events: number; uploads: number };
-  uploadMaxBytes: number;
-  /** false while the kill switch is closed or all places are taken; redeeming would give 503. */
-  redemptionOpen: boolean;
-}
+/**
+ * PassOffer of the contract. `redemptionOpen` is false while the kill switch is closed or
+ * all places are taken; redeeming would then give 503.
+ */
+export type Offer = components["schemas"]["PassOffer"];
 
 const count = (value: unknown): value is number =>
   typeof value === "number" && Number.isInteger(value) && value >= 0;

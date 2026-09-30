@@ -129,7 +129,10 @@ export function SettingsPanel({
           name="maxTenants"
           value={String(cap)}
           onChange={(event) => setCap(Number(event.target.value))}
-          options={CAPS.map((value) => ({ value: String(value), label: String(value) }))}
+          // A stored cap outside 1–4 (the contract allows 0) stays visible until changed.
+          options={(CAPS.includes(settings.maxTenants) ? CAPS : [settings.maxTenants, ...CAPS]).map(
+            (value) => ({ value: String(value), label: String(value) }),
+          )}
         />
         <div>
           <Button type="submit" variant="secondary" disabled={busy || cap === settings.maxTenants}>

@@ -76,4 +76,16 @@ describe("settings panel", () => {
     expect(await screen.findByText(texts.failed)).toBeInTheDocument();
     expect(screen.getByText("gesperrt")).toBeInTheDocument();
   });
+
+  it("keeps a stored cap of 0 visible instead of pretending it is 1", () => {
+    render(
+      <SettingsPanel
+        settings={{ redemption: "open", maxTenants: 0, activeTenants: 0 }}
+        texts={texts}
+        locale="de"
+      />,
+    );
+    expect(screen.getByLabelText(texts.cap)).toHaveValue("0");
+    expect(screen.getByRole("button", { name: texts.saveCap })).toBeDisabled();
+  });
 });
