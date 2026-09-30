@@ -72,3 +72,65 @@ variable "monthly_budget_usd" {
   type        = number
   default     = 1
 }
+
+# --- Phase 3: legacy systems and the telco's Keycloak realm ---------------------------
+# All secrets come from CI/CD variables of the GitLab project platform (TF_VAR_…,
+# masked and protected), never from the repository.
+
+variable "legacy_enabled" {
+  description = "Creates the telco realm in Keycloak and the legacy SSM parameters. Set TF_VAR_legacy_enabled=true once the variables below exist."
+  type        = bool
+  default     = false
+}
+
+variable "keycloak_url" {
+  description = "Base URL of the own Keycloak."
+  type        = string
+  default     = "https://id.rypox.net"
+}
+
+variable "keycloak_client_id" {
+  description = "Service client in the master realm that Terraform signs in with."
+  type        = string
+  default     = "terraform-kundenportal"
+}
+
+variable "keycloak_client_secret" {
+  description = "Secret of that service client (TF_VAR_keycloak_client_secret)."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "telco_demo_password" {
+  description = "Password of the telco demo persons in the realm; the same as DEMO_PASSWORD of legacy-telko (TF_VAR_telco_demo_password)."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "legacy_utility_url" {
+  description = "HTTPS base URL of the utility's legacy system."
+  type        = string
+  default     = "https://kundenportal-versorger.rypox.com"
+}
+
+variable "legacy_telco_url" {
+  description = "HTTPS base URL of the telco's legacy system."
+  type        = string
+  default     = "https://kundenportal-telko.rypox.com"
+}
+
+variable "legacy_utility_api_key" {
+  description = "API key of the utility's legacy system; the same as LEGACY_API_KEY of legacy-versorger (TF_VAR_legacy_utility_api_key)."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "legacy_telco_api_key" {
+  description = "API key of the telco's legacy system; the same as LEGACY_API_KEY of legacy-telko (TF_VAR_legacy_telco_api_key)."
+  type        = string
+  default     = ""
+  sensitive   = true
+}

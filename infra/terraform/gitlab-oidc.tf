@@ -166,6 +166,20 @@ data "aws_iam_policy_document" "gitlab_foundation" {
     actions   = ["ssm:DescribeParameters"]
     resources = ["*"]
   }
+
+  # SecureString parameters of the legacy systems (phase 3) use the AWS managed key
+  # aws/ssm; the role may use it only through SSM.
+  statement {
+    sid       = "SecureParametersViaSsm"
+    actions   = ["kms:Encrypt", "kms:Decrypt", "kms:GenerateDataKey"]
+    resources = ["*"]
+
+    condition {
+      test     = "StringEquals"
+      variable = "kms:ViaService"
+      values   = ["ssm.${var.region}.amazonaws.com"]
+    }
+  }
 }
 
 data "aws_iam_policy_document" "gitlab_foundation_guard" {
