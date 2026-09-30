@@ -61,9 +61,10 @@ test("J4: a meter reading is stored and confirmed in the mailbox", async ({ page
   const form = page.getByTestId("reading-form").first();
   await expect(form).toBeVisible();
   await page.waitForLoadState("networkidle");
-  const latest = Number(
-    (await page.getByTestId("readings").first().getAttribute("data-latest-value")) || 0,
-  );
+  const readings = page.getByTestId("readings").first();
+  // The history streams in; wait until the latest value is there before computing a new one.
+  await expect(readings).toHaveAttribute("data-latest-value", /\d/);
+  const latest = Number(await readings.getAttribute("data-latest-value"));
   await form
     .getByRole("spinbutton")
     .first()
@@ -71,4 +72,30 @@ test("J4: a meter reading is stored and confirmed in the mailbox", async ({ page
   await form.getByRole("button").first().click();
   await expect(page.getByRole("status")).toBeVisible();
   await expectMailboxMessage(page, /Zählerstand|meter reading/i);
+});
+
+/** Smallest valid PNG (1×1 pixel), enough for the upload path. */
+const PNG_1X1 = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+  "base64",
+);
+
+test("a meter photo goes straight to the upload bucket and is confirmed", async ({ page }) => {
+  await openSignedIn(page, "/verbrauch", user.email, user.password);
+  const form = page.getByTestId("meter-photo-upload").first();
+  await expect(form).toBeVisible();
+  await page.waitForLoadState("networkidle");
+  const s3Put = page.waitForResponse(
+    (response) => /\.s3[.-]/.test(response.url()) && response.request().method() === "PUT",
+  );
+  await form.locator('input[type="file"]').setInputFiles({
+    name: "zaehler.png",
+    mimeType: "image/png",
+    buffer: PNG_1X1,
+  });
+  // Chromium exposes the file input as a button too, so name the submit button.
+  await form.getByRole("button", { name: /hochladen|upload/i }).click();
+  expect((await s3Put).status()).toBe(200);
+  await expect(form.getByRole("status")).toContainText("zaehler.png");
+  await expectMailboxMessage(page, /zaehler\.png|Dokument|document|Foto|photo/i);
 });
