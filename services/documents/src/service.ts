@@ -16,6 +16,7 @@ import type { DocumentEvents } from "./publisher.js";
 import type { UploadQuota } from "./quota.js";
 import type { DocumentRepository } from "./repository.js";
 import type { UploadStorage } from "./storage.js";
+import { removeCustomers } from "./removal.js";
 
 export interface Clock {
   now(): Date;
@@ -152,5 +153,10 @@ export class DocumentService {
         sizeBytes: document.sizeBytes,
       },
     });
+  }
+
+  /** `MigratedAccountsRemoved` (demo reset): deletes the removed customers' documents. */
+  onMigratedAccountsRemoved(event: Parameters<typeof removeCustomers>[2]): Promise<void> {
+    return removeCustomers(this.repository, this.storage, event);
   }
 }

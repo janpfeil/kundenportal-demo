@@ -1,6 +1,7 @@
 import { TransactionCanceledException } from "@aws-sdk/client-dynamodb";
 import { EventBridgeClient, PutEventsCommand } from "@aws-sdk/client-eventbridge";
 import {
+  BatchWriteCommand,
   DynamoDBDocumentClient,
   GetCommand,
   TransactWriteCommand,
@@ -142,6 +143,35 @@ describe("customer worker", () => {
     });
     const update = dbMock.commandCalls(UpdateCommand)[0]?.args[0].input;
     expect(update?.ExpressionAttributeValues).toEqual({ ":account": new Set(["telco:T/88-4711"]) });
+  });
+
+  it("deletes profile and identity link of removed accounts only, also when redelivered", async () => {
+    dbMock.on(BatchWriteCommand).resolves({});
+    const removed = {
+      source: "kundenportal.migration",
+      "detail-type": "MigratedAccountsRemoved",
+      detail: {
+        eventId: "6f1c1f64-8a4c-4c55-9a39-5d8a4a0f2c13",
+        tenantId: "p4k7x2qa",
+        occurredAt: "2026-09-30T11:00:00.000Z",
+        correlationId: "c",
+        payload: { reason: "demo-reset", accounts: [{ subject: SUB, customerId }] },
+      },
+    };
+    const worker = createWorker(service());
+    await worker(removed);
+    await worker(removed);
+
+    const deletes = dbMock
+      .commandCalls(BatchWriteCommand)
+      .map((c) => c.args[0].input.RequestItems?.table?.map((r) => r.DeleteRequest?.Key));
+    const once = [
+      { PK: `TENANT#p4k7x2qa#CUST#${customerId}`, SK: "PROFILE" },
+      { PK: `TENANT#p4k7x2qa#SUBJ#${SUB}`, SK: "CUSTOMER" },
+    ];
+    expect(deletes).toEqual([once, once]);
+    // Nothing else is touched: no other customer, no other domain's items.
+    expect(dbMock.calls()).toHaveLength(2);
   });
 
   it("rejects invalid and unknown events so they end in the DLQ", async () => {

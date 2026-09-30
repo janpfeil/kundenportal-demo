@@ -140,6 +140,38 @@ describe("migration repository", () => {
     expect(batches).toEqual([25, 1, 6]);
   });
 
+  it("clears a removed identity's link offers and the identity marker", async () => {
+    const pk = "TENANT#p4k7x2qa#SUBJ#sub-c";
+    dbMock
+      .on(QueryCommand)
+      .resolves({ Items: [{ PK: pk, SK: "LINK#utility#V-1" }] })
+      .on(BatchWriteCommand)
+      .resolves({});
+    expect(await repository.clearSubject("p4k7x2qa", "sub-c")).toBe(2);
+    expect(dbMock.commandCalls(QueryCommand)[0]?.args[0].input.ExpressionAttributeValues).toEqual({
+      ":pk": pk,
+      ":prefix": "LINK#",
+    });
+    const deletes = dbMock.commandCalls(BatchWriteCommand)[0]?.args[0].input.RequestItems?.table;
+    expect(deletes?.map((d) => d.DeleteRequest?.Key)).toEqual([
+      { PK: pk, SK: "LINK#utility#V-1" },
+      { PK: pk, SK: "IDENTITY#LEGACY" },
+    ]);
+  });
+
+  it("clears the tenant's timeline", async () => {
+    dbMock
+      .on(QueryCommand)
+      .resolves({ Items: [{ PK: "TENANT#owner#TIMELINE", SK: "EVT#1" }] })
+      .on(BatchWriteCommand)
+      .resolves({});
+    expect(await repository.clearTimeline("owner")).toBe(1);
+    expect(dbMock.commandCalls(QueryCommand)[0]?.args[0].input.ExpressionAttributeValues).toEqual({
+      ":pk": "TENANT#owner#TIMELINE",
+      ":prefix": "EVT#",
+    });
+  });
+
   it("completes a run once and defines every name alias it uses", async () => {
     dbMock
       .on(UpdateCommand)

@@ -3,6 +3,7 @@ import {
   type ContractChangedDetail,
   type CustomerRegisteredDetail,
   deterministicUuid,
+  type MigratedAccountsRemovedDetail,
 } from "@kundenportal/events";
 import {
   type Caller,
@@ -103,6 +104,31 @@ export class ConsumptionService {
     const contract = await this.ownContract(caller, contractId);
     if (!contract.dataVolumeMb) throw unprocessable("The contract has no data volume");
     return demoUsage(contractId, contract.dataVolumeMb, this.clock.now());
+  }
+
+  /**
+   * `MigratedAccountsRemoved` (demo reset): deletes readings, usage, projection and watch
+   * list entry of every contract of the removed customers, then the identity links. A
+   * migrated contract keeps its id when the person is migrated again, so leftovers would
+   * otherwise block the new projection (older version) and show old readings.
+   */
+  async onMigratedAccountsRemoved(event: MigratedAccountsRemovedDetail): Promise<void> {
+    const { tenantId, payload } = event;
+    const contractIds = await this.repository.contractsOf(
+      tenantId,
+      payload.accounts.map((a) => a.customerId),
+    );
+    for (const contractId of contractIds) {
+      await this.repository.removeContract(tenantId, contractId);
+    }
+    for (const { subject } of payload.accounts) {
+      await this.repository.unlinkSubject(tenantId, subject);
+    }
+    log("info", "Consumption of removed customers deleted", {
+      tenantId,
+      customers: payload.accounts.length,
+      contracts: contractIds.length,
+    });
   }
 
   async onCustomerRegistered(event: CustomerRegisteredDetail): Promise<void> {

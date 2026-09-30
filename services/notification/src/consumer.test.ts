@@ -1,6 +1,12 @@
 import { ConditionalCheckFailedException } from "@aws-sdk/client-dynamodb";
 import { PublishCommand, SNSClient } from "@aws-sdk/client-sns";
-import { DynamoDBDocumentClient, GetCommand, PutCommand } from "@aws-sdk/lib-dynamodb";
+import {
+  BatchWriteCommand,
+  DynamoDBDocumentClient,
+  GetCommand,
+  PutCommand,
+  QueryCommand,
+} from "@aws-sdk/lib-dynamodb";
 import { fixedTenantData } from "@kundenportal/service-kit/testing";
 import type { SQSEvent, SQSRecord } from "aws-lambda";
 import { mockClient } from "aws-sdk-client-mock";
@@ -339,5 +345,61 @@ describe("notification consumer", () => {
     dbMock.on(PutCommand).rejects(new Error("throttled"));
     const result = await consumer(event(record("m-1", registered())));
     expect(result.batchItemFailures).toEqual([{ itemIdentifier: "m-1" }]);
+  });
+});
+
+describe("MigratedAccountsRemoved", () => {
+  const removed = domainEvent("kundenportal.migration", "MigratedAccountsRemoved", {
+    reason: "demo-reset",
+    accounts: [{ subject: "sub-1", customerId: "c-1" }],
+  });
+  const deletedKeys = () =>
+    dbMock
+      .commandCalls(BatchWriteCommand)
+      .flatMap((call) => call.args[0].input.RequestItems?.table ?? [])
+      .map((r) => r.DeleteRequest?.Key);
+
+  it("deletes the removed customer's entries, language and identity link, also when redelivered", async () => {
+    dbMock
+      .on(QueryCommand)
+      .resolvesOnce({
+        Items: [
+          { PK: "TENANT#owner#CUST#c-1", SK: "NOTE#a" },
+          { PK: "TENANT#owner#CUST#c-1", SK: "NOTE#b" },
+        ],
+      })
+      .resolves({ Items: [] });
+    dbMock.on(BatchWriteCommand).resolves({});
+
+    const first = await consumer(event(record("m-1", removed)));
+    expect(first.batchItemFailures).toEqual([]);
+    expect(dbMock.commandCalls(QueryCommand)[0]?.args[0].input.ExpressionAttributeValues).toEqual({
+      ":pk": "TENANT#owner#CUST#c-1",
+      ":prefix": "NOTE#",
+    });
+    const mailboxKeys = [
+      { PK: "TENANT#owner#CUST#c-1", SK: "MAILBOX" },
+      { PK: "TENANT#owner#SUBJ#sub-1", SK: "MAILBOX" },
+    ];
+    expect(deletedKeys()).toEqual([
+      { PK: "TENANT#owner#CUST#c-1", SK: "NOTE#a" },
+      { PK: "TENANT#owner#CUST#c-1", SK: "NOTE#b" },
+      ...mailboxKeys,
+    ]);
+
+    const again = await consumer(event(record("m-1", removed)));
+    expect(again.batchItemFailures).toEqual([]);
+    expect(deletedKeys().slice(4)).toEqual(mailboxKeys);
+    expect(snsMock.commandCalls(PublishCommand)).toHaveLength(0);
+  });
+
+  it("reports an invalid removal as failed so it ends up in the DLQ", async () => {
+    const broken = domainEvent("kundenportal.migration", "MigratedAccountsRemoved", {
+      reason: "demo-reset",
+      accounts: [],
+    });
+    const result = await consumer(event(record("bad", broken)));
+    expect(result.batchItemFailures).toEqual([{ itemIdentifier: "bad" }]);
+    expect(dbMock.commandCalls(BatchWriteCommand)).toHaveLength(0);
   });
 });

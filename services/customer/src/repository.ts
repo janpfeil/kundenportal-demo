@@ -3,7 +3,7 @@ import {
   TransactionCanceledException,
 } from "@aws-sdk/client-dynamodb";
 import { GetCommand, TransactWriteCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
-import { tenantKey, type TenantDataSource } from "@kundenportal/service-kit";
+import { deleteKeys, tenantKey, type TenantDataSource } from "@kundenportal/service-kit";
 import type { PostalAddress } from "@kundenportal/events";
 import { Customer, type CustomerUpdate } from "./customer.js";
 
@@ -147,5 +147,13 @@ export class CustomerRepository {
         ConditionExpression: "attribute_exists(PK)",
       }),
     );
+  }
+
+  /** Deletes profile and identity link (removed account); nothing left is no error. */
+  async remove(tenantId: string, subject: string, customerId: string): Promise<void> {
+    await deleteKeys(await this.data(tenantId), [
+      { PK: tenantKey(tenantId, "CUST", customerId), SK: "PROFILE" },
+      { PK: tenantKey(tenantId, "SUBJ", subject), SK: "CUSTOMER" },
+    ]);
   }
 }

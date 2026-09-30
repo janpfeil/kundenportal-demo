@@ -1,7 +1,7 @@
 import { ConditionalCheckFailedException } from "@aws-sdk/client-dynamodb";
 import { GetCommand, PutCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
 import type { Division } from "@kundenportal/events";
-import { tenantKey, type TenantDataSource } from "@kundenportal/service-kit";
+import { deleteKeys, queryKeys, tenantKey, type TenantDataSource } from "@kundenportal/service-kit";
 import { ContractRecord } from "./contract.js";
 
 const contractKey = (tenantId: string, customerId: string, division: Division, id: string) => ({
@@ -100,6 +100,20 @@ export class ContractRepository {
       if (error instanceof ConditionalCheckFailedException) return false;
       throw error;
     }
+  }
+
+  /**
+   * Deletes the customer's contracts and the identity link (removed account); returns how
+   * many contracts. Nothing left is no error, so a redelivered event is harmless.
+   */
+  async removeCustomer(tenantId: string, subject: string, customerId: string): Promise<number> {
+    const table = await this.data(tenantId);
+    const contracts = await queryKeys(table, tenantKey(tenantId, "CUST", customerId), "CONTRACT#");
+    await deleteKeys(table, [
+      ...contracts,
+      { PK: tenantKey(tenantId, "SUBJ", subject), SK: "CONTRACTS" },
+    ]);
+    return contracts.length;
   }
 
   /**

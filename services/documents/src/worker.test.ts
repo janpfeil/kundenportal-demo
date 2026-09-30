@@ -1,7 +1,14 @@
 import { EventBridgeClient, PutEventsCommand } from "@aws-sdk/client-eventbridge";
 import { DeleteObjectCommand, S3Client } from "@aws-sdk/client-s3";
-import { DynamoDBDocumentClient, GetCommand, PutCommand } from "@aws-sdk/lib-dynamodb";
+import {
+  BatchWriteCommand,
+  DynamoDBDocumentClient,
+  GetCommand,
+  PutCommand,
+  QueryCommand,
+} from "@aws-sdk/lib-dynamodb";
 import { DocumentUploaded } from "@kundenportal/events";
+import { vendedTenantData } from "@kundenportal/service-kit/testing";
 import { mockClient } from "aws-sdk-client-mock";
 import { beforeEach, describe, expect, it } from "vitest";
 import { documentId } from "./model.js";
@@ -156,6 +163,10 @@ describe("CustomerRegistered", () => {
   it.each([
     ["no envelope", { hello: "world" }],
     [
+      "an invalid removal",
+      { source: "kundenportal.migration", "detail-type": "MigratedAccountsRemoved", detail: {} },
+    ],
+    [
       "an invalid event",
       { source: "kundenportal.customer", "detail-type": "CustomerRegistered", detail: {} },
     ],
@@ -163,5 +174,92 @@ describe("CustomerRegistered", () => {
     ["an unknown type", { source: "kundenportal.customer", "detail-type": "Unknown", detail: {} }],
   ])("throws for %s so it ends up in the DLQ", async (_case, input) => {
     await expect(worker(input)).rejects.toThrow();
+  });
+});
+
+describe("MigratedAccountsRemoved", () => {
+  const PASS = "p4k7x2qa";
+  const removed = (tenantId: string) => ({
+    source: "kundenportal.migration",
+    "detail-type": "MigratedAccountsRemoved",
+    detail: {
+      eventId: "6f1c1f64-8a4c-4c55-9a39-5d8a4a0f2c14",
+      tenantId,
+      occurredAt: "2026-09-30T12:00:00.000Z",
+      correlationId: "req-reset",
+      payload: { reason: "demo-reset", accounts: [{ subject: "sub-1", customerId: "c-1" }] },
+    },
+  });
+  const deletedKeys = () =>
+    dbMock
+      .commandCalls(BatchWriteCommand)
+      .flatMap((call) =>
+        Object.values(call.args[0].input.RequestItems ?? {}).flatMap((requests) =>
+          requests.map((r) => r.DeleteRequest?.Key),
+        ),
+      );
+
+  it("deletes files, document items and the identity link of the removed customer only", async () => {
+    const other = documentId("2026-09-30T12:00:01.000Z", "7a2d2e75-9b5d-4d66-8b4a-6e9b5b1f3d22");
+    dbMock
+      .on(QueryCommand)
+      .resolvesOnce({
+        Items: [{ PK: "TENANT#owner#CUST#c-1", SK: `DOC#${id}` }],
+        LastEvaluatedKey: { PK: "TENANT#owner#CUST#c-1", SK: `DOC#${id}` },
+      })
+      .resolvesOnce({ Items: [{ PK: "TENANT#owner#CUST#c-1", SK: `DOC#${other}` }] })
+      .resolves({ Items: [] });
+    dbMock.on(BatchWriteCommand).resolves({});
+
+    await worker(removed("owner"));
+
+    expect(dbMock.commandCalls(QueryCommand)[0]?.args[0].input.ExpressionAttributeValues).toEqual({
+      ":pk": "TENANT#owner#CUST#c-1",
+      ":prefix": "DOC#",
+    });
+    expect(s3Mock.commandCalls(DeleteObjectCommand).map((c) => c.args[0].input)).toEqual([
+      { Bucket: BUCKET, Key: `uploads/owner/c-1/${id}` },
+      { Bucket: BUCKET, Key: `uploads/owner/c-1/${other}` },
+    ]);
+    expect(deletedKeys()).toEqual([
+      { PK: "TENANT#owner#CUST#c-1", SK: `DOC#${id}` },
+      { PK: "TENANT#owner#CUST#c-1", SK: `DOC#${other}` },
+      { PK: "TENANT#owner#SUBJ#sub-1", SK: "DOCUMENTS" },
+    ]);
+
+    // Redelivered: no documents left, only the identity link is deleted again.
+    await worker(removed("owner"));
+    expect(s3Mock.commandCalls(DeleteObjectCommand)).toHaveLength(2);
+    expect(deletedKeys()).toHaveLength(4);
+  });
+
+  it("deletes a pass's files with the pass's vended credentials in its own table", async () => {
+    const { data, sessions } = vendedTenantData({
+      baseTable: "base-table",
+      s3Config: { region: "eu-central-1" },
+    });
+    const passWorker = createWorker(
+      testService(
+        () => new Date("2026-09-30T12:00:05.000Z"),
+        () => "x",
+        data,
+      ),
+    );
+    dbMock
+      .on(QueryCommand)
+      .resolves({ Items: [{ PK: `TENANT#${PASS}#CUST#c-1`, SK: `DOC#${id}` }] });
+    dbMock.on(BatchWriteCommand).resolves({});
+
+    await passWorker(removed(PASS));
+
+    const [deletion] = s3Mock.commandCalls(DeleteObjectCommand);
+    expect(deletion?.args[0].input.Key).toBe(`uploads/${PASS}/c-1/${id}`);
+    const client = deletion?.thisValue as S3Client;
+    expect(await client.config.credentials()).toMatchObject({ accessKeyId: "ASIAP4K7X2QA" });
+    expect(sessions).toEqual([PASS]);
+    const tables = dbMock
+      .commandCalls(BatchWriteCommand)
+      .flatMap((call) => Object.keys(call.args[0].input.RequestItems ?? {}));
+    expect(tables).toEqual([`kp-tenant-${PASS}`]);
   });
 });

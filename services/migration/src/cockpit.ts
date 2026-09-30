@@ -1,4 +1,10 @@
-import { EventBridgeEnvelope, type LegacySystem } from "@kundenportal/events";
+import {
+  customerIdFor,
+  EventBridgeEnvelope,
+  type LegacySystem,
+  MAX_REMOVED_ACCOUNTS_PER_EVENT,
+  MigratedAccountsRemoved,
+} from "@kundenportal/events";
 import { type Caller, HttpError, log, notFound, OWNER_TENANT } from "@kundenportal/service-kit";
 import { legacyTotal, type MigrationContext } from "./context.js";
 import {
@@ -79,6 +85,7 @@ export function summarize(detailType: string, detail: Record<string, unknown>): 
     typeof payload.division === "string" ? payload.division : contract?.division,
     typeof payload.origin === "string" ? payload.origin : undefined,
     counts ? `${counts.migrated ?? 0} migrated, ${counts.failed ?? 0} failed` : undefined,
+    Array.isArray(payload.accounts) ? `${payload.accounts.length} accounts removed` : undefined,
   ].filter(Boolean);
   return parts.join(" ") || detailType;
 }
@@ -161,26 +168,54 @@ export class Cockpit {
 
   /**
    * `POST /migration/reset` (demo reset): removes the portal accounts the migration
-   * created (lazy and bulk), the tenant's migration records and runs, and — for the
-   * owner only — empties the shared DLQ, so the journeys can be shown again. The legacy
-   * systems keep their data; their customers' portal profiles stay behind unreachable
-   * (a demo pass's own table goes with the pass).
+   * created (lazy and bulk) and announces them in `MigratedAccountsRemoved`, so every
+   * domain deletes its data of these customers (profile, contracts, readings, documents,
+   * mailbox). Then it deletes its own items — link offers, the identity marker, records,
+   * runs and the timeline — and, for the owner only, empties the shared DLQ, so the
+   * journeys can be shown again. The legacy systems keep their data.
+   *
+   * The records go last: if publishing fails, a second reset still finds the identities.
    */
-  async reset(caller: Caller): Promise<{ accountsRemoved: number; recordsRemoved: number }> {
-    const { repository, accounts, deadLetters } = this.ctx;
-    const records = await repository.listRecords(caller.tenantId);
-    const subjects = [...new Set(records.map((r) => r.subject).filter((s): s is string => !!s))];
-    let accountsRemoved = 0;
-    for (const subject of subjects) {
+  async reset(
+    caller: Caller,
+    correlationId = "demo-reset",
+  ): Promise<{ accountsRemoved: number; recordsRemoved: number }> {
+    const { repository, accounts, deadLetters, events } = this.ctx;
+    const { tenantId } = caller;
+    const records = await repository.listRecords(tenantId);
+    const removed = new Map<string, string>();
+    for (const record of records) {
       // Never the caller's own account, even if it came from a legacy system.
-      if (subject === caller.subject) continue;
+      if (!record.subject || record.subject === caller.subject) continue;
+      removed.set(record.subject, record.customerId ?? customerIdFor(tenantId, record.subject));
+    }
+    let accountsRemoved = 0;
+    for (const subject of removed.keys()) {
       if (await accounts.remove(subject)) accountsRemoved++;
     }
-    const recordsRemoved = await repository.clearTenant(caller.tenantId);
+    // Also identities whose Cognito user was already gone: their data may still be there.
+    const removedAccounts = [...removed].map(([subject, customerId]) => ({ subject, customerId }));
+    // Before publishing, so the timeline starts again with the reset's own events.
+    await repository.clearTimeline(tenantId);
+    const occurredAt = this.ctx.now().toISOString();
+    for (let i = 0; i < removedAccounts.length; i += MAX_REMOVED_ACCOUNTS_PER_EVENT) {
+      await events.publish(MigratedAccountsRemoved, {
+        eventId: this.ctx.newId(),
+        tenantId,
+        occurredAt,
+        correlationId,
+        payload: {
+          reason: "demo-reset",
+          accounts: removedAccounts.slice(i, i + MAX_REMOVED_ACCOUNTS_PER_EVENT),
+        },
+      });
+    }
+    for (const subject of removed.keys()) await repository.clearSubject(tenantId, subject);
+    const recordsRemoved = await repository.clearTenant(tenantId);
     // The DLQ is shared by all tenants: only the owner may empty it. A pass's leftover
     // tasks are dropped by the processor once the pass is gone, or redriven by record.
-    if (caller.tenantId === OWNER_TENANT) await deadLetters.purge();
-    log("info", "Demo reset", { tenantId: caller.tenantId, accountsRemoved, recordsRemoved });
+    if (tenantId === OWNER_TENANT) await deadLetters.purge();
+    log("info", "Demo reset", { tenantId, accountsRemoved, recordsRemoved });
     return { accountsRemoved, recordsRemoved };
   }
 

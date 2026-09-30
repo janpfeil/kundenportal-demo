@@ -1,6 +1,12 @@
 import { ConditionalCheckFailedException } from "@aws-sdk/client-dynamodb";
 import { EventBridgeClient, PutEventsCommand } from "@aws-sdk/client-eventbridge";
-import { DynamoDBDocumentClient, GetCommand, PutCommand } from "@aws-sdk/lib-dynamodb";
+import {
+  BatchWriteCommand,
+  DynamoDBDocumentClient,
+  GetCommand,
+  PutCommand,
+  QueryCommand,
+} from "@aws-sdk/lib-dynamodb";
 import { ContractChanged, InstallmentAdjusted } from "@kundenportal/events";
 import { fixedTenantData } from "@kundenportal/service-kit/testing";
 import { mockClient } from "aws-sdk-client-mock";
@@ -288,6 +294,59 @@ describe("LegacyAccountMigrated", () => {
       division: "mobile",
       legacyContractId: "MOB-812233",
     });
+  });
+});
+
+describe("MigratedAccountsRemoved", () => {
+  const removed = envelope("kundenportal.migration", "MigratedAccountsRemoved", {
+    eventId: "8b3e3f86-ac6e-4e77-9c5b-7f0c6c2e4e33",
+    tenantId: "p4k7x2qa",
+    occurredAt: "2026-09-30T14:00:00.000Z",
+    correlationId: "req-reset",
+    payload: {
+      reason: "demo-reset",
+      accounts: [
+        { subject: "sub-1", customerId: "c-1" },
+        { subject: "sub-2", customerId: "c-2" },
+      ],
+    },
+  });
+  const pk = (customerId: string) => `TENANT#p4k7x2qa#CUST#${customerId}`;
+
+  it("deletes the removed customers' contracts and identity links, also when redelivered", async () => {
+    dbMock
+      .on(QueryCommand, { ExpressionAttributeValues: { ":pk": pk("c-1") } })
+      .resolves({ Items: [{ PK: pk("c-1"), SK: "CONTRACT#electricity#k-1" }] })
+      .on(QueryCommand, { ExpressionAttributeValues: { ":pk": pk("c-2") } })
+      .resolvesOnce({ Items: [{ PK: pk("c-2"), SK: "CONTRACT#mobile#k-2" }] })
+      .resolves({ Items: [] });
+    dbMock.on(BatchWriteCommand).resolves({});
+
+    await worker(removed);
+    const deletes = () =>
+      dbMock
+        .commandCalls(BatchWriteCommand)
+        .map((c) => c.args[0].input.RequestItems?.table?.map((r) => r.DeleteRequest?.Key));
+    expect(deletes()).toEqual([
+      [
+        { PK: pk("c-1"), SK: "CONTRACT#electricity#k-1" },
+        { PK: "TENANT#p4k7x2qa#SUBJ#sub-1", SK: "CONTRACTS" },
+      ],
+      [
+        { PK: pk("c-2"), SK: "CONTRACT#mobile#k-2" },
+        { PK: "TENANT#p4k7x2qa#SUBJ#sub-2", SK: "CONTRACTS" },
+      ],
+    ]);
+    // Only the contracts of the customer's partition, never its other items.
+    const query = dbMock.commandCalls(QueryCommand)[0]?.args[0].input;
+    expect(query?.ExpressionAttributeValues).toEqual({
+      ":pk": pk("c-1"),
+      ":prefix": "CONTRACT#",
+    });
+
+    await worker(removed);
+    expect(deletes()).toHaveLength(4);
+    expect(published()).toEqual([]);
   });
 });
 

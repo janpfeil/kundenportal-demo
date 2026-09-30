@@ -1,7 +1,7 @@
 import { ConditionalCheckFailedException } from "@aws-sdk/client-dynamodb";
 import { GetCommand, PutCommand, QueryCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
 import { Locale } from "@kundenportal/events";
-import { tenantKey, type TenantDataSource } from "@kundenportal/service-kit";
+import { deleteKeys, queryKeys, tenantKey, type TenantDataSource } from "@kundenportal/service-kit";
 import { z } from "zod";
 
 export const Notification = z.object({
@@ -121,6 +121,22 @@ export class Mailbox {
       }),
     );
     return (result.Items ?? []).map((item) => Notification.parse(item));
+  }
+
+  /**
+   * Deletes the mailbox of a removed account: every entry, the language and the identity
+   * link; returns how many entries. Nothing left is no error (redelivered event).
+   */
+  async removeCustomer(tenantId: string, subject: string, customerId: string): Promise<number> {
+    const table = await this.data(tenantId);
+    const pk = tenantKey(tenantId, "CUST", customerId);
+    const notes = await queryKeys(table, pk, "NOTE#");
+    await deleteKeys(table, [
+      ...notes,
+      { PK: pk, SK: "MAILBOX" },
+      { PK: tenantKey(tenantId, "SUBJ", subject), SK: "MAILBOX" },
+    ]);
+    return notes.length;
   }
 
   /** Marks a notification as read; returns `false` if it does not exist for this customer. */

@@ -180,6 +180,18 @@ export class MemoryRepository {
     this.runs.clear();
     return before - this.records.size;
   }
+  clearedSubjects: string[] = [];
+  async clearSubject(t: string, subject: string) {
+    this.clearedSubjects.push(`${t}|${subject}`);
+    const keys = [...this.offers.keys()].filter((k) => k.startsWith(`${t}|${subject}|`));
+    for (const key of keys) this.offers.delete(key);
+    return keys.length + 1;
+  }
+  async clearTimeline() {
+    const count = this.timeline.length;
+    this.timeline = [];
+    return count;
+  }
   async createRun(_t: string, run: MigrationRun) {
     this.runs.set(run.runId, structuredClone(run));
   }

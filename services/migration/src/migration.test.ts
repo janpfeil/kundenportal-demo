@@ -375,15 +375,69 @@ describe("cockpit", () => {
       },
       true,
     );
+    const carla = "sub-carla.schulz@example.net";
+    await s.repository.putOffer("owner", carla, {
+      customerId: customerIdFor("owner", carla),
+      account: telco("T/88-4712"),
+      candidate: { system: "utility", customerNumber: "V-1000124" },
+      displayName: "Bernd Yilmaz",
+      address: "Hauptstraße 5, 04103 Leipzig",
+      matchedOn: ["name"],
+      score: 0.5,
+      status: "offered",
+      offeredAt: "x",
+    });
     const response = await s.api(apiEvent("POST /migration/reset", { claims: owner }));
     expect(response.statusCode).toBe(200);
     expect(JSON.parse(response.body ?? "{}")).toMatchObject({ accountsRemoved: 1 });
-    expect(s.removedAccounts).toEqual(["sub-carla.schulz@example.net"]);
+    expect(s.removedAccounts).toEqual([carla]);
     expect(await s.repository.listRecords("owner")).toEqual([]);
     expect(s.repository.runs.size).toBe(0);
     expect(s.purges()).toBe(1);
+    // Every domain learns which customers to delete; the caller's own account stays.
+    const removed = s.published.filter((p) => p.detailType === "MigratedAccountsRemoved");
+    expect(removed.map((p) => p.detail.payload)).toEqual([
+      {
+        reason: "demo-reset",
+        accounts: [{ subject: carla, customerId: customerIdFor("owner", carla) }],
+      },
+    ]);
+    expect(s.repository.clearedSubjects).toEqual([`owner|${carla}`]);
+    expect(await s.repository.listOffers("owner", carla)).toEqual([]);
+    expect(s.repository.timeline).toEqual([]);
     const denied = await s.api(apiEvent("POST /migration/reset", { claims: { sub: "x" } }));
     expect(denied.statusCode).toBe(403);
+  });
+
+  it("announces many removed accounts in chunks, also those whose user was gone already", async () => {
+    const s = setup();
+    for (let i = 0; i < 150; i++) {
+      await s.repository.putRecord("owner", {
+        account: telco(`T/${i}`),
+        displayName: "x",
+        status: "migrated",
+        subject: `sub-${i}`,
+        ...(i === 0 ? { customerId: "kept-id" } : {}),
+        attempts: 0,
+        updatedAt: "x",
+      });
+    }
+    await s.cockpit.reset(caller, "corr-reset");
+    const chunks = s.published
+      .filter((p) => p.detailType === "MigratedAccountsRemoved")
+      .map((p) => p.detail.payload.accounts as { subject: string; customerId: string }[]);
+    expect(chunks.map((c) => c.length)).toEqual([100, 50]);
+    expect(chunks[0]?.[0]).toEqual({ subject: "sub-0", customerId: "kept-id" });
+    expect(chunks[1]?.[49]).toEqual({
+      subject: "sub-149",
+      customerId: customerIdFor("owner", "sub-149"),
+    });
+  });
+
+  it("publishes nothing when no migrated identity is left", async () => {
+    const s = setup();
+    await s.cockpit.reset(caller);
+    expect(s.types()).not.toContain("MigratedAccountsRemoved");
   });
 
   it("starts a bulk import for a valid system only", async () => {

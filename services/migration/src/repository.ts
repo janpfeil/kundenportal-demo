@@ -1,13 +1,7 @@
 import { ConditionalCheckFailedException } from "@aws-sdk/client-dynamodb";
-import {
-  BatchWriteCommand,
-  GetCommand,
-  PutCommand,
-  QueryCommand,
-  UpdateCommand,
-} from "@aws-sdk/lib-dynamodb";
+import { GetCommand, PutCommand, QueryCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
 import type { BulkMigrationCounts, LegacyAccountRef } from "@kundenportal/events";
-import { tenantKey, type TenantDataSource } from "@kundenportal/service-kit";
+import { deleteKeys, queryKeys, tenantKey, type TenantDataSource } from "@kundenportal/service-kit";
 import {
   LinkOffer,
   MigrationRecord,
@@ -25,6 +19,9 @@ const TIMELINE_DAYS = 7;
  * - `TENANT#<t>#SUBJ#<subject>` / `LINK#<system>#<number>` — link offer for a customer
  * - `TENANT#<t>#TIMELINE` / `EVT#<occurredAt>#<eventId>` — cockpit timeline, expires
  *   after seven days (`ttl`)
+ *
+ * The demo reset also deletes the identity domain's `TENANT#<t>#SUBJ#<subject>` /
+ * `IDENTITY#LEGACY` of the identities it removes (see `clearSubject`).
  *
  * The cockpit reads all records of a tenant with one query (a few dozen items in the
  * demo), so no `GSI1` is needed; a secondary index would take its own share of the 25
@@ -88,26 +85,30 @@ export class MigrationRepository {
 
   /** Deletes all records and runs of a tenant (demo reset); returns how many items. */
   async clearTenant(tenantId: string): Promise<number> {
-    const { db, tableName } = await this.data(tenantId);
+    const table = await this.data(tenantId);
     const pk = this.migration(tenantId);
-    const keys = [
-      ...(await this.queryAll(tenantId, pk, "REC#")),
-      ...(await this.queryAll(tenantId, pk, "RUN#")),
-    ].map((item) => ({ PK: item.PK, SK: item.SK }));
-    for (let i = 0; i < keys.length; i += 25) {
-      let requests = keys.slice(i, i + 25).map((Key) => ({ DeleteRequest: { Key } }));
-      // Provisioned capacity is small; unprocessed deletes are retried with a pause.
-      for (let attempt = 0; requests.length > 0 && attempt < 8; attempt++) {
-        const result = await db.send(
-          new BatchWriteCommand({ RequestItems: { [tableName]: requests } }),
-        );
-        requests = (result.UnprocessedItems?.[tableName] ?? []) as typeof requests;
-        if (requests.length > 0)
-          await new Promise((resolve) => setTimeout(resolve, 200 * 2 ** attempt));
-      }
-      if (requests.length > 0) throw new Error("Demo reset: deletes were throttled; try again");
-    }
+    const keys = [...(await queryKeys(table, pk, "REC#")), ...(await queryKeys(table, pk, "RUN#"))];
+    return deleteKeys(table, keys);
+  }
+
+  /**
+   * Deletes what the migration keeps of a removed identity (demo reset): its link offers
+   * and the identity domain's marker `IDENTITY#LEGACY`. Identity has no worker that could
+   * react to `MigratedAccountsRemoved`; the reset removes its marker the same way it
+   * removes the Cognito user. Returns how many items.
+   */
+  async clearSubject(tenantId: string, subject: string): Promise<number> {
+    const table = await this.data(tenantId);
+    const pk = tenantKey(tenantId, "SUBJ", subject);
+    const keys = [...(await queryKeys(table, pk, "LINK#")), { PK: pk, SK: "IDENTITY#LEGACY" }];
+    await deleteKeys(table, keys);
     return keys.length;
+  }
+
+  /** Deletes the cockpit timeline of a tenant (demo reset; TTL would take up to 7 days). */
+  async clearTimeline(tenantId: string): Promise<number> {
+    const table = await this.data(tenantId);
+    return deleteKeys(table, await queryKeys(table, tenantKey(tenantId, "TIMELINE"), "EVT#"));
   }
 
   async createRun(tenantId: string, run: MigrationRun): Promise<void> {

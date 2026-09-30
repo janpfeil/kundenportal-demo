@@ -5,6 +5,7 @@ import {
   customerIdFor,
   deterministicUuid,
   type LegacyAccountMigratedDetail,
+  type MigratedAccountsRemovedDetail,
   originOf,
 } from "@kundenportal/events";
 import { type Caller, forbidden, log } from "@kundenportal/service-kit";
@@ -137,6 +138,15 @@ export class CustomerService {
     await this.repository.addLegacyData(tenantId, payload.customerId, {
       legacyAccount: `${payload.linked.system}:${payload.linked.customerNumber}`,
     });
+  }
+
+  /** `MigratedAccountsRemoved` (demo reset): deletes profile and identity link of each account. */
+  async onMigratedAccountsRemoved(event: MigratedAccountsRemovedDetail): Promise<void> {
+    const { tenantId, payload } = event;
+    for (const { subject, customerId } of payload.accounts) {
+      await this.repository.remove(tenantId, subject, customerId);
+    }
+    log("info", "Removed customers deleted", { tenantId, count: payload.accounts.length });
   }
 }
 

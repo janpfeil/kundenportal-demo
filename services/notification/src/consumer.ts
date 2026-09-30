@@ -10,6 +10,7 @@ import {
   InstallmentAdjusted,
   type Locale,
   MeterReadingSubmitted,
+  MigratedAccountsRemoved,
   PasswordResetRequired,
 } from "@kundenportal/events";
 import { log } from "@kundenportal/service-kit";
@@ -120,6 +121,24 @@ export function createConsumer(mailbox: Mailbox, ownerHints: OwnerHints) {
     });
   }
 
+  /** `MigratedAccountsRemoved` (demo reset): the removed customers' mailboxes go entirely. */
+  async function accountsRemoved(detail: unknown): Promise<void> {
+    const parsed = MigratedAccountsRemoved.detail.safeParse(detail);
+    if (!parsed.success) {
+      throw new UnprocessableEventError(`Invalid MigratedAccountsRemoved: ${parsed.error.message}`);
+    }
+    const { tenantId, payload } = parsed.data;
+    let notes = 0;
+    for (const { subject, customerId } of payload.accounts) {
+      notes += await mailbox.removeCustomer(tenantId, subject, customerId);
+    }
+    log("info", "Mailboxes of removed customers deleted", {
+      tenantId,
+      customers: payload.accounts.length,
+      notes,
+    });
+  }
+
   async function handle(record: SQSRecord): Promise<void> {
     let body: unknown;
     try {
@@ -132,6 +151,12 @@ export function createConsumer(mailbox: Mailbox, ownerHints: OwnerHints) {
     const { source, "detail-type": detailType, detail } = envelope.data;
     if (source === CustomerRegistered.source && detailType === CustomerRegistered.detailType) {
       return customerRegistered(detail);
+    }
+    if (
+      source === MigratedAccountsRemoved.source &&
+      detailType === MigratedAccountsRemoved.detailType
+    ) {
+      return accountsRemoved(detail);
     }
     const noteRule = NOTE_RULES.find(
       (r) => r.event.source === source && r.event.detailType === detailType,

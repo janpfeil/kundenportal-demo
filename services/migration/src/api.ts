@@ -73,7 +73,8 @@ export function createHandler(bulk: BulkImport, linking: Linking, cockpit: Cockp
       if (!system.success) throw badRequest("system must be utility or telco");
       return json(202, await bulk.start(caller, system.data, event.requestContext.requestId));
     },
-    "POST /migration/reset": async (event) => json(200, await cockpit.reset(owner(event))),
+    "POST /migration/reset": async (event) =>
+      json(200, await cockpit.reset(owner(event), event.requestContext.requestId)),
     "POST /migration/dlq/{recordId}/redrive": async (event) =>
       json(
         202,

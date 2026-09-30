@@ -1,4 +1,8 @@
-import { CustomerRegistered, EventBridgeEnvelope } from "@kundenportal/events";
+import {
+  CustomerRegistered,
+  EventBridgeEnvelope,
+  MigratedAccountsRemoved,
+} from "@kundenportal/events";
 import { log } from "@kundenportal/service-kit";
 import { z } from "zod";
 import type { DocumentService } from "./service.js";
@@ -15,7 +19,7 @@ export class UnprocessableEventError extends Error {
 
 /**
  * Worker of the documents domain, invoked asynchronously by EventBridge: S3 uploads
- * (default bus) and `CustomerRegistered` (own bus). Lambda retries a failed invocation
+ * (default bus), `CustomerRegistered` and `MigratedAccountsRemoved` (own bus). Lambda retries a failed invocation
  * twice and then hands it to the dead-letter queue, so every failure throws.
  */
 export function createWorker(service: DocumentService) {
@@ -37,6 +41,14 @@ export function createWorker(service: DocumentService) {
         const parsed = CustomerRegistered.detail.safeParse(detail);
         if (!parsed.success) throw new UnprocessableEventError("Invalid CustomerRegistered");
         return await service.onCustomerRegistered(parsed.data);
+      }
+      if (
+        source === MigratedAccountsRemoved.source &&
+        detailType === MigratedAccountsRemoved.detailType
+      ) {
+        const parsed = MigratedAccountsRemoved.detail.safeParse(detail);
+        if (!parsed.success) throw new UnprocessableEventError(`Invalid ${detailType}`);
+        return await service.onMigratedAccountsRemoved(parsed.data);
       }
       throw new UnprocessableEventError(`No handler for ${source}/${detailType}`);
     } catch (error) {

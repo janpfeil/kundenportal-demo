@@ -1,11 +1,13 @@
 import { ConditionalCheckFailedException } from "@aws-sdk/client-dynamodb";
 import { EventBridgeClient, PutEventsCommand } from "@aws-sdk/client-eventbridge";
 import {
+  BatchWriteCommand,
   DeleteCommand,
   DynamoDBDocumentClient,
   GetCommand,
   PutCommand,
   QueryCommand,
+  ScanCommand,
 } from "@aws-sdk/lib-dynamodb";
 import { DataVolumeThresholdReached } from "@kundenportal/events";
 import {
@@ -262,6 +264,96 @@ describe("scheduled data volume check across tenants", () => {
     ]);
     expect(sessions).toEqual([ACTIVE]);
     expect(ebMock.commandCalls(PutEventsCommand)).toHaveLength(2);
+  });
+});
+
+describe("MigratedAccountsRemoved", () => {
+  const PASS = "p4k7x2qa";
+  const removed = envelope("kundenportal.migration", "MigratedAccountsRemoved", {
+    ...metadata,
+    tenantId: PASS,
+    payload: {
+      reason: "demo-reset",
+      accounts: [
+        { subject: "sub-1", customerId: "c-1" },
+        { subject: "sub-2", customerId: "c-2" },
+      ],
+    },
+  });
+  const contractPk = (id: string) => `TENANT#${PASS}#CONTRACT#${id}`;
+
+  it("deletes the removed customers' contract data in the tenant's table, the watch list entry in the base table", async () => {
+    const { data } = vendedTenantData({ baseTable: "base-table" });
+    const tenantWorker = createWorker(
+      new ConsumptionService(
+        new ConsumptionRepository(data),
+        new ConsumptionEvents(new EventBridgeClient({}), "bus"),
+      ),
+    );
+    // The scan filters by customer: only c-1's two contracts come back, not c-9's.
+    dbMock
+      .on(ScanCommand)
+      .resolvesOnce({ Items: [{ contractId: electricityId }], LastEvaluatedKey: { PK: "x" } })
+      .resolvesOnce({ Items: [{ contractId: mobileId }] })
+      .resolves({ Items: [] });
+    dbMock
+      .on(QueryCommand, { ExpressionAttributeValues: { ":pk": contractPk(electricityId) } })
+      .resolves({
+        Items: [
+          { PK: contractPk(electricityId), SK: "CONSUMPTION" },
+          { PK: contractPk(electricityId), SK: "READING#2026-04-03#r-0" },
+          { PK: contractPk(electricityId), SK: "READING#2026-09-30#r-1" },
+        ],
+      });
+    dbMock
+      .on(QueryCommand, { ExpressionAttributeValues: { ":pk": contractPk(mobileId) } })
+      .resolves({
+        Items: [
+          { PK: contractPk(mobileId), SK: "CONSUMPTION" },
+          { PK: contractPk(mobileId), SK: "USAGE#2026-09" },
+        ],
+      });
+    dbMock.on(BatchWriteCommand).resolves({});
+
+    await tenantWorker(removed);
+
+    const scan = dbMock.commandCalls(ScanCommand)[0]?.args[0].input;
+    expect(scan?.TableName).toBe(`kp-tenant-${PASS}`);
+    expect(scan?.FilterExpression).toBe(
+      "SK = :sk AND begins_with(PK, :prefix) AND customerId IN (:c0, :c1)",
+    );
+    expect(scan?.ExpressionAttributeValues).toEqual({
+      ":sk": "CONSUMPTION",
+      ":prefix": `TENANT#${PASS}#CONTRACT#`,
+      ":c0": "c-1",
+      ":c1": "c-2",
+    });
+    const batches = dbMock.commandCalls(BatchWriteCommand).map((call) => call.args[0].input);
+    expect(batches.map((b) => Object.keys(b.RequestItems ?? {}))).toEqual([
+      [`kp-tenant-${PASS}`],
+      [`kp-tenant-${PASS}`],
+    ]);
+    // The projection goes last, so a failed attempt finds the contract again.
+    expect(
+      batches[0]?.RequestItems?.[`kp-tenant-${PASS}`]?.map((r) => r.DeleteRequest?.Key?.SK),
+    ).toEqual(["READING#2026-04-03#r-0", "READING#2026-09-30#r-1", "CONSUMPTION"]);
+    expect(dbMock.commandCalls(DeleteCommand).map((call) => call.args[0].input)).toEqual([
+      { TableName: "base-table", Key: { PK: WATCH_PK, SK: contractPk(electricityId) } },
+      { TableName: "base-table", Key: { PK: WATCH_PK, SK: contractPk(mobileId) } },
+      {
+        TableName: `kp-tenant-${PASS}`,
+        Key: { PK: `TENANT#${PASS}#SUBJ#sub-1`, SK: "CONSUMPTION" },
+      },
+      {
+        TableName: `kp-tenant-${PASS}`,
+        Key: { PK: `TENANT#${PASS}#SUBJ#sub-2`, SK: "CONSUMPTION" },
+      },
+    ]);
+
+    // Redelivered: nothing is found any more, only the identity links are deleted again.
+    await tenantWorker(removed);
+    expect(dbMock.commandCalls(BatchWriteCommand)).toHaveLength(2);
+    expect(dbMock.commandCalls(DeleteCommand)).toHaveLength(6);
   });
 });
 

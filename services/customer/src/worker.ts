@@ -1,4 +1,9 @@
-import { AccountsLinked, EventBridgeEnvelope, LegacyAccountMigrated } from "@kundenportal/events";
+import {
+  AccountsLinked,
+  EventBridgeEnvelope,
+  LegacyAccountMigrated,
+  MigratedAccountsRemoved,
+} from "@kundenportal/events";
 import { log } from "@kundenportal/service-kit";
 import type { CustomerService } from "./service.js";
 
@@ -9,7 +14,8 @@ export class UnprocessableEventError extends Error {
 
 /**
  * Worker of the customer domain, invoked asynchronously by EventBridge rules on the own
- * bus: `LegacyAccountMigrated` (create the migrated customer) and `AccountsLinked`.
+ * bus: `LegacyAccountMigrated` (create the migrated customer), `AccountsLinked` and
+ * `MigratedAccountsRemoved` (delete the customers of removed accounts).
  * Like the other workers without a queue: two Lambda retries, then the DLQ; every
  * failure throws, the service is idempotent.
  */
@@ -31,6 +37,14 @@ export function createWorker(service: CustomerService) {
         const parsed = AccountsLinked.detail.safeParse(detail);
         if (!parsed.success) throw new UnprocessableEventError(`Invalid ${detailType}`);
         return await service.onAccountsLinked(parsed.data);
+      }
+      if (
+        source === MigratedAccountsRemoved.source &&
+        detailType === MigratedAccountsRemoved.detailType
+      ) {
+        const parsed = MigratedAccountsRemoved.detail.safeParse(detail);
+        if (!parsed.success) throw new UnprocessableEventError(`Invalid ${detailType}`);
+        return await service.onMigratedAccountsRemoved(parsed.data);
       }
       throw new UnprocessableEventError(`No handler for ${source}/${detailType}`);
     } catch (error) {

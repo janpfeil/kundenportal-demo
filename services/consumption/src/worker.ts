@@ -1,4 +1,9 @@
-import { ContractChanged, CustomerRegistered, EventBridgeEnvelope } from "@kundenportal/events";
+import {
+  ContractChanged,
+  CustomerRegistered,
+  EventBridgeEnvelope,
+  MigratedAccountsRemoved,
+} from "@kundenportal/events";
 import { log } from "@kundenportal/service-kit";
 import { z } from "zod";
 import type { ConsumptionService } from "./service.js";
@@ -44,6 +49,14 @@ export function createWorker(service: ConsumptionService) {
       }
       if (source === ContractChanged.source && detailType === ContractChanged.detailType) {
         return await service.onContractChanged(parse(ContractChanged.detail, detail, detailType));
+      }
+      if (
+        source === MigratedAccountsRemoved.source &&
+        detailType === MigratedAccountsRemoved.detailType
+      ) {
+        return await service.onMigratedAccountsRemoved(
+          parse(MigratedAccountsRemoved.detail, detail, detailType),
+        );
       }
       throw new UnprocessableEventError(`No handler for ${source}/${detailType}`);
     } catch (error) {

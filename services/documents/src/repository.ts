@@ -1,5 +1,5 @@
 import { GetCommand, PutCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
-import { tenantKey, type TenantDataSource } from "@kundenportal/service-kit";
+import { deleteKeys, queryKeys, tenantKey, type TenantDataSource } from "@kundenportal/service-kit";
 import { Document } from "./model.js";
 
 const PAGE_SIZE = 50;
@@ -66,6 +66,29 @@ export class DocumentRepository {
       }),
     );
     return result.Item ? Document.parse(result.Item) : undefined;
+  }
+
+  /** Ids of all documents of a customer, across pages (removed account). */
+  async documentIds(tenantId: string, customerId: string): Promise<string[]> {
+    const keys = await queryKeys(
+      await this.data(tenantId),
+      tenantKey(tenantId, "CUST", customerId),
+      "DOC#",
+    );
+    return keys.map((key) => key.SK.slice("DOC#".length));
+  }
+
+  /** Deletes these documents' items and the identity link; nothing left is no error. */
+  async removeCustomer(
+    tenantId: string,
+    subject: string,
+    customerId: string,
+    documentIds: readonly string[],
+  ): Promise<void> {
+    await deleteKeys(await this.data(tenantId), [
+      ...documentIds.map((id) => documentKey(tenantId, customerId, id)),
+      { PK: tenantKey(tenantId, "SUBJ", subject), SK: "DOCUMENTS" },
+    ]);
   }
 
   async save(tenantId: string, customerId: string, document: Document): Promise<void> {

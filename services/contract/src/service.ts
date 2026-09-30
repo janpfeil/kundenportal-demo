@@ -6,6 +6,7 @@ import {
   type LegacyAccountMigratedDetail,
   type LegacyContract,
   type MeterReadingSubmittedDetail,
+  type MigratedAccountsRemovedDetail,
 } from "@kundenportal/events";
 import { type Caller, HttpError, log, notFound } from "@kundenportal/service-kit";
 import {
@@ -170,6 +171,24 @@ export class ContractService {
   /** `AccountsLinked`: the linked account's contracts move to the confirming customer. */
   async onAccountsLinked(event: AccountsLinkedDetail): Promise<void> {
     await this.takeOver(event, event.payload.customerId, event.payload.contracts);
+  }
+
+  /**
+   * `MigratedAccountsRemoved` (demo reset): deletes the contracts of each removed
+   * customer and the identity link. No `ContractChanged` follows: every domain reacts to
+   * the removal itself.
+   */
+  async onMigratedAccountsRemoved(event: MigratedAccountsRemovedDetail): Promise<void> {
+    const { tenantId, payload } = event;
+    let contracts = 0;
+    for (const { subject, customerId } of payload.accounts) {
+      contracts += await this.repository.removeCustomer(tenantId, subject, customerId);
+    }
+    log("info", "Contracts of removed customers deleted", {
+      tenantId,
+      customers: payload.accounts.length,
+      contracts,
+    });
   }
 
   private async takeOver(

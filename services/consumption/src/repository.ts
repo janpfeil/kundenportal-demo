@@ -1,6 +1,19 @@
 import { ConditionalCheckFailedException } from "@aws-sdk/client-dynamodb";
-import { DeleteCommand, GetCommand, PutCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
-import { OWNER_TENANT, tenantKey, type TenantDataSource } from "@kundenportal/service-kit";
+import {
+  DeleteCommand,
+  GetCommand,
+  PutCommand,
+  QueryCommand,
+  ScanCommand,
+} from "@aws-sdk/lib-dynamodb";
+import {
+  deleteKeys,
+  type ItemKey,
+  OWNER_TENANT,
+  queryKeys,
+  tenantKey,
+  type TenantDataSource,
+} from "@kundenportal/service-kit";
 import { ContractProjection, MeterReading } from "./model.js";
 
 const PAGE_SIZE = 50;
@@ -106,6 +119,64 @@ export class ConsumptionRepository {
       new DeleteCommand({
         TableName: tableName,
         Key: { PK: WATCH_PK, SK: contractPk(tenantId, contractId) },
+      }),
+    );
+  }
+
+  /**
+   * Ids of the contracts whose projection belongs to one of these customers (at most 100,
+   * the limit of `IN`). There is no index by customer, so this scans the tenant's table —
+   * acceptable for the rare demo reset and the demo's few hundred items; a regular use
+   * case would need a `CUST#…` item per contract instead.
+   */
+  async contractsOf(tenantId: string, customerIds: readonly string[]): Promise<string[]> {
+    if (customerIds.length === 0) return [];
+    const { db, tableName } = await this.data(tenantId);
+    const values = Object.fromEntries(customerIds.map((id, i) => [`:c${i}`, id]));
+    const ids: string[] = [];
+    let startKey: Record<string, unknown> | undefined;
+    do {
+      const result = await db.send(
+        new ScanCommand({
+          TableName: tableName,
+          FilterExpression: `SK = :sk AND begins_with(PK, :prefix) AND customerId IN (${Object.keys(values).join(", ")})`,
+          ExpressionAttributeValues: {
+            ":sk": "CONSUMPTION",
+            ":prefix": `${tenantKey(tenantId, "CONTRACT")}#`,
+            ...values,
+          },
+          ProjectionExpression: "contractId",
+          ExclusiveStartKey: startKey,
+        }),
+      );
+      for (const item of result.Items ?? []) ids.push(item.contractId as string);
+      startKey = result.LastEvaluatedKey;
+    } while (startKey);
+    return ids;
+  }
+
+  /**
+   * Deletes everything the domain keeps of a contract: watch list entry, readings, usage
+   * and — last, so a failed attempt can find the contract again — the projection.
+   */
+  async removeContract(tenantId: string, contractId: string): Promise<void> {
+    await this.unwatch(tenantId, contractId);
+    const table = await this.data(tenantId);
+    const keys = await queryKeys(table, contractPk(tenantId, contractId));
+    const last = (key: ItemKey) => (key.SK === "CONSUMPTION" ? 1 : 0);
+    await deleteKeys(
+      table,
+      [...keys].sort((a, b) => last(a) - last(b)),
+    );
+  }
+
+  /** Deletes the identity link (removed account); nothing left is no error. */
+  async unlinkSubject(tenantId: string, subject: string): Promise<void> {
+    const { db, tableName } = await this.data(tenantId);
+    await db.send(
+      new DeleteCommand({
+        TableName: tableName,
+        Key: { PK: tenantKey(tenantId, "SUBJ", subject), SK: "CONSUMPTION" },
       }),
     );
   }
