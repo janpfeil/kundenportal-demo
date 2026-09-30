@@ -4,6 +4,9 @@ import { z } from "zod";
 export const EventSource = {
   customer: "kundenportal.customer",
   notification: "kundenportal.notification",
+  contract: "kundenportal.contract",
+  consumption: "kundenportal.consumption",
+  documents: "kundenportal.documents",
 } as const;
 export type EventSource = (typeof EventSource)[keyof typeof EventSource];
 
