@@ -159,6 +159,10 @@ describe("cognito accounts", () => {
       cognitoMock.commandCalls(AdminDeleteUserCommand).map((c) => c.args[0].input.Username),
     ).toEqual(["a", "b"]);
     expect(cognitoMock.commandCalls(ListUsersCommand)[1]?.args[0].input.PaginationToken).toBe("t");
+    // Cognito refuses custom attributes in AttributesToGet, so the call must not name any.
+    expect(cognitoMock.commandCalls(ListUsersCommand)[0]?.args[0].input.AttributesToGet).toBe(
+      undefined,
+    );
   });
 
   it("finds existing accounts by address", async () => {

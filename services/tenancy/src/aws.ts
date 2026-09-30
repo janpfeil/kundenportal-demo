@@ -179,7 +179,8 @@ export class CognitoTenantAccounts implements TenantAccounts {
           UserPoolId: this.userPoolId,
           PaginationToken: token,
           Limit: 60,
-          AttributesToGet: [TENANT_ATTRIBUTE],
+          // Cognito rejects custom attributes in AttributesToGet ("Input fails to satisfy
+          // the constraints"); without it every attribute comes back.
         }),
       );
       for (const user of page.Users ?? []) {
