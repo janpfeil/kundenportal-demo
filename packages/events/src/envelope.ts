@@ -7,6 +7,8 @@ export const EventSource = {
   contract: "kundenportal.contract",
   consumption: "kundenportal.consumption",
   documents: "kundenportal.documents",
+  identity: "kundenportal.identity",
+  migration: "kundenportal.migration",
 } as const;
 export type EventSource = (typeof EventSource)[keyof typeof EventSource];
 
