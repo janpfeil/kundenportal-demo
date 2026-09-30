@@ -1,0 +1,42 @@
+/* Zone-specific styles; tokens, base styles and components come from @kundenportal/ui/styles.css. */
+
+.zone-section {
+  margin-top: 24px;
+}
+
+.zone-form {
+  display: grid;
+  gap: 16px;
+  max-width: 32rem;
+  margin-top: 16px;
+}
+
+.zone-file {
+  max-width: 100%;
+}
+
+.zone-subheading {
+  font-size: 1.05rem;
+  margin: 24px 0 0;
+}
+
+.zone-usage {
+  display: grid;
+  gap: 8px;
+}
+
+.zone-usage-title {
+  font-weight: 600;
+  margin: 0;
+}
+
+.zone-progress {
+  width: 100%;
+  height: 1.25rem;
+  accent-color: var(--kp-accent);
+}
+
+/* Long file names and ids must wrap on 360 px wide screens. */
+.zone-break {
+  overflow-wrap: anywhere;
+}
