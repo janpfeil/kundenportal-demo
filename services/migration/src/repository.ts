@@ -163,18 +163,21 @@ export class MigrationRepository {
       values[`:${name}`] = value;
       parts.push(`#counts.#${name} :${name}`);
     }
+    // "processed" is a reserved word in DynamoDB expressions, so every name gets an alias.
     if (options.processed) {
+      names["#processed"] = "processed";
       values[":processed"] = options.processed;
-      parts.push("processed :processed");
+      parts.push("#processed :processed");
     }
-    const set = options.dispatched === undefined ? "" : "SET dispatched = :dispatched ";
+    if (options.dispatched !== undefined) names["#dispatched"] = "dispatched";
+    const set = options.dispatched === undefined ? "" : "SET #dispatched = :dispatched ";
     if (options.dispatched !== undefined) values[":dispatched"] = options.dispatched;
     const result = await this.db.send(
       new UpdateCommand({
         TableName: this.table,
         Key: { PK: this.migration(tenantId), SK: `RUN#${runId}` },
         UpdateExpression: `${set}${parts.length ? `ADD ${parts.join(", ")}` : ""}`.trim(),
-        ExpressionAttributeNames: adds.length ? names : undefined,
+        ExpressionAttributeNames: names,
         ExpressionAttributeValues: values,
         ConditionExpression: "attribute_exists(PK)",
         ReturnValues: "ALL_NEW",
@@ -190,7 +193,7 @@ export class MigrationRepository {
         new UpdateCommand({
           TableName: this.table,
           Key: { PK: this.migration(tenantId), SK: `RUN#${runId}` },
-          UpdateExpression: "SET #status = :completed, completedAt = :at",
+          UpdateExpression: "SET #status = :completed, #completedAt = :at",
           ConditionExpression: "#status = :running",
           ExpressionAttributeNames: { "#status": "status" },
           ExpressionAttributeValues: {

@@ -66,12 +66,17 @@ describe("migration repository", () => {
     await repository.countRun("owner", "r1", { read: 4, skippedActive: 1 }, { dispatched: 3 });
     const input = dbMock.commandCalls(UpdateCommand)[0]?.args[0].input;
     expect(input?.UpdateExpression).toBe(
-      "SET dispatched = :dispatched ADD #counts.#read :read, #counts.#skippedActive :skippedActive",
+      "SET #dispatched = :dispatched ADD #counts.#read :read, #counts.#skippedActive :skippedActive",
     );
     await repository.countRun("owner", "r1", { failed: 1 }, { processed: 1 });
     expect(dbMock.commandCalls(UpdateCommand)[1]?.args[0].input.UpdateExpression).toBe(
-      "ADD #counts.#failed :failed, processed :processed",
+      "ADD #counts.#failed :failed, #processed :processed",
     );
+    // DynamoDB rejects reserved words such as "processed" unless they are aliased.
+    for (const call of dbMock.commandCalls(UpdateCommand)) {
+      const expression = call.args[0].input.UpdateExpression ?? "";
+      expect(expression).not.toMatch(/(^|[\s,])(processed|dispatched)\b/);
+    }
   });
 
   it("writes timeline entries that expire after seven days and reads them newest first", async () => {
