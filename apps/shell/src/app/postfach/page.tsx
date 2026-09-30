@@ -1,5 +1,6 @@
 import { Badge, ButtonLink, EmptyState, Notice, Page } from "@kundenportal/ui";
 import { dictionary } from "@/i18n";
+import { MarkReadButton } from "@/components/mark-read-button";
 import { api } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
@@ -31,6 +32,9 @@ export default async function MailboxPage() {
               </div>
               <h2>{note.title}</h2>
               <p>{note.body}</p>
+              {!note.read && (
+                <MarkReadButton notificationId={note.notificationId} label={t.mailbox.markRead} />
+              )}
             </li>
           ))}
         </ul>

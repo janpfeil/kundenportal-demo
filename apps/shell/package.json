@@ -17,6 +17,7 @@
     "@aws-sdk/client-cognito-identity-provider": "^3.1142.0",
     "@kundenportal/api-contract": "workspace:*",
     "@kundenportal/ui": "workspace:*",
+    "@kundenportal/web-auth": "workspace:*",
     "jose": "^6.2.12",
     "next": "^16.3.7",
     "openid-client": "^6.8.8",

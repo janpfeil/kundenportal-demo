@@ -11,6 +11,14 @@ export const en: Dictionary = {
       "Built with Next.js in AWS Lambda, sign-in via OpenID Connect (Amazon Cognito), a REST API and an event flow through EventBridge.",
   },
   account: {
+    edit: {
+      heading: "Edit profile",
+      name: "Display name",
+      locale: "Language",
+      save: "Save",
+      saved: "Saved.",
+      failed: "Saving failed. Please try again.",
+    },
     title: "My account",
     customerId: "Customer number",
     name: "Name",
@@ -26,6 +34,7 @@ export const en: Dictionary = {
     error: "Your account could not be loaded right now. Please try again in a moment.",
   },
   mailbox: {
+    markRead: "Mark as read",
     title: "Demo mailbox",
     empty: "No messages yet. The welcome message appears a few seconds after your first sign-in.",
     unread: "new",

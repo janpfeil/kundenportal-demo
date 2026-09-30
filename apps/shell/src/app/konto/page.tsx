@@ -1,5 +1,6 @@
 import { Facts, Notice, Page } from "@kundenportal/ui";
 import { dictionary } from "@/i18n";
+import { ProfileForm } from "@/components/profile-form";
 import { api } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
@@ -29,6 +30,11 @@ export default async function AccountPage() {
           { term: t.account.origin, description: t.account.origins[customer.origin] },
           { term: t.account.since, description: since },
         ]}
+      />
+      <ProfileForm
+        displayName={customer.displayName}
+        locale={customer.locale}
+        texts={t.account.edit}
       />
     </Page>
   );

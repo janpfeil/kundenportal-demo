@@ -9,6 +9,14 @@ export const de = {
       "Technik: Next.js in AWS Lambda, Anmeldung per OpenID Connect (Amazon Cognito), REST-API mit Ereignisfluss über EventBridge.",
   },
   account: {
+    edit: {
+      heading: "Profil ändern",
+      name: "Anzeigename",
+      locale: "Sprache",
+      save: "Speichern",
+      saved: "Gespeichert.",
+      failed: "Speichern fehlgeschlagen. Bitte erneut versuchen.",
+    },
     title: "Mein Konto",
     customerId: "Kundennummer",
     name: "Name",
@@ -25,6 +33,7 @@ export const de = {
       "Ihr Konto konnte gerade nicht geladen werden. Bitte versuchen Sie es gleich noch einmal.",
   },
   mailbox: {
+    markRead: "Als gelesen markieren",
     title: "Demo-Postfach",
     empty:
       "Noch keine Nachrichten. Die Willkommensnachricht erscheint wenige Sekunden nach der ersten Anmeldung.",

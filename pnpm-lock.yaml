@@ -255,6 +255,9 @@ importers:
       '@kundenportal/ui':
         specifier: workspace:*
         version: link:../../packages/ui
+      '@kundenportal/web-auth':
+        specifier: workspace:*
+        version: link:../../packages/web-auth
       jose:
         specifier: ^6.2.12
         version: 6.2.12
