@@ -75,20 +75,22 @@ describe("stack split", () => {
 
 describe("guard rails", () => {
   it("runs every own function on Node.js 24, arm64, with reserved concurrency and 3-day logs", () => {
-    const own = (template: Template) =>
+    const own = (template: Template, reserved: number) =>
       Object.keys(
         template.findResources("AWS::Lambda::Function", {
           Properties: {
             Runtime: "nodejs24.x",
             Architectures: ["arm64"],
-            ReservedConcurrentExecutions: 2,
+            ReservedConcurrentExecutions: reserved,
           },
         }),
       ).length;
-    expect(own(base)).toBe(1);
-    // customer, notification API + consumer, shell, the zones, and API + worker for
-    // contract, consumption and documents
-    expect(own(application)).toBe(10 + ZONES.length);
+    expect(own(base, 2)).toBe(1);
+    // Services: customer, notification API + consumer, API + worker for contract,
+    // consumption and documents.
+    expect(own(application, 2)).toBe(9);
+    // Next.js functions (shell and zones) get more headroom for bursty page loads.
+    expect(own(application, 5)).toBe(1 + ZONES.length);
     for (const template of all())
       template.allResourcesProperties("AWS::Logs::LogGroup", { RetentionInDays: 3 });
   });
@@ -428,6 +430,12 @@ describe("zones", () => {
         (b: { PathPattern: string }) => b.PathPattern === `${zone.basePath}/*`,
       );
       expect(dynamic.AllowedMethods).toContain("POST");
+      // Static files come from the S3 origin, not from the zone's function.
+      const staticFiles = behaviours.find(
+        (b: { PathPattern: string }) => b.PathPattern === `${zone.basePath}/_next/static/*`,
+      );
+      const s3Origin = config.Origins.find((o: { S3OriginConfig?: unknown }) => o.S3OriginConfig);
+      expect(staticFiles.TargetOriginId).toBe(s3Origin.Id);
     }
     expect(config.DefaultCacheBehavior.AllowedMethods).toContain("PATCH");
     // Shell and zone origins are signed with origin access control (plus the S3 origin).

@@ -109,7 +109,7 @@ export class EdgeStack extends Stack {
       },
     });
 
-    // Zones: page and API routes from the zone's function, its hashed static files cached.
+    // Zones: pages and route handlers from the zone's function, static files from S3.
     for (const zone of ZONES) {
       const origin = lambdaOrigin(param(zoneParams(zone).originDomain));
       const dynamic = {
@@ -120,7 +120,9 @@ export class EdgeStack extends Stack {
         originRequestPolicy: OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
         responseHeadersPolicy: ResponseHeadersPolicy.SECURITY_HEADERS,
       };
-      distribution.addBehavior(`${zone.basePath}/_next/static/*`, origin, {
+      // Hashed static files of the zone come from S3 like the shell's, not from its function:
+      // a first page load requests many chunks at once, which would exhaust its concurrency.
+      distribution.addBehavior(`${zone.basePath}/_next/static/*`, assetsOrigin, {
         viewerProtocolPolicy: ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
         cachePolicy: CachePolicy.CACHING_OPTIMIZED,
         responseHeadersPolicy: ResponseHeadersPolicy.SECURITY_HEADERS,
@@ -170,6 +172,20 @@ export class EdgeStack extends Stack {
         removalPolicy: RemovalPolicy.DESTROY,
       }),
     });
+
+    for (const zone of ZONES) {
+      new BucketDeployment(this, `DeployStatic-${zone.id}`, {
+        sources: [Source.asset(path.join(REPO_ROOT, zone.app, ".next", "static"))],
+        destinationBucket: assets,
+        destinationKeyPrefix: `${zone.basePath.slice(1)}/_next/static`,
+        prune: false,
+        memoryLimit: 256,
+        logGroup: new LogGroup(this, `DeployStaticLogs-${zone.id}`, {
+          retention: RetentionDays.THREE_DAYS,
+          removalPolicy: RemovalPolicy.DESTROY,
+        }),
+      });
+    }
 
     new BucketDeployment(this, "DeployWidgets", {
       sources: [Source.asset(path.join(REPO_ROOT, "packages", "widget-notifications", "dist"))],

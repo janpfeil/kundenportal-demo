@@ -105,7 +105,7 @@ export class AppStack extends Stack {
     });
     const shell = new Shell(this, "Shell", {
       domainName: config.domainName,
-      reservedConcurrency,
+      reservedConcurrency: config.webReservedConcurrency,
       userPoolArn,
       environment: {
         API_URL: api.url,
@@ -133,7 +133,7 @@ export class AppStack extends Stack {
         app: zone.app,
         description: `Zone ${zone.basePath} (Next.js standalone server)`,
         domainName: config.domainName,
-        reservedConcurrency,
+        reservedConcurrency: config.webReservedConcurrency,
         userPoolArn,
         readinessPath: `${zone.basePath}/healthz`,
         environment: {
