@@ -22,7 +22,7 @@ minimumReleaseAgeExclude:
   - "@aws-sdk/client-eventbridge@3.1142.0"
   - "@aws-sdk/lib-dynamodb@3.1142.0"
   - "@aws-sdk/client-sns@3.1142.0"
-  - "@aws-sdk/client-cognito-identity-provider@3.1142.0"
+  - "@aws-sdk/client-cognito-identity-provider@3.1142.0 || 3.1143.0"
   - "@next/env@16.3.7"
   - "@next/swc-darwin-arm64@16.3.7"
   - "@next/swc-darwin-x64@16.3.7"

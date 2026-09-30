@@ -1,0 +1,26 @@
+{
+  "name": "@kundenportal/zone-contracts",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Zone /vertraege of the customer portal (Next.js multi-zone)",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "dev": "next dev -p 3001",
+    "build": "next build && node ../../scripts/package-next-lambda.mjs . --serve-static",
+    "typecheck": "next typegen && tsc --noEmit",
+    "lint": "eslint src",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@kundenportal/api-contract": "workspace:*",
+    "@kundenportal/web-auth": "workspace:*",
+    "next": "^16.3.7",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0"
+  }
+}

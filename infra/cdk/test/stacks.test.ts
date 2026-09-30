@@ -7,6 +7,7 @@ import { BaseStack } from "../lib/base-stack.js";
 import { loadConfig } from "../lib/config.js";
 import { EdgeStack } from "../lib/edge-stack.js";
 import { PARAM } from "../lib/parameters.js";
+import { ZONES, zoneParams } from "../lib/zones.js";
 
 let base: Template;
 let application: Template;
@@ -84,7 +85,7 @@ describe("guard rails", () => {
         }),
       ).length;
     expect(own(base)).toBe(1);
-    expect(own(application)).toBe(4);
+    expect(own(application)).toBe(6);
     for (const template of all())
       template.allResourcesProperties("AWS::Logs::LogGroup", { RetentionInDays: 3 });
   });
@@ -209,5 +210,51 @@ describe("edge", () => {
       Action: "lambda:InvokeFunction",
       InvokedViaFunctionUrl: true,
     });
+  });
+});
+
+describe("zones", () => {
+  it("gives every zone its own function and publishes its origin for the edge", () => {
+    const names = Object.values(application.findResources("AWS::SSM::Parameter")).map(
+      (r) => r.Properties.Name,
+    );
+    for (const zone of ZONES) {
+      expect(names).toEqual(expect.arrayContaining(Object.values(zoneParams(zone))));
+    }
+    application.hasResourceProperties("AWS::Lambda::Function", {
+      Environment: {
+        Variables: Match.objectLike({ AWS_LWA_READINESS_CHECK_PATH: "/vertraege/healthz" }),
+      },
+    });
+  });
+
+  it("routes each zone path to its own origin, caches its static files and allows writes", () => {
+    const config = Object.values(edge.findResources("AWS::CloudFront::Distribution"))[0]?.Properties
+      .DistributionConfig;
+    for (const zone of ZONES) {
+      const behaviours = config.CacheBehaviors.filter((b: { PathPattern: string }) =>
+        [zone.basePath, `${zone.basePath}/*`, `${zone.basePath}/_next/static/*`].includes(
+          b.PathPattern,
+        ),
+      );
+      expect(behaviours).toHaveLength(3);
+      const dynamic = behaviours.find(
+        (b: { PathPattern: string }) => b.PathPattern === `${zone.basePath}/*`,
+      );
+      expect(dynamic.AllowedMethods).toContain("POST");
+    }
+    expect(config.DefaultCacheBehavior.AllowedMethods).toContain("PATCH");
+    // Shell and zone origins are signed with origin access control (plus the S3 origin).
+    const lambdaOrigins = config.Origins.filter(
+      (o: { OriginAccessControlId?: unknown }) => o.OriginAccessControlId,
+    );
+    expect(lambdaOrigins.length).toBeGreaterThanOrEqual(1 + ZONES.length + 1);
+  });
+
+  it("lets CloudFront invoke every zone function only through its URL", () => {
+    const permissions = Object.values(edge.findResources("AWS::Lambda::Permission"));
+    expect(permissions.filter((p) => p.Properties.InvokedViaFunctionUrl === true)).toHaveLength(
+      1 + ZONES.length,
+    );
   });
 });

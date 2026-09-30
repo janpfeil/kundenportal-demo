@@ -194,6 +194,56 @@ importers:
         specifier: ^5.0.2
         version: 5.0.2(@types/node@26.6.3)(vite@8.3.1(@types/node@26.6.3)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
 
+  apps/consumption:
+    dependencies:
+      '@kundenportal/api-contract':
+        specifier: workspace:*
+        version: link:../../packages/api-contract
+      '@kundenportal/web-auth':
+        specifier: workspace:*
+        version: link:../../packages/web-auth
+      next:
+        specifier: ^16.3.7
+        version: 16.3.7(@playwright/test@1.63.0)(@types/node@26.6.3)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      react:
+        specifier: ^19.3.0
+        version: 19.3.0
+      react-dom:
+        specifier: ^19.3.0
+        version: 19.3.0(react@19.3.0)
+    devDependencies:
+      '@types/react':
+        specifier: ^19.3.0
+        version: 19.3.0
+      '@types/react-dom':
+        specifier: ^19.3.0
+        version: 19.3.0(@types/react@19.3.0)
+
+  apps/contracts:
+    dependencies:
+      '@kundenportal/api-contract':
+        specifier: workspace:*
+        version: link:../../packages/api-contract
+      '@kundenportal/web-auth':
+        specifier: workspace:*
+        version: link:../../packages/web-auth
+      next:
+        specifier: ^16.3.7
+        version: 16.3.7(@playwright/test@1.63.0)(@types/node@26.6.3)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      react:
+        specifier: ^19.3.0
+        version: 19.3.0
+      react-dom:
+        specifier: ^19.3.0
+        version: 19.3.0(react@19.3.0)
+    devDependencies:
+      '@types/react':
+        specifier: ^19.3.0
+        version: 19.3.0
+      '@types/react-dom':
+        specifier: ^19.3.0
+        version: 19.3.0(@types/react@19.3.0)
+
   apps/shell:
     dependencies:
       '@aws-sdk/client-cognito-identity-provider':
@@ -249,6 +299,12 @@ importers:
       '@kundenportal/shell':
         specifier: workspace:*
         version: link:../../apps/shell
+      '@kundenportal/zone-consumption':
+        specifier: workspace:*
+        version: link:../../apps/consumption
+      '@kundenportal/zone-contracts':
+        specifier: workspace:*
+        version: link:../../apps/contracts
       aws-cdk:
         specifier: ^2.1143.0
         version: 2.1143.0
@@ -287,6 +343,22 @@ importers:
       '@types/aws-lambda':
         specifier: ^8.10.164
         version: 8.10.164
+
+  packages/web-auth:
+    dependencies:
+      '@aws-sdk/client-cognito-identity-provider':
+        specifier: ^3.1143.0
+        version: 3.1143.0
+      '@kundenportal/api-contract':
+        specifier: workspace:*
+        version: link:../api-contract
+      jose:
+        specifier: ^6.2.12
+        version: 6.2.12
+    devDependencies:
+      next:
+        specifier: ^16.3.7
+        version: 16.3.7(@playwright/test@1.63.0)(@types/node@26.6.3)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
 
   services/customer:
     dependencies:
@@ -383,6 +455,10 @@ packages:
 
   '@aws-sdk/client-cognito-identity-provider@3.1142.0':
     resolution: {integrity: sha512-dyn+mkDjNTFrUV79p2XHcFQGUz2dBX86ilVbrWYGkUGg2WPP4qEdCwbV7VS7laKXiFEj5h5Yz98O+98NoLCDCA==}
+    engines: {node: '>=20.0.0'}
+
+  '@aws-sdk/client-cognito-identity-provider@3.1143.0':
+    resolution: {integrity: sha512-L41OkTgbMRkGKXASK9YelQuY7ckYa091ASq/lvKa8G3I2byGk7KlaYI5POiKtiyglgye0eFg3cM2TY947aKNKQ==}
     engines: {node: '>=20.0.0'}
 
   '@aws-sdk/client-dynamodb@3.1142.0':
@@ -2051,6 +2127,17 @@ snapshots:
       tslib: 2.8.1
 
   '@aws-sdk/client-cognito-identity-provider@3.1142.0':
+    dependencies:
+      '@aws-sdk/core': 3.978.1
+      '@aws-sdk/credential-provider-node': 3.972.84
+      '@aws-sdk/types': 3.974.6
+      '@smithy/core': 3.35.0
+      '@smithy/fetch-http-handler': 5.8.0
+      '@smithy/node-http-handler': 4.12.1
+      '@smithy/types': 4.19.0
+      tslib: 2.8.1
+
+  '@aws-sdk/client-cognito-identity-provider@3.1143.0':
     dependencies:
       '@aws-sdk/core': 3.978.1
       '@aws-sdk/credential-provider-node': 3.972.84

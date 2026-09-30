@@ -4,7 +4,6 @@ import type { ICertificate } from "aws-cdk-lib/aws-certificatemanager";
 import {
   AllowedMethods,
   CachePolicy,
-  type CfnDistribution,
   CfnOriginAccessControl,
   Distribution,
   HttpVersion,
@@ -23,6 +22,7 @@ import { StringParameter } from "aws-cdk-lib/aws-ssm";
 import type { Construct } from "constructs";
 import { REPO_ROOT } from "./functions.js";
 import { PARAM } from "./parameters.js";
+import { ZONES, zoneParams } from "./zones.js";
 
 export interface EdgeStackProps extends StackProps {
   domainName: string;
@@ -50,15 +50,22 @@ export class EdgeStack extends Stack {
       autoDeleteObjects: true,
     });
 
-    const shellOac = new CfnOriginAccessControl(this, "ShellOac", {
+    // One origin access control signs requests to all Next.js function URLs (shell, zones).
+    const lambdaOac = new CfnOriginAccessControl(this, "ShellOac", {
       originAccessControlConfig: {
         name: `${id}-shell`,
-        description: "Signs requests to the shell's Lambda function URL",
+        description: "Signs requests to the Lambda function URLs of shell and zones",
         originAccessControlOriginType: "lambda",
         signingBehavior: "always",
         signingProtocol: "sigv4",
       },
     });
+
+    const lambdaOrigin = (domain: string) =>
+      new HttpOrigin(domain, {
+        protocolPolicy: OriginProtocolPolicy.HTTPS_ONLY,
+        originAccessControlId: lambdaOac.attrId,
+      });
 
     const distribution = new Distribution(this, "Distribution", {
       comment: "Kundenportal demo",
@@ -67,12 +74,10 @@ export class EdgeStack extends Stack {
       domainNames: [props.domainName],
       certificate: props.certificate,
       defaultBehavior: {
-        origin: new HttpOrigin(param(PARAM.app.shellOriginDomain), {
-          protocolPolicy: OriginProtocolPolicy.HTTPS_ONLY,
-        }),
+        origin: lambdaOrigin(param(PARAM.app.shellOriginDomain)),
         viewerProtocolPolicy: ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-        // GET only: origin access control cannot sign request bodies for Lambda URLs.
-        allowedMethods: AllowedMethods.ALLOW_GET_HEAD_OPTIONS,
+        // Writes need the x-amz-content-sha256 header from the browser (see @kundenportal/web-auth).
+        allowedMethods: AllowedMethods.ALLOW_ALL,
         cachePolicy: CachePolicy.CACHING_DISABLED,
         originRequestPolicy: OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
         responseHeadersPolicy: ResponseHeadersPolicy.SECURITY_HEADERS,
@@ -95,36 +100,55 @@ export class EdgeStack extends Stack {
         },
       },
     });
-    // The shell origin is the default behaviour's origin, which CDK renders first.
-    (distribution.node.defaultChild as CfnDistribution).addPropertyOverride(
-      "DistributionConfig.Origins.0.OriginAccessControlId",
-      shellOac.attrId,
-    );
 
-    // CloudFront may invoke the current shell function through its URL, and only that way.
-    // Function URLs need both permissions since October 2025
+    // Zones: page and API routes from the zone's function, its hashed static files cached.
+    for (const zone of ZONES) {
+      const origin = lambdaOrigin(param(zoneParams(zone).originDomain));
+      const dynamic = {
+        origin,
+        viewerProtocolPolicy: ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+        allowedMethods: AllowedMethods.ALLOW_ALL,
+        cachePolicy: CachePolicy.CACHING_DISABLED,
+        originRequestPolicy: OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
+        responseHeadersPolicy: ResponseHeadersPolicy.SECURITY_HEADERS,
+      };
+      distribution.addBehavior(`${zone.basePath}/_next/static/*`, origin, {
+        viewerProtocolPolicy: ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+        cachePolicy: CachePolicy.CACHING_OPTIMIZED,
+        responseHeadersPolicy: ResponseHeadersPolicy.SECURITY_HEADERS,
+      });
+      distribution.addBehavior(zone.basePath, origin, dynamic);
+      distribution.addBehavior(`${zone.basePath}/*`, origin, dynamic);
+    }
+
+    // CloudFront may invoke the current shell and zone functions through their URLs, and
+    // only that way. Function URLs need both permissions since October 2025
     // (https://docs.aws.amazon.com/lambda/latest/dg/urls-auth.html).
-    const shellFunction = param(PARAM.app.shellFunctionArn);
     const sourceArn = this.formatArn({
       service: "cloudfront",
       region: "",
       resource: "distribution",
       resourceName: distribution.distributionId,
     });
-    new CfnPermission(this, "ShellInvokeUrlFromCloudFront", {
-      action: "lambda:InvokeFunctionUrl",
-      functionName: shellFunction,
-      principal: "cloudfront.amazonaws.com",
-      sourceArn,
-      functionUrlAuthType: "AWS_IAM",
-    });
-    new CfnPermission(this, "ShellInvokeFromCloudFront", {
-      action: "lambda:InvokeFunction",
-      functionName: shellFunction,
-      principal: "cloudfront.amazonaws.com",
-      sourceArn,
-      invokedViaFunctionUrl: true,
-    });
+    const allowCloudFront = (id: string, functionArn: string) => {
+      new CfnPermission(this, `${id}InvokeUrlFromCloudFront`, {
+        action: "lambda:InvokeFunctionUrl",
+        functionName: functionArn,
+        principal: "cloudfront.amazonaws.com",
+        sourceArn,
+        functionUrlAuthType: "AWS_IAM",
+      });
+      new CfnPermission(this, `${id}InvokeFromCloudFront`, {
+        action: "lambda:InvokeFunction",
+        functionName: functionArn,
+        principal: "cloudfront.amazonaws.com",
+        sourceArn,
+        invokedViaFunctionUrl: true,
+      });
+    };
+    allowCloudFront("Shell", param(PARAM.app.shellFunctionArn));
+    for (const zone of ZONES)
+      allowCloudFront(`Zone${zone.id}`, param(zoneParams(zone).functionArn));
 
     new BucketDeployment(this, "DeployStatic", {
       sources: [Source.asset(path.join(REPO_ROOT, "apps", "shell", ".next", "static"))],

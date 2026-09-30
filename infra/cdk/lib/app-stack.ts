@@ -10,7 +10,9 @@ import type { PortalConfig } from "./config.js";
 import { Events } from "./events.js";
 import { ServiceFunction } from "./functions.js";
 import { PARAM } from "./parameters.js";
+import { NextLambda } from "./next-lambda.js";
 import { Shell } from "./shell.js";
+import { ZONES, zoneParams } from "./zones.js";
 
 /**
  * The part of the portal a teardown removes: services, shell, API and event flow (the
@@ -78,14 +80,15 @@ export class AppStack extends Stack {
       audience: [clientId],
     });
 
+    const userPoolArn = this.formatArn({
+      service: "cognito-idp",
+      resource: "userpool",
+      resourceName: userPoolId,
+    });
     const shell = new Shell(this, "Shell", {
       domainName: config.domainName,
       reservedConcurrency,
-      userPoolArn: this.formatArn({
-        service: "cognito-idp",
-        resource: "userpool",
-        resourceName: userPoolId,
-      }),
+      userPoolArn,
       environment: {
         API_URL: api.url,
         OIDC_ISSUER: issuer,
@@ -104,5 +107,26 @@ export class AppStack extends Stack {
     publish(PARAM.app.shellFunctionArn, shell.function.functionArn);
     publish(PARAM.app.shellOriginDomain, Fn.select(2, Fn.split("/", shell.url.url)));
     publish(PARAM.app.apiOriginDomain, Fn.select(2, Fn.split("/", api.url)));
+
+    // Zones (multi-zones): each its own function; sign-in stays in the shell, the zones only
+    // read the shared session cookie and call the API with its access token.
+    for (const zone of ZONES) {
+      const lambda = new NextLambda(this, `Zone-${zone.id}`, {
+        app: zone.app,
+        description: `Zone ${zone.basePath} (Next.js standalone server)`,
+        domainName: config.domainName,
+        reservedConcurrency,
+        userPoolArn,
+        readinessPath: `${zone.basePath}/healthz`,
+        environment: {
+          API_URL: api.url,
+          OIDC_CLIENT_ID: clientId,
+          COGNITO_USER_POOL_ID: userPoolId,
+        },
+      });
+      const params = zoneParams(zone);
+      publish(params.functionArn, lambda.function.functionArn);
+      publish(params.originDomain, Fn.select(2, Fn.split("/", lambda.url.url)));
+    }
   }
 }
