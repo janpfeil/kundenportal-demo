@@ -27,7 +27,7 @@ export function useLifecycleCall() {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   async function send(
-    method: "POST" | "DELETE",
+    method: "POST",
     url: string,
     body: unknown,
   ): Promise<{ ok: true; contract: Contract } | { ok: false; problem: LifecycleProblem }> {

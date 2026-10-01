@@ -299,8 +299,11 @@ test("J12 inside the tenant: the pass holder operates customers, contracts and p
   await option.getByLabel("Grund-/Monatspreis (€)").fill("45");
   await option.getByLabel(/Bandbreite/).fill("500");
   await form.getByRole("button", { name: "Produkt anlegen" }).click();
-  const product = holder.getByTestId("product-detail");
-  await expect(product).toContainText("E2E Glasfaser");
+  await expect(holder.getByTestId("product-detail")).toHaveAttribute(
+    "data-product",
+    "e2e-glasfaser",
+  );
+  await expect(holder.getByRole("heading", { level: 1 })).toContainText("E2E Glasfaser");
   await holder.waitForLoadState("networkidle");
   await holder
     .getByTestId("product-status-moves")

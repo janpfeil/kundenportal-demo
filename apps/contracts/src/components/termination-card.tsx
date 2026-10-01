@@ -101,7 +101,8 @@ export function TerminationCard({ contract, locale, texts, loginHref }: Terminat
 
   async function revoke() {
     setFeedback(undefined);
-    const result = await send("DELETE", url, {});
+    // POST, not DELETE: see the route handler `termination/cancel`.
+    const result = await send("POST", `${url}/cancel`, {});
     if (!result.ok) return failed(result.problem);
     setSaved(result.contract);
     setDate(earliestTermination(result.contract));

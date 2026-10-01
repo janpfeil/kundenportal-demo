@@ -27,6 +27,7 @@ const { PATCH } = await import("./contracts/[contractId]/route");
 const { POST } = await import("./documents/upload-url/route");
 const order = await import("./contracts/route");
 const termination = await import("./contracts/[contractId]/termination/route");
+const cancel = await import("./contracts/[contractId]/termination/cancel/route");
 const withdrawal = await import("./contracts/[contractId]/withdrawal/route");
 const { apiFor } = await import("@kundenportal/web-auth");
 
@@ -231,18 +232,18 @@ describe("/vertraege/api/contracts/[contractId]/termination", () => {
     expect(api.POST).not.toHaveBeenCalled();
   });
 
-  it("takes the notice back with DELETE", async () => {
+  it("takes the notice back: the browser posts, the API gets DELETE", async () => {
     api.DELETE.mockResolvedValue(apiAnswer(200, { contractId: CONTRACT_ID }));
-    const response = await termination.DELETE(request("DELETE", {}), context());
+    const response = await cancel.POST(request("POST", {}), context());
     expect(response.status).toBe(200);
     expect(api.DELETE).toHaveBeenCalledWith("/contracts/{contractId}/termination", {
       params: { path: { contractId: CONTRACT_ID } },
     });
   });
 
-  it("rejects a DELETE from another origin", async () => {
-    const foreign = request("DELETE", {}, "https://evil.example");
-    expect((await termination.DELETE(foreign, context())).status).toBe(403);
+  it("rejects taking the notice back from another origin", async () => {
+    const foreign = request("POST", {}, "https://evil.example");
+    expect((await cancel.POST(foreign, context())).status).toBe(403);
     expect(api.DELETE).not.toHaveBeenCalled();
   });
 });

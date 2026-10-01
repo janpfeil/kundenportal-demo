@@ -129,8 +129,8 @@ describe("TerminationCard", () => {
       "Die Kündigung ist zurückgenommen.",
     );
     expect(sendJson).toHaveBeenCalledWith(
-      "DELETE",
-      `/vertraege/api/contracts/${ID}/termination`,
+      "POST",
+      `/vertraege/api/contracts/${ID}/termination/cancel`,
       {},
     );
     expect(within(card).getByTestId("termination-form")).toBeInTheDocument();
