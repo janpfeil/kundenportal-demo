@@ -32,7 +32,6 @@ describe("portalNavigation", () => {
     });
     expect(nav.map((item) => item.href)).toEqual([
       "/",
-      "/konto",
       "/postfach",
       "/vertraege",
       "/verbrauch",

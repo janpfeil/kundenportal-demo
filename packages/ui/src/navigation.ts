@@ -30,7 +30,8 @@ export interface PortalNavigationOptions {
 }
 
 /**
- * Start page for everyone; account, mailbox, contracts and consumption once signed in, then
+ * Start page for everyone; mailbox, contracts and consumption once signed in (the account
+ * is in the user menu), then
  * the caller's extra entries. The entry of the current section carries `active`.
  */
 export function portalNavigation(
@@ -41,7 +42,7 @@ export function portalNavigation(
     { href: "/", label: t.nav.home },
     ...(signedIn
       ? [
-          { href: "/konto", label: t.nav.account },
+          // "Mein Konto" lives in the user menu next to the sign-out.
           { href: "/postfach", label: t.nav.mailbox },
           { href: "/vertraege", label: t.nav.contracts },
           { href: "/verbrauch", label: t.nav.consumption },

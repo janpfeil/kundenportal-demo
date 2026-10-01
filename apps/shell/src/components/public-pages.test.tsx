@@ -78,7 +78,6 @@ describe("ShellFrame", () => {
     );
     expect(navLinks()).toEqual([
       "Home",
-      "My account",
       "Mailbox",
       "Contracts",
       "Consumption",
