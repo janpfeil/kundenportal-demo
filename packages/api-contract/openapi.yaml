@@ -220,6 +220,31 @@ paths:
         "401": { $ref: "#/components/responses/Problem" }
         "404": { $ref: "#/components/responses/Problem" }
         "422": { $ref: "#/components/responses/Problem" }
+  /contracts/{contractId}/consumption:
+    parameters:
+      - $ref: "#/components/parameters/ContractId"
+    get:
+      operationId: getConsumptionHistory
+      summary: Monthly consumption of a metered contract, key figures and the next reading due
+      description: >-
+        Aggregates the meter readings: every span between two readings is spread over its
+        days with the division's standard load profile (electricity H0, gas heating,
+        water flat) and summed per month. Months no pair of readings covers are estimated
+        from the contract's estimated annual consumption with the same profile
+        (`basis: estimate`). Readings are due quarterly: three months after the latest
+        one; if that has passed, within the next 14 days.
+      security:
+        - oidc: [kundenportal/readings.read]
+      responses:
+        "200":
+          description: Consumption history of the last 12 complete months and the 12 before
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ConsumptionHistory" }
+        "400": { $ref: "#/components/responses/Problem" }
+        "401": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/Problem" }
   /documents:
     get:
       operationId: listDocuments
@@ -328,6 +353,31 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/MigrationStatus" }
+        "401": { $ref: "#/components/responses/Problem" }
+        "403": { $ref: "#/components/responses/Problem" }
+  /migration/search:
+    get:
+      operationId: searchMigration
+      summary: Cockpit search over legacy accounts and timeline events of the caller's tenant
+      description: >-
+        Case-insensitive substring match on customer number, name, status and problem of
+        the migration records and on type, summary and id of the timeline events (seven
+        days). At most 10 hits each, newest first. Tenants (owner only) come from
+        `GET /tenancy/passes`.
+      security:
+        - oidc: [kundenportal/migration.read]
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema: { type: string, minLength: 2, maxLength: 60 }
+      responses:
+        "200":
+          description: Hits
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MigrationSearchResult" }
+        "400": { $ref: "#/components/responses/Problem" }
         "401": { $ref: "#/components/responses/Problem" }
         "403": { $ref: "#/components/responses/Problem" }
   /migration/bulk:
@@ -475,6 +525,24 @@ paths:
                   passes:
                     type: array
                     items: { $ref: "#/components/schemas/PassSummary" }
+        "401": { $ref: "#/components/responses/Problem" }
+        "403": { $ref: "#/components/responses/Problem" }
+  /tenancy/overview:
+    get:
+      operationId: getPassOverview
+      summary: Key figures of the pass administration and the open invitations
+      description: >-
+        Owner only. Open invitations come from an index item per invitation
+        (`PLATFORM` / `INVITE#<id>`); API calls per day from the day attributes the quota
+        guard adds in the same update as the total (pass tenants only, German days).
+      security:
+        - oidc: [kundenportal/tenancy.admin]
+      responses:
+        "200":
+          description: Overview
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PassOverview" }
         "401": { $ref: "#/components/responses/Problem" }
         "403": { $ref: "#/components/responses/Problem" }
   /tenancy/passes/{passId}/revoke:
@@ -823,6 +891,62 @@ components:
         usedPercent: { type: integer, minimum: 0 }
         thresholdPercent: { type: integer, description: Warning threshold (80) }
         asOf: { type: string, format: date-time }
+    ConsumptionMonth:
+      type: object
+      required: [month, value, previousYear, basis, previousBasis]
+      properties:
+        month: { type: string, pattern: "^\\d{4}-\\d{2}$" }
+        value: { type: number, minimum: 0, description: Consumption in the contract's unit }
+        previousYear: { type: number, minimum: 0, description: Same month one year earlier }
+        basis:
+          type: string
+          enum: [readings, estimate]
+          description: From readings, or estimated from the annual consumption
+        previousBasis: { type: string, enum: [readings, estimate] }
+    ConsumptionHistory:
+      type: object
+      required:
+        [
+          contractId,
+          unit,
+          months,
+          total,
+          previousTotal,
+          averagePerMonth,
+          nextReadingDue,
+          readingDue,
+        ]
+      properties:
+        contractId: { type: string, format: uuid }
+        unit: { $ref: "#/components/schemas/MeterUnit" }
+        months:
+          type: array
+          description: The last 12 complete months, oldest first
+          minItems: 12
+          maxItems: 12
+          items: { $ref: "#/components/schemas/ConsumptionMonth" }
+        total: { type: number, minimum: 0, description: Sum of the 12 months }
+        previousTotal: { type: number, minimum: 0, description: Sum of the 12 months before }
+        changePercent:
+          type: number
+          description: Change of `total` against `previousTotal`; missing if that is 0
+        averagePerMonth: { type: number, minimum: 0 }
+        latestReading: { $ref: "#/components/schemas/MeterReading" }
+        nextReadingDue: { type: string, format: date }
+        readingDue:
+          type: boolean
+          description: True if `nextReadingDue` is at most 14 days away (or passed)
+        plausibleRange:
+          type: object
+          description: >-
+            Range a reading taken today should lie in (a third to three times the
+            expected consumption since the latest reading); a hint, the server only
+            rejects values below the latest reading.
+          required: [min, max, at]
+          properties:
+            min: { type: number, minimum: 0 }
+            max: { type: number, minimum: 0 }
+            at: { type: string, format: date }
     UploadContentType:
       type: string
       enum: [image/jpeg, image/png, application/pdf]
@@ -968,15 +1092,18 @@ components:
         counts: { $ref: "#/components/schemas/MigrationCounts" }
     MigrationStatus:
       type: object
-      required: [systems, clarifications, deadLetters, runs, timeline]
+      required: [systems, clarifications, deadLetters, runs, timeline, trends]
       properties:
         systems:
           type: array
           items:
             type: object
-            required: [system, counts]
+            required: [system, counts, migratedToday]
             properties:
               system: { $ref: "#/components/schemas/LegacySystem" }
+              migratedToday:
+                type: integer
+                description: Records migrated or linked since midnight (German time)
               total:
                 {
                   type: integer,
@@ -997,15 +1124,50 @@ components:
           items: { $ref: "#/components/schemas/MigrationRun" }
         timeline:
           type: array
-          items:
-            type: object
-            required: [eventId, source, detailType, occurredAt, summary]
-            properties:
-              eventId: { type: string }
-              source: { type: string }
-              detailType: { type: string }
-              occurredAt: { type: string, format: date-time }
-              summary: { type: string, description: Ids and accounts only, no personal data }
+          items: { $ref: "#/components/schemas/TimelineEntry" }
+        trends: { $ref: "#/components/schemas/MigrationTrends" }
+    MigrationTrends:
+      type: object
+      description: >-
+        Course of the last seven days (German days, oldest first), derived from the
+        records: open clarification cases and dead letters at the end of each day.
+      required: [days, clarifications, deadLetters, newClarifications, redriven]
+      properties:
+        days:
+          type: array
+          minItems: 7
+          maxItems: 7
+          items: { type: string, format: date }
+        clarifications: { type: array, minItems: 7, maxItems: 7, items: { type: integer } }
+        deadLetters: { type: array, minItems: 7, maxItems: 7, items: { type: integer } }
+        newClarifications:
+          type: integer
+          description: Clarification cases raised in the last 24 hours
+        redriven:
+          type: integer
+          description: Dead letters redriven in the last 24 hours that did not fail again
+    TimelineEntry:
+      type: object
+      required: [eventId, source, detailType, occurredAt, summary]
+      properties:
+        eventId: { type: string }
+        source: { type: string }
+        detailType: { type: string }
+        occurredAt: { type: string, format: date-time }
+        summary: { type: string, description: Ids and accounts only, no personal data }
+    MigrationSearchResult:
+      type: object
+      required: [query, accounts, events]
+      properties:
+        query: { type: string }
+        accounts:
+          type: array
+          maxItems: 10
+          items: { $ref: "#/components/schemas/MigrationRecord" }
+        events:
+          type: array
+          maxItems: 10
+          items: { $ref: "#/components/schemas/TimelineEntry" }
     TenantStatus:
       type: string
       enum: [provisioning, active, quota-exceeded, tearing-down, deleted]
@@ -1081,6 +1243,60 @@ components:
       properties:
         redemption: { type: string, enum: [open, closed] }
         maxTenants: { type: integer, minimum: 1, maximum: 4 }
+    PassOverview:
+      type: object
+      required:
+        [
+          activeTenants,
+          maxTenants,
+          openInvitations,
+          neverSignedIn,
+          reminderHours,
+          invitationDays,
+          invitations,
+          apiCalls,
+        ]
+      properties:
+        activeTenants: { type: integer, minimum: 0 }
+        maxTenants: { type: integer, minimum: 0 }
+        openInvitations:
+          type: integer
+          description: Invitations neither redeemed nor expired
+        neverSignedIn:
+          type: integer
+          description: Active passes whose holder has not signed in yet
+        reminderHours:
+          type: integer
+          description: After how many hours without sign-in the holder is reminded
+        invitationDays: { type: integer, description: How long an invitation can be redeemed }
+        invitations:
+          type: array
+          description: Open invitations, newest first
+          items:
+            type: object
+            required: [invitationId, email, createdAt, expiresAt, shortLived]
+            properties:
+              invitationId: { type: string }
+              email: { type: string, format: email }
+              createdAt: { type: string, format: date-time }
+              expiresAt: { type: string, format: date-time }
+              shortLived: { type: boolean }
+        apiCalls:
+          type: object
+          required: [today, days]
+          properties:
+            today: { type: integer, minimum: 0 }
+            days:
+              type: array
+              description: Last seven German days, oldest first; today last
+              minItems: 7
+              maxItems: 7
+              items:
+                type: object
+                required: [date, calls]
+                properties:
+                  date: { type: string, format: date }
+                  calls: { type: integer, minimum: 0 }
     PassOffer:
       type: object
       required: [passHours, quotas, uploadMaxBytes, redemptionOpen]
