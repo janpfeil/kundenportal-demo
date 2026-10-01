@@ -105,7 +105,10 @@ export function ContractFacts({ contract, t, locale, catalog }: Props & { catalo
       ? [
           {
             term: f.notice,
-            description: fill(f.noticeValue, { months: contract.noticePeriodMonths }),
+            description:
+              contract.noticePeriodMonths === 1
+                ? f.noticeValueOne
+                : fill(f.noticeValue, { months: contract.noticePeriodMonths }),
           },
         ]
       : []),

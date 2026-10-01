@@ -207,7 +207,7 @@ export function MigrationCard({
                   <ProgressRing
                     value={progress.done}
                     max={progress.total ?? 0}
-                    size={52}
+                    size={64}
                     label={`${name}: ${line}`}
                     center={known ? `${progress.percent} %` : "–"}
                   />

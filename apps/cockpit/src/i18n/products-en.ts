@@ -39,6 +39,7 @@ export const productsEn: Dictionary["products"] = {
     term: "Minimum term",
     notice: "Notice period",
     months: "{count} months",
+    monthOne: "1 month",
     noTerm: "none",
     version: "Current price version",
     versionValue: "{version}, valid from {date}",

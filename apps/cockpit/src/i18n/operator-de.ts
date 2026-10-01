@@ -230,6 +230,7 @@ export const operatorDe = {
       termValue: "{months} Monate, bis {date}",
       notice: "Kündigungsfrist",
       noticeValue: "{months} Monate",
+      noticeValueOne: "1 Monat",
       earliest: "Frühestes Ende",
       withdrawable: "Widerruf möglich bis",
       updated: "Zuletzt geändert",

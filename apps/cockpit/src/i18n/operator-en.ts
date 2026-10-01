@@ -232,6 +232,7 @@ export const operatorEn: Dictionary["operator"] = {
       termValue: "{months} months, until {date}",
       notice: "Notice period",
       noticeValue: "{months} months",
+      noticeValueOne: "1 month",
       earliest: "Earliest end",
       withdrawable: "Withdrawal possible until",
       updated: "Last changed",

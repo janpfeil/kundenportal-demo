@@ -37,6 +37,7 @@ export const productsDe = {
     term: "Mindestlaufzeit",
     notice: "Kündigungsfrist",
     months: "{count} Monate",
+    monthOne: "1 Monat",
     noTerm: "keine",
     version: "Aktuelle Preisversion",
     versionValue: "{version}, gültig ab {date}",

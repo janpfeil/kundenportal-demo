@@ -50,7 +50,8 @@
 
 .cockpit-bars li {
   display: grid;
-  grid-template-columns: minmax(7.5rem, auto) minmax(0, 1fr) auto;
+  /* A fixed value column keeps every bar starting and ending at the same place. */
+  grid-template-columns: minmax(7.5rem, auto) minmax(0, 1fr) 8.5em;
   align-items: center;
   gap: 12px;
 }
@@ -77,6 +78,7 @@
 }
 
 .cockpit-bar-value {
+  text-align: right;
   font-size: var(--kp-small);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;

@@ -137,7 +137,8 @@ export function ProductFacts({
   locale: Locale;
 }) {
   const f = t.products.facts;
-  const months = (count: number) => (count === 0 ? f.noTerm : fill(f.months, { count }));
+  const months = (count: number) =>
+    count === 0 ? f.noTerm : count === 1 ? f.monthOne : fill(f.months, { count });
   const current = product.versions?.find((version) => version.version === product.version);
   return (
     <Facts
