@@ -291,6 +291,49 @@
   text-decoration: underline;
 }
 
+/* Lifecycle and "gesperrt" side by side; they wrap below each other on narrow tiles. */
+.contract-badges {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* The last tile: a link to the product catalogue, dashed so it reads as "add". */
+.contract-new.kp-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  border-style: dashed;
+  border-color: var(--kp-border-strong);
+  box-shadow: none;
+  color: var(--kp-text);
+  text-decoration: none;
+}
+
+.contract-new:hover b {
+  text-decoration: underline;
+}
+
+.contract-new:focus-visible {
+  outline: 3px solid var(--kp-focus);
+  outline-offset: 2px;
+}
+
+.contract-new-text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.contract-new-text b {
+  color: var(--kp-accent-text);
+}
+
+.contract-new-text .kp-muted {
+  font-size: var(--kp-small);
+}
+
 /* Smaller text and padding; the height stays at the theme's 44 px touch target. */
 .shell-small-button.kp-button {
   padding: 0 calc(var(--kp-space) * 0.8);

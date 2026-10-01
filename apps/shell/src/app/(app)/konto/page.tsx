@@ -19,7 +19,7 @@ import {
 import { fill } from "@kundenportal/ui/i18n";
 import { PASS_GROUP, groupsOf } from "@kundenportal/web-auth";
 import { AccountCard } from "@/components/account-card";
-import { ContractCard } from "@/components/contract-card";
+import { ContractCard, NewContractCard } from "@/components/contract-card";
 import { LinkOffers } from "@/components/link-offers";
 import { dictionary } from "@/i18n";
 import { api } from "@/lib/api";
@@ -141,7 +141,12 @@ export default async function AccountPage() {
           {!contractList ? (
             <Notice tone="error">{texts.contracts.error}</Notice>
           ) : contracts.length === 0 ? (
-            <p className="kp-muted">{texts.contracts.empty}</p>
+            <Stack>
+              <p className="kp-muted">{texts.contracts.empty}</p>
+              <Grid min="230px">
+                <NewContractCard texts={texts.contracts} />
+              </Grid>
+            </Stack>
           ) : (
             <Grid min="230px">
               {contracts.map((contract) => (
@@ -159,6 +164,7 @@ export default async function AccountPage() {
                   locale={locale}
                 />
               ))}
+              <NewContractCard texts={texts.contracts} />
             </Grid>
           )}
         </section>

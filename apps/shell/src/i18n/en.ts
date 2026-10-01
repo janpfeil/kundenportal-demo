@@ -37,7 +37,15 @@ export const en: Dictionary = {
       trend: "Consumption over the last 12 months: {min} to {max}",
       volume: "Data volume",
       used: "{used} of {included} {unit} used",
-      statuses: { active: "active", terminated: "cancelled" },
+      statuses: {
+        active: "active",
+        noticed: "cancelled as of {date}",
+        ended: "ended",
+        withdrawn: "withdrawn",
+        blocked: "blocked",
+      },
+      newContract: "Take out a new contract",
+      newContractText: "Electricity, gas, water, internet or mobile",
       details: "Details",
       detailsOf: "Details of {tariff}",
       empty:

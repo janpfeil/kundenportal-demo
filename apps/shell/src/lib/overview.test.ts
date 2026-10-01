@@ -122,10 +122,39 @@ describe("contract cards", () => {
       title: "Strom Klassik",
       sub: "Standard · Zähler …7123",
       priceKind: "installment",
-      status: "active",
+      state: { kind: "active" },
+      blocked: false,
       trend: { kind: "sparkline", min: 186, max: 296, unit: "kWh" },
     });
     expect(meterTail("1ESY 1160 4471 23")).toBe("7123");
+  });
+
+  it("shows a pending notice, an ended or withdrawn contract and a block", () => {
+    const termination = {
+      kind: "termination" as const,
+      effectiveDate: "2027-03-31",
+      requestedAt: "2026-10-01T09:00:00Z",
+      by: "customer" as const,
+    };
+    // Notice given: the contract still runs until the date.
+    expect(contractCard(contract({ termination }), undefined, texts).state).toEqual({
+      kind: "noticed",
+      effectiveDate: "2027-03-31",
+    });
+    expect(
+      contractCard(contract({ status: "terminated", termination }), undefined, texts).state,
+    ).toEqual({ kind: "ended" });
+    expect(contractCard(contract({ status: "terminated" }), undefined, texts).state).toEqual({
+      kind: "ended",
+    });
+    expect(
+      contractCard(
+        contract({ status: "terminated", termination: { ...termination, kind: "withdrawal" } }),
+        undefined,
+        texts,
+      ).state,
+    ).toEqual({ kind: "withdrawn" });
+    expect(contractCard(contract({ blocked: true }), undefined, texts).blocked).toBe(true);
   });
 
   it("names the tariff option instead of showing its id", () => {

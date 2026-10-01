@@ -35,7 +35,15 @@ export const de = {
       trend: "Verbrauch der letzten 12 Monate: {min} bis {max}",
       volume: "Datenvolumen",
       used: "{used} von {included} {unit} verbraucht",
-      statuses: { active: "aktiv", terminated: "gekündigt" },
+      statuses: {
+        active: "aktiv",
+        noticed: "gekündigt zum {date}",
+        ended: "beendet",
+        withdrawn: "widerrufen",
+        blocked: "gesperrt",
+      },
+      newContract: "Neuen Vertrag abschließen",
+      newContractText: "Strom, Gas, Wasser, Internet oder Mobilfunk",
       details: "Details",
       detailsOf: "Details zu {tariff}",
       empty:

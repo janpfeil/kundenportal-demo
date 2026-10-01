@@ -149,6 +149,27 @@ export type ContractTrend =
   | { kind: "usage"; usedMb: number; includedMb: number }
   | { kind: "none" };
 
+/**
+ * Where the contract stands (phase 7): running, notice given ("gekündigt zum …", it still
+ * runs until then), ended, or withdrawn within the 14 days after ordering.
+ */
+export type ContractState =
+  | { kind: "active" }
+  | { kind: "noticed"; effectiveDate: string }
+  | { kind: "ended" }
+  | { kind: "withdrawn" };
+
+export function contractState(
+  contract: Pick<Contract, "status"> & Partial<Pick<Contract, "termination">>,
+): ContractState {
+  const { termination } = contract;
+  if (contract.status === "terminated")
+    return { kind: termination?.kind === "withdrawal" ? "withdrawn" : "ended" };
+  if (termination?.kind === "termination")
+    return { kind: "noticed", effectiveDate: termination.effectiveDate };
+  return { kind: "active" };
+}
+
 export interface ContractCardView {
   contractId: string;
   division: Division;
@@ -159,7 +180,9 @@ export interface ContractCardView {
   /** "Abschlag / Monat" (metered) or "Monatspreis" (internet, mobile). */
   priceKind: "installment" | "monthly";
   trend: ContractTrend;
-  status: Contract["status"];
+  state: ContractState;
+  /** Blocked by the operator: the customer cannot change it. */
+  blocked: boolean;
 }
 
 const unitText = (unit: string | undefined) => (unit === "m3" ? "m³" : (unit ?? "kWh"));
@@ -227,7 +250,8 @@ export function contractCard(
     priceCent: contract.monthlyInstallmentCent,
     priceKind: metered ? "installment" : "monthly",
     trend: trendOf(contract, history, usage),
-    status: contract.status,
+    state: contractState(contract),
+    blocked: contract.blocked === true,
   };
 }
 

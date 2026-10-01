@@ -3,7 +3,7 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { de } from "@/i18n/de";
 import { AccountCard } from "./account-card";
-import { ContractCard } from "./contract-card";
+import { ContractCard, NewContractCard } from "./contract-card";
 import { LinkOffers } from "./link-offers";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
@@ -25,7 +25,8 @@ describe("ContractCard", () => {
           priceCent: 8700,
           priceKind: "installment",
           trend: { kind: "sparkline", values: [281, 296, 186], min: 186, max: 296, unit: "kWh" },
-          status: "active",
+          state: { kind: "active" },
+          blocked: false,
         }}
       />,
     );
@@ -57,7 +58,8 @@ describe("ContractCard", () => {
           priceCent: 1999,
           priceKind: "monthly",
           trend: { kind: "usage", usedMb: 12698, includedMb: 20480 },
-          status: "terminated",
+          state: { kind: "ended" },
+          blocked: false,
         }}
       />,
     );
@@ -68,7 +70,45 @@ describe("ContractCard", () => {
       "12,4 von 20 GB verbraucht",
     );
     expect(card.querySelector('[data-fake="true"]')).not.toBeNull();
-    expect(card).toHaveTextContent("gekündigt");
+    expect(card).toHaveTextContent("beendet");
+  });
+
+  it.each([
+    [{ kind: "noticed", effectiveDate: "2027-03-31" }, false, "gekündigt zum 31.03.2027"],
+    [{ kind: "withdrawn" }, false, "widerrufen"],
+    [{ kind: "active" }, true, "aktivgesperrt"],
+  ] as const)("shows the state %j (blocked: %s) as %s", (state, blocked, text) => {
+    render(
+      <ContractCard
+        locale="de"
+        texts={texts}
+        card={{
+          contractId: "c3",
+          division: "gas",
+          title: "Gas Basis",
+          sub: "Standard",
+          priceCent: 6000,
+          priceKind: "installment",
+          trend: { kind: "none" },
+          state,
+          blocked,
+        }}
+      />,
+    );
+    const badges = screen
+      .getByRole("article", { name: "Gas Basis" })
+      .querySelector(".contract-badges");
+    expect(badges).toHaveTextContent(text);
+  });
+});
+
+describe("NewContractCard", () => {
+  it("leads to the product catalogue of the contracts zone", () => {
+    render(<NewContractCard texts={texts} />);
+    expect(screen.getByRole("link", { name: /Neuen Vertrag abschließen/ })).toHaveAttribute(
+      "href",
+      "/vertraege/neu",
+    );
   });
 });
 

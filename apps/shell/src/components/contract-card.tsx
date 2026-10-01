@@ -7,11 +7,12 @@ import {
   Sparkline,
   StatusBadge,
   divisionIcon,
+  formatDate,
   formatQuantity,
 } from "@kundenportal/ui";
 import { type Locale, fill } from "@kundenportal/ui/i18n";
 import type { Dictionary } from "@/i18n";
-import { type ContractCardView, cardPrice, volumePair } from "@/lib/overview";
+import { type ContractCardView, type ContractState, cardPrice, volumePair } from "@/lib/overview";
 
 type Texts = Dictionary["overview"]["contracts"];
 
@@ -63,6 +64,42 @@ function Trend({ card, texts, locale }: { card: ContractCardView; texts: Texts; 
   return null;
 }
 
+/** "aktiv", "gekündigt zum 31.03.2027" (notice pending, still running), "beendet", "widerrufen". */
+function StateBadge({
+  state,
+  texts,
+  locale,
+}: {
+  state: ContractState;
+  texts: Texts;
+  locale: Locale;
+}) {
+  if (state.kind === "noticed")
+    return (
+      <StatusBadge tone="warn">
+        {fill(texts.statuses.noticed, { date: formatDate(state.effectiveDate, locale) })}
+      </StatusBadge>
+    );
+  return (
+    <StatusBadge tone={state.kind === "active" ? "ok" : "neutral"}>
+      {texts.statuses[state.kind]}
+    </StatusBadge>
+  );
+}
+
+/** The last tile of the contract grid: on to the product catalogue of the contracts zone. */
+export function NewContractCard({ texts }: { texts: Texts }) {
+  return (
+    <a className="kp-card contract-new" href="/vertraege/neu" data-testid="new-contract">
+      <IconCircle name="plus" />
+      <span className="contract-new-text">
+        <b>{texts.newContract}</b>
+        <span className="kp-muted">{texts.newContractText}</span>
+      </span>
+    </a>
+  );
+}
+
 /**
  * A contract tile of the overview as in the mockup: division icon, tariff, sub line, price,
  * consumption trend or data volume, status and a link to the contract's details.
@@ -92,9 +129,10 @@ export function ContractCard({
       </p>
       <Trend card={card} texts={texts} locale={locale} />
       <div className="contract-foot">
-        <StatusBadge tone={card.status === "active" ? "ok" : "neutral"}>
-          {texts.statuses[card.status]}
-        </StatusBadge>
+        <span className="contract-badges">
+          <StateBadge state={card.state} texts={texts} locale={locale} />
+          {card.blocked && <StatusBadge tone="err">{texts.statuses.blocked}</StatusBadge>}
+        </span>
         <a
           className="contract-more"
           href={`/vertraege/${encodeURIComponent(card.contractId)}`}
