@@ -9,6 +9,7 @@ import { PARAM } from "../lib/parameters.js";
 let base: Template;
 let application: Template;
 
+// Synthesising the two stacks takes well over the default 10 s on a busy CI runner.
 beforeAll(() => {
   const app = new App({ context: { "aws:cdk:bundling-stacks": [], reservedConcurrency: 2 } });
   const env = { account: "123456789012", region: "eu-central-1" };
@@ -17,7 +18,7 @@ beforeAll(() => {
   const appStack = new AppStack(app, "App", { env, config });
   base = Template.fromStack(baseStack);
   application = Template.fromStack(appStack);
-});
+}, 60_000);
 
 describe("demo-pass tenants (phase 4)", () => {
   it("lets only the portal's own roles assume the tenant role, with a pass tenant tag", () => {

@@ -15,6 +15,7 @@ let application: Template;
 let edge: Template;
 const all = () => [base, application, edge];
 
+// Synthesising the three stacks takes well over the default 10 s on a busy CI runner.
 beforeAll(() => {
   // Skip esbuild bundling in unit tests; the real build synthesises with bundling.
   const app = new App({ context: { "aws:cdk:bundling-stacks": [], reservedConcurrency: 2 } });
@@ -36,7 +37,7 @@ beforeAll(() => {
   base = Template.fromStack(baseStack);
   application = Template.fromStack(appStack);
   edge = Template.fromStack(edgeStack);
-});
+}, 60_000);
 
 const resourceTypes = (template: Template) =>
   Object.values(template.toJSON().Resources as Record<string, { Type: string }>).map((r) => r.Type);
