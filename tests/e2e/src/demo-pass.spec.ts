@@ -280,6 +280,11 @@ test("owner and pass holder see only their own tenant in the cockpit", async ({
   await expect(page.getByTestId("cockpit-tenant")).toHaveCount(0);
   await expect(page.locator("main")).not.toContainText(tenant);
   await expect(page.locator("main")).not.toContainText(`+${tenant}@`);
+  // The cockpit starts in "Dicht" with the navigation in a sidebar (desktop width).
+  await expect(page.locator("html")).toHaveAttribute("data-audience", "cockpit");
+  await expect(page.locator("html")).toHaveAttribute("data-theme-preset", "dicht");
+  await expect(page.locator("html")).toHaveAttribute("data-nav", "side");
+  await expect(page.locator(".kp-nav")).toHaveCSS("position", "absolute");
 });
 
 test("the owner pauses redemption in the cockpit and the redeem page says so", async ({

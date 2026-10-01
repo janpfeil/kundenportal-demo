@@ -40,6 +40,36 @@ test("zones share the shell's session and show the demo contracts", async ({ pag
   await expect(page.locator("kp-bell")).toHaveCount(1);
 });
 
+test("the theme chosen in the user menu applies at once and in every zone", async ({ page }) => {
+  await openSignedIn(page, "/konto", user.email, user.password);
+  const html = page.locator("html");
+  // Customer default: "Klar", colour mode from the system.
+  await expect(html).toHaveAttribute("data-theme-preset", "klar");
+  await expect(html).toHaveAttribute("data-color-mode", "system");
+  await page.waitForLoadState("networkidle");
+  await page.getByRole("button", { name: /^Benutzermenü/ }).click();
+  await page.getByRole("menuitemradio", { name: "Vertrauen" }).click();
+  await page.getByRole("menuitemradio", { name: "Dunkel" }).click();
+  // Applied without a reload.
+  await expect(html).toHaveAttribute("data-theme-preset", "vertrauen");
+  await expect(html).toHaveAttribute("data-color-mode", "dark");
+  await expect(page.getByRole("menuitemradio", { name: "Vertrauen" })).toHaveAttribute(
+    "aria-checked",
+    "true",
+  );
+
+  // Another zone renders the choice on the server from the shared cookies.
+  await page.goto("/vertraege");
+  await expect(
+    page.locator('html[data-theme-preset="vertrauen"][data-color-mode="dark"]'),
+  ).toHaveCount(1);
+  // A prerendered shell page gets it from /theme-init.js before the first paint.
+  await page.goto("/");
+  await expect(
+    page.locator('html[data-theme-preset="vertrauen"][data-color-mode="dark"]'),
+  ).toHaveCount(1);
+});
+
 test("J6: changing the installment is confirmed in the mailbox", async ({ page }) => {
   // Every test has its own browser context, so it signs in again.
   await openSignedIn(page, "/vertraege", user.email, user.password);
