@@ -9,6 +9,7 @@ import {
 import { type Locale, fill } from "@kundenportal/ui/i18n";
 import type { Dictionary } from "@/i18n";
 import { formatCent, shortContractId, unitLabel } from "./format";
+import { monthsText } from "./products";
 
 /** The contract's facts in the mockup's order; what a division does not have is left out. */
 export function contractFacts(contract: Contract, t: Dictionary, locale: Locale): Fact[] {
@@ -65,6 +66,10 @@ export function contractFacts(contract: Contract, t: Dictionary, locale: Locale)
       }),
     },
     { term: t.detail.termEnd, description: formatDate(contract.minimumTermEndDate, locale) },
+    contract.noticePeriodMonths !== undefined && {
+      term: t.detail.noticePeriod,
+      description: monthsText(contract.noticePeriodMonths, t.catalogue),
+    },
   ];
   return items.filter((item): item is Fact => item !== false && item !== undefined);
 }

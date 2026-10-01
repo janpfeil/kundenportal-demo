@@ -16,8 +16,10 @@ import {
   formatEuro,
   formatFileSize,
 } from "@kundenportal/ui";
-import { apiFor, loginUrl } from "@kundenportal/web-auth";
+import { loginUrl } from "@kundenportal/web-auth";
+import { typedApi } from "@/lib/api";
 import { requireSession } from "@kundenportal/web-auth/pages";
+import { ContractStatus } from "@/components/contract-status";
 import { UploadForm } from "@/components/upload-form";
 import { dictionary } from "@/i18n";
 import { ZoneLink } from "@/lib/zone-link";
@@ -32,7 +34,7 @@ const UPLOAD_CATEGORIES = ["other", "meter-photo"] as const;
 export default async function ContractsPage() {
   const session = await requireSession(zonePath());
   const { locale, t } = await dictionary();
-  const api = apiFor(session);
+  const api = typedApi(session);
   const [contracts, documents] = await Promise.all([
     api.GET("/contracts").catch(() => ({ data: undefined })),
     api.GET("/documents").catch(() => ({ data: undefined })),
@@ -76,11 +78,7 @@ export default async function ContractsPage() {
     {
       key: "status",
       header: t.overview.status,
-      render: (contract) => (
-        <StatusBadge tone={contract.status === "active" ? "ok" : "neutral"}>
-          {t.status[contract.status]}
-        </StatusBadge>
-      ),
+      render: (contract) => <ContractStatus contract={contract} texts={t} locale={locale} />,
     },
   ];
 
@@ -120,7 +118,16 @@ export default async function ContractsPage() {
   ];
 
   return (
-    <Page title={t.title} lead={t.overview.lead}>
+    <Page
+      title={t.title}
+      lead={t.overview.lead}
+      actions={
+        <ButtonLink href={zonePath("/neu")} linkComponent={ZoneLink}>
+          <Icon name="plus" />
+          {t.overview.newContract}
+        </ButtonLink>
+      }
+    >
       <Stack gap="large">
         <Card>
           {contracts.data ? (

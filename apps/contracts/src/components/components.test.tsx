@@ -160,6 +160,30 @@ describe("ContractForm (J6)", () => {
     );
   });
 
+  it("names and prices the options from the contract's product", () => {
+    render(
+      <ContractForm
+        contract={contract}
+        locale="de"
+        texts={de.form}
+        optionLabels={de.options}
+        optionInfo={{
+          standard: { label: "Standard", price: "32,4 ct/kWh" },
+          oeko: { label: "Öko Plus", price: "34,9 ct/kWh" },
+        }}
+        amountLabel={de.detail.installment}
+        loginHref="/auth/login"
+      />,
+    );
+    // The current option shows what the contract pays, the others the catalogue's price.
+    expect(screen.getByRole("radio", { name: /Standard/ }).closest("label")).toHaveTextContent(
+      "Standardaktuell · 32 ct/kWh",
+    );
+    expect(screen.getByRole("radio", { name: /Öko Plus/ }).closest("label")).toHaveTextContent(
+      "Öko Plus34,9 ct/kWh",
+    );
+  });
+
   it("offers only the tariff option for contracts with a fixed price", () => {
     const { workPriceCent: _price, unit: _unit, ...mobile } = contract;
     renderContractForm(

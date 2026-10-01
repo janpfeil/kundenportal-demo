@@ -34,6 +34,11 @@ export interface ContractFormProps {
   texts: ContractFormTexts;
   /** Visible names of the tariff options by id. */
   optionLabels: Record<string, string>;
+  /**
+   * Names and prices of the options from the contract's product (phase 7), where the
+   * catalogue still lists it; they take precedence over `optionLabels`.
+   */
+  optionInfo?: Readonly<Record<string, { label: string; price?: string }>>;
   /** "Abschlag" or "Monatspreis", as on the page. */
   amountLabel: string;
   loginHref: string;
@@ -79,6 +84,7 @@ export function ContractForm({
   locale,
   texts,
   optionLabels,
+  optionInfo,
   amountLabel,
   loginHref,
 }: ContractFormProps) {
@@ -112,8 +118,16 @@ export function ContractForm({
     min: formatWholeEuro(current.installmentMinCent ?? 0, locale),
     max: formatWholeEuro(current.installmentMaxCent ?? 0, locale),
   };
-  const label = (id: string) => optionLabels[id] ?? id;
+  const label = (id: string) => optionInfo?.[id]?.label ?? optionLabels[id] ?? id;
   const price = currentPrice(current, locale, texts);
+  // The current option shows what the contract pays; the others the catalogue's price.
+  const optionNote = (id: string) => {
+    if (id === current.tariffOption) {
+      const own = price ?? optionInfo?.[id]?.price;
+      return own ? `${texts.current} · ${own}` : texts.current;
+    }
+    return optionInfo?.[id]?.price;
+  };
 
   function reset() {
     setInstallment(String(current.monthlyInstallmentCent / 100));
@@ -247,9 +261,7 @@ export function ContractForm({
                 onChange={() => setOption(id)}
               />
               <b>{label(id)}</b>
-              {id === current.tariffOption && (
-                <small>{price ? `${texts.current} · ${price}` : texts.current}</small>
-              )}
+              {optionNote(id) !== undefined && <small>{optionNote(id)}</small>}
             </label>
           ))}
         </fieldset>

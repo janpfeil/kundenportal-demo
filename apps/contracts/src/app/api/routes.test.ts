@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const api = { PATCH: vi.fn(), POST: vi.fn() };
+const api = { PATCH: vi.fn(), POST: vi.fn(), DELETE: vi.fn() };
 const readSession = vi.fn();
 
 vi.mock("@kundenportal/web-auth", async (importOriginal) => {
@@ -25,6 +25,9 @@ vi.mock("@kundenportal/web-auth", async (importOriginal) => {
 
 const { PATCH } = await import("./contracts/[contractId]/route");
 const { POST } = await import("./documents/upload-url/route");
+const order = await import("./contracts/route");
+const termination = await import("./contracts/[contractId]/termination/route");
+const withdrawal = await import("./contracts/[contractId]/withdrawal/route");
 const { apiFor } = await import("@kundenportal/web-auth");
 
 const CONTRACT_ID = "6f1c1f64-8a4c-4c55-9a39-5d8a4a0f2c11";
@@ -159,5 +162,107 @@ describe("POST /vertraege/api/documents/upload-url", () => {
   it("passes a 409 (account being set up) through", async () => {
     api.POST.mockResolvedValue(apiAnswer(409, { title: "Conflict", status: 409 }));
     expect((await POST(request("POST", announcement))).status).toBe(409);
+  });
+});
+
+describe("POST /vertraege/api/contracts (order)", () => {
+  const body = {
+    productId: "strom-oeko",
+    optionId: "standard",
+    startDate: "2026-10-02",
+    meterNumber: "1EMH0012345678",
+    startReading: 4711,
+    consent: true,
+  };
+
+  it("rejects requests from another origin with 403", async () => {
+    expect((await order.POST(request("POST", body, "https://evil.example"))).status).toBe(403);
+    expect(api.POST).not.toHaveBeenCalled();
+  });
+
+  it("forwards a valid order and returns the new contract with 201", async () => {
+    api.POST.mockResolvedValue(apiAnswer(201, { contractId: CONTRACT_ID }));
+    const response = await order.POST(request("POST", body));
+    expect(response.status).toBe(201);
+    expect(await response.json()).toEqual({ contractId: CONTRACT_ID });
+    expect(api.POST).toHaveBeenCalledWith("/contracts", { body });
+  });
+
+  it("answers 400 without consent and does not call the API", async () => {
+    expect((await order.POST(request("POST", { ...body, consent: false }))).status).toBe(400);
+    expect(api.POST).not.toHaveBeenCalled();
+  });
+
+  it("passes the API's 404 (product not orderable) through", async () => {
+    api.POST.mockResolvedValue(apiAnswer(404, { title: "Not Found", status: 404 }));
+    expect((await order.POST(request("POST", body))).status).toBe(404);
+  });
+});
+
+describe("/vertraege/api/contracts/[contractId]/termination", () => {
+  const context = (id = CONTRACT_ID) => ({ params: Promise.resolve({ contractId: id }) });
+
+  it("gives notice with the chosen date", async () => {
+    api.POST.mockResolvedValue(apiAnswer(200, { contractId: CONTRACT_ID }));
+    const response = await termination.POST(
+      request("POST", { effectiveDate: "2027-03-31" }),
+      context(),
+    );
+    expect(response.status).toBe(200);
+    expect(api.POST).toHaveBeenCalledWith("/contracts/{contractId}/termination", {
+      params: { path: { contractId: CONTRACT_ID } },
+      body: { effectiveDate: "2027-03-31" },
+    });
+  });
+
+  it("passes a blocked contract's 409 through", async () => {
+    api.POST.mockResolvedValue(
+      apiAnswer(409, { title: "Conflict", status: 409, detail: "The contract is blocked" }),
+    );
+    const response = await termination.POST(request("POST", {}), context());
+    expect(response.status).toBe(409);
+    expect(await response.json()).toMatchObject({ detail: "The contract is blocked" });
+  });
+
+  it("answers 400 for a malformed date or a contract id that is no UUID", async () => {
+    const german = request("POST", { effectiveDate: "31.03.2027" });
+    expect((await termination.POST(german, context())).status).toBe(400);
+    expect((await termination.POST(request("POST", {}), context("x"))).status).toBe(400);
+    expect(api.POST).not.toHaveBeenCalled();
+  });
+
+  it("takes the notice back with DELETE", async () => {
+    api.DELETE.mockResolvedValue(apiAnswer(200, { contractId: CONTRACT_ID }));
+    const response = await termination.DELETE(request("DELETE", {}), context());
+    expect(response.status).toBe(200);
+    expect(api.DELETE).toHaveBeenCalledWith("/contracts/{contractId}/termination", {
+      params: { path: { contractId: CONTRACT_ID } },
+    });
+  });
+
+  it("rejects a DELETE from another origin", async () => {
+    const foreign = request("DELETE", {}, "https://evil.example");
+    expect((await termination.DELETE(foreign, context())).status).toBe(403);
+    expect(api.DELETE).not.toHaveBeenCalled();
+  });
+});
+
+describe("POST /vertraege/api/contracts/[contractId]/withdrawal", () => {
+  const context = () => ({ params: Promise.resolve({ contractId: CONTRACT_ID }) });
+
+  it("withdraws through the API", async () => {
+    api.POST.mockResolvedValue(apiAnswer(200, { contractId: CONTRACT_ID, status: "terminated" }));
+    const response = await withdrawal.POST(request("POST", {}), context());
+    expect(response.status).toBe(200);
+    expect(api.POST).toHaveBeenCalledWith("/contracts/{contractId}/withdrawal", {
+      params: { path: { contractId: CONTRACT_ID } },
+    });
+  });
+
+  it("answers 400 for a body with fields and 401 without a session", async () => {
+    expect((await withdrawal.POST(request("POST", { reason: "x" }), context())).status).toBe(400);
+    readSession.mockResolvedValue(undefined);
+    expect((await withdrawal.POST(request("POST", {}), context())).status).toBe(401);
+    expect(api.POST).not.toHaveBeenCalled();
   });
 });

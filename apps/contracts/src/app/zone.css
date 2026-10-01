@@ -137,3 +137,174 @@
 .zone-break {
   overflow-wrap: anywhere;
 }
+
+/* Status badges of a contract (lifecycle and "gesperrt") side by side, wrapping on phones. */
+.zone-badges {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* Facts inside a card: no second frame around them. */
+.zone-facts-plain.kp-facts {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+/* Product catalogue: one section per division, products as cards, options as tiles. */
+.zone-catalogue {
+  display: grid;
+  gap: calc(var(--kp-space) * 1.75);
+}
+
+.zone-division-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 calc(var(--kp-space) * 0.75);
+  font-size: var(--kp-h2);
+}
+
+.zone-product.kp-card {
+  display: grid;
+  gap: calc(var(--kp-space) * 0.75);
+  margin: 0;
+}
+
+.zone-product .kp-card-title {
+  margin: 0;
+}
+
+.zone-product-text {
+  margin: 0;
+  color: var(--kp-muted);
+}
+
+.zone-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr));
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.zone-option {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--kp-border-strong);
+  border-radius: var(--kp-radius);
+  background: var(--kp-surface-2);
+}
+
+.zone-option-name {
+  margin: 0;
+  font-size: var(--kp-font-size);
+}
+
+.zone-option-price {
+  margin: 0;
+  font-family: var(--kp-font-heading);
+  font-size: var(--kp-h3);
+  font-weight: var(--kp-heading-weight);
+  font-variant-numeric: tabular-nums;
+}
+
+.zone-option-price small {
+  display: block;
+  font-family: var(--kp-font);
+  font-size: var(--kp-small);
+  font-weight: 500;
+  color: var(--kp-muted);
+}
+
+.zone-option-lines {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--kp-small);
+}
+
+/* The button sits at the bottom, so the tiles of a row line up. */
+.zone-option-choose.kp-button {
+  margin-top: auto;
+}
+
+/* Order: consent checkbox with a 44 px touch target, confirmation. */
+.zone-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-height: 44px;
+  padding: 10px 0;
+  cursor: pointer;
+}
+
+.zone-check input {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  accent-color: var(--kp-accent);
+}
+
+.zone-check input[aria-invalid="true"] {
+  outline: 2px solid var(--kp-error-text);
+  outline-offset: 2px;
+}
+
+.zone-confirmation:focus {
+  outline: none;
+}
+
+.zone-summary .kp-facts {
+  margin-bottom: var(--kp-space);
+}
+
+/* Termination and withdrawal: the state in large type, the confirm step framed. */
+.zone-state-title {
+  margin: 0;
+  font-family: var(--kp-font-heading);
+  font-size: var(--kp-h3);
+  font-weight: var(--kp-heading-weight);
+}
+
+.zone-form p {
+  margin: 0;
+}
+
+.zone-confirm {
+  display: grid;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--kp-border-strong);
+  border-left: 4px solid var(--kp-accent);
+  border-radius: var(--kp-radius);
+  background: var(--kp-surface-2);
+}
+
+.zone-confirm-question {
+  margin: 0;
+  font-weight: 600;
+}
+
+.zone-confirm-question:focus {
+  outline: none;
+}
+
+.zone-confirm-question:focus-visible {
+  outline: 3px solid var(--kp-focus);
+  outline-offset: 2px;
+}
+
+/* Termination and withdrawal cards share a row; the grid sets the gaps. */
+.zone-lifecycle > .kp-card {
+  margin: 0;
+}
