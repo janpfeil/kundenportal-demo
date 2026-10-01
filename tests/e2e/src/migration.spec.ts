@@ -129,7 +129,8 @@ test("J7: the bulk import takes over inactive telco accounts, one record ends in
   await expect(page.getByTestId("bulk-start").getByRole("status")).toBeVisible();
 
   await expect(async () => {
-    await page.goto("/cockpit");
+    // The cockpit shows five clarification cases; "alle" lists every one.
+    await page.goto("/cockpit?klaerfaelle=alle");
     await expect(page.getByTestId("clarifications")).toContainText("T/88-4713");
     await expect(page.getByTestId("dead-letters")).toContainText("T/88-4714");
     await expect(page.getByTestId("runs")).toContainText("abgeschlossen");
@@ -139,8 +140,14 @@ test("J7: the bulk import takes over inactive telco accounts, one record ends in
 
   // Redrive with the missing postal code: the record leaves the DLQ and is taken over.
   await page.waitForLoadState("networkidle");
-  const row = page.getByTestId("dead-letters").getByRole("row", { name: /T\/88-4714/ });
-  await row.getByLabel("Postleitzahl (Korrektur)").fill("04229");
+  // Only the first dead letter starts with its correction row open.
+  const deadLetters = page.getByTestId("dead-letters");
+  const row = deadLetters.getByRole("row", { name: /T\/88-4714/ });
+  const postalCode = row.getByLabel("Postleitzahl (Korrektur)");
+  if (!(await postalCode.isVisible())) {
+    await deadLetters.getByRole("button", { name: /T\/88-4714 korrigieren/ }).click();
+  }
+  await postalCode.fill("04229");
   await row.getByRole("button", { name: "Erneut verarbeiten" }).click();
   // The page reloads after the redrive; the record leaves the DLQ and is taken over.
   await expect(async () => {
@@ -189,7 +196,7 @@ test("J8: the cockpit shows Emil as clarification case and the event timeline", 
     .getByRole("button", { name: "Import Versorger starten" })
     .click();
   await expect(async () => {
-    await page.goto("/cockpit");
+    await page.goto("/cockpit?klaerfaelle=alle");
     await expect(page.getByTestId("clarifications")).toContainText("V-1000125");
     await expect(page.getByTestId("timeline")).toContainText("AccountsLinked");
     await expect(page.getByTestId("timeline")).toContainText("BulkMigrationCompleted");

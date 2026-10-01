@@ -1,0 +1,101 @@
+import { expect, test } from "@playwright/test";
+import { openSignedIn } from "./sign-in.js";
+import { addToGroup, createTestUser, type TestUser, userPoolId } from "./test-user.js";
+
+/**
+ * Phase 6 against the live portal: the pages carry the mockup's building blocks with data
+ * from the API — overview cards, consumption chart and tabs, the marked demo values, and
+ * in the cockpit the key figures, the search behind "/" and the shortcut "g p".
+ */
+const EVENTUALLY = { timeout: 45_000, intervals: [2_000, 3_000, 5_000] };
+
+let customer: TestUser;
+let owner: TestUser;
+
+test.use({ locale: "de-DE" });
+test.describe.configure({ mode: "serial" });
+
+test.beforeAll(async () => {
+  const poolId = await userPoolId();
+  customer = await createTestUser(poolId);
+  owner = await createTestUser(poolId);
+  await addToGroup(poolId, owner.email, "owner");
+});
+
+test.afterAll(async () => {
+  await customer?.remove();
+  await owner?.remove();
+});
+
+test("the overview greets the customer and shows contract cards and the mailbox", async ({
+  page,
+}) => {
+  await openSignedIn(page, "/konto", customer.email, customer.password);
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("Guten Tag");
+  // The demo contracts follow the registration by event.
+  await expect(async () => {
+    await page.goto("/konto");
+    const main = page.locator("main");
+    await expect(main).toContainText("Ihre Verträge");
+    await expect(main).toContainText(/Strom/);
+    await expect(main).toContainText(/Mobil/);
+  }).toPass(EVENTUALLY);
+  // The mobile data volume is simulated and says so.
+  await expect(page.locator('[data-fake="true"]').first()).toBeVisible();
+  await expect(page.getByTestId("account")).toContainText(customer.email);
+});
+
+test("consumption shows tabs, the 12-month chart and the marked data volume", async ({ page }) => {
+  await openSignedIn(page, "/verbrauch", customer.email, customer.password);
+  const tabs = page.getByRole("tablist");
+  await expect(tabs.getByRole("tab", { name: /Strom/ })).toHaveAttribute("aria-selected", "true");
+  const panel = page.getByRole("tabpanel").first();
+  await expect(panel.locator("svg.kp-bar-chart-svg")).toBeVisible();
+  await expect(panel).toContainText("Letzte 12 Monate");
+  await expect(panel).toContainText("Ø pro Monat");
+  // The chart can be read as a table, too.
+  await panel.locator(".kp-chart-details summary").click();
+  await expect(panel.locator(".kp-chart-details table tbody tr")).toHaveCount(12);
+
+  await page.waitForLoadState("networkidle");
+  await tabs.getByRole("tab", { name: /Mobilfunk/ }).click();
+  const mobile = page.getByRole("tabpanel", { name: /Mobilfunk/ });
+  await expect(mobile.locator('[data-fake="true"]').first()).toBeVisible();
+  await expect(mobile.getByRole("button", { name: /1 GB nachbuchen/ })).toBeDisabled();
+});
+
+test("the cockpit shows the key figures, searches behind '/' and jumps with 'g p'", async ({
+  page,
+}) => {
+  await openSignedIn(page, "/cockpit", owner.email, owner.password);
+  const main = page.locator("main");
+  await expect(main.getByRole("img", { name: /Versorger/ }).first()).toBeVisible();
+  await expect(main.getByRole("img", { name: /Telko/ }).first()).toBeVisible();
+  await expect(main).toContainText("Offene Klärfälle");
+  await expect(main).toContainText("Dead-Letter-Queue");
+  await expect(main).toContainText("Aktualisiert sich alle 10 Sekunden");
+  await page.waitForLoadState("networkidle");
+
+  await page.keyboard.press("/");
+  // The top bar's field listens to "/"; the copy on the page is for phones only.
+  const search = page
+    .locator(".kp-topbar")
+    .getByRole("searchbox", { name: "Konto, Mandant oder Ereignis suchen" });
+  await expect(search).toBeFocused();
+  await page.keyboard.type("telco");
+  await page.keyboard.press("Enter");
+  await page.waitForURL(/\/cockpit\/suche\?q=telco/);
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("Suche");
+  await expect(search).toHaveValue("telco");
+
+  await page.waitForLoadState("networkidle");
+  await search.blur();
+  await page.keyboard.press("g");
+  await page.keyboard.press("p");
+  await page.waitForURL(/\/cockpit\/paesse$/);
+  const passes = page.locator("main");
+  await expect(passes).toContainText("Aktive Pass-Mandanten");
+  await expect(passes).toContainText("Offene Einladungen");
+  await expect(passes).toContainText("Nie angemeldet");
+  await expect(passes).toContainText("API-Aufrufe heute");
+});

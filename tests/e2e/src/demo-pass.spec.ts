@@ -66,11 +66,10 @@ test.afterAll(async ({ browser }) => {
 async function openPasses(page: Page) {
   await openSignedIn(page, "/cockpit/paesse", owner.email, owner.password);
   await expect(page.getByTestId("invitation-form")).toBeVisible();
-  // The owner's header leads to the cockpit, marked as the current section.
-  await expect(page.getByRole("navigation").getByRole("link", { name: "Cockpit" })).toHaveAttribute(
-    "aria-current",
-    "page",
-  );
+  // The cockpit's sidebar marks the pass administration as the current page.
+  await expect(
+    page.getByRole("navigation").getByRole("link", { name: "Demo-Pässe" }).first(),
+  ).toHaveAttribute("aria-current", "page");
   // Wait for hydration: the form and the revoke buttons are client components.
   await page.waitForLoadState("networkidle");
 }
@@ -138,7 +137,7 @@ test("the pass holder signs in and sees status, quota, demo persons and password
   expect(tenant).toMatch(/^p[a-z0-9]{7}$/);
   const quotas = page.getByTestId("pass-quotas");
   await expect(quotas.getByRole("meter", { name: "API-Aufrufe" })).toBeVisible();
-  await expect(quotas).toContainText(/Kontingent: .* übrig · gültig bis/);
+  await expect(quotas).toContainText(/\d von [\d.]+ · [\d.]+ übrig/);
   const persons = page.getByTestId("demo-persons");
   await expect(persons).toContainText(`anna.becker+${tenant}@example.org`);
   anna = `anna.becker+${tenant}@example.org`;
@@ -260,12 +259,14 @@ test("owner and pass holder see only their own tenant in the cockpit", async ({
   // Pass holder: own tenant, no pass administration.
   const holder = await freshPage(browser);
   await openSignedIn(holder, "/cockpit", guest, guestPassword);
-  await expect(holder.getByRole("navigation").getByRole("link", { name: "Cockpit" })).toBeVisible();
+  await expect(
+    holder.getByRole("navigation").getByRole("link", { name: "Übersicht" }).first(),
+  ).toBeVisible();
   await expect(
     holder.getByRole("navigation").getByRole("link", { name: "Demo-Pass" }),
   ).toBeVisible();
   await expect(holder.getByTestId("cockpit-tenant")).toHaveAttribute("data-tenant", tenant);
-  await expect(holder.getByTestId("to-passes")).toHaveCount(0);
+  await expect(holder.getByRole("link", { name: "Demo-Pässe" })).toHaveCount(0);
   await expect(async () => {
     await holder.goto("/cockpit");
     await expect(holder.getByTestId("timeline")).toContainText("lazy");
@@ -284,7 +285,11 @@ test("owner and pass holder see only their own tenant in the cockpit", async ({
   await expect(page.locator("html")).toHaveAttribute("data-audience", "cockpit");
   await expect(page.locator("html")).toHaveAttribute("data-theme-preset", "dicht");
   await expect(page.locator("html")).toHaveAttribute("data-nav", "side");
-  await expect(page.locator(".kp-nav")).toHaveCSS("position", "absolute");
+  // With sections, counters and shortcuts the cockpit renders its own sidebar list.
+  const sidebar = page.locator(".kp-sidenav");
+  await expect(sidebar).toBeVisible();
+  await expect(sidebar).toHaveCSS("position", "absolute");
+  await expect(sidebar.getByRole("link", { name: /Demo-Pässe/ })).toBeVisible();
 });
 
 test("the owner pauses redemption in the cockpit and the redeem page says so", async ({

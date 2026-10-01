@@ -101,7 +101,7 @@ test("J4: a meter reading is stored and confirmed in the mailbox", async ({ page
     .first()
     .fill(String(Math.floor(latest) + 150));
   await form.getByRole("button").first().click();
-  await expect(page.getByRole("status")).toBeVisible();
+  await expect(form.getByRole("status")).toBeVisible();
   await expectMailboxMessage(page, /Zählerstand|meter reading/i);
 });
 
