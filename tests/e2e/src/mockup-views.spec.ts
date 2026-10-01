@@ -68,7 +68,8 @@ test("consumption shows tabs, the 12-month chart and the marked data volume", as
 test("the cockpit shows the key figures, searches behind '/' and jumps with 'g p'", async ({
   page,
 }) => {
-  await openSignedIn(page, "/cockpit", owner.email, owner.password);
+  // Phase 7: the migration is one area of the operator's cockpit.
+  await openSignedIn(page, "/cockpit/migration", owner.email, owner.password);
   const main = page.locator("main");
   await expect(main.getByRole("img", { name: /Versorger/ }).first()).toBeVisible();
   await expect(main.getByRole("img", { name: /Telko/ }).first()).toBeVisible();
@@ -98,15 +99,15 @@ test("the cockpit shows the key figures, searches behind '/' and jumps with 'g p
     const { gap, atEnd } = await position(id);
     if (!atEnd) expect(gap, `heading of #${id} below the top bar`).toBeLessThanOrEqual(48);
   }
-  // "Übersicht" points to the open page: it goes back to the top and drops the anchor.
+  // "Migration" points to the open page: it goes back to the top and drops the anchor.
   await page
     .locator(".kp-sidenav")
-    .getByRole("link", { name: /^Übersicht/ })
+    .getByRole("link", { name: /^Migration/ })
     .click();
-  await expect(page).toHaveURL(/\/cockpit$/);
+  await expect(page).toHaveURL(/\/cockpit\/migration$/);
   await expect.poll(() => page.evaluate("window.scrollY")).toBe(0);
   await page.setViewportSize({ width: 1280, height: 720 });
-  await page.goto("/cockpit");
+  await page.goto("/cockpit/migration");
   await page.waitForLoadState("networkidle");
 
   await page.keyboard.press("/");

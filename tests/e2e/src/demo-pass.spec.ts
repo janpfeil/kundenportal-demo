@@ -25,8 +25,8 @@ import {
  * pass page.
  */
 const EVENTUALLY = { timeout: 90_000, intervals: [2_000, 3_000, 5_000] };
-// Long enough for J2/J3/J4/J6 inside the tenant before the pass runs out.
-const TEST_MINUTES = 5;
+// Long enough for J2/J3/J4/J6 and the operator's J12 inside the tenant before it runs out.
+const TEST_MINUTES = 8;
 
 let poolId: string;
 let owner: TestUser;
@@ -252,13 +252,84 @@ test("J3 inside the tenant: Bernd links his telco account with the tenant's pass
   await page.context().close();
 });
 
+test("J12 inside the tenant: the pass holder operates customers, contracts and products", async ({
+  browser,
+}) => {
+  test.setTimeout(4 * 60_000);
+  const holder = await freshPage(browser);
+  // Customers: Anna, taken over above, is found through the directory's search.
+  await openSignedIn(holder, "/cockpit/kunden", guest, guestPassword);
+  await expect(async () => {
+    await holder.goto("/cockpit/kunden?q=anna");
+    await expect(holder.getByTestId("customer-table")).toContainText("Anna");
+  }).toPass(EVENTUALLY);
+  await holder.getByTestId("customer-table").getByRole("link", { name: /Anna/ }).first().click();
+  await expect(holder.getByTestId("customer-detail")).toContainText(anna);
+  const contracts = holder.getByTestId("customer-contracts");
+  await expect(contracts).toContainText("Strom");
+  await contracts.getByRole("link").first().click();
+
+  // Contracts: the operator sets the installment with a reason; the history keeps it.
+  const actions = holder.getByTestId("contract-actions");
+  await expect(actions).toBeVisible();
+  await holder.waitForLoadState("networkidle");
+  await actions.getByTestId("action-type").selectOption("setInstallment");
+  await actions.getByLabel("Neuer Abschlag").fill("123");
+  await actions.getByLabel("Begründung").fill("E2E: Abschlag an den Verbrauch angepasst");
+  await actions.getByRole("button", { name: "Abschlag festsetzen" }).click();
+  await expect(async () => {
+    await holder.reload();
+    await expect(holder.getByTestId("contract-history")).toContainText("123");
+  }).toPass(EVENTUALLY);
+
+  // Products: a new product, published, can be ordered by the tenant's customers.
+  await holder.goto("/cockpit/produkte/neu");
+  const form = holder.getByTestId("product-form");
+  await expect(form).toBeVisible();
+  await holder.waitForLoadState("networkidle");
+  await form.getByLabel("Kennung").first().fill("e2e-glasfaser");
+  await form.getByLabel("Sparte").selectOption("internet");
+  await form.getByLabel("Name", { exact: true }).fill("E2E Glasfaser");
+  await form.getByLabel("Beschreibung").fill("Testprodukt der E2E-Läufe");
+  await form.getByLabel("Mindestlaufzeit (Monate)").fill("0");
+  await form.getByLabel("Kündigungsfrist (Monate)").fill("1");
+  const option = form.getByTestId("option-row").first();
+  await option.getByLabel("Kennung").fill("500");
+  await option.getByLabel("Bezeichnung").fill("500 Mbit/s");
+  await option.getByLabel("Grund-/Monatspreis (€)").fill("45");
+  await option.getByLabel(/Bandbreite/).fill("500");
+  await form.getByRole("button", { name: "Produkt anlegen" }).click();
+  const product = holder.getByTestId("product-detail");
+  await expect(product).toContainText("E2E Glasfaser");
+  await holder.waitForLoadState("networkidle");
+  await holder
+    .getByTestId("product-status-moves")
+    .getByRole("button", { name: "Freigeben" })
+    .click();
+  await expect(async () => {
+    await holder.reload();
+    await expect(holder.getByTestId("product-detail")).toContainText("aktiv");
+  }).toPass(EVENTUALLY);
+  await holder.context().close();
+
+  const customer = await freshPage(browser);
+  await openSignedIn(customer, "/vertraege/neu", anna, demoPassword);
+  await expect(customer.getByTestId("product-catalogue")).toContainText("E2E Glasfaser");
+  // The mailbox tells Anna what the operator changed and why.
+  await expect(async () => {
+    await customer.goto("/postfach");
+    await expect(customer.getByTestId("mailbox")).toContainText("Abschlag festgesetzt");
+  }).toPass(EVENTUALLY);
+  await customer.context().close();
+});
+
 test("owner and pass holder see only their own tenant in the cockpit", async ({
   page,
   browser,
 }) => {
   // Pass holder: own tenant, no pass administration.
   const holder = await freshPage(browser);
-  await openSignedIn(holder, "/cockpit", guest, guestPassword);
+  await openSignedIn(holder, "/cockpit/migration", guest, guestPassword);
   await expect(
     holder.getByRole("navigation").getByRole("link", { name: "Übersicht" }).first(),
   ).toBeVisible();
@@ -268,7 +339,7 @@ test("owner and pass holder see only their own tenant in the cockpit", async ({
   await expect(holder.getByTestId("cockpit-tenant")).toHaveAttribute("data-tenant", tenant);
   await expect(holder.getByRole("link", { name: "Demo-Pässe" })).toHaveCount(0);
   await expect(async () => {
-    await holder.goto("/cockpit");
+    await holder.goto("/cockpit/migration");
     await expect(holder.getByTestId("timeline")).toContainText("lazy");
   }).toPass(EVENTUALLY);
   await holder.goto("/cockpit/paesse");
@@ -276,7 +347,7 @@ test("owner and pass holder see only their own tenant in the cockpit", async ({
   await holder.context().close();
 
   // Owner: the owner tenant, whose timeline carries nothing of the pass tenant.
-  await openSignedIn(page, "/cockpit", owner.email, owner.password);
+  await openSignedIn(page, "/cockpit/migration", owner.email, owner.password);
   await expect(page.getByTestId("progress")).toBeVisible();
   await expect(page.getByTestId("cockpit-tenant")).toHaveCount(0);
   await expect(page.locator("main")).not.toContainText(tenant);

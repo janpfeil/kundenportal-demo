@@ -48,7 +48,7 @@ test.afterAll(async ({ browser }) => {
 });
 
 async function openCockpit(page: Page) {
-  await openSignedIn(page, "/cockpit", owner.email, owner.password);
+  await openSignedIn(page, "/cockpit/migration", owner.email, owner.password);
   await expect(page.getByTestId("progress")).toBeVisible();
   // Wait for hydration: the buttons are client components.
   await page.waitForLoadState("networkidle");
@@ -132,7 +132,7 @@ test("J7: the bulk import takes over inactive telco accounts, one record ends in
 
   await expect(async () => {
     // The cockpit shows five clarification cases; "alle" lists every one.
-    await page.goto("/cockpit?klaerfaelle=alle");
+    await page.goto("/cockpit/migration?klaerfaelle=alle");
     await expect(page.getByTestId("clarifications")).toContainText("T/88-4713");
     await expect(page.getByTestId("dead-letters")).toContainText("T/88-4714");
     await expect(page.getByTestId("runs")).toContainText("abgeschlossen");
@@ -153,7 +153,7 @@ test("J7: the bulk import takes over inactive telco accounts, one record ends in
   await row.getByRole("button", { name: "Erneut verarbeiten" }).click();
   // The page reloads after the redrive; the record leaves the DLQ and is taken over.
   await expect(async () => {
-    await page.goto("/cockpit");
+    await page.goto("/cockpit/migration");
     await expect(page.getByTestId("dead-letters")).not.toContainText("T/88-4714");
     await expect(page.getByTestId("timeline")).toContainText("telco:T/88-4714 bulk");
   }).toPass(EVENTUALLY);
@@ -198,7 +198,7 @@ test("J8: the cockpit shows Emil as clarification case and the event timeline", 
     .getByRole("button", { name: "Import Versorger starten" })
     .click();
   await expect(async () => {
-    await page.goto("/cockpit?klaerfaelle=alle");
+    await page.goto("/cockpit/migration?klaerfaelle=alle");
     await expect(page.getByTestId("clarifications")).toContainText("V-1000125");
     await expect(page.getByTestId("timeline")).toContainText("AccountsLinked");
     await expect(page.getByTestId("timeline")).toContainText("BulkMigrationCompleted");

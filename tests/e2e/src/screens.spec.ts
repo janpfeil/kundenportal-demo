@@ -89,6 +89,8 @@ test("customer screens", async ({ page, context }, info) => {
     detail?.startsWith("/vertraege/") ? detail : `/vertraege${detail ?? ""}`,
     "/verbrauch",
     "/postfach",
+    "/vertraege/neu",
+    "/vertraege/neu/internet-zuhause?option=250",
   ];
   const variants: Variant[] = [
     ...both("klar", 1280),
@@ -127,8 +129,17 @@ test("cockpit screens", async ({ page, context }, info) => {
     await applyTheme(context, "cockpit", variant);
     const sample = variant.preset !== "dicht";
     for (const path of sample
-      ? ["/cockpit", "/cockpit/paesse"]
-      : ["/cockpit", "/cockpit/paesse", "/cockpit/suche?q=telco"]) {
+      ? ["/cockpit", "/cockpit/kunden", "/cockpit/vertraege"]
+      : [
+          "/cockpit",
+          "/cockpit/kunden",
+          "/cockpit/vertraege",
+          "/cockpit/produkte",
+          "/cockpit/produkte/strom-klassik",
+          "/cockpit/migration",
+          "/cockpit/paesse",
+          "/cockpit/suche?q=telco",
+        ]) {
       await capture(page, info, path, variant);
     }
   }
