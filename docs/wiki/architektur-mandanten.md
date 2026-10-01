@@ -228,7 +228,9 @@ erste Anmeldung, die Erinnerungsfrist und die API-Aufrufe der Pass-Mandanten
 je Tag (heute und die letzten sieben Tage). Einladungen liegen unter dem Hash
 ihres Tokens und sind so nicht auflistbar; deshalb schreibt das Anlegen
 zusätzlich einen Index-Eintrag `PLATFORM` / `INVITE#<id>` (E-Mail, Zeitpunkte,
-TTL wie die Einladung), den das Einlösen als eingelöst markiert.
+TTL wie die Einladung), den das Einlösen in seiner Transaktion löscht. Der
+Index enthält damit nur offene Einladungen; Einladungen von vor Phase 6 fehlen
+darin, bis sie ablaufen.
 
 ## 6. Kosten und Obergrenze
 

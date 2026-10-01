@@ -195,7 +195,7 @@ Operation, es fehlt nur die Darstellung.
 | Baustein im Mockup | Daten heute | Lücke | Lösung in Phase 6 |
 |---|---|---|---|
 | „Aktive Pass-Mandanten n / max“ mit Balken | `GET /tenancy/settings` (`activeTenants`, `maxTenants`) | — | vorhanden |
-| „Offene Einladungen“ (gültig 14 Tage) | — | Einladungen sind nur über den Token-Hash auffindbar | **neu** `GET /tenancy/overview`: Index-Eintrag `PLATFORM` / `INVITE#<id>` je Einladung (beim Anlegen, beim Einlösen markiert, TTL wie die Einladung) |
+| „Offene Einladungen“ (gültig 14 Tage) | — | Einladungen sind nur über den Token-Hash auffindbar | **neu** `GET /tenancy/overview`: Index-Eintrag `PLATFORM` / `INVITE#<id>` je Einladung (beim Anlegen geschrieben, beim Einlösen gelöscht, TTL wie die Einladung) |
 | „Nie angemeldet“ mit „Erinnerung nach 24 Std.“ | `PassSummary.activatedAt` | Zahl, Erinnerungsfrist | `overview.neverSignedIn`, `overview.reminderHours` |
 | „API-Aufrufe heute“ mit Sparkline | nur Gesamtzähler `QUOTA#api.used` | Tageszähler | Kontingent-Wächter zählt im **selben Update** zusätzlich das Tagesattribut `d<JJJJMMTT>` (keine zusätzliche Schreibkapazität); `overview.apiCalls.today` und `.days[7]` über alle Pass-Mandanten |
 | Tabelle: E-Mail, Mandant, Status-Badge, Erste Anmeldung, Letzte Aktivität, Kontingent als Mini-Balken, Gültig bis, Widerrufen | `GET /tenancy/passes` (`activatedAt`, `lastActiveAt`, `quota`) | offene Einladungen als Zeilen | `overview.invitations[]` |
@@ -232,8 +232,15 @@ Ständen abdeckt (z. B. nach dem letzten Stand), schätzt er aus dem
 geschätzten Jahresverbrauch des Vertrags mit demselben Profil und kennzeichnet
 sie mit `basis: "estimate"`; die Oberfläche zeigt sie heller und mit
 Legende „geschätzt“. Das ist eine echte Berechnung, kein Demo-Wert. Den
-Jahresverbrauch übernimmt der Verbrauchsdienst aus `ContractChanged`
-(`ContractSnapshot.estimatedAnnualConsumption`, neu und optional).
+Jahresverbrauch für die Schätzung nimmt der Verbrauchsdienst in dieser
+Reihenfolge: hochgerechnet aus den eigenen Zählerständen (wenn zwei Stände
+mindestens 30 Tage auseinanderliegen, mit demselben Profil gewichtet), sonst
+der Schätzwert des Vertrags aus `ContractChanged`
+(`ContractSnapshot.estimatedAnnualConsumption`, neu und optional), sonst ein
+Standardwert je Sparte (Strom 2.500 kWh, Gas 1.200 m³, Wasser 100 m³).
+**[E]** Solange nur geschätzte Monate vorliegen, ist die Veränderung zum
+Vorjahr 0 %; einen Wert wie „−4,1 %“ im Mockup gibt es erst mit Ständen aus
+zwei Jahren.
 
 ### Neue und erweiterte Operationen
 
@@ -247,7 +254,8 @@ Jahresverbrauch übernimmt der Verbrauchsdienst aus `ContractChanged`
 **Kosten:** keine neuen Bausteine; vier Routen im bestehenden HTTP API. Der
 Tageszähler der API-Aufrufe steckt im bestehenden Update des
 Kontingent-Wächters, der Einladungs-Index ist ein zweiter Schreibvorgang nur
-beim Anlegen und Einlösen einer Einladung. DynamoDB bleibt bei 5/5.
+beim Anlegen einer Einladung (beim Einlösen ein Löschen in der bestehenden
+Transaktion). DynamoDB bleibt bei 5/5.
 
 ### Gefakte Elemente
 
