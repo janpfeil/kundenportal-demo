@@ -88,6 +88,8 @@ describe("zone", () => {
     expect(BASE_PATH).toBe("/verbrauch");
     expect(zonePath("/api/contracts/x/readings")).toBe("/verbrauch/api/contracts/x/readings");
     const active = navigation(commonTexts.de, session()).filter((item) => item.active);
-    expect(active).toEqual([{ href: "/verbrauch", label: "Verbrauch", active: true }]);
+    expect(active).toEqual([
+      { href: "/verbrauch", label: "Verbrauch", icon: "chart", active: true },
+    ]);
   });
 });

@@ -81,7 +81,7 @@ describe("zone", () => {
     const nav = navigation(commonTexts.de, session());
     expect(nav.map((item) => item.href)).toEqual(["/", "/postfach", "/vertraege", "/verbrauch"]);
     expect(nav.filter((item) => item.active).map((item) => item.href)).toEqual(["/vertraege"]);
-    expect(navigation(commonTexts.en)).toEqual([{ href: "/", label: "Home" }]);
+    expect(navigation(commonTexts.en)).toEqual([{ href: "/", label: "Home", icon: "home" }]);
     // The cockpit role (owner or pass holder) brings the cockpit link, pass holders also
     // their pass status.
     expect(navigation(commonTexts.de, session("owner")).map((item) => item.href)).toContain(
