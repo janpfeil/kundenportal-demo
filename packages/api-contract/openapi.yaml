@@ -1033,6 +1033,14 @@ components:
         createdAt: { type: string, format: date-time }
         validUntil: { type: string, format: date-time }
         shortLived: { type: boolean }
+        activatedAt:
+          type: string
+          format: date-time
+          description: First sign-in of the pass holder; absent until then
+        lastActiveAt:
+          type: string
+          format: date-time
+          description: Last API call of the tenant; absent before the first
         quota: { $ref: "#/components/schemas/QuotaUsage" }
     OwnPass:
       type: object

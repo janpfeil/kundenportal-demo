@@ -307,6 +307,11 @@ test("the owner pauses redemption in the cockpit and the redeem page says so", a
   } finally {
     await toggle("open");
   }
+  // Meanwhile the holder and the tenant's persons were active: the owner sees when.
+  await openPasses(page);
+  const row = passRow(page);
+  await expect(row.getByTestId("pass-activated")).not.toHaveText("noch nicht");
+  await expect(row.getByTestId("pass-last-active")).not.toHaveText("noch nicht");
   const open = await redeemPage();
   await expect(open.getByTestId("redeem-offer")).toContainText("5.000");
   await expect(open.getByTestId("redeem-paused")).toHaveCount(0);

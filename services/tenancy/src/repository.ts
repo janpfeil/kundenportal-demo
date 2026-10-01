@@ -474,6 +474,18 @@ export class TenancyRepository extends SettingsRepository {
     return usage;
   }
 
+  /**
+   * Last API call of the tenant: the API quota guard (service-kit) records `lastActiveAt`
+   * with the counter; undefined before the first call.
+   */
+  async getLastActivity(tenantId: string): Promise<string | undefined> {
+    const result = await this.db.send(
+      new GetCommand({ TableName: this.table, Key: quotaKey(tenantId, "api") }),
+    );
+    const value = result.Item?.lastActiveAt;
+    return typeof value === "string" ? value : undefined;
+  }
+
   /** Adds one to a counter and returns the new value. */
   async addUsage(tenantId: string, kind: QuotaKind): Promise<number> {
     const result = await this.db.send(

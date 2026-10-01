@@ -277,6 +277,19 @@ describe("passes", () => {
     return detail.payload;
   }
 
+  it("shows the owner the holder's first sign-in and the tenant's last activity", async () => {
+    const s = setup();
+    const { tenantId } = await issued(s);
+    const tenant = s.repository.tenants.get(tenantId);
+    if (tenant) tenant.activatedAt = "2026-09-30T12:05:00.000Z";
+    s.repository.lastActivity.set(tenantId, "2026-09-30T13:00:00.000Z");
+    const result = await s.api(apiEvent("GET /tenancy/passes", { claims: OWNER }));
+    expect(body(result).passes[0]).toMatchObject({
+      activatedAt: "2026-09-30T12:05:00.000Z",
+      lastActiveAt: "2026-09-30T13:00:00.000Z",
+    });
+  });
+
   it("lists passes with status and quota for the owner only", async () => {
     const s = setup();
     const { passId, tenantId } = await issued(s);

@@ -91,6 +91,8 @@ export interface ApiQuotaOptions {
   directory?: TenantStatusLookup;
   /** API calls a pass may make. Default: env `QUOTA_API_CALLS` or 5000. */
   limit?: number;
+  /** Clock for `lastActiveAt` (tests). */
+  now?: () => Date;
 }
 
 /** API calls a demo pass may make unless `QUOTA_API_CALLS` says otherwise (§5). */
@@ -105,7 +107,8 @@ function limitFromEnv(): number {
  * Guard of the API for pass tenants (architektur-mandanten §5): refuses the call with
  * 403 unless the pass is active (429 if the tenancy service marked it `quota-exceeded`),
  * then counts it atomically in the base table and refuses with 429 once the limit is
- * reached. The owner is never counted.
+ * reached. The same update records `lastActiveAt`, which the owner's cockpit shows as the
+ * tenant's last activity — no extra write. The owner is never counted.
  */
 export function createApiQuota(options: ApiQuotaOptions = {}): TenantGuard {
   const data = options.data ?? tenantData;
@@ -123,10 +126,14 @@ export function createApiQuota(options: ApiQuotaOptions = {}): TenantGuard {
         new UpdateCommand({
           TableName: base.tableName,
           Key: quotaKey(tenantId, "api"),
-          UpdateExpression: "ADD #used :one",
+          UpdateExpression: "ADD #used :one SET #lastActiveAt = :now",
           ConditionExpression: "attribute_not_exists(#used) OR #used < :limit",
-          ExpressionAttributeNames: { "#used": "used" },
-          ExpressionAttributeValues: { ":one": 1, ":limit": limit },
+          ExpressionAttributeNames: { "#used": "used", "#lastActiveAt": "lastActiveAt" },
+          ExpressionAttributeValues: {
+            ":one": 1,
+            ":limit": limit,
+            ":now": (options.now ?? (() => new Date()))().toISOString(),
+          },
         }),
       );
     } catch (error) {

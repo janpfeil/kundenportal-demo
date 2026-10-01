@@ -26,6 +26,8 @@ describe("listPasses", () => {
           status: "active",
           validUntil: "2026-10-07T12:00:00Z",
           quota: { api: { used: 2, limit: 5000 } },
+          activatedAt: "2026-10-01T08:00:00Z",
+          lastActiveAt: "2026-10-01T09:00:00Z",
         },
         { passId: "pass-2", tenantId: "pbbbbbbb", email: "x@example.org", status: "deleted" },
       ],
@@ -38,7 +40,12 @@ describe("listPasses", () => {
     const passes = await listPasses(session);
     expect(fetch.mock.calls[0]?.[0]).toBe("https://api.example.org/api/tenancy/passes");
     expect(passes).toMatchObject([
-      { passId: "pass-1", quotas: { api: { used: 2, limit: 5000 } } },
+      {
+        passId: "pass-1",
+        quotas: { api: { used: 2, limit: 5000 } },
+        activatedAt: "2026-10-01T08:00:00Z",
+        lastActiveAt: "2026-10-01T09:00:00Z",
+      },
       { passId: "pass-2", status: "deleted", quotas: {} },
     ]);
   });

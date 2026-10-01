@@ -171,6 +171,10 @@ export class MemoryRepository implements Repository {
     const get = (kind: QuotaKind) => this.usage.get(`${tenantId}|${kind}`) ?? 0;
     return { api: get("api"), events: get("events"), uploads: get("uploads") };
   }
+  readonly lastActivity = new Map<string, string>();
+  async getLastActivity(tenantId: string) {
+    return this.lastActivity.get(tenantId);
+  }
   async addUsage(tenantId: string, kind: QuotaKind) {
     const key = `${tenantId}|${kind}`;
     const used = (this.usage.get(key) ?? 0) + 1;

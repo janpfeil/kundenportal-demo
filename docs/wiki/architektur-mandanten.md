@@ -56,7 +56,7 @@ Mandanten, Kontingente) liegen ebenfalls dort, unter eigenen Präfixen
 |---|---|---|
 | `INVITE#<sha256(token)>` | `META` | E-Mail, erstellt, gültig bis (TTL 14 Tage), eingelöst |
 | `PASS#<passId>` | `META` | Mandant, E-Mail, Status, ausgestellt, erste Anmeldung (`activatedAt`), gültig bis; bleibt nach dem Rückbau 30 Tage als Nachweis, dann [TTL](glossar.md#dynamodb-ttl) |
-| `TENANT#<kennung>` | `QUOTA#<art>` | Zähler `used` (`api`, `events`, `uploads`) — der Router und Documents kennen nur den Mandanten, nicht den Pass; `uploads` trägt zusätzlich `exceededAt` (Merker: `QuotaExceeded` einmal gemeldet) |
+| `TENANT#<kennung>` | `QUOTA#<art>` | Zähler `used` (`api`, `events`, `uploads`) — der Router und Documents kennen nur den Mandanten, nicht den Pass; `api` trägt zusätzlich `lastActiveAt` (letzter API-Aufruf, im selben atomaren Update geschrieben, Spalte „Letzte Aktivität“ im Cockpit), `uploads` trägt `exceededAt` (Merker: `QuotaExceeded` einmal gemeldet) |
 | `PLATFORM` | `TENANT#<kennung>` | Tabelle, Status (`provisioning`, `active`, `quota-exceeded`, `tearing-down`, `deleted`), Pass, gültig bis, erste Anmeldung (`activatedAt`), Erinnerung verschickt (`reminderSentAt`) — Liste für Abgleich und Cockpit |
 | `PLATFORM` | `SETTINGS` | Einlösen offen/gesperrt ([Kill-Switch](glossar.md#kill-switch)) mit `closedAt`/`closedReason`, Obergrenze `maxTenants` (Vorgabe 3, höchstens 4), Zähler `activeTenants` (Mandanten, die nicht `deleted` sind) |
 | `EMAIL#<sha256(adresse)>` | `PASS` | ein Pass je E-Mail-Adresse |

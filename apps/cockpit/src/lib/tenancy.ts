@@ -24,6 +24,10 @@ export interface PassSummary {
   email: string;
   status: PassStatus;
   validUntil: string;
+  /** First sign-in of the pass holder; absent until then. */
+  activatedAt?: string;
+  /** Last API call in the tenant; absent before the first. */
+  lastActiveAt?: string;
   quotas: Partial<Record<QuotaKind, { used: number; limit: number }>>;
 }
 

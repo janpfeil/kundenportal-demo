@@ -117,6 +117,9 @@ export class Passes {
         createdAt: tenant.createdAt,
         validUntil: tenant.validUntil,
         shortLived: tenant.shortLived === true,
+        // Who is active: the holder's first sign-in and the tenant's last API call.
+        activatedAt: tenant.activatedAt,
+        lastActiveAt: await this.ctx.repository.getLastActivity(tenant.tenantId),
         quota: tenant.status === "deleted" ? undefined : await this.usage(tenant.tenantId),
       })),
     );

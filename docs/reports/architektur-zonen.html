@@ -390,7 +390,7 @@ ohne <a class="term" href="glossar.html#s3" title="Objektspeicher für Dateien b
 <td>Cockpit</td>
 <td>Seite</td>
 <td>Gruppe <code>owner</code></td>
-<td>Einladungen erzeugen (Link wird genau einmal angezeigt), Pässe mit Status und Kontingent, Widerruf</td>
+<td>Einladungen erzeugen (Link wird genau einmal angezeigt), Pässe mit Status, erster Anmeldung des Pass-Inhabers, letzter Aktivität (letzter <a class="term" href="glossar.html#api" title="Programmierschnittstelle, über die Programme miteinander sprechen">API</a>-Aufruf im <a class="term" href="glossar.html#mandant" title="abgeschotteter Bereich eines Kunden in einer gemeinsam betriebenen Anwendung; im Demo je Demo-Pass ein Mandant">Mandanten</a>), Kontingent und Ablauf, Widerruf</td>
 </tr>
 <tr>
 <td><code>/cockpit/api/invitations</code></td>
@@ -415,7 +415,7 @@ ohne <a class="term" href="glossar.html#s3" title="Objektspeicher für Dateien b
 </tr>
 <tr>
 <td><code>/api/tenancy/offer</code></td>
-<td><a class="term" href="glossar.html#api" title="Programmierschnittstelle, über die Programme miteinander sprechen">API</a></td>
+<td>API</td>
 <td>GET, vom <a class="term" href="glossar.html#browser" title="Programm zum Anzeigen von Webseiten; „Browser-App&quot; = Anwendung, die im Browser läuft">Browser</a></td>
 <td>öffentlich</td>
 <td>aktuelles Angebot für <code>/pass/einloesen</code> (Laufzeit, Kontingente, <a class="term" href="glossar.html#upload" title="Hochladen einer Datei vom Browser zum Server bzw. nach S3">Upload</a>-Größe, Einlösen offen)</td>
@@ -425,7 +425,7 @@ ohne <a class="term" href="glossar.html#s3" title="Objektspeicher für Dateien b
 <td>Cockpit</td>
 <td>Seite</td>
 <td>Gruppe <code>pass</code></td>
-<td>Migrationsansichten <strong>des eigenen</strong> <a class="term" href="glossar.html#mandant" title="abgeschotteter Bereich eines Kunden in einer gemeinsam betriebenen Anwendung; im Demo je Demo-Pass ein Mandant">Mandanten</a> (Mandant aus dem Token)</td>
+<td>Migrationsansichten <strong>des eigenen</strong> Mandanten (Mandant aus dem Token)</td>
 </tr>
 </tbody>
 </table></div>
@@ -651,6 +651,6 @@ Invalidierung von <code>/</code> und <code>/pass/einloesen</code> bei jedem <a c
 <li>Custom Elements (MDN): <a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_custom_elements">https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_custom_elements</a></li>
 <li>Cookie-Attribut SameSite (MDN): <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Set-Cookie#samesitesamesite-value">https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Set-Cookie#samesitesamesite-value</a></li>
 </ul></main></div>
-<footer class="site"><a href="../wiki/architektur-zonen.md">Markdown-Quelle</a> · Generiert 2026-10-01 08:33 aus <code>docs/wiki</code> mit <code>scripts/build_reports.py</code></footer>
+<footer class="site"><a href="../wiki/architektur-zonen.md">Markdown-Quelle</a> · Generiert 2026-10-01 09:28 aus <code>docs/wiki</code> mit <code>scripts/build_reports.py</code></footer>
 </body>
 </html>

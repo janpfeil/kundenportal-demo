@@ -211,6 +211,17 @@ describe("tenancy repository", () => {
     expect(await repository.getQuotaUsage("p4k7x2qa")).toEqual({ api: 12, events: 3, uploads: 0 });
   });
 
+  it("reads the tenant's last activity from its API counter", async () => {
+    dbMock.on(GetCommand).resolves({ Item: { lastActiveAt: "2026-10-01T08:00:00.000Z" } });
+    expect(await repository.getLastActivity("p4k7x2qa")).toBe("2026-10-01T08:00:00.000Z");
+    expect(dbMock.commandCalls(GetCommand)[0]?.args[0].input.Key).toEqual({
+      PK: "TENANT#p4k7x2qa",
+      SK: "QUOTA#api",
+    });
+    dbMock.on(GetCommand).resolves({});
+    expect(await repository.getLastActivity("p4k7x2qa")).toBeUndefined();
+  });
+
   it("pages through the platform tenants", async () => {
     dbMock
       .on(QueryCommand)

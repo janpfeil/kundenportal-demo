@@ -199,7 +199,7 @@ Die Architektur dahinter steht in
 | `/pass/einloesen/challenge` | Shell | [Route Handler](glossar.md#route-handler), GET | öffentlich | holt das Rätsel von `GET /api/tenancy/challenge` |
 | `/pass/einloesen/api` | Shell | Route Handler, POST | öffentlich | prüft den [Origin-Header](glossar.md#origin-header) (sonst 403), gibt die IP des Besuchers als `x-kp-client-ip` weiter, ruft `POST /api/tenancy/redeem` |
 | `/pass` | Shell | Seite | Gruppe `pass` | Status des eigenen Passes: Einrichtung, gültig bis, Kontingente als `Meter` (neu in `packages/ui`), Demo-Personen mit Anmeldenamen und Demo-Passwort |
-| `/cockpit/paesse` | Cockpit | Seite | Gruppe `owner` | Einladungen erzeugen (Link wird genau einmal angezeigt), Pässe mit Status und Kontingent, Widerruf |
+| `/cockpit/paesse` | Cockpit | Seite | Gruppe `owner` | Einladungen erzeugen (Link wird genau einmal angezeigt), Pässe mit Status, erster Anmeldung des Pass-Inhabers, letzter Aktivität (letzter API-Aufruf im Mandanten), Kontingent und Ablauf, Widerruf |
 | `/cockpit/api/invitations` | Cockpit | Route Handler, POST | Gruppe `owner` | `POST /api/tenancy/invitations` |
 | `/cockpit/api/passes/<id>/revoke` | Cockpit | Route Handler, POST | Gruppe `owner` | `POST /api/tenancy/passes/{id}/revoke` |
 | `/cockpit/api/settings` | Cockpit | Route Handler, PUT | Gruppe `owner` | `PUT /api/tenancy/settings`: Einlösen öffnen/sperren, Höchstzahl 1–4 |

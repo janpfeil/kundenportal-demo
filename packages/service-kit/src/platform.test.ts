@@ -52,7 +52,12 @@ describe("TenantDirectory", () => {
 
 describe("API quota", () => {
   const quota = (limit = 5000) =>
-    createApiQuota({ data: base, directory: new TenantDirectory({ data: base }), limit });
+    createApiQuota({
+      data: base,
+      directory: new TenantDirectory({ data: base }),
+      limit,
+      now: () => new Date("2026-10-01T08:00:00.000Z"),
+    });
 
   it("counts a call of an active pass atomically in the base table", async () => {
     platformStatus("active");
@@ -62,9 +67,14 @@ describe("API quota", () => {
     expect(call?.args[0].input).toMatchObject({
       TableName: "kundenportal",
       Key: { PK: `TENANT#${PASS}`, SK: "QUOTA#api" },
-      UpdateExpression: "ADD #used :one",
+      // The same write records the tenant's last activity for the owner's cockpit.
+      UpdateExpression: "ADD #used :one SET #lastActiveAt = :now",
       ConditionExpression: "attribute_not_exists(#used) OR #used < :limit",
-      ExpressionAttributeValues: { ":one": 1, ":limit": 5000 },
+      ExpressionAttributeValues: {
+        ":one": 1,
+        ":limit": 5000,
+        ":now": "2026-10-01T08:00:00.000Z",
+      },
     });
   });
 

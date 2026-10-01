@@ -80,6 +80,26 @@ export default async function PassesPage() {
       ),
     },
     {
+      key: "activatedAt",
+      header: texts.list.activatedAt,
+      render: (pass) => (
+        <span data-testid="pass-activated">
+          {pass.activatedAt ? formatDateTime(pass.activatedAt, locale, "medium") : texts.list.never}
+        </span>
+      ),
+    },
+    {
+      key: "lastActiveAt",
+      header: texts.list.lastActiveAt,
+      render: (pass) => (
+        <span data-testid="pass-last-active">
+          {pass.lastActiveAt
+            ? formatDateTime(pass.lastActiveAt, locale, "medium")
+            : texts.list.never}
+        </span>
+      ),
+    },
+    {
       key: "quotas",
       header: texts.list.quotas,
       render: (pass) =>
