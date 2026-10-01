@@ -2,8 +2,13 @@ import type { Decorator, Preview } from "@storybook/react-vite";
 import { commonTexts } from "../src/i18n/index.js";
 import { isColorMode, themeAttributes } from "../src/theme-runtime.js";
 import { PRESETS, THEME_PRESETS, type ThemePreset, themesCss } from "../src/themes.js";
+// Same files, same order as scripts/build-css.mjs.
 import "../src/styles.css";
+import "../src/page.css";
+import "../src/widgets.css";
+import "../src/charts.css";
 import "../src/layout.css";
+import "../src/menus.css";
 
 // The build generates the theme tokens into dist/styles.css; Storybook takes them straight
 // from themes.ts, so dev server and static build show the same values.

@@ -11,6 +11,8 @@ export const en: CommonTexts = {
     consumption: "Consumption",
     cockpit: "Cockpit",
     pass: "Demo pass",
+    openCount: "{count} open",
+    shortcut: "Keyboard shortcut {keys}",
   },
   auth: {
     login: "Sign in",
@@ -36,6 +38,19 @@ export const en: CommonTexts = {
       uebersicht: "Overview",
       kontrast: "Contrast",
     },
+  },
+  fake: {
+    label: "Demo value",
+    description: "simulated — not from the system yet",
+  },
+  chart: {
+    previousYear: "Previous year",
+    estimated: "estimated",
+    showTable: "Show as table",
+    period: "Month",
+  },
+  messages: {
+    unread: "unread",
   },
   footer: {
     text: "Demo project · source code on GitHub",

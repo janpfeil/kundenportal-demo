@@ -1,0 +1,152 @@
+/*
+ * Page frame inside the main area: page heading (eyebrow, title, aside, lead, actions),
+ * cards with their heading row, and definition lists (Facts). The build appends this file
+ * after styles.css.
+ */
+
+/* Page */
+
+.kp-page > h1 {
+  margin-top: 0.67em;
+}
+
+.kp-page-hero > h1 {
+  font-size: clamp(1.5rem, 4vw, var(--kp-h1));
+}
+
+.kp-lead {
+  font-size: calc(var(--kp-font-size) * 1.15);
+}
+
+.kp-page-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 1em 0;
+}
+
+.kp-muted {
+  color: var(--kp-muted);
+}
+
+/* Heading row with an eyebrow above the title and e.g. a live indicator on the right. */
+.kp-page-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px var(--kp-space);
+  margin: calc(var(--kp-h1) * 0.67) 0;
+}
+
+.kp-page-head h1 {
+  margin: 0;
+}
+
+.kp-page-heading {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.kp-page-aside {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px var(--kp-space);
+}
+
+.kp-eyebrow {
+  margin: 0;
+  font-size: var(--kp-small);
+  font-weight: 650;
+  color: var(--kp-accent-text);
+  letter-spacing: 0.02em;
+}
+
+/* The sober presets ("Klar", "Dicht"; also the defaults) set the eyebrow in capitals. */
+:root:is([data-theme-preset="klar"], [data-theme-preset="dicht"], :not([data-theme-preset]))
+  .kp-eyebrow {
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* Card */
+
+.kp-card {
+  background: var(--kp-surface);
+  border: var(--kp-card-border);
+  border-radius: var(--kp-radius-large);
+  box-shadow: var(--kp-shadow);
+  padding: calc(var(--kp-space) * 0.75) var(--kp-space);
+  margin: 0 0 var(--kp-space);
+  min-width: 0;
+}
+
+.kp-card-title {
+  font-size: var(--kp-h3);
+  margin: 4px 0 8px;
+}
+
+/* Heading row: title (with icon) on the left, actions such as "Alle anzeigen" on the right. */
+.kp-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 4px 0 calc(var(--kp-space) * 0.75);
+}
+
+.kp-card-head .kp-card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+
+.kp-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.kp-card-danger {
+  border: 1px solid var(--kp-error-border);
+}
+
+/* Facts (definition list) */
+
+.kp-facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 8px 24px;
+  margin: 0 0 var(--kp-space);
+  background: var(--kp-surface);
+  border: var(--kp-card-border);
+  border-radius: var(--kp-radius-large);
+  box-shadow: var(--kp-shadow);
+  padding: var(--kp-space);
+}
+
+.kp-facts dt {
+  font-weight: 600;
+}
+
+.kp-facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 479px) {
+  .kp-facts {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .kp-facts dd + dt {
+    margin-top: 8px;
+  }
+}

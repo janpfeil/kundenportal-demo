@@ -17,6 +17,10 @@ export interface MeterProps extends Omit<HTMLAttributes<HTMLDivElement>, "role" 
    * error. The text carries the meaning; the colour only repeats it.
    */
   warnAt?: number;
+  /** A thinner bar (5 px), e.g. inside a table row or below a key figure. */
+  thin?: boolean | undefined;
+  /** Keeps the label for screen readers only, where the surrounding text already names it. */
+  hideLabel?: boolean | undefined;
 }
 
 /**
@@ -29,6 +33,8 @@ export function Meter({
   max,
   valueText,
   warnAt = 0.8,
+  thin = false,
+  hideLabel = false,
   className,
   ...rest
 }: MeterProps) {
@@ -38,13 +44,22 @@ export function Meter({
   const share = clamped / safeMax;
   const tone = share >= 1 ? "error" : share >= warnAt ? "warning" : "ok";
   return (
-    <div className={joinClasses("kp-meter", `kp-meter-${tone}`, className)} {...rest}>
-      <div className="kp-meter-head">
-        <span id={labelId} className="kp-meter-label">
+    <div
+      className={joinClasses("kp-meter", `kp-meter-${tone}`, thin && "kp-meter-thin", className)}
+      {...rest}
+    >
+      {hideLabel ? (
+        <span id={labelId} className="kp-sr-only">
           {label}
         </span>
-        {valueText !== undefined && <span className="kp-meter-value">{valueText}</span>}
-      </div>
+      ) : (
+        <div className="kp-meter-head">
+          <span id={labelId} className="kp-meter-label">
+            {label}
+          </span>
+          {valueText !== undefined && <span className="kp-meter-value">{valueText}</span>}
+        </div>
+      )}
       <div
         role="meter"
         aria-labelledby={labelId}

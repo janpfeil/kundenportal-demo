@@ -1,7 +1,8 @@
 /*
  * Base and component styles of the customer portal. Every zone imports the built stylesheet
  * once (`import "@kundenportal/ui/styles.css"`); the build puts the theme tokens in front
- * (generated from src/themes.ts) and the frame and navigation (layout.css) behind it.
+ * (generated from src/themes.ts) and page.css, widgets.css, charts.css, the frame and
+ * navigation (layout.css) and menus.css behind it (see scripts/build-css.mjs).
  * Every value comes from a `--kp-*` token, so a theme changes the look without touching the
  * components. The theme is chosen by attributes on <html>: data-audience, data-theme-preset,
  * data-color-mode (see theme-runtime.ts).
@@ -58,79 +59,47 @@ a {
   outline-offset: 2px;
 }
 
-/* Page */
-
-.kp-page > h1 {
-  margin-top: 0.67em;
+/* Text only for screen readers (labels, spoken counts and markers). */
+.kp-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
 }
 
-.kp-page-hero > h1 {
-  font-size: clamp(1.5rem, 4vw, var(--kp-h1));
+.kp-mono {
+  font-family: ui-monospace, "SFMono-Regular", "Cascadia Code", Menlo, Consolas, monospace;
+  font-size: 0.92em;
 }
 
-.kp-lead {
-  font-size: calc(var(--kp-font-size) * 1.15);
+/* Icons: outline set of the mockup, sized to the text. */
+
+.kp-icon {
+  flex: none;
+  width: 1.25em;
+  height: 1.25em;
+  vertical-align: -0.25em;
 }
 
-.kp-page-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin: 1em 0;
+.kp-icon-circle {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--kp-icon-radius);
+  background: var(--kp-accent-soft);
+  color: var(--kp-accent-text);
 }
 
-.kp-muted {
-  color: var(--kp-muted);
-}
-
-/* Card */
-
-.kp-card {
-  background: var(--kp-surface);
-  border: var(--kp-card-border);
-  border-radius: var(--kp-radius-large);
-  box-shadow: var(--kp-shadow);
-  padding: calc(var(--kp-space) * 0.75) var(--kp-space);
-  margin: 0 0 var(--kp-space);
-}
-
-.kp-card-title {
-  font-size: var(--kp-h3);
-  margin: 4px 0 8px;
-}
-
-/* Facts (definition list) */
-
-.kp-facts {
-  display: grid;
-  grid-template-columns: max-content 1fr;
-  gap: 8px 24px;
-  margin: 0 0 var(--kp-space);
-  background: var(--kp-surface);
-  border: var(--kp-card-border);
-  border-radius: var(--kp-radius-large);
-  box-shadow: var(--kp-shadow);
-  padding: var(--kp-space);
-}
-
-.kp-facts dt {
-  font-weight: 600;
-}
-
-.kp-facts dd {
-  margin: 0;
-  overflow-wrap: anywhere;
-}
-
-@media (max-width: 479px) {
-  .kp-facts {
-    grid-template-columns: 1fr;
-    gap: 0;
-  }
-
-  .kp-facts dd + dt {
-    margin-top: 8px;
-  }
+.kp-icon-circle .kp-icon {
+  width: 22px;
+  height: 22px;
 }
 
 /* Data table: a grid on wide screens, stacked label/value rows on narrow ones */
@@ -445,6 +414,14 @@ a {
 
 .kp-meter-error .kp-meter-bar {
   background: var(--kp-error-border);
+}
+
+.kp-meter-thin {
+  margin: 4px 0;
+}
+
+.kp-meter-thin .kp-meter-track {
+  height: 5px;
 }
 
 @media (forced-colors: active) {

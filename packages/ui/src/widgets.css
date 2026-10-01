@@ -1,0 +1,414 @@
+/*
+ * Small building blocks of the phase 6 pages (see docs/design/mockups.html): status badge,
+ * demo-value marker, live indicator, keys, banner, search field, tabs, switch and message
+ * list. Tokens only; the build appends this file after page.css.
+ */
+
+/* Status badge: pill with a dot; the text carries the meaning. */
+
+.kp-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  padding: 2px 9px 2px 7px;
+  border-radius: 999px;
+  background: var(--kp-surface-2);
+  color: var(--kp-muted);
+  font-size: var(--kp-small);
+  font-weight: 600;
+  line-height: 1.6;
+  white-space: nowrap;
+}
+
+.kp-status::before {
+  content: "";
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.kp-status-ok {
+  background: var(--kp-success-bg);
+  color: var(--kp-success-text);
+}
+
+.kp-status-warn {
+  background: var(--kp-warning-bg);
+  color: var(--kp-warning-text);
+}
+
+.kp-status-err {
+  background: var(--kp-error-bg);
+  color: var(--kp-error-text);
+}
+
+.kp-status-info {
+  background: var(--kp-info-bg);
+  color: var(--kp-info-text);
+}
+
+.kp-status-pulse::before {
+  box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 25%, transparent);
+}
+
+@media (max-width: 479px) {
+  .kp-status {
+    white-space: normal;
+  }
+}
+
+@media (forced-colors: active) {
+  .kp-status {
+    border: 1px solid CanvasText;
+  }
+}
+
+/* Marker of simulated values ("Demo-Wert"): dashed, so it never reads as a real status. */
+
+.kp-fake {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 6px;
+  border: 1px dashed var(--kp-warning-border);
+  border-radius: var(--kp-radius);
+  background: var(--kp-warning-bg);
+  color: var(--kp-warning-text);
+  font-family: var(--kp-font);
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1.5;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  vertical-align: middle;
+  cursor: help;
+}
+
+@media (forced-colors: active) {
+  .kp-fake {
+    border-color: CanvasText;
+  }
+}
+
+/* Live indicator and keys */
+
+.kp-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--kp-muted);
+  font-size: var(--kp-small);
+}
+
+.kp-live::before {
+  content: "";
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--kp-success-border);
+  box-shadow: 0 0 0 4px var(--kp-success-bg);
+}
+
+.kp-kbd {
+  padding: 0 5px;
+  border: 1px solid var(--kp-border-strong);
+  border-radius: 4px;
+  background: var(--kp-surface);
+  color: var(--kp-muted);
+  font:
+    11px/1.5 ui-monospace,
+    "SFMono-Regular",
+    Menlo,
+    monospace;
+  white-space: nowrap;
+}
+
+/* Banner: a to-do note with an accent bar on the left. */
+
+.kp-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--kp-space);
+  border-left: 4px solid var(--kp-accent);
+}
+
+.kp-banner-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.kp-banner-title {
+  margin: 0 0 2px;
+  font-size: var(--kp-h3);
+}
+
+.kp-banner-body > p {
+  margin: 0;
+}
+
+@media (max-width: 640px) {
+  .kp-banner {
+    flex-wrap: wrap;
+  }
+
+  .kp-banner-action,
+  .kp-banner-action > * {
+    width: 100%;
+  }
+}
+
+/* Search field (top bar) */
+
+.kp-search-form {
+  margin: 0;
+}
+
+.kp-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 220px;
+  height: calc(var(--kp-control) - 4px);
+  padding: 0 10px;
+  border: 1px solid var(--kp-muted);
+  border-radius: var(--kp-radius);
+  background: var(--kp-surface-2);
+  color: var(--kp-muted);
+}
+
+/* Customer pages keep their 44 px touch targets. */
+:root:not([data-audience="cockpit"]) .kp-search {
+  height: var(--kp-control);
+}
+
+.kp-search input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--kp-text);
+  font: inherit;
+  font-size: var(--kp-small);
+}
+
+.kp-search input::placeholder {
+  color: var(--kp-muted);
+  opacity: 1;
+}
+
+.kp-search:focus-within {
+  outline: 3px solid var(--kp-focus);
+  outline-offset: 1px;
+}
+
+/* Tabs */
+
+.kp-tablist {
+  display: flex;
+  gap: 4px;
+  margin-bottom: var(--kp-space);
+  overflow-x: auto;
+  border-bottom: 1px solid var(--kp-border);
+}
+
+.kp-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--kp-control);
+  padding: 0 var(--kp-space);
+  border: 0;
+  background: none;
+  box-shadow: inset 0 -3px 0 transparent;
+  color: var(--kp-muted);
+  font: inherit;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.kp-tab:hover {
+  color: var(--kp-text);
+}
+
+.kp-tab[aria-selected="true"] {
+  box-shadow: inset 0 -3px 0 var(--kp-accent);
+  color: var(--kp-text);
+}
+
+/* The list scrolls horizontally, so the focus ring sits inside the tab. */
+.kp-tab:focus-visible {
+  outline-offset: -3px;
+}
+
+@media (forced-colors: active) {
+  .kp-tab[aria-selected="true"] {
+    text-decoration: underline 3px;
+    text-underline-offset: 0.35em;
+  }
+}
+
+/* Switch: the knob is filled in both states, so "off" does not rely on a faint outline. */
+
+.kp-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: var(--kp-control);
+  padding: 4px 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.kp-switch-track {
+  position: relative;
+  flex: none;
+  width: 44px;
+  height: 26px;
+  border: 1px solid var(--kp-muted);
+  border-radius: 999px;
+  background: var(--kp-track);
+  transition: background 0.15s;
+}
+
+.kp-switch-track::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--kp-muted);
+  transition: transform 0.15s;
+}
+
+.kp-switch[aria-checked="true"] .kp-switch-track {
+  border-color: var(--kp-accent);
+  background: var(--kp-accent);
+}
+
+.kp-switch[aria-checked="true"] .kp-switch-track::after {
+  background: var(--kp-accent-contrast);
+  transform: translateX(18px);
+}
+
+.kp-switch:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kp-switch-track,
+  .kp-switch-track::after,
+  .kp-chart-details > summary::before {
+    transition: none;
+  }
+}
+
+@media (forced-colors: active) {
+  .kp-switch-track {
+    border-color: ButtonText;
+  }
+
+  .kp-switch-track::after {
+    background: ButtonText;
+  }
+
+  .kp-switch[aria-checked="true"] .kp-switch-track {
+    background: Highlight;
+  }
+}
+
+/* Message list (mailbox) */
+
+.kp-messages {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.kp-messages li + li {
+  border-top: 1px solid var(--kp-border);
+}
+
+.kp-message {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 4px 12px;
+  padding: calc(var(--kp-space) * 0.7) calc(var(--kp-space) * 0.5);
+  border-radius: var(--kp-radius);
+  color: inherit;
+  text-decoration: none;
+}
+
+.kp-message:hover {
+  background: var(--kp-surface-2);
+}
+
+.kp-message-unread {
+  background: var(--kp-unread);
+}
+
+.kp-message-dot {
+  align-self: center;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+
+.kp-message-unread .kp-message-dot {
+  background: var(--kp-accent);
+}
+
+.kp-message-title {
+  min-width: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.kp-message-unread .kp-message-title {
+  font-weight: 750;
+}
+
+.kp-message-time {
+  color: var(--kp-muted);
+  font-size: var(--kp-small);
+  white-space: nowrap;
+}
+
+.kp-message-preview {
+  grid-column: 2 / -1;
+  overflow: hidden;
+  color: var(--kp-muted);
+  font-size: var(--kp-small);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kp-message[aria-current="page"] {
+  background: var(--kp-surface-2);
+  box-shadow: inset 3px 0 0 var(--kp-accent);
+}
+
+@media (forced-colors: active) {
+  .kp-message-unread .kp-message-dot {
+    background: CanvasText;
+  }
+
+  .kp-message[aria-current="page"] {
+    outline: 2px solid CanvasText;
+    outline-offset: -2px;
+  }
+}

@@ -1,0 +1,464 @@
+/*
+ * Key figures and charts of the phase 6 pages (see docs/design/mockups.html): KPI tiles,
+ * progress ring, sparkline, bar chart with legend and table, mini quota bars, event
+ * timeline. Tokens only; the build appends this file after widgets.css.
+ */
+
+/* Key figures (Kennzahlen) */
+
+.kp-kpi {
+  display: grid;
+  align-content: start;
+  gap: 4px;
+}
+
+.kp-kpi-ring {
+  display: flex;
+  align-items: center;
+  gap: var(--kp-space);
+}
+
+.kp-kpi-body {
+  display: grid;
+  flex: 1;
+  gap: 4px;
+  min-width: 0;
+}
+
+.kp-kpi-label,
+.kp-kpi-hint {
+  color: var(--kp-muted);
+  font-size: var(--kp-small);
+}
+
+.kp-kpi-value {
+  font-family: var(--kp-font-heading);
+  font-size: var(--kp-h2);
+  font-weight: var(--kp-heading-weight);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+.kp-kpi-of {
+  color: var(--kp-muted);
+  font-family: var(--kp-font);
+  font-size: var(--kp-small);
+  font-weight: 500;
+}
+
+.kp-kpi-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px var(--kp-space);
+}
+
+.kp-kpi-delta {
+  color: var(--kp-muted);
+  font-size: var(--kp-small);
+  font-weight: 600;
+}
+
+.kp-kpi-delta-good {
+  color: var(--kp-success-text);
+}
+
+.kp-kpi-delta-bad {
+  color: var(--kp-error-text);
+}
+
+/* Charts: ring, sparkline, bar chart. Lines and areas take the accent; text the muted colour. */
+
+.kp-ring {
+  display: block;
+  flex: none;
+}
+
+.kp-ring-track {
+  stroke: var(--kp-track);
+}
+
+.kp-ring-value {
+  stroke: var(--kp-accent);
+}
+
+.kp-ring-center {
+  fill: var(--kp-text);
+  font-family: var(--kp-font-heading);
+  font-weight: 700;
+}
+
+.kp-ring-sub {
+  fill: var(--kp-muted);
+  font-family: var(--kp-font);
+  font-weight: 500;
+}
+
+.kp-chart {
+  display: block;
+  overflow: visible;
+}
+
+.kp-chart text {
+  fill: var(--kp-muted);
+  font-family: var(--kp-font);
+  font-size: 12px;
+}
+
+.kp-chart .kp-chart-value {
+  fill: var(--kp-text);
+  font-weight: 650;
+}
+
+.kp-chart-grid {
+  stroke: var(--kp-border);
+  stroke-width: 1;
+}
+
+.kp-chart-base {
+  stroke: var(--kp-border-strong);
+  stroke-width: 1;
+}
+
+.kp-chart-bar {
+  fill: var(--kp-accent);
+  opacity: 0.55;
+}
+
+.kp-chart-bar-current {
+  opacity: 1;
+}
+
+.kp-chart g:hover .kp-chart-bar {
+  opacity: 0.85;
+}
+
+/* Estimated bars: hatched with a dashed outline, so they differ in more than colour. */
+.kp-chart .kp-chart-bar-estimated {
+  opacity: 1;
+  stroke: var(--kp-accent);
+  stroke-width: 1.5;
+  stroke-dasharray: 4 3;
+}
+
+.kp-chart-hatch-bg {
+  fill: var(--kp-surface);
+}
+
+.kp-chart-hatch {
+  stroke: var(--kp-accent);
+  stroke-width: 2.5;
+  opacity: 0.6;
+}
+
+.kp-chart-hit {
+  fill: transparent;
+}
+
+.kp-chart-previous {
+  fill: none;
+  stroke: var(--kp-muted);
+  stroke-width: 2;
+  stroke-dasharray: 5 4;
+}
+
+.kp-chart-previous-dot {
+  fill: var(--kp-muted);
+}
+
+.kp-chart-line {
+  fill: none;
+  stroke: var(--kp-accent);
+  stroke-width: 2;
+}
+
+.kp-chart-area {
+  fill: var(--kp-accent);
+  opacity: 0.12;
+}
+
+.kp-chart-dot {
+  fill: var(--kp-accent);
+  stroke: var(--kp-surface);
+  stroke-width: 2;
+}
+
+.kp-bar-chart {
+  display: grid;
+  gap: 8px;
+  container-type: inline-size;
+}
+
+.kp-bar-chart-svg {
+  width: 100%;
+  height: auto;
+}
+
+/* On phones the chart shrinks to about half: larger text, every second month label. */
+@container (max-width: 480px) {
+  .kp-bar-chart-svg text {
+    font-size: 22px;
+  }
+
+  .kp-bar-chart-svg .kp-chart-xlabel-alt {
+    display: none;
+  }
+}
+
+.kp-chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--kp-muted);
+  font-size: var(--kp-small);
+}
+
+.kp-chart-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.kp-legend-swatch {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  background: var(--kp-accent);
+}
+
+.kp-legend-previous {
+  width: 16px;
+  height: 0;
+  border-top: 2px dashed var(--kp-muted);
+  border-radius: 0;
+  background: none;
+}
+
+.kp-legend-estimated {
+  border: 1px dashed var(--kp-accent);
+  background: repeating-linear-gradient(45deg, var(--kp-accent) 0 2px, var(--kp-surface) 2px 4px);
+}
+
+.kp-chart-details > summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: var(--kp-control);
+  color: var(--kp-accent-text);
+  font-size: var(--kp-small);
+  font-weight: 600;
+  cursor: pointer;
+  list-style: none;
+}
+
+.kp-chart-details > summary::-webkit-details-marker {
+  display: none;
+}
+
+.kp-chart-details > summary::before {
+  content: "▸";
+  content: "▸" / "";
+  transition: transform 0.15s;
+}
+
+.kp-chart-details[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+.kp-chart-table-scroll {
+  overflow-x: auto;
+}
+
+.kp-chart-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--kp-small);
+  font-variant-numeric: tabular-nums;
+}
+
+.kp-chart-table caption {
+  padding-bottom: 6px;
+  color: var(--kp-muted);
+  text-align: left;
+}
+
+.kp-chart-table th,
+.kp-chart-table td {
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--kp-border);
+  text-align: left;
+  font-weight: 400;
+}
+
+.kp-chart-table thead th {
+  color: var(--kp-muted);
+  font-weight: 650;
+  border-bottom-color: var(--kp-border-strong);
+}
+
+.kp-chart-table [data-align="end"] {
+  text-align: right;
+}
+
+.kp-chart-estimated-note {
+  color: var(--kp-muted);
+}
+
+@media (forced-colors: active) {
+  .kp-chart-bar,
+  .kp-chart-area,
+  .kp-chart-dot,
+  .kp-legend-swatch {
+    fill: CanvasText;
+    background: CanvasText;
+  }
+
+  .kp-ring-value,
+  .kp-chart-line {
+    stroke: Highlight;
+  }
+
+  .kp-ring-track {
+    stroke: GrayText;
+  }
+
+  .kp-ring text,
+  .kp-chart text {
+    fill: CanvasText;
+  }
+}
+
+/* Mini bars (quota per pass in a table row) */
+
+.kp-minibars {
+  display: grid;
+  grid-auto-columns: 42px;
+  grid-auto-flow: column;
+  gap: 8px;
+}
+
+.kp-minibar {
+  display: grid;
+  gap: 3px;
+  color: var(--kp-muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+.kp-minibar-track {
+  display: block;
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--kp-track);
+}
+
+.kp-minibar-bar {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--kp-accent);
+}
+
+.kp-minibar-warning .kp-minibar-bar {
+  background: var(--kp-warning-border);
+}
+
+.kp-minibar-error .kp-minibar-bar {
+  background: var(--kp-error-border);
+}
+
+@media (forced-colors: active) {
+  .kp-minibar-track {
+    border: 1px solid CanvasText;
+  }
+
+  .kp-minibar-bar {
+    background: Highlight;
+  }
+}
+
+/* Event timeline */
+
+.kp-timeline {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.kp-timeline > li {
+  position: relative;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 10px;
+  padding-bottom: calc(var(--kp-space) * 0.8);
+}
+
+.kp-timeline > li::before {
+  content: "";
+  position: absolute;
+  top: 28px;
+  bottom: 0;
+  left: 13px;
+  width: 2px;
+  background: var(--kp-border);
+}
+
+.kp-timeline > li:last-child::before {
+  display: none;
+}
+
+.kp-timeline-icon {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--kp-border);
+  border-radius: 50%;
+  background: var(--kp-surface-2);
+  color: var(--kp-muted);
+}
+
+.kp-timeline-icon .kp-icon {
+  width: 15px;
+  height: 15px;
+}
+
+.kp-timeline-ok {
+  border-color: transparent;
+  background: var(--kp-success-bg);
+  color: var(--kp-success-text);
+}
+
+.kp-timeline-warn {
+  border-color: transparent;
+  background: var(--kp-warning-bg);
+  color: var(--kp-warning-text);
+}
+
+.kp-timeline-err {
+  border-color: transparent;
+  background: var(--kp-error-bg);
+  color: var(--kp-error-text);
+}
+
+.kp-timeline-title {
+  font-weight: 600;
+}
+
+.kp-timeline-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  color: var(--kp-muted);
+  font-size: var(--kp-small);
+  overflow-wrap: anywhere;
+}

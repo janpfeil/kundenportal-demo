@@ -1,5 +1,6 @@
 /*
- * Page frame: app shell, top bar, main navigation, user and appearance menus, footer.
+ * Page frame: app shell, top bar, main navigation, footer and the page layout helpers
+ * (stack, grids); the menus of the top bar are in menus.css.
  * The markup is the same for every theme; where the navigation sits follows `data-nav` on
  * <html> (set with the preset, see theme-runtime.ts):
  * - top:    in the top bar; on narrow screens a scrollable row below brand and actions.
@@ -7,7 +8,9 @@
  * - bottom: in the top bar on wide screens, a fixed bar at the bottom on phones (≤ 640 px).
  * Sidebar and bottom bar need more than one entry (`data-nav-entries="many"` on the shell);
  * signed-out pages with only "Start" keep the top bar. The current entry's marker follows
- * `data-nav-marker` (pill, underline, solid).
+ * `data-nav-marker` (pill, underline, solid). Entries with section headings, sub entries or
+ * shortcut hints get a separate sidebar list (`.kp-sidenav`), shown instead of the plain
+ * one where the theme puts the navigation into the sidebar.
  */
 
 .kp-shell {
@@ -41,6 +44,7 @@
 .kp-brand {
   display: inline-flex;
   align-items: center;
+  gap: 10px;
   min-height: var(--kp-control);
   font-family: var(--kp-font-heading);
   font-size: calc(var(--kp-font-size) * 1.08);
@@ -50,12 +54,48 @@
   color: var(--kp-text);
 }
 
-/* Deployed version next to the brand: small, never in the way of the navigation. */
-.kp-version {
-  font-size: 0.75rem;
+.kp-brand-logo.kp-icon {
+  width: 30px;
+  height: 30px;
+}
+
+/* Muted addition, e.g. "Kundenportal Cockpit". */
+.kp-brand em {
+  font-style: normal;
+  font-weight: 500;
   color: var(--kp-muted);
+}
+
+/* Deployed version next to the brand: a small chip, never in the way of the navigation. */
+.kp-version {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border: 1px solid var(--kp-border);
+  border-radius: 999px;
+  background: var(--kp-surface-2);
+  color: var(--kp-muted);
+  font:
+    600 11.5px/1 ui-monospace,
+    "SFMono-Regular",
+    Menlo,
+    Consolas,
+    monospace;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 860px) {
+  .kp-version {
+    display: none;
+  }
+}
+
+/* Search field slot; phones reach search through the page itself. */
+@media (max-width: 640px) {
+  .kp-topbar-search {
+    display: none;
+  }
 }
 
 .kp-actions {
@@ -90,9 +130,12 @@
   scrollbar-width: none;
 }
 
-.kp-nav a {
+.kp-nav a,
+.kp-sidenav a {
+  position: relative;
   display: flex;
   align-items: center;
+  gap: 8px;
   min-height: var(--kp-control);
   padding: 0 calc(var(--kp-space) * 0.75);
   border-radius: var(--kp-radius);
@@ -102,13 +145,15 @@
   white-space: nowrap;
 }
 
-.kp-nav a:hover {
+.kp-nav a:hover,
+.kp-sidenav a:hover {
   color: var(--kp-text);
   background: var(--kp-surface-2);
 }
 
 /* Current section: tinted area by default; bold in every style (not colour alone). */
-.kp-nav a[aria-current="page"] {
+.kp-nav a[aria-current="page"],
+.kp-sidenav a[aria-current="page"] {
   color: var(--kp-accent-text);
   background: var(--kp-accent-soft);
   font-weight: 700;
@@ -120,16 +165,96 @@
   box-shadow: inset 0 -3px 0 var(--kp-accent);
 }
 
-:root[data-nav-marker="solid"] .kp-nav a[aria-current="page"] {
+:root[data-nav-marker="solid"] :is(.kp-nav, .kp-sidenav) a[aria-current="page"] {
   background: var(--kp-accent);
   color: var(--kp-accent-contrast);
 }
 
 /* Forced colours drop backgrounds and shadows: an underline marks the current entry. */
 @media (forced-colors: active) {
-  .kp-nav a[aria-current="page"] {
+  .kp-nav a[aria-current="page"],
+  .kp-sidenav a[aria-current="page"] {
     text-decoration: underline 3px;
     text-underline-offset: 0.35em;
+  }
+}
+
+/* Entry extras: icon, counter (e.g. open cases), shortcut hint (sidebar only). */
+
+.kp-nav-icon.kp-icon {
+  width: 20px;
+  height: 20px;
+}
+
+.kp-nav-count {
+  min-width: 20px;
+  margin-left: 2px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--kp-surface-2);
+  color: var(--kp-text);
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.kp-nav-kbd {
+  margin-left: auto;
+}
+
+.kp-nav-count + .kp-nav-kbd {
+  margin-left: 0;
+}
+
+.kp-sidenav a[aria-current="page"] .kp-nav-kbd {
+  border-color: currentColor;
+  background: transparent;
+  color: inherit;
+}
+
+/* Sidebar with sections and indented entries; shown only where the theme puts the
+   navigation into a sidebar (below). */
+
+.kp-sidenav {
+  display: none;
+}
+
+.kp-sidenav ul {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.kp-nav-group {
+  margin: 0;
+  padding: calc(var(--kp-space) * 0.75) 10px 4px;
+  color: var(--kp-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.kp-nav-group:first-child {
+  padding-top: 0;
+}
+
+.kp-sidenav .kp-nav-sub a {
+  padding-left: calc(var(--kp-space) * 0.75 + 28px);
+  font-weight: 500;
+}
+
+.kp-sidenav .kp-nav-count {
+  margin-left: auto;
+}
+
+/* Icons in the top bar only where there is room for them. */
+@media (max-width: 1240px) {
+  .kp-nav .kp-nav-icon {
+    display: none;
   }
 }
 
@@ -162,7 +287,7 @@
     margin-left: calc(-1 * var(--kp-side-w));
   }
 
-  :root[data-nav="side"] .kp-shell[data-nav-entries="many"] .kp-nav {
+  :root[data-nav="side"] .kp-shell[data-nav-entries="many"] :is(.kp-nav, .kp-sidenav) {
     position: absolute;
     top: 100%;
     left: 0;
@@ -176,6 +301,23 @@
     flex-direction: column;
     padding: 0;
     overflow: visible;
+  }
+
+  :root[data-nav="side"] .kp-shell[data-nav-entries="many"] .kp-nav .kp-nav-icon {
+    display: block;
+  }
+
+  :root[data-nav="side"] .kp-shell[data-nav-entries="many"] .kp-nav .kp-nav-count {
+    margin-left: auto;
+  }
+
+  /* With sections or sub entries the separate sidebar replaces the plain list. */
+  :root[data-nav="side"] .kp-shell[data-nav-entries="many"] .kp-sidenav {
+    display: block;
+  }
+
+  :root[data-nav="side"] .kp-shell[data-nav-entries="many"] .kp-topbar:has(.kp-sidenav) .kp-nav {
+    display: none;
   }
 }
 
@@ -216,211 +358,53 @@
     /* Five entries on 360 px leave about 70 px each: hyphenate, never break mid-word. */
     hyphens: auto;
     overflow-wrap: normal;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  /* Icon above the label; the current entry's icon sits on a tinted pill. */
+  :root[data-nav="bottom"] .kp-shell[data-nav-entries="many"] .kp-nav .kp-nav-icon {
+    display: block;
+    width: 22px;
+    height: 22px;
+  }
+
+  :root[data-nav="bottom"]
+    .kp-shell[data-nav-entries="many"]
+    .kp-nav
+    a[aria-current="page"]
+    .kp-nav-icon {
+    box-sizing: content-box;
+    padding: 0 13px;
+    border-radius: 999px;
+    background: var(--kp-accent-soft);
+  }
+
+  /* With an icon, the pill around the icon marks the entry; the link itself stays clear. */
+  :root[data-nav="bottom"]
+    .kp-shell[data-nav-entries="many"]
+    .kp-nav
+    a[aria-current="page"]:has(.kp-nav-icon) {
+    background: none;
+  }
+
+  /* The counter becomes a small badge at the icon's top right. */
+  :root[data-nav="bottom"] .kp-shell[data-nav-entries="many"] .kp-nav .kp-nav-count {
+    position: absolute;
+    top: 2px;
+    left: calc(50% + 6px);
+    min-width: 16px;
+    height: 16px;
+    margin: 0;
+    padding: 0 4px;
+    background: var(--kp-accent);
+    color: var(--kp-accent-contrast);
+    font-size: 0.625rem;
+    line-height: 16px;
   }
 
   /* The start page is reached through the brand; in the bar it only took the room. */
   :root[data-nav="bottom"] .kp-shell[data-nav-entries="many"] .kp-nav li:has(> a[href="/"]) {
-    display: none;
-  }
-}
-
-/* User menu: avatar with initials, name, dropdown with appearance and sign-out. */
-
-.kp-user-menu {
-  position: relative;
-}
-
-.kp-user-button,
-.kp-appearance-button {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  max-width: 260px;
-  min-height: var(--kp-control);
-  padding: 0 10px 0 4px;
-  border: 1px solid var(--kp-border);
-  border-radius: 999px;
-  background: var(--kp-surface);
-  color: var(--kp-text);
-  font: inherit;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.kp-appearance-button {
-  padding: 0 12px;
-}
-
-.kp-user-button:hover,
-.kp-user-button[aria-expanded="true"],
-.kp-appearance-button:hover,
-.kp-appearance-button[aria-expanded="true"] {
-  border-color: var(--kp-accent);
-  background: var(--kp-surface-2);
-}
-
-.kp-avatar {
-  display: inline-grid;
-  place-items: center;
-  flex: none;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: var(--kp-accent-soft);
-  color: var(--kp-accent-text);
-  font-size: 0.8rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-}
-
-.kp-user-name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.kp-user-caret {
-  color: var(--kp-muted);
-  font-size: 0.8rem;
-}
-
-.kp-user-popup {
-  position: absolute;
-  right: 0;
-  top: calc(100% + 6px);
-  z-index: 20;
-  width: 264px;
-  max-height: calc(100vh - 96px);
-  overflow-y: auto;
-  margin: 0;
-  padding: 6px;
-  list-style: none;
-  background: var(--kp-surface);
-  color: var(--kp-text);
-  border: 1px solid var(--kp-border);
-  border-radius: var(--kp-radius-large);
-  box-shadow: var(--kp-shadow-raised);
-}
-
-.kp-user-head {
-  display: grid;
-  gap: 2px;
-  padding: 8px 10px 10px;
-  margin-bottom: 4px;
-  border-bottom: 1px solid var(--kp-border);
-  font-size: var(--kp-small);
-}
-
-.kp-user-head-name {
-  font-weight: 700;
-}
-
-.kp-user-head-email {
-  color: var(--kp-muted);
-  overflow-wrap: anywhere;
-}
-
-.kp-user-popup a,
-.kp-menu-radio {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  min-height: var(--kp-control);
-  padding: 0 10px;
-  border: 0;
-  border-radius: var(--kp-radius);
-  background: none;
-  color: var(--kp-text);
-  font: inherit;
-  text-align: left;
-  text-decoration: none;
-  cursor: pointer;
-}
-
-.kp-user-popup a:hover,
-.kp-user-popup a:focus-visible,
-.kp-menu-radio:hover,
-.kp-menu-radio:focus-visible {
-  background: var(--kp-surface-2);
-  outline: 2px solid var(--kp-focus);
-  outline-offset: -2px;
-}
-
-.kp-user-popup a:hover,
-.kp-menu-radio:hover {
-  outline: none;
-}
-
-.kp-user-separator {
-  height: 1px;
-  margin: 4px 0;
-  background: var(--kp-border);
-}
-
-.kp-user-popup .kp-user-logout {
-  color: var(--kp-error-text);
-}
-
-/* Appearance section: a heading, then radio entries with a check mark. */
-
-.kp-menu-heading {
-  padding: 8px 10px 2px;
-  color: var(--kp-muted);
-  font-size: var(--kp-small);
-  font-weight: 700;
-}
-
-.kp-menu-group {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.kp-menu-modes {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 2px;
-}
-
-.kp-menu-radio::before {
-  content: "";
-  flex: none;
-  width: 1em;
-  text-align: center;
-}
-
-.kp-menu-modes .kp-menu-radio {
-  justify-content: center;
-  gap: 4px;
-  padding: 0 4px;
-}
-
-.kp-menu-modes .kp-menu-radio::before {
-  display: none;
-}
-
-.kp-menu-radio[aria-checked="true"] {
-  font-weight: 700;
-  color: var(--kp-accent-text);
-  background: var(--kp-accent-soft);
-}
-
-.kp-menu-radio[aria-checked="true"]::before {
-  content: "✓";
-  content: "✓" / "";
-}
-
-@media (forced-colors: active) {
-  .kp-menu-radio[aria-checked="true"] {
-    outline: 2px solid CanvasText;
-    outline-offset: -2px;
-  }
-}
-
-@media (max-width: 480px) {
-  .kp-user-name,
-  .kp-appearance-label {
     display: none;
   }
 }
@@ -434,4 +418,72 @@
   color: var(--kp-muted);
   font-size: var(--kp-small);
   text-align: center;
+}
+
+/*
+ * Page layout helpers (as in the mockup): stack, auto-fit grid, main/side split, the
+ * cockpit's two columns and the row of key figures. Their gaps replace the children's
+ * outer margins. The breakpoints are the mockup's (1080, 860, 640 px).
+ */
+
+.kp-stack {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--kp-space);
+}
+
+.kp-stack-large {
+  gap: calc(var(--kp-space) * 1.75);
+}
+
+.kp-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--kp-grid-min, 240px)), 1fr));
+  gap: var(--kp-space);
+}
+
+.kp-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+  align-items: start;
+  gap: var(--kp-space);
+}
+
+.kp-cockpit-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(300px, 1fr);
+  align-items: start;
+  gap: var(--kp-space);
+}
+
+.kp-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--kp-space);
+}
+
+:is(.kp-stack, .kp-grid, .kp-split, .kp-cockpit-grid, .kp-kpis) > * {
+  margin-block: 0;
+}
+
+@media (max-width: 1080px) {
+  .kp-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .kp-cockpit-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 860px) {
+  .kp-split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .kp-kpis {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }

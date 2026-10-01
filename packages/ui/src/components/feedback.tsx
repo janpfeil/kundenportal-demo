@@ -1,4 +1,5 @@
 import type { HTMLAttributes, ReactNode } from "react";
+import { IconCircle, type IconName } from "./icon.js";
 import { joinClasses } from "./link.js";
 
 export type Tone = "info" | "success" | "warning" | "error";
@@ -38,6 +39,44 @@ export function Badge({ tone = "accent", children }: BadgeProps) {
     <span className={joinClasses("kp-badge", tone !== "accent" && `kp-badge-${tone}`)}>
       {children}
     </span>
+  );
+}
+
+export interface BannerProps extends Omit<HTMLAttributes<HTMLDivElement>, "title"> {
+  /** Icon on a tinted tile left of the text. */
+  icon?: IconName | undefined;
+  title: ReactNode;
+  /** Heading level of the title (default 2). */
+  headingLevel?: 2 | 3 | 4 | undefined;
+  /** The explanation below the title. */
+  children?: ReactNode;
+  /** A button or link on the right, e.g. "Jetzt erfassen"; full width on phones. */
+  action?: ReactNode;
+}
+
+/**
+ * A to-do note on a page, e.g. "Zählerstand Strom fällig": a card with an accent bar on the
+ * left, icon, title, short text and one action.
+ */
+export function Banner({
+  icon,
+  title,
+  headingLevel = 2,
+  children,
+  action,
+  className,
+  ...rest
+}: BannerProps) {
+  const Heading = `h${headingLevel}` as const;
+  return (
+    <div className={joinClasses("kp-card", "kp-banner", className)} {...rest}>
+      {icon !== undefined && <IconCircle name={icon} />}
+      <div className="kp-banner-body">
+        <Heading className="kp-banner-title">{title}</Heading>
+        {typeof children === "string" ? <p className="kp-muted">{children}</p> : children}
+      </div>
+      {action !== undefined && <div className="kp-banner-action">{action}</div>}
+    </div>
   );
 }
 

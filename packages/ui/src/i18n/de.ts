@@ -9,6 +9,10 @@ export const de = {
     consumption: "Verbrauch",
     cockpit: "Cockpit",
     pass: "Demo-Pass",
+    /** Spoken text of a counter at a navigation entry, e.g. "14 offen". */
+    openCount: "{count} offen",
+    /** Spoken text of a keyboard shortcut hint in the sidebar, e.g. "Tastenkürzel g c". */
+    shortcut: "Tastenkürzel {keys}",
   },
   auth: {
     login: "Anmelden",
@@ -36,6 +40,22 @@ export const de = {
       uebersicht: "Übersicht",
       kontrast: "Kontrast",
     },
+  },
+  /** Marker of simulated values (FakeMarker). */
+  fake: {
+    label: "Demo-Wert",
+    description: "simuliert — noch nicht aus dem System",
+  },
+  /** Bar chart: legend entries, table toggle, first table column. */
+  chart: {
+    previousYear: "Vorjahr",
+    estimated: "geschätzt",
+    showTable: "Als Tabelle anzeigen",
+    period: "Monat",
+  },
+  messages: {
+    /** Spoken marker of an unread message in a message list. */
+    unread: "ungelesen",
   },
   footer: {
     text: "Demo-Projekt · Quellcode auf GitHub",

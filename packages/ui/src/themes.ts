@@ -397,6 +397,8 @@ export function shapeTokens(preset: ThemePreset): Tokens {
     "--kp-radius": `${p.radius}px`,
     "--kp-radius-large": `${Math.round(p.radius * 1.4)}px`,
     "--kp-btn-radius": p.font === "rounded" && p.radius >= 12 ? "999px" : `${p.radius}px`,
+    // Icon tiles (IconCircle): round from 12 px corners on, else slightly rounded squares.
+    "--kp-icon-radius": p.radius >= 12 ? "50%" : `${Math.max(4, p.radius)}px`,
     "--kp-content-width": p.audience === "cockpit" ? "1440px" : "1080px",
   };
 }

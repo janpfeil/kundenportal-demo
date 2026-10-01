@@ -8,8 +8,49 @@ export { Button, ButtonLink } from "./components/button.js";
 export type { ButtonLinkProps, ButtonProps, ButtonVariant } from "./components/button.js";
 export { DataTable, Facts } from "./components/data.js";
 export type { Column, DataTableProps, Fact, FactsProps } from "./components/data.js";
-export { Badge, EmptyState, Notice } from "./components/feedback.js";
-export type { BadgeProps, EmptyStateProps, NoticeProps, Tone } from "./components/feedback.js";
+export { Badge, Banner, EmptyState, Notice } from "./components/feedback.js";
+export type {
+  BadgeProps,
+  BannerProps,
+  EmptyStateProps,
+  NoticeProps,
+  Tone,
+} from "./components/feedback.js";
+export { BarChart, ChartLegend, niceMaximum } from "./components/bar-chart.js";
+export type { BarChartProps, ChartLegendItem, ChartLegendProps } from "./components/bar-chart.js";
+export { MiniBars, ProgressRing, Sparkline } from "./components/charts.js";
+export type {
+  MiniBar,
+  MiniBarsProps,
+  ProgressRingProps,
+  SparklineProps,
+} from "./components/charts.js";
+export { CockpitGrid, Grid, Split, Stack } from "./components/grid.js";
+export type { GridProps, StackProps } from "./components/grid.js";
+export { ICON_NAMES, Icon, IconCircle, divisionIcon } from "./components/icon.js";
+export type { IconCircleProps, IconName, IconProps } from "./components/icon.js";
+export { KeyboardShortcuts } from "./components/keyboard-shortcuts.js";
+export type { KeyboardShortcutsProps, Shortcut } from "./components/keyboard-shortcuts.js";
+export { Kpi, KpiGrid } from "./components/kpi.js";
+export type { KpiDelta, KpiGridProps, KpiProps } from "./components/kpi.js";
+export { MessageList } from "./components/message-list.js";
+export type { MessageListItem, MessageListProps } from "./components/message-list.js";
+export { SearchField } from "./components/search-field.js";
+export type { SearchFieldProps } from "./components/search-field.js";
+export { FakeMarker, Kbd, LiveIndicator, StatusBadge } from "./components/status.js";
+export type {
+  FakeMarkerProps,
+  KbdProps,
+  LiveIndicatorProps,
+  StatusBadgeProps,
+  StatusTone,
+} from "./components/status.js";
+export { Switch } from "./components/switch.js";
+export type { SwitchProps } from "./components/switch.js";
+export { Tabs } from "./components/tabs.js";
+export type { TabItem, TabsProps } from "./components/tabs.js";
+export { Timeline } from "./components/timeline.js";
+export type { TimelineItem, TimelineProps } from "./components/timeline.js";
 export { NumberField, Select, TextField } from "./components/fields.js";
 export type {
   NumberFieldProps,
