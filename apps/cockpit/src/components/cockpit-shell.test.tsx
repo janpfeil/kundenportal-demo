@@ -80,6 +80,33 @@ describe("cockpit frame", () => {
     expect(within(search).getByRole("searchbox")).toHaveValue("T/88");
   });
 
+  it("goes back to the top when 'Übersicht' points to the open page", () => {
+    const scrollTo = vi.fn();
+    const pushState = vi.spyOn(window.history, "pushState").mockImplementation(() => undefined);
+    vi.stubGlobal("scrollTo", scrollTo);
+    vi.stubGlobal("location", {
+      ...window.location,
+      href: "https://portal.example/cockpit#klaerfaelle",
+      pathname: "/cockpit",
+      search: "",
+      hash: "#klaerfaelle",
+      assign,
+    });
+    render(shell());
+    const sidebar = screen.getByRole("navigation", { name: de.frame.sideNav });
+
+    const overview = within(sidebar).getByRole("link", { name: /^Übersicht/ });
+    expect(fireEvent.click(overview)).toBe(false);
+    expect(scrollTo).toHaveBeenCalledWith({ top: 0 });
+    expect(pushState).toHaveBeenCalledWith(null, "", "/cockpit");
+
+    // A link to another page stays a normal navigation.
+    scrollTo.mockClear();
+    const passes = within(sidebar).getByRole("link", { name: /^Demo-Pässe/ });
+    expect(fireEvent.click(passes)).toBe(true);
+    expect(scrollTo).not.toHaveBeenCalled();
+  });
+
   it("follows the shortcuts g c and g p", () => {
     render(shell());
     fireEvent.keyDown(document.body, { key: "g" });

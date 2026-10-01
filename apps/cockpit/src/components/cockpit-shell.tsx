@@ -4,11 +4,12 @@ import {
   AppShell,
   type AppShellProps,
   KeyboardShortcuts,
+  type LinkProps,
   SearchField,
   type Shortcut,
 } from "@kundenportal/ui";
 import { usePathname, useSearchParams } from "next/navigation";
-import { Suspense } from "react";
+import { type MouseEvent, Suspense } from "react";
 import { ZoneLink } from "@/lib/zone-link";
 import { SEARCH_PATH, type ZoneNavItem, markCurrent } from "@/lib/zone";
 
@@ -42,6 +43,36 @@ function TopSearch({ label, placeholder }: ShellSearch) {
   );
 }
 
+/** True for a plain left click the page may handle itself (no new tab or window). */
+const plainClick = (event: MouseEvent<HTMLAnchorElement>) =>
+  event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey;
+
+/**
+ * The frame's links. A link to the page that is already open ("Übersicht" while at
+ * `/cockpit#klaerfaelle`) is no navigation for Next.js — the page is visible, so it neither
+ * scrolls nor reloads. Such a click goes back to the top and drops the anchor instead.
+ */
+export function CockpitLink({ href, onClick, ...rest }: LinkProps) {
+  return (
+    <ZoneLink
+      href={href}
+      {...rest}
+      onClick={(event) => {
+        onClick?.(event);
+        if (event.defaultPrevented || !plainClick(event)) return;
+        const target = new URL(href, window.location.href);
+        const here = window.location;
+        if (target.hash || target.pathname !== here.pathname || target.search !== here.search) {
+          return;
+        }
+        event.preventDefault();
+        if (here.hash) window.history.pushState(null, "", `${target.pathname}${target.search}`);
+        window.scrollTo({ top: 0 });
+      }}
+    />
+  );
+}
+
 /**
  * The zone's frame: the shared AppShell with the cockpit's navigation, its search field and
  * keyboard shortcuts. A client component only to know the current page (sidebar marker and
@@ -53,7 +84,7 @@ export function CockpitShell({ nav, search, shortcuts, children, ...shell }: Coc
     <AppShell
       {...shell}
       nav={markCurrent(nav, pathname)}
-      linkComponent={ZoneLink}
+      linkComponent={CockpitLink}
       search={
         search ? (
           // useSearchParams needs a boundary for pages rendered ahead of time (e.g. 404).

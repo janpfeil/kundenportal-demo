@@ -98,6 +98,13 @@ test("the cockpit shows the key figures, searches behind '/' and jumps with 'g p
     const { gap, atEnd } = await position(id);
     if (!atEnd) expect(gap, `heading of #${id} below the top bar`).toBeLessThanOrEqual(48);
   }
+  // "Übersicht" points to the open page: it goes back to the top and drops the anchor.
+  await page
+    .locator(".kp-sidenav")
+    .getByRole("link", { name: /^Übersicht/ })
+    .click();
+  await expect(page).toHaveURL(/\/cockpit$/);
+  await expect.poll(() => page.evaluate("window.scrollY")).toBe(0);
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.goto("/cockpit");
   await page.waitForLoadState("networkidle");
