@@ -1,6 +1,6 @@
 # Design und Theme (Phase 5)
 
-Stand: 2026-10-01 · Entwurf zur Entscheidung · Kennzeichnung: **[E]** Einschätzung.
+Stand: 2026-10-01 · entschieden und umgesetzt · Kennzeichnung: **[E]** Einschätzung, **[B]** belegt.
 
 **Mockup:** https://janpfeil.github.io/kundenportal-demo/design/mockups.html
 (eine einzelne HTML-Datei, `docs/design/mockups.html`; läuft auch lokal per
@@ -95,12 +95,65 @@ Das Ende der Seite erklärt jedes Token und enthält eine Empfehlung.
 
 ## Entscheidung des Inhabers
 
-Offen sind vier Fragen, je mit einem Satz zu beantworten:
+> „Endkunde Klar, Cockpit Dicht als Default, aber über das Usermenü möchte
+> ich zwischen den Themes umschalten können.“ (01.10.2026)
 
-1. Welches Preset für die Endkunden (oder welcher geteilte Link)?
-2. Welches Preset für das Cockpit, und soll es dunkel starten?
-3. Bleibt der grüne Akzent `#0b6e4f` als Marke, oder wechselt sie?
-4. Mobil: Bottom-Nav oder Menü-Knopf?
+- **Endkunden:** Standard „Klar“ (grüner Bestandsakzent `#0b6e4f` bleibt);
+  wählbar „Vertrauen“, „Warm“, „Klassisch“.
+- **Cockpit:** Standard „Dicht“ mit Seitenleiste; wählbar „Übersicht“,
+  „Kontrast“.
+- **Farbmodus:** Standard „System“ (folgt dem Betriebssystem), wählbar
+  „Hell“ und „Dunkel“.
+- **Umschalten:** im Benutzermenü, Abschnitt „Darstellung“. Abgemeldete
+  Besucher finden dieselbe Auswahl als kleines Menü „Darstellung“ neben dem
+  Sprachlink; sie sollen Farbmodus und Lesbarkeit nicht erst nach der
+  Anmeldung einstellen können.
+- **Mobil:** Bottom-Nav nur in „Warm“ (wie im Mockup), sonst scrollbare
+  Navigationszeile unter der Kopfzeile.
 
-Danach überträgt Phase 5 die gewählten Werte in die Tokens, ergänzt die neuen
-Tokens aus der Legende und prüft Storybook und die Seiten in beiden Modi.
+## Wie die Themes gebaut sind
+
+| Teil | Ort | Aufgabe |
+|---|---|---|
+| Presets und Tokens | `packages/ui/src/themes.ts` | einzige Quelle: die Parameter aller sieben Presets aus dem Mockup und die Rechnung daraus (`themeTokens`), dieselben Formeln wie im Mockup |
+| Stylesheet | `scripts/build-css.mjs` → `dist/styles.css` | der UI-Build schreibt `themesCss()` vor die handgeschriebenen Stile (`src/styles.css`, `src/layout.css`); Storybook holt die Tokens direkt aus `themes.ts` |
+| Auswahl | `packages/ui/src/theme-runtime.ts` | Attribute an `<html>` (`data-audience`, `data-theme-preset`, `data-color-mode`, abgeleitet `data-nav`, `data-nav-marker`), Cookies `kp_theme_kunde`, `kp_theme_cockpit`, `kp_color_mode`, Prüfung der Werte, `applyTheme` für den Umschalter |
+| Init-Skript | `/theme-init.js` (Shell) | setzt auf vorgerenderten Seiten die Attribute aus den Cookies vor dem ersten Zeichnen |
+| Umschalter | `AppearanceItems` im `UserMenu`, `AppearanceMenu` für Abgemeldete | `menuitemradio` mit `aria-checked`; Wahl wirkt sofort und gilt in allen Zonen |
+
+Wie die Attribute in Shell und Zonen gesetzt werden, welche Seiten das
+Init-Skript laden und wie es ausgeliefert wird, steht in
+[Architektur: Zonen und Frontend](architektur-zonen.md) §12.
+
+**Neue Tokens** (zusätzlich zu den bisherigen Farben): `--kp-surface-2`,
+`--kp-border-strong`, `--kp-accent-text` (Links, aktive Einträge),
+`--kp-accent-soft`, `--kp-focus`, `--kp-track`, `--kp-badge`,
+`--kp-row-hover`, `--kp-input-bg`, `--kp-header-bg`, `--kp-side-bg`,
+`--kp-*-text` je Status; Schrift (`--kp-font`, `--kp-font-heading`,
+`--kp-heading-weight`, `--kp-heading-tracking`), Größen (`--kp-font-size`,
+`--kp-line-height`, `--kp-small`, `--kp-h1` bis `--kp-h3`), Dichte
+(`--kp-space`, `--kp-control`, `--kp-cell-y`), Form (`--kp-radius`,
+`--kp-radius-large`, `--kp-btn-radius`, `--kp-shadow`,
+`--kp-shadow-raised`, `--kp-card-border`) und `--kp-content-width`. Das
+alte Attribut `data-theme="light|dark"` entfällt; an seine Stelle tritt
+`data-color-mode`.
+
+**Abweichung vom Mockup:** Das Mockup passte die Link-Farbe nur gegen die
+Fläche an; der aktive Navigationseintrag auf der getönten Akzentfläche kam im
+Dunkelmodus nur auf rund 3,6:1. `--kp-accent-text` wird jetzt gegen
+`--kp-accent-soft` (den schwierigsten Hintergrund) auf 4,5:1 gebracht.
+
+## Kontrastprüfung
+
+`packages/ui/src/themes.test.ts` rechnet für jedes Preset hell und dunkel
+die Kontrastverhältnisse aus den Token-Werten (WCAG 2.x, relative Luminanz)
+und verlangt mindestens 4,5:1 für Text / Fläche und Seite, Sekundärtext,
+Links, aktiven Navigationseintrag, Button-Text auf Akzent, Text im
+Eingabefeld, Statustexte und Text auf Statusflächen sowie 3:1 für Fokusring,
+Akzent und Feldrahmen. **[B]** 14 Kombinationen aus Preset und Modus mit je 25 Paaren, alle bestanden. Weitere
+Tests prüfen Cookies, Init-Skript, Umschalter und dass Kundenseiten
+Bedienelemente von mindestens 44 px haben.
+
+**[E]** „Kontrast“ ist im Mockup „dunkel zuerst“; hier folgt auch dieses
+Preset dem gewählten Farbmodus (Standard System), damit der Modus überall
+dieselbe Bedeutung hat.

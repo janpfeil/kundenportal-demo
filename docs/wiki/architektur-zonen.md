@@ -167,10 +167,10 @@ aller Zonen; die Shell baut bereits vollständig darauf auf.
 | Navigation | `portalNavigation(texte, {signedIn, current, roles})` baut die Hauptnavigation für Shell und Zonen; der Eintrag des aktuellen Bereichs trägt `aria-current="page"` und ist fett mit dicker Unterstreichung in Akzentfarbe (auch im Kontrastmodus sichtbar). Die Shell leitet den Bereich aus dem Pfad im Browser ab, jede Zone markiert ihren eigenen Eintrag. `roles` (aus den Cognito-Gruppen des Tokens, `rolesOf` in `web-auth`; auf vorgerenderten Seiten aus dem Hinweis-Cookie `kp_ui`): Inhaber und Pass-Inhaber sehen „Cockpit“, Pass-Inhaber zusätzlich „Demo-Pass“ — in Shell und allen Zonen gleich |
 | Version in der Kopfzeile | `TopBar` zeigt neben der Marke die ausgerollte Version, z. B. `v0.4.1 · 1a2b3c4`: `next.config.ts` setzt `NEXT_PUBLIC_APP_VERSION` beim Build aus der Version in der Wurzel-`package.json` und dem Commit (`GITHUB_SHA`, lokal `git`; `scripts/app-version.mjs`) |
 | Hilfsfunktionen | Formatierung (`formatEuro`, `formatDate`, `formatDateTime`, `formatFileSize`, `formatQuantity`, `formatDataVolume`, `formatNumber`, `percent`), `fill` für Platzhalter in Texten, `createZoneLink(basePath, Link)` |
-| [Design-Tokens](glossar.md#design-token) | CSS-Variablen `--kp-*` für hell und dunkel; folgt `prefers-color-scheme`, `data-theme` erzwingt eine Variante |
-| Übersetzungen | gemeinsame Texte DE/EN (Navigation, An-/Abmelden, Sprachwechsel, Fußzeile) und Sprachauswahl aus Cookie und `Accept-Language`; zonenspezifische Texte bleiben in den Zonen |
-| Tests | 37 (Vitest, Testing Library) |
-| [Storybook](glossar.md#storybook) | Version 10.6, statisch gebaut; Umschalter für Sprache und Hell/Dunkel, 360-px-Ansicht voreingestellt |
+| [Design-Tokens](glossar.md#design-token) | CSS-Variablen `--kp-*` je Theme-Preset, hell und dunkel; erzeugt aus `src/themes.ts`, gewählt über Attribute an `<html>` (Abschnitt 12) |
+| Übersetzungen | gemeinsame Texte DE/EN (Navigation, An-/Abmelden, Sprachwechsel, Darstellung, Fußzeile) und Sprachauswahl aus Cookie und `Accept-Language`; zonenspezifische Texte bleiben in den Zonen |
+| Tests | 74 (Vitest, Testing Library), davon 30 zu Themes, Cookies, Init-Skript und Kontrast |
+| [Storybook](glossar.md#storybook) | Version 10.6, statisch gebaut; Umschalter für Sprache, Theme-Preset (alle sieben, Endkunde und Cockpit) und Farbmodus (System, Hell, Dunkel), 360-px-Ansicht voreingestellt |
 
 Der Workflow `Pages` veröffentlicht Storybook zusammen mit diesen Berichten
 auf [GitHub Pages](glossar.md#github-pages):
@@ -250,7 +250,7 @@ der Nachfolger von `middleware.ts`) über `createCspProxy` aus
 | Direktive | Wert | Grund |
 |---|---|---|
 | `default-src` | `'self'` | alles Übrige nur von der Portal-Domain |
-| `script-src` | `'self'` + [Nonce](glossar.md#nonce) bzw. Hashes | Skriptdateien nur von der eigenen Domain (`/_next/static`, `/widgets/bell.js`); Next.js schreibt zusätzlich Inline-Skripte in jede Seite, die nur mit Nonce oder Hash laufen |
+| `script-src` | `'self'` + [Nonce](glossar.md#nonce) bzw. Hashes | Skriptdateien nur von der eigenen Domain (`/_next/static`, `/widgets/bell.js`, `/theme-init.js`); Next.js schreibt zusätzlich Inline-Skripte in jede Seite, die nur mit Nonce oder Hash laufen |
 | `style-src` | `'self' 'unsafe-inline'` | React setzt Style-Attribute (z. B. `Meter`), ALTCHA fügt ein `<style>` ein; Styles führen keinen Code aus [E] |
 | `img-src` | `'self' data: blob:` | eigene Bilder, eingebettete Grafiken |
 | `connect-src` | `'self'`, in Verträge und Verbrauch zusätzlich `https://*.s3.eu-central-1.amazonaws.com` | `fetch` nur zur eigenen Domain (Route Handler, `/api/*`); der Upload geht per `PUT` an die Presigned URL des Upload-Buckets |
@@ -332,6 +332,66 @@ Default-TTL 0, Max-TTL 300 s), **keine** Cookies und **keine** Header im
 Cache-Schlüssel, aber **alle Query-Strings** (Next.js unterscheidet die
 RSC-Anfragen beim Seitenwechsel über `?_rsc=…`), GET/HEAD; dazu eine
 Invalidierung von `/` und `/pass/einloesen` bei jedem Deploy.
+
+## 12. Themes (Phase 5)
+
+Entscheidung des Inhabers: Endkunden „Klar“, Cockpit „Dicht“ als Standard,
+umschaltbar im Benutzermenü ([Design und Theme](design.md)). Alle Zonen
+nutzen dieselben Token-Namen; das Theme wählen Attribute an `<html>`:
+
+| Attribut | Werte | Wer setzt es |
+|---|---|---|
+| `data-audience` | `kunde`, `cockpit` | das Root-Layout (Shell, Verträge, Verbrauch: `kunde`; Cockpit: `cockpit`) |
+| `data-theme-preset` | `klar`, `vertrauen`, `warm`, `klassisch` bzw. `dicht`, `uebersicht`, `kontrast` | Server aus dem Cookie, sonst Standard; auf vorgerenderten Seiten `/theme-init.js` |
+| `data-color-mode` | `light`, `dark`, `system` (Standard; folgt `prefers-color-scheme`) | wie oben |
+| `data-nav`, `data-nav-marker` | `top`/`side`/`bottom`, `pill`/`underline`/`solid` | abgeleitet aus dem Preset; steuern das Layout per CSS |
+
+**Cookies** (Pfad `/`, `SameSite=Lax`, ein Jahr, hinter HTTPS `Secure`,
+nicht httpOnly, weil der Umschalter sie im Browser schreibt):
+`kp_theme_kunde`, `kp_theme_cockpit`, `kp_color_mode`. Jeder Leser prüft den
+Wert gegen die Liste der Presets der Zielgruppe; Unbekanntes fällt auf den
+Standard zurück. Die Cookies enthalten nichts Persönliches.
+
+**Kein Aufblitzen:** Seiten, die je Anfrage entstehen (alle Zonen, Konto,
+Postfach, Pass), lesen die Cookies im Root-Layout und rendern die Attribute
+ab dem ersten Byte. Vorgerenderte Seiten (`/`, `/pass/einloesen`, 404) können
+keine Cookies lesen; sie tragen den Standard und laden im `<head>` synchron
+`/theme-init.js`. Das Skript liest die Cookies, prüft sie und setzt die
+Attribute, bevor der Body gezeichnet wird. Es ist eine eigene Datei statt
+Inline-Code, damit die CSP keinen neuen Hash braucht (`'self'` genügt).
+
+| Pfad | Ursprung | Caching |
+|---|---|---|
+| `/theme-init.js` | Shell (Route Handler `app/theme-init.js/route.ts`, beim Build vorgerendert); CloudFront: Default-Behavior zur Shell | `public, max-age=300, s-maxage=300`; für alle Besucher gleich, Cookies nicht im Cache-Schlüssel. Nicht durch den Proxy (Matcher), also ohne CSP-Header |
+
+Das Skript liegt nicht in `public/`: Der Standalone-Build der Lambda enthält
+`public/` nicht, die Edge lädt nur `.next/static` nach S3. Der Inhalt kommt
+aus `themeInitScript()` in `@kundenportal/ui/theme`, also aus derselben Liste
+der Presets wie Server und Umschalter.
+
+**Layout je Preset:** dasselbe Markup (`AppShell`), nur CSS. Seitenleiste
+(`side`: Klassisch, Dicht, Kontrast) ab 960 px Breite unter einer
+mitlaufenden Kopfzeile, schmaler eine waagerecht scrollbare Zeile; Bottom-Nav
+(`bottom`: Warm) bis 640 px; sonst Top-Bar. Mit nur einem Eintrag
+(abgemeldet: „Start“) bleibt die Navigation in der Kopfzeile. Die
+Reihenfolge im DOM und damit der Fokus bleibt immer: Marke, Navigation,
+Aktionen, Inhalt.
+
+**Umschalter:** im Benutzermenü der Abschnitt „Darstellung“ mit den Presets
+der Zielgruppe und dem Farbmodus (`menuitemradio` mit `aria-checked`).
+Abgemeldete Besucher bekommen dieselbe Auswahl über eine kleine
+Menü-Schaltfläche „Darstellung“ neben dem Sprachlink — Farbmodus und Stil
+sind für Lesbarkeit wichtig, unabhängig von der Anmeldung. Die Wahl wirkt
+sofort (Attribute an `document.documentElement`) und gilt über die Cookies in
+Shell und allen Zonen.
+
+**Lokal belegt [B: Produktionsbuild der Shell, headless Chromium, 01.10.2026]:**
+alle vier Kunden-Presets hell und dunkel auf `/`, abgemeldet und mit
+Hinweis-Cookie angemeldet, in 1280 und 375 px; die Attribute stehen schon beim
+Beginn des Body (kein Aufblitzen), keine CSP-Verletzung, kein waagerechtes
+Scrollen. Umschalten im Benutzermenü, danach `/pass/einloesen` geladen: Preset
+und Modus bleiben. Cockpit-Presets in Storybook (die Cockpit-Zone braucht eine
+Sitzung).
 
 ## Quellen
 

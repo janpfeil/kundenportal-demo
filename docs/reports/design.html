@@ -18,10 +18,12 @@
 <li><a href="#die-werkzeugleiste">Die Werkzeugleiste</a></li>
 <li><a href="#empfehlung-e">Empfehlung [E]</a></li>
 <li><a href="#entscheidung-des-inhabers">Entscheidung des Inhabers</a></li>
+<li><a href="#wie-die-themes-gebaut-sind">Wie die Themes gebaut sind</a></li>
+<li><a href="#kontrastprüfung">Kontrastprüfung</a></li>
 </ul>
 </div>
 </nav><main><h1 id="design-und-theme-phase-5">Design und Theme (Phase 5)<a class="anchor" href="#design-und-theme-phase-5" title="Permanent link">#</a></h1>
-<p>Stand: 2026-10-01 · Entwurf zur Entscheidung · Kennzeichnung: <strong>[E]</strong> Einschätzung.</p>
+<p>Stand: 2026-10-01 · entschieden und umgesetzt · Kennzeichnung: <strong>[E]</strong> Einschätzung, <strong>[B]</strong> belegt.</p>
 <p><strong>Mockup:</strong> <a href="https://janpfeil.github.io/kundenportal-demo/design/mockups.html">https://janpfeil.github.io/kundenportal-demo/design/mockups.html</a>
 (eine einzelne <a class="term" href="glossar.html#html" title="Auszeichnungssprache für Webseiten; JS = JavaScript">HTML</a>-Datei, <code>docs/design/mockups.html</code>; läuft auch lokal per
 Doppelklick, ohne <a class="term" href="glossar.html#build" title="Übersetzen und Paketieren des Quellcodes zu auslieferbaren Dateien (Artefakten)">Build</a> und ohne Internet).</p>
@@ -153,15 +155,92 @@ Das Ende der Seite erklärt jedes <a class="term" href="glossar.html#token" titl
 <li><strong>Cockpit: „Dicht"</strong>, im Dunkelmodus mit den Werten von „Kontrast".</li>
 </ul>
 <h2 id="entscheidung-des-inhabers">Entscheidung des Inhabers<a class="anchor" href="#entscheidung-des-inhabers" title="Permanent link">#</a></h2>
-<p>Offen sind vier Fragen, je mit einem Satz zu beantworten:</p>
-<ol>
-<li>Welches Preset für die Endkunden (oder welcher geteilte Link)?</li>
-<li>Welches Preset für das Cockpit, und soll es dunkel starten?</li>
-<li>Bleibt der grüne Akzent <code>#0b6e4f</code> als Marke, oder wechselt sie?</li>
-<li>Mobil: Bottom-Nav oder Menü-Knopf?</li>
-</ol>
-<p>Danach überträgt Phase 5 die gewählten Werte in die <a class="term" href="glossar.html#token" title="digitaler Ausweis, den ein Identitätsdienst ausstellt und den eine App bei jedem API-Aufruf mitschickt">Tokens</a>, ergänzt die neuen
-Tokens aus der Legende und prüft <a class="term" href="glossar.html#storybook" title="Werkzeug, das jede Komponente der Component Library isoliert darstellt und dokumentiert; als statische Seite veröffentlicht">Storybook</a> und die Seiten in beiden Modi.</p></main></div>
-<footer class="site"><a href="../wiki/design.md">Markdown-Quelle</a> · Generiert 2026-10-01 10:07 aus <code>docs/wiki</code> mit <code>scripts/build_reports.py</code></footer>
+<blockquote>
+<p>„Endkunde Klar, Cockpit Dicht als Default, aber über das Usermenü möchte<br />
+ich zwischen den Themes umschalten können.“ (01.10.2026)</p>
+</blockquote>
+<ul>
+<li><strong>Endkunden:</strong> Standard „Klar“ (grüner Bestandsakzent <code>#0b6e4f</code> bleibt);
+  wählbar „Vertrauen“, „Warm“, „Klassisch“.</li>
+<li><strong>Cockpit:</strong> Standard „Dicht“ mit Seitenleiste; wählbar „Übersicht“,
+  „Kontrast“.</li>
+<li><strong>Farbmodus:</strong> Standard „System“ (folgt dem Betriebssystem), wählbar
+  „Hell“ und „Dunkel“.</li>
+<li><strong>Umschalten:</strong> im Benutzermenü, Abschnitt „Darstellung“. Abgemeldete
+  Besucher finden dieselbe Auswahl als kleines Menü „Darstellung“ neben dem
+  Sprachlink; sie sollen Farbmodus und Lesbarkeit nicht erst nach der
+  Anmeldung einstellen können.</li>
+<li><strong>Mobil:</strong> Bottom-Nav nur in „Warm“ (wie im Mockup), sonst scrollbare
+  Navigationszeile unter der Kopfzeile.</li>
+</ul>
+<h2 id="wie-die-themes-gebaut-sind">Wie die Themes gebaut sind<a class="anchor" href="#wie-die-themes-gebaut-sind" title="Permanent link">#</a></h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Teil</th>
+<th>Ort</th>
+<th>Aufgabe</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Presets und <a class="term" href="glossar.html#token" title="digitaler Ausweis, den ein Identitätsdienst ausstellt und den eine App bei jedem API-Aufruf mitschickt">Tokens</a></td>
+<td><code>packages/ui/src/themes.ts</code></td>
+<td>einzige Quelle: die Parameter aller sieben Presets aus dem Mockup und die Rechnung daraus (<code>themeTokens</code>), dieselben Formeln wie im Mockup</td>
+</tr>
+<tr>
+<td>Stylesheet</td>
+<td><code>scripts/build-css.mjs</code> → <code>dist/styles.css</code></td>
+<td>der <a class="term" href="glossar.html#ui" title="Benutzeroberfläche">UI</a>-<a class="term" href="glossar.html#build" title="Übersetzen und Paketieren des Quellcodes zu auslieferbaren Dateien (Artefakten)">Build</a> schreibt <code>themesCss()</code> vor die handgeschriebenen Stile (<code>src/styles.css</code>, <code>src/layout.css</code>); <a class="term" href="glossar.html#storybook" title="Werkzeug, das jede Komponente der Component Library isoliert darstellt und dokumentiert; als statische Seite veröffentlicht">Storybook</a> holt die Tokens direkt aus <code>themes.ts</code></td>
+</tr>
+<tr>
+<td>Auswahl</td>
+<td><code>packages/ui/src/theme-runtime.ts</code></td>
+<td>Attribute an <code>&lt;html&gt;</code> (<code>data-audience</code>, <code>data-theme-preset</code>, <code>data-color-mode</code>, abgeleitet <code>data-nav</code>, <code>data-nav-marker</code>), <a class="term" href="glossar.html#cookie" title="kleine Datei, die der Browser bei jeder Anfrage mitschickt; httpOnly heißt: für JavaScript unsichtbar und damit vor XSS geschützt">Cookies</a> <code>kp_theme_kunde</code>, <code>kp_theme_cockpit</code>, <code>kp_color_mode</code>, Prüfung der Werte, <code>applyTheme</code> für den Umschalter</td>
+</tr>
+<tr>
+<td>Init-Skript</td>
+<td><code>/theme-init.js</code> (<a class="term" href="glossar.html#shell" title="Rahmenanwendung, die Navigation, Login und Layout stellt und die Micro-Frontends einbindet">Shell</a>)</td>
+<td>setzt auf <a class="term" href="glossar.html#prerendering" title="Next.js erzeugt eine Seite schon beim Build als fertiges HTML, wenn sie weder Cookies noch Header liest; die Seite ist dann für alle Besucher gleich und kann im CDN liegen">vorgerenderten</a> Seiten die Attribute aus den Cookies vor dem ersten Zeichnen</td>
+</tr>
+<tr>
+<td>Umschalter</td>
+<td><code>AppearanceItems</code> im <code>UserMenu</code>, <code>AppearanceMenu</code> für Abgemeldete</td>
+<td><code>menuitemradio</code> mit <code>aria-checked</code>; Wahl wirkt sofort und gilt in allen <a class="term" href="glossar.html#multi-zones" title="Next.js-Ansatz, mehrere Next.js-Apps unter einer Domain zu betreiben, aufgeteilt nach Pfaden">Zonen</a></td>
+</tr>
+</tbody>
+</table></div>
+<p>Wie die Attribute in Shell und Zonen gesetzt werden, welche Seiten das
+Init-Skript laden und wie es ausgeliefert wird, steht in
+<a href="architektur-zonen.html">Architektur: Zonen und Frontend</a> §12.</p>
+<p><strong>Neue Tokens</strong> (zusätzlich zu den bisherigen Farben): <code>--kp-surface-2</code>,
+<code>--kp-border-strong</code>, <code>--kp-accent-text</code> (Links, aktive Einträge),
+<code>--kp-accent-soft</code>, <code>--kp-focus</code>, <code>--kp-track</code>, <code>--kp-badge</code>,
+<code>--kp-row-hover</code>, <code>--kp-input-bg</code>, <code>--kp-header-bg</code>, <code>--kp-side-bg</code>,
+<code>--kp-*-text</code> je Status; Schrift (<code>--kp-font</code>, <code>--kp-font-heading</code>,
+<code>--kp-heading-weight</code>, <code>--kp-heading-tracking</code>), Größen (<code>--kp-font-size</code>,
+<code>--kp-line-height</code>, <code>--kp-small</code>, <code>--kp-h1</code> bis <code>--kp-h3</code>), Dichte
+(<code>--kp-space</code>, <code>--kp-control</code>, <code>--kp-cell-y</code>), Form (<code>--kp-radius</code>,
+<code>--kp-radius-large</code>, <code>--kp-btn-radius</code>, <code>--kp-shadow</code>,
+<code>--kp-shadow-raised</code>, <code>--kp-card-border</code>) und <code>--kp-content-width</code>. Das
+alte Attribut <code>data-theme="light|dark"</code> entfällt; an seine Stelle tritt
+<code>data-color-mode</code>.</p>
+<p><strong>Abweichung vom Mockup:</strong> Das Mockup passte die Link-Farbe nur gegen die
+Fläche an; der aktive Navigationseintrag auf der getönten Akzentfläche kam im
+Dunkelmodus nur auf rund 3,6:1. <code>--kp-accent-text</code> wird jetzt gegen
+<code>--kp-accent-soft</code> (den schwierigsten Hintergrund) auf 4,5:1 gebracht.</p>
+<h2 id="kontrastprüfung">Kontrastprüfung<a class="anchor" href="#kontrastprüfung" title="Permanent link">#</a></h2>
+<p><code>packages/ui/src/themes.test.ts</code> rechnet für jedes Preset hell und dunkel
+die Kontrastverhältnisse aus den <a class="term" href="glossar.html#token" title="digitaler Ausweis, den ein Identitätsdienst ausstellt und den eine App bei jedem API-Aufruf mitschickt">Token</a>-Werten (<a class="term" href="glossar.html#wcag" title="Richtlinien des W3C für barrierefreie Webinhalte; Stufe AA verlangt u. a. ein Kontrastverhältnis von 4,5:1 für Text und 3:1 für Bedienelemente">WCAG</a> 2.x, relative Luminanz)
+und verlangt mindestens 4,5:1 für Text / Fläche und Seite, Sekundärtext,
+Links, aktiven Navigationseintrag, Button-Text auf Akzent, Text im
+Eingabefeld, Statustexte und Text auf Statusflächen sowie 3:1 für Fokusring,
+Akzent und Feldrahmen. <strong>[B]</strong> 14 Kombinationen aus Preset und Modus mit je 25 Paaren, alle bestanden. Weitere
+Tests prüfen <a class="term" href="glossar.html#cookie" title="kleine Datei, die der Browser bei jeder Anfrage mitschickt; httpOnly heißt: für JavaScript unsichtbar und damit vor XSS geschützt">Cookies</a>, Init-Skript, Umschalter und dass Kundenseiten
+Bedienelemente von mindestens 44 px haben.</p>
+<p><strong>[E]</strong> „Kontrast“ ist im Mockup „dunkel zuerst“; hier folgt auch dieses
+Preset dem gewählten Farbmodus (Standard System), damit der Modus überall
+dieselbe Bedeutung hat.</p></main></div>
+<footer class="site"><a href="../wiki/design.md">Markdown-Quelle</a> · Generiert 2026-10-01 12:29 aus <code>docs/wiki</code> mit <code>scripts/build_reports.py</code></footer>
 </body>
 </html>
