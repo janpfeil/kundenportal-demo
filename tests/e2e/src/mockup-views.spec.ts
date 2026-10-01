@@ -39,9 +39,10 @@ test("the overview greets the customer and shows contract cards and the mailbox"
     await expect(main).toContainText("Ihre Verträge");
     await expect(main).toContainText(/Strom/);
     await expect(main).toContainText(/Mobil/);
+    // The mobile data volume is simulated and says so; it shows once the consumption
+    // domain knows the contract (another event after the contract itself).
+    await expect(page.locator('[data-fake="true"]').first()).toBeVisible();
   }).toPass(EVENTUALLY);
-  // The mobile data volume is simulated and says so.
-  await expect(page.locator('[data-fake="true"]').first()).toBeVisible();
   await expect(page.getByTestId("account")).toContainText(customer.email);
 });
 
