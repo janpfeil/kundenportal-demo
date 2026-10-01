@@ -1,32 +1,13 @@
-import { ConditionalCheckFailedException } from "@aws-sdk/client-dynamodb";
-import { EventBridgeClient, PutEventsCommand } from "@aws-sdk/client-eventbridge";
-import {
-  BatchWriteCommand,
-  DynamoDBDocumentClient,
-  GetCommand,
-  PutCommand,
-  QueryCommand,
-} from "@aws-sdk/lib-dynamodb";
+import { TransactionCanceledException } from "@aws-sdk/client-dynamodb";
+import { PutCommand, TransactWriteCommand } from "@aws-sdk/lib-dynamodb";
 import { ContractChanged, InstallmentAdjusted } from "@kundenportal/events";
-import { fixedTenantData } from "@kundenportal/service-kit/testing";
-import { mockClient } from "aws-sdk-client-mock";
 import { beforeEach, describe, expect, it } from "vitest";
-import { demoContracts } from "./contract.js";
-import { ContractEvents } from "./publisher.js";
-import { ContractRepository } from "./repository.js";
-import { ContractService } from "./service.js";
-import { createWorker } from "./worker.js";
+import { demoContracts } from "./origins.js";
+import { contractItem, fixture } from "./testing/fixture.js";
 
-const dbMock = mockClient(DynamoDBDocumentClient);
-const ebMock = mockClient(EventBridgeClient);
-
-const worker = createWorker(
-  new ContractService(
-    new ContractRepository(fixedTenantData()),
-    new ContractEvents(new EventBridgeClient({}), "bus"),
-    { now: () => new Date("2026-09-30T13:00:00.000Z") },
-  ),
-);
+const f = fixture();
+const worker = f.worker;
+const published = () => f.published();
 
 const registrationId = "6f1c1f64-8a4c-4c55-9a39-5d8a4a0f2c11";
 const readingEventId = "7a2d2e75-9b5d-4d66-8b4a-6e9b5b1f3d22";
@@ -46,6 +27,10 @@ const registered = {
 };
 const [electricity] = demoContracts("c-1", registrationId, registered.occurredAt);
 if (!electricity) throw new Error("demo contract missing");
+const electricityKey = [
+  "TENANT#owner#CUST#c-1",
+  `CONTRACT#electricity#${electricity.contractId}`,
+] as const;
 const reading = (value: number, readAt = "2026-09-30") => ({
   eventId: readingEventId,
   tenantId: "owner",
@@ -72,41 +57,46 @@ const customerRegistered = (d: unknown = registered) =>
   envelope("kundenportal.customer", "CustomerRegistered", d);
 const meterReading = (d: unknown) =>
   envelope("kundenportal.consumption", "MeterReadingSubmitted", d);
-const published = () =>
-  ebMock
-    .commandCalls(PutEventsCommand)
-    .flatMap((call) => call.args[0].input.Entries ?? [])
-    .map((entry) => ({ type: entry.DetailType, detail: JSON.parse(entry.Detail ?? "{}") }));
 
 beforeEach(() => {
-  dbMock.reset();
-  ebMock.reset();
-  dbMock.on(PutCommand).resolves({});
-  dbMock.on(GetCommand).resolves({ Item: electricity });
-  ebMock.on(PutEventsCommand).resolves({ FailedEntryCount: 0 });
+  f.reset();
 });
 
 describe("CustomerRegistered", () => {
-  it("links the identity, creates demo contracts and publishes ContractChanged(created)", async () => {
+  it("links the identity, creates demo contracts with directory entries and publishes created", async () => {
     await expect(worker(customerRegistered())).resolves.toBeUndefined();
-    const puts = dbMock.commandCalls(PutCommand).map((call) => call.args[0].input);
-    expect(puts[0]?.Item).toEqual({
+    expect(f.table.get("TENANT#owner#SUBJ#sub-1", "CONTRACTS")).toEqual({
       PK: "TENANT#owner#SUBJ#sub-1",
       SK: "CONTRACTS",
       customerId: "c-1",
+      customerName: "Anna",
     });
-    expect(puts.slice(1).map((put) => put.Item?.SK)).toEqual([
-      expect.stringMatching(/^CONTRACT#electricity#/),
-      expect.stringMatching(/^CONTRACT#gas#/),
-      expect.stringMatching(/^CONTRACT#mobile#/),
+    const transactions = f.dbMock
+      .commandCalls(TransactWriteCommand)
+      .map((call) => call.args[0].input.TransactItems?.map((item) => item.Put?.Item?.SK));
+    expect(transactions).toEqual([
+      [
+        expect.stringMatching(/^CONTRACT#electricity#/),
+        expect.stringMatching(/^CONTRACT#[0-9a-f-]+$/),
+      ],
+      [expect.stringMatching(/^CONTRACT#gas#/), expect.stringMatching(/^CONTRACT#[0-9a-f-]+$/)],
+      [expect.stringMatching(/^CONTRACT#mobile#/), expect.stringMatching(/^CONTRACT#[0-9a-f-]+$/)],
     ]);
-    expect(puts[1]?.ConditionExpression).toBe("attribute_not_exists(PK)");
+    expect(f.table.get(...electricityKey)).toMatchObject({
+      productId: "strom-klassik",
+      productVersion: 1,
+      noticePeriodMonths: 1,
+      customerName: "Anna",
+      listed: true,
+    });
+    expect(f.table.partition("TENANT#owner#CONTRACTS")).toHaveLength(3);
 
     const events = published();
     expect(events).toHaveLength(3);
     for (const { type, detail } of events) {
       expect(type).toBe("ContractChanged");
-      expect(ContractChanged.detail.parse(detail).payload.changeType).toBe("created");
+      const payload = ContractChanged.detail.parse(detail).payload;
+      expect(payload).toMatchObject({ changeType: "created", initiatedBy: "system" });
     }
     // Metered snapshots carry the annual consumption the consumption domain estimates with.
     const annual = events.map(
@@ -118,28 +108,39 @@ describe("CustomerRegistered", () => {
   it("is idempotent: a redelivery creates nothing new and re-publishes the same event ids", async () => {
     await worker(customerRegistered());
     const firstIds = published().map((e) => e.detail.eventId);
-    dbMock
-      .on(PutCommand, { ConditionExpression: "attribute_not_exists(PK)" })
-      .rejects(new ConditionalCheckFailedException({ message: "exists", $metadata: {} }));
-    ebMock.resetHistory();
+    const items = f.table.items.size;
+    f.ebMock.resetHistory();
 
     await expect(worker(customerRegistered())).resolves.toBeUndefined();
+    expect(f.table.items.size).toBe(items);
     expect(published().map((e) => e.detail.eventId)).toEqual(firstIds);
+  });
+
+  it("does not overwrite a contract changed since (redelivery after a change)", async () => {
+    await worker(customerRegistered());
+    const stored = f.table.get(...electricityKey);
+    if (stored) stored.monthlyInstallmentCent = 9900;
+    await worker(customerRegistered());
+    expect(f.table.get(...electricityKey)?.monthlyInstallmentCent).toBe(9900);
   });
 
   it("gives legacy customers no demo contracts (they come with their migration)", async () => {
     const legacy = { ...registered, payload: { ...registered.payload, origin: "legacy-utility" } };
     await worker(customerRegistered(legacy));
-    expect(dbMock.commandCalls(PutCommand)).toHaveLength(1);
+    expect(f.dbMock.commandCalls(PutCommand)).toHaveLength(1);
+    expect(f.dbMock.commandCalls(TransactWriteCommand)).toHaveLength(0);
     expect(published()).toEqual([]);
   });
 });
 
 describe("MeterReadingSubmitted", () => {
-  it("recalculates the installment from the start reading and publishes InstallmentAdjusted", async () => {
+  beforeEach(() => {
+    f.table.put(contractItem({ ...electricity, listed: true }));
+  });
+
+  it("recalculates the installment, keeps a history entry and publishes InstallmentAdjusted", async () => {
     await expect(worker(meterReading(reading(19800)))).resolves.toBeUndefined();
-    const put = dbMock.commandCalls(PutCommand)[0]?.args[0].input;
-    expect(put?.Item).toMatchObject({
+    expect(f.table.get(...electricityKey)).toMatchObject({
       monthlyInstallmentCent: 9700,
       estimatedAnnualConsumption: 3176,
       installmentMinCent: 7700,
@@ -147,6 +148,16 @@ describe("MeterReadingSubmitted", () => {
       lastReading: { value: 19800, readAt: "2026-09-30", eventId: readingEventId },
       version: 2,
     });
+    expect(
+      f.table.get("TENANT#owner#CUST#c-1", `HISTORY#${electricity.contractId}#000002`),
+    ).toMatchObject({
+      change: "installment",
+      by: "system",
+      summary: "Abschlag 87 € → 97 € nach Zählerstand",
+    });
+    expect(
+      f.table.get("TENANT#owner#CONTRACTS", `CONTRACT#${electricity.contractId}`),
+    ).toMatchObject({ monthlyInstallmentCent: 9700 });
     const [adjusted] = published();
     expect(adjusted?.type).toBe("InstallmentAdjusted");
     expect(InstallmentAdjusted.detail.parse(adjusted?.detail)).toMatchObject({
@@ -160,42 +171,84 @@ describe("MeterReadingSubmitted", () => {
     });
   });
 
-  it("stores a reading that matches the current installment without publishing", async () => {
+  it("uses the prices of the contract's own price version", async () => {
+    f.table.put(
+      contractItem({ ...electricity, listed: true, productId: "strom-natur", productVersion: 1 }),
+      {
+        PK: "TENANT#owner#PRODUCTS",
+        SK: "PRODUCT#strom-natur",
+        productId: "strom-natur",
+        division: "electricity",
+        name: "Strom Natur",
+        description: "",
+        status: "active",
+        unit: "kWh",
+        minimumTermMonths: 12,
+        noticePeriodMonths: 1,
+        versions: [
+          {
+            version: 1,
+            validFrom: "2026-01-01",
+            createdAt: "2026-01-01T00:00:00.000Z",
+            options: [
+              {
+                optionId: "standard",
+                label: "Standard",
+                monthlyPriceCent: 1000,
+                workPriceCent: 40,
+              },
+            ],
+          },
+        ],
+        createdAt: "2026-01-01T00:00:00.000Z",
+        updatedAt: "2026-01-01T00:00:00.000Z",
+        revision: 1,
+      },
+    );
+    await worker(meterReading(reading(19800)));
+    // (3176 kWh × 40 ct + 12 × 1000 ct) / 12 = 11587 ct → 116 €
+    expect(f.table.get(...electricityKey)?.monthlyInstallmentCent).toBe(11600);
+  });
+
+  it("stores a reading that matches the current installment without history or event", async () => {
     // 1381 kWh in 180 days → 2800 kWh a year → still 87 €
     await worker(meterReading(reading(18234 + 1381)));
-    expect(dbMock.commandCalls(PutCommand)).toHaveLength(1);
+    const items = f.dbMock.commandCalls(TransactWriteCommand)[0]?.args[0].input.TransactItems;
+    expect(items).toHaveLength(2);
     expect(published()).toEqual([]);
   });
 
   it("re-publishes the stored adjustment when the event is redelivered", async () => {
     await worker(meterReading(reading(19800)));
-    const stored = dbMock.commandCalls(PutCommand)[0]?.args[0].input.Item;
     const firstId = published()[0]?.detail.eventId;
-    dbMock.reset();
-    dbMock.on(GetCommand).resolves({ Item: stored });
-    ebMock.resetHistory();
+    f.ebMock.resetHistory();
+    f.dbMock.resetHistory();
 
     await worker(meterReading(reading(19800)));
 
-    expect(dbMock.commandCalls(PutCommand)).toHaveLength(0);
+    expect(f.dbMock.commandCalls(TransactWriteCommand)).toHaveLength(0);
     expect(published().map((e) => e.detail.eventId)).toEqual([firstId]);
   });
 
   it("ignores a reading older than the last one applied", async () => {
-    dbMock.on(GetCommand).resolves({
-      Item: {
+    f.table.put(
+      contractItem({
         ...electricity,
         lastReading: { value: 19800, readAt: "2026-09-30", eventId: registrationId },
-      },
-    });
+      }),
+    );
     await worker(meterReading(reading(19700, "2026-09-20")));
-    expect(dbMock.commandCalls(PutCommand)).toHaveLength(0);
+    expect(f.dbMock.commandCalls(TransactWriteCommand)).toHaveLength(0);
   });
 
   it("throws for a retry if the contract changed concurrently", async () => {
-    dbMock
-      .on(PutCommand)
-      .rejects(new ConditionalCheckFailedException({ message: "version", $metadata: {} }));
+    f.dbMock.on(TransactWriteCommand).rejects(
+      new TransactionCanceledException({
+        message: "cancelled",
+        $metadata: {},
+        CancellationReasons: [{ Code: "ConditionalCheckFailed" }],
+      }),
+    );
     await expect(worker(meterReading(reading(19800)))).rejects.toThrow();
     expect(published()).toEqual([]);
   });
@@ -240,48 +293,63 @@ const migrated = {
     contracts: legacyContracts,
   },
 };
+const legacyContractsOf = (customerId: string) =>
+  f.table.partition(`TENANT#owner#CUST#${customerId}`, "CONTRACT#");
 
 describe("LegacyAccountMigrated", () => {
-  it("links the identity and takes over the legacy contracts with their installments", async () => {
+  it("links the identity and takes over the legacy contracts on the default products", async () => {
     await worker(envelope("kundenportal.identity", "LegacyAccountMigrated", migrated));
-    const puts = dbMock.commandCalls(PutCommand).map((call) => call.args[0].input.Item ?? {});
-    expect(puts[0]).toMatchObject({ PK: "TENANT#owner#SUBJ#sub-anna", customerId: "c-legacy" });
-    expect(puts[1]).toMatchObject({
+    expect(f.table.get("TENANT#owner#SUBJ#sub-anna", "CONTRACTS")).toMatchObject({
       customerId: "c-legacy",
+      customerName: "Anna Becker",
+    });
+    const [power, phone] = legacyContractsOf("c-legacy");
+    expect(power).toMatchObject({
+      customerId: "c-legacy",
+      customerName: "Anna Becker",
       division: "electricity",
       tariffName: "Strom Klassik",
       tariffOption: "oeko",
+      productId: "strom-klassik",
+      productVersion: 1,
       monthlyInstallmentCent: 8700,
       legacyContractId: "SV-778812",
       startReading: { value: 18234, readAt: "2026-04-03" },
     });
-    expect(puts[1]?.installmentMinCent).toBeLessThanOrEqual(8700);
-    expect(puts[1]?.installmentMaxCent).toBeGreaterThanOrEqual(8700);
-    expect(puts[2]).toMatchObject({
+    expect(power?.installmentMinCent).toBeLessThanOrEqual(8700);
+    expect(power?.installmentMaxCent).toBeGreaterThanOrEqual(8700);
+    expect(phone).toMatchObject({
       division: "mobile",
+      productId: "mobil-flex",
       dataVolumeMb: 20480,
       monthlyInstallmentCent: 1999,
     });
+    expect(f.table.partition("TENANT#owner#CONTRACTS")).toHaveLength(2);
     const events = published();
     expect(events.map((e) => e.type)).toEqual(["ContractChanged", "ContractChanged"]);
-    const snapshot = ContractChanged.detail.parse(events[0]?.detail).payload.contract;
-    expect(snapshot.customerId).toBe("c-legacy");
-    expect(snapshot.estimatedAnnualConsumption).toBe(puts[1]?.estimatedAnnualConsumption);
-    expect(snapshot.estimatedAnnualConsumption).toBeGreaterThan(0);
+    const payload = ContractChanged.detail.parse(events[0]?.detail).payload;
+    expect(payload.initiatedBy).toBe("system");
+    expect(payload.contract.customerId).toBe("c-legacy");
+    expect(payload.contract.estimatedAnnualConsumption).toBe(power?.estimatedAnnualConsumption);
+    expect(payload.contract.estimatedAnnualConsumption).toBeGreaterThan(0);
   });
 
   it("is idempotent across sources and redeliveries (same contract and event ids)", async () => {
     await worker(envelope("kundenportal.identity", "LegacyAccountMigrated", migrated));
     const first = published().map((e) => e.detail.eventId);
-    ebMock.resetHistory();
-    dbMock
-      .on(PutCommand, { ConditionExpression: "attribute_not_exists(PK)" })
-      .rejects(new ConditionalCheckFailedException({ message: "x", $metadata: {} }));
+    f.ebMock.resetHistory();
     await worker(envelope("kundenportal.migration", "LegacyAccountMigrated", migrated));
     expect(published().map((e) => e.detail.eventId)).toEqual(first);
+    expect(legacyContractsOf("c-legacy")).toHaveLength(2);
   });
 
   it("moves the contracts of a linked account to the confirming customer", async () => {
+    f.table.put({
+      PK: "TENANT#owner#SUBJ#sub-bernd",
+      SK: "CONTRACTS",
+      customerId: "c-bernd",
+      customerName: "Bernd Kurz",
+    });
     await worker(
       envelope("kundenportal.migration", "AccountsLinked", {
         ...registered,
@@ -294,64 +362,51 @@ describe("LegacyAccountMigrated", () => {
         },
       }),
     );
-    const put = dbMock.commandCalls(PutCommand)[0]?.args[0].input.Item;
-    expect(put).toMatchObject({
-      customerId: "c-bernd",
-      division: "mobile",
-      legacyContractId: "MOB-812233",
-    });
+    expect(legacyContractsOf("c-bernd")).toEqual([
+      expect.objectContaining({
+        customerId: "c-bernd",
+        customerName: "Bernd Kurz",
+        division: "mobile",
+        legacyContractId: "MOB-812233",
+      }),
+    ]);
   });
 });
 
 describe("MigratedAccountsRemoved", () => {
   const removed = envelope("kundenportal.migration", "MigratedAccountsRemoved", {
     eventId: "8b3e3f86-ac6e-4e77-9c5b-7f0c6c2e4e33",
-    tenantId: "p4k7x2qa",
+    tenantId: "owner",
     occurredAt: "2026-09-30T14:00:00.000Z",
     correlationId: "req-reset",
     payload: {
       reason: "demo-reset",
       accounts: [
         { subject: "sub-1", customerId: "c-1" },
-        { subject: "sub-2", customerId: "c-2" },
+        { subject: "sub-anna", customerId: "c-legacy" },
       ],
     },
   });
-  const pk = (customerId: string) => `TENANT#p4k7x2qa#CUST#${customerId}`;
 
-  it("deletes the removed customers' contracts and identity links, also when redelivered", async () => {
-    dbMock
-      .on(QueryCommand, { ExpressionAttributeValues: { ":pk": pk("c-1") } })
-      .resolves({ Items: [{ PK: pk("c-1"), SK: "CONTRACT#electricity#k-1" }] })
-      .on(QueryCommand, { ExpressionAttributeValues: { ":pk": pk("c-2") } })
-      .resolvesOnce({ Items: [{ PK: pk("c-2"), SK: "CONTRACT#mobile#k-2" }] })
-      .resolves({ Items: [] });
-    dbMock.on(BatchWriteCommand).resolves({});
+  it("deletes contracts, history, directory entries and identity links, also when redelivered", async () => {
+    await worker(customerRegistered());
+    await worker(envelope("kundenportal.identity", "LegacyAccountMigrated", migrated));
+    await worker(meterReading(reading(19800)));
+    const foreign = { PK: "TENANT#owner#CUST#c-1", SK: "PROFILE", displayName: "Anna" };
+    f.table.put(foreign);
+    expect(f.table.partition("TENANT#owner#CUST#c-1", "HISTORY#")).toHaveLength(1);
 
     await worker(removed);
-    const deletes = () =>
-      dbMock
-        .commandCalls(BatchWriteCommand)
-        .map((c) => c.args[0].input.RequestItems?.table?.map((r) => r.DeleteRequest?.Key));
-    expect(deletes()).toEqual([
-      [
-        { PK: pk("c-1"), SK: "CONTRACT#electricity#k-1" },
-        { PK: "TENANT#p4k7x2qa#SUBJ#sub-1", SK: "CONTRACTS" },
-      ],
-      [
-        { PK: pk("c-2"), SK: "CONTRACT#mobile#k-2" },
-        { PK: "TENANT#p4k7x2qa#SUBJ#sub-2", SK: "CONTRACTS" },
-      ],
-    ]);
-    // Only the contracts of the customer's partition, never its other items.
-    const query = dbMock.commandCalls(QueryCommand)[0]?.args[0].input;
-    expect(query?.ExpressionAttributeValues).toEqual({
-      ":pk": pk("c-1"),
-      ":prefix": "CONTRACT#",
-    });
+    expect(f.table.partition("TENANT#owner#CUST#c-1", "CONTRACT#")).toEqual([]);
+    expect(f.table.partition("TENANT#owner#CUST#c-1", "HISTORY#")).toEqual([]);
+    expect(f.table.partition("TENANT#owner#CUST#c-legacy")).toEqual([]);
+    expect(f.table.partition("TENANT#owner#CONTRACTS")).toEqual([]);
+    expect(f.table.get("TENANT#owner#SUBJ#sub-1", "CONTRACTS")).toBeUndefined();
+    // Other domains' items in the customer's partition stay.
+    expect(f.table.get(foreign.PK, foreign.SK)).toEqual(foreign);
 
-    await worker(removed);
-    expect(deletes()).toHaveLength(4);
+    f.ebMock.resetHistory();
+    await expect(worker(removed)).resolves.toBeUndefined();
     expect(published()).toEqual([]);
   });
 });
@@ -364,16 +419,15 @@ describe("failures", () => {
     ["negative reading", meterReading(reading(-1))],
   ])("throws for %s so Lambda hands it to the DLQ", async (_case, body) => {
     await expect(worker(body)).rejects.toThrow();
-    expect(dbMock.commandCalls(PutCommand)).toHaveLength(0);
+    expect(f.dbMock.commandCalls(PutCommand)).toHaveLength(0);
   });
 
   it("sends readings for unknown contracts to the DLQ", async () => {
-    dbMock.on(GetCommand).resolves({});
     await expect(worker(meterReading(reading(19800)))).rejects.toThrow();
   });
 
   it("throws on infrastructure errors so Lambda retries", async () => {
-    dbMock.on(PutCommand).rejects(new Error("throttled"));
+    f.dbMock.on(TransactWriteCommand).rejects(new Error("throttled"));
     await expect(worker(customerRegistered())).rejects.toThrow();
   });
 });

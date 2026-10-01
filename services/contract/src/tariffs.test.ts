@@ -1,12 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { demoContracts } from "./contract.js";
-import {
-  addDays,
-  addMonths,
-  estimateAnnualConsumption,
-  recommendedInstallment,
-  tariffOption,
-} from "./tariffs.js";
+import { addDays, addMonths } from "./dates.js";
+import { demoContracts } from "./origins.js";
+import { estimateAnnualConsumption, recommendedInstallment, tariffOption } from "./tariffs.js";
 
 const eventId = "6f1c1f64-8a4c-4c55-9a39-5d8a4a0f2c11";
 

@@ -8,7 +8,7 @@ import {
 } from "@kundenportal/events";
 import { log } from "@kundenportal/service-kit";
 import type { z } from "zod";
-import { type ContractService, UnprocessableEventError } from "./service.js";
+import { type ContractIntake, UnprocessableEventError } from "./intake.js";
 
 function parse<T extends z.ZodType>(schema: T, detail: unknown, name: string): z.infer<T> {
   const parsed = schema.safeParse(detail);
@@ -29,7 +29,7 @@ function parse<T extends z.ZodType>(schema: T, detail: unknown, name: string): z
  * Invalid events therefore also end up in the DLQ. The service is idempotent, so retries
  * and duplicate deliveries are harmless.
  */
-export function createWorker(service: ContractService) {
+export function createWorker(service: ContractIntake) {
   return async (input: unknown): Promise<void> => {
     const envelope = EventBridgeEnvelope.safeParse(input);
     if (!envelope.success) throw new UnprocessableEventError("Input is not an EventBridge event");

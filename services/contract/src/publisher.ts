@@ -4,6 +4,8 @@ import {
   type ContractChangedDetail,
   InstallmentAdjusted,
   type InstallmentAdjustedDetail,
+  ProductChanged,
+  type ProductChangedDetail,
 } from "@kundenportal/events";
 
 type Entry = { source: string; detailType: string; detail: unknown };
@@ -31,6 +33,16 @@ export class ContractEvents {
         source: InstallmentAdjusted.source,
         detailType: InstallmentAdjusted.detailType,
         detail: InstallmentAdjusted.detail.parse(detail),
+      },
+    ]);
+  }
+
+  async productChanged(detail: ProductChangedDetail): Promise<void> {
+    await this.put([
+      {
+        source: ProductChanged.source,
+        detailType: ProductChanged.detailType,
+        detail: ProductChanged.detail.parse(detail),
       },
     ]);
   }

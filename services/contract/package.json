@@ -2,7 +2,7 @@
   "name": "@kundenportal/contract",
   "version": "0.1.0",
   "private": true,
-  "description": "Contract service: contracts per division (GET/PATCH /contracts), demo contracts, installment recalculation; publishes ContractChanged and InstallmentAdjusted",
+  "description": "Contract service: contracts per division (order, change, terminate, withdraw), product catalogue with price versions, the operator back office (/admin/contracts, /admin/products, /admin/overview), demo contracts, installment recalculation; publishes ContractChanged, ProductChanged and InstallmentAdjusted",
   "license": "MIT",
   "type": "module",
   "scripts": {

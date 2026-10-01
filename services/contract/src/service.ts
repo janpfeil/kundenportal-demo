@@ -1,56 +1,67 @@
-import {
-  type AccountsLinkedDetail,
-  type CustomerRegisteredDetail,
-  deterministicUuid,
-  type InstallmentAdjustedDetail,
-  type LegacyAccountMigratedDetail,
-  type LegacyContract,
-  type MeterReadingSubmittedDetail,
-  type MigratedAccountsRemovedDetail,
-} from "@kundenportal/events";
-import { type Caller, HttpError, log, notFound } from "@kundenportal/service-kit";
+import { deterministicUuid, type Division } from "@kundenportal/events";
+import { type Caller, notFound } from "@kundenportal/service-kit";
+import type { ProductCache, ProductCatalogue } from "./catalogue.js";
+import { type Clock, conflict, systemClock, unprocessable } from "./clock.js";
 import {
   type ContractRecord,
   type ContractUpdate,
   type ContractView,
-  demoContracts,
   isMetered,
-  legacyContracts,
-  toSnapshot,
   toView,
 } from "./contract.js";
+import { addDays, today } from "./dates.js";
+import {
+  assertCustomerMayChange,
+  cancelTermination,
+  terminate,
+  withdraw,
+  withOption,
+} from "./lifecycle.js";
+import { type ContractOrder, MAX_START_DAYS_AHEAD, orderedContract } from "./origins.js";
+import { currentVersion } from "./products.js";
 import type { ContractEvents } from "./publisher.js";
-import type { ContractRepository } from "./repository.js";
-import { estimateAnnualConsumption, recommendedInstallment, tariffOption } from "./tariffs.js";
+import type { ContractRepository, CustomerLink } from "./repository.js";
+import { ContractWriter } from "./writer.js";
 
-export interface Clock {
-  now(): Date;
-}
+export type { Clock } from "./clock.js";
 
-const unprocessable = (detail: string) => new HttpError(422, "Unprocessable Content", detail);
 const euros = (cents: number) => (cents / 100).toFixed(2);
+const concurrent = () => conflict("The contract was changed concurrently; reload it");
 
-/** An event the worker cannot process however often it retries (goes to the DLQ). */
-export class UnprocessableEventError extends Error {
-  override name = "UnprocessableEventError";
-}
-
-/** Use cases of the contract domain, independent of Lambda, HTTP and EventBridge. */
+/**
+ * The customer's use cases of the contract domain (`/contracts`, `/products`),
+ * independent of Lambda, HTTP and EventBridge: list and change own contracts, order a
+ * product, give and take back notice, withdraw.
+ */
 export class ContractService {
+  private readonly writer: ContractWriter;
+
   constructor(
     private readonly repository: ContractRepository,
-    private readonly events: ContractEvents,
-    private readonly clock: Clock = { now: () => new Date() },
-  ) {}
+    events: ContractEvents,
+    private readonly catalogue: ProductCatalogue,
+    private readonly clock: Clock = systemClock,
+  ) {
+    this.writer = new ContractWriter(repository, events, clock);
+  }
 
   async list(caller: Caller): Promise<ContractView[]> {
-    const customerId = await this.repository.customerOf(caller.tenantId, caller.subject);
-    if (!customerId) return [];
-    return (await this.repository.list(caller.tenantId, customerId)).map(toView);
+    const link = await this.repository.customerOf(caller.tenantId, caller.subject);
+    if (!link) return [];
+    const records = await this.records(caller.tenantId, link);
+    const cache: ProductCache = new Map();
+    const views: ContractView[] = [];
+    for (const record of records) views.push(await this.view(caller.tenantId, record, cache));
+    return views;
   }
 
   async get(caller: Caller, contractId: string): Promise<ContractView> {
-    return toView(await this.load(caller, contractId));
+    return this.view(caller.tenantId, await this.load(caller, contractId));
+  }
+
+  /** Orderable products (`GET /products`). */
+  async products(caller: Caller, division?: Division) {
+    return this.catalogue.orderable(caller.tenantId, division);
   }
 
   /**
@@ -66,29 +77,16 @@ export class ContractService {
     correlationId: string,
   ): Promise<ContractView> {
     const current = await this.load(caller, contractId);
-    const next: ContractRecord = { ...current };
-    const metered = isMetered(current.division);
-
+    assertCustomerMayChange(current, this.clock.now());
+    const version = await this.catalogue.versionFor(caller.tenantId, current);
+    let next: ContractRecord = { ...current };
     if (update.tariffOption !== undefined && update.tariffOption !== current.tariffOption) {
-      const option = tariffOption(current.division, update.tariffOption);
-      if (!option) throw unprocessable(`Unknown tariff option ${update.tariffOption}`);
-      next.tariffOption = option.id;
-      if (metered) {
-        const range = recommendedInstallment(current.estimatedAnnualConsumption ?? 0, option);
-        next.installmentMinCent = range.minCent;
-        next.installmentMaxCent = range.maxCent;
-        next.monthlyInstallmentCent = Math.min(
-          Math.max(current.monthlyInstallmentCent, range.minCent),
-          range.maxCent,
-        );
-      } else {
-        next.monthlyInstallmentCent = option.monthlyPriceCent;
-        if (option.dataVolumeMb) next.dataVolumeMb = option.dataVolumeMb;
-      }
+      next = withOption(current, version, update.tariffOption);
     }
-
     if (update.monthlyInstallmentCent !== undefined) {
-      if (!metered) throw unprocessable("The monthly price of this contract is fixed");
+      if (!isMetered(current.division)) {
+        throw unprocessable("The monthly price of this contract is fixed");
+      }
       const amount = update.monthlyInstallmentCent;
       const min = next.installmentMinCent ?? 0;
       const max = next.installmentMaxCent ?? Number.MAX_SAFE_INTEGER;
@@ -98,197 +96,143 @@ export class ContractService {
       }
       next.monthlyInstallmentCent = amount;
     }
-
-    const changes = [
-      ...(next.monthlyInstallmentCent !== current.monthlyInstallmentCent
-        ? (["installment"] as const)
-        : []),
-      ...(next.tariffOption !== current.tariffOption ? (["tariffOption"] as const) : []),
-    ];
-    if (changes.length === 0) return toView(current);
-
-    const now = this.clock.now().toISOString();
-    next.version = current.version + 1;
-    next.updatedAt = now;
-    if (!(await this.repository.replace(caller.tenantId, next, current.version))) {
-      throw new HttpError(409, "Conflict", "The contract was changed concurrently; reload it");
+    if (
+      next.monthlyInstallmentCent === current.monthlyInstallmentCent &&
+      next.tariffOption === current.tariffOption
+    ) {
+      return this.view(caller.tenantId, current);
     }
-    await this.events.contractChanged({
-      eventId: deterministicUuid(next.contractId, String(next.version)),
-      tenantId: caller.tenantId,
-      occurredAt: now,
+    return this.commit(caller, current, next, correlationId, { before: version, after: version });
+  }
+
+  /**
+   * Concludes a contract for an active product (`POST /contracts`): the option of the
+   * product's current price version, a start within the next 90 days, meter number and
+   * start reading for metered divisions. Publishes `ContractChanged` (`created`, by the
+   * customer); the consumption domain takes the start reading from the snapshot.
+   */
+  async order(caller: Caller, order: ContractOrder, correlationId: string): Promise<ContractView> {
+    const link = await this.repository.customerOf(caller.tenantId, caller.subject);
+    if (!link) {
+      throw conflict(
+        "Ihr Kundenkonto wird noch eingerichtet. Bitte versuchen Sie es gleich noch einmal.",
+      );
+    }
+    const product = await this.catalogue.find(caller.tenantId, order.productId);
+    if (!product || product.status === "draft") throw notFound("Product not found");
+    const now = this.clock.now();
+    const day = today(now);
+    const version = currentVersion(product, day);
+    if (product.status !== "active" || !version) {
+      throw unprocessable(`${product.name} ist nicht bestellbar.`);
+    }
+    const option = version.options.find((o) => o.optionId === order.optionId);
+    if (!option) throw unprocessable(`${product.name} hat keine Option ${order.optionId}.`);
+    const latestStart = addDays(day, MAX_START_DAYS_AHEAD);
+    if (order.startDate < day || order.startDate > latestStart) {
+      throw unprocessable(
+        `Der Vertrag kann zwischen heute und ${MAX_START_DAYS_AHEAD} Tagen beginnen.`,
+      );
+    }
+    const metered = isMetered(product.division);
+    if (metered && (!order.meterNumber || order.startReading === undefined)) {
+      throw unprocessable("Für diesen Vertrag braucht es Zählernummer und Zählerstand zu Beginn.");
+    }
+    if (!metered && (order.meterNumber !== undefined || order.startReading !== undefined)) {
+      throw unprocessable("Zählernummer und Zählerstand gibt es nur bei Strom, Gas und Wasser.");
+    }
+    const record = orderedContract({
+      contractId: deterministicUuid(caller.tenantId, link.customerId, correlationId, "order"),
+      customerId: link.customerId,
+      customerName: link.customerName ?? caller.name,
+      product,
+      version,
+      option,
+      order,
+      now,
+    });
+    await this.writer.create(
+      caller.tenantId,
+      [{ record, eventId: deterministicUuid(record.contractId, "created") }],
+      { by: "customer", correlationId, occurredAt: record.createdAt },
+    );
+    return toView(record, version, day);
+  }
+
+  /** Gives notice to the earliest end or a later chosen date. */
+  async terminate(
+    caller: Caller,
+    contractId: string,
+    effectiveDate: string | undefined,
+    correlationId: string,
+  ): Promise<ContractView> {
+    const current = await this.load(caller, contractId);
+    const now = this.clock.now();
+    assertCustomerMayChange(current, now);
+    const next = terminate(current, { effectiveDate, by: "customer", now });
+    return this.commit(caller, current, next, correlationId);
+  }
+
+  async cancelTermination(
+    caller: Caller,
+    contractId: string,
+    correlationId: string,
+  ): Promise<ContractView> {
+    const current = await this.load(caller, contractId);
+    const now = this.clock.now();
+    assertCustomerMayChange(current, now);
+    return this.commit(caller, current, cancelTermination(current, "customer", now), correlationId);
+  }
+
+  async withdraw(caller: Caller, contractId: string, correlationId: string) {
+    const current = await this.load(caller, contractId);
+    const now = this.clock.now();
+    assertCustomerMayChange(current, now);
+    return this.commit(caller, current, withdraw(current, now), correlationId);
+  }
+
+  private async commit(
+    caller: Caller,
+    current: ContractRecord,
+    next: ContractRecord,
+    correlationId: string,
+    versions?: Parameters<ContractWriter["change"]>[3]["versions"],
+  ): Promise<ContractView> {
+    const saved = await this.writer.change(caller.tenantId, current, next, {
+      by: "customer",
       correlationId,
-      payload: {
-        changeType: "updated",
-        changes,
-        previous: {
-          monthlyInstallmentCent: current.monthlyInstallmentCent,
-          tariffOption: current.tariffOption,
-        },
-        contract: toSnapshot(next),
-      },
+      ...(versions ? { versions } : {}),
     });
-    log("info", "Contract changed", { tenantId: caller.tenantId, contractId, changes });
-    return toView(next);
+    if (!saved) throw concurrent();
+    return this.view(caller.tenantId, saved);
+  }
+
+  private async view(tenantId: string, record: ContractRecord, cache?: ProductCache) {
+    const version = await this.catalogue.versionFor(tenantId, record, cache);
+    return toView(record, version, today(this.clock.now()));
   }
 
   /**
-   * `CustomerRegistered`: remembers whose contracts a sign-in identity opens and gives a
-   * newly registered customer demo contracts. Redelivery creates nothing twice and
-   * re-publishes the same events (same ids), which consumers deduplicate.
+   * The customer's contracts; contracts saved before phase 7 are added to the contract
+   * directory on the way (once each).
    */
-  async onCustomerRegistered(event: CustomerRegisteredDetail): Promise<void> {
-    const { tenantId, eventId, occurredAt, correlationId, payload } = event;
-    await this.repository.linkSubject(tenantId, payload.subject, payload.customerId);
-    if (payload.origin !== "registration") {
-      // Contracts of legacy customers arrive with their migration (phase 3).
-      return;
+  private async records(tenantId: string, link: CustomerLink): Promise<ContractRecord[]> {
+    const records = await this.repository.list(tenantId, link.customerId);
+    const result: ContractRecord[] = [];
+    for (const record of records) {
+      result.push(
+        record.listed
+          ? record
+          : await this.repository.backfill(tenantId, record, link.customerName),
+      );
     }
-    const records = demoContracts(payload.customerId, eventId, occurredAt);
-    for (const record of records) await this.repository.create(tenantId, record);
-    await this.events.contractChanged(
-      ...records.map((record) => ({
-        eventId: deterministicUuid(eventId, record.division, "created"),
-        tenantId,
-        occurredAt,
-        correlationId,
-        payload: { changeType: "created" as const, changes: [], contract: toSnapshot(record) },
-      })),
-    );
-    log("info", "Demo contracts ready", { tenantId, customerId: payload.customerId });
-  }
-
-  /**
-   * `LegacyAccountMigrated`: takes over the contracts the customer had in the legacy
-   * system (phase 3). Redelivery creates nothing twice and re-publishes the same events.
-   */
-  async onLegacyAccountMigrated(event: LegacyAccountMigratedDetail): Promise<void> {
-    const { tenantId, payload } = event;
-    await this.repository.linkSubject(tenantId, payload.subject, payload.customerId);
-    await this.takeOver(event, payload.customerId, payload.contracts);
-  }
-
-  /** `AccountsLinked`: the linked account's contracts move to the confirming customer. */
-  async onAccountsLinked(event: AccountsLinkedDetail): Promise<void> {
-    await this.takeOver(event, event.payload.customerId, event.payload.contracts);
-  }
-
-  /**
-   * `MigratedAccountsRemoved` (demo reset): deletes the contracts of each removed
-   * customer and the identity link. No `ContractChanged` follows: every domain reacts to
-   * the removal itself.
-   */
-  async onMigratedAccountsRemoved(event: MigratedAccountsRemovedDetail): Promise<void> {
-    const { tenantId, payload } = event;
-    let contracts = 0;
-    for (const { subject, customerId } of payload.accounts) {
-      contracts += await this.repository.removeCustomer(tenantId, subject, customerId);
-    }
-    log("info", "Contracts of removed customers deleted", {
-      tenantId,
-      customers: payload.accounts.length,
-      contracts,
-    });
-  }
-
-  private async takeOver(
-    event: { tenantId: string; eventId: string; occurredAt: string; correlationId: string },
-    customerId: string,
-    contracts: LegacyContract[],
-  ): Promise<void> {
-    const { tenantId, occurredAt, correlationId } = event;
-    const records = legacyContracts(tenantId, customerId, contracts, occurredAt);
-    if (records.length === 0) return;
-    for (const record of records) await this.repository.create(tenantId, record);
-    await this.events.contractChanged(
-      ...records.map((record) => ({
-        eventId: deterministicUuid(record.contractId, "created"),
-        tenantId,
-        occurredAt,
-        correlationId,
-        payload: { changeType: "created" as const, changes: [], contract: toSnapshot(record) },
-      })),
-    );
-    log("info", "Legacy contracts taken over", { tenantId, customerId, count: records.length });
-  }
-
-  /**
-   * `MeterReadingSubmitted`: extrapolates the annual consumption from the contract's start
-   * reading and the new reading (at least 30 days apart) and sets the recommended
-   * installment; publishes `InstallmentAdjusted` if the amount changed.
-   */
-  async onMeterReadingSubmitted(event: MeterReadingSubmittedDetail): Promise<void> {
-    const { tenantId, eventId, correlationId, payload } = event;
-    const record = await this.repository.get(
-      tenantId,
-      payload.customerId,
-      payload.division,
-      payload.contractId,
-    );
-    if (!record) throw new UnprocessableEventError(`Unknown contract ${payload.contractId}`);
-    if (!record.startReading || !isMetered(record.division)) {
-      log("warn", "Reading for a contract without meter reference ignored", { eventId });
-      return;
-    }
-    if (record.lastReading?.eventId === eventId) {
-      // Redelivery after the contract was already updated: publish what was decided then.
-      if (record.lastAdjustment?.payload.causationId === eventId) {
-        await this.events.installmentAdjusted(record.lastAdjustment);
-      }
-      return;
-    }
-    if (record.lastReading && payload.readAt < record.lastReading.readAt) {
-      log("info", "Older reading does not change the installment", { eventId });
-      return;
-    }
-
-    const now = this.clock.now().toISOString();
-    const next: ContractRecord = {
-      ...record,
-      lastReading: { value: payload.value, readAt: payload.readAt, eventId },
-      version: record.version + 1,
-      updatedAt: now,
-    };
-    let adjustment: InstallmentAdjustedDetail | undefined;
-    const annual = estimateAnnualConsumption(record.startReading, payload);
-    const option = tariffOption(record.division, record.tariffOption);
-    if (annual !== undefined && option && record.unit) {
-      const recommended = recommendedInstallment(annual, option);
-      next.estimatedAnnualConsumption = annual;
-      next.installmentMinCent = recommended.minCent;
-      next.installmentMaxCent = recommended.maxCent;
-      if (recommended.installmentCent !== record.monthlyInstallmentCent) {
-        next.monthlyInstallmentCent = recommended.installmentCent;
-        adjustment = {
-          eventId: deterministicUuid(eventId, "installment"),
-          tenantId,
-          occurredAt: now,
-          correlationId,
-          payload: {
-            customerId: record.customerId,
-            contractId: record.contractId,
-            division: record.division,
-            previousInstallmentCent: record.monthlyInstallmentCent,
-            newInstallmentCent: recommended.installmentCent,
-            estimatedAnnualConsumption: annual,
-            unit: record.unit,
-            reason: "meter-reading",
-            causationId: eventId,
-          },
-        };
-        next.lastAdjustment = adjustment;
-      }
-    }
-    if (!(await this.repository.replace(tenantId, next, record.version))) {
-      throw new Error(`Contract ${record.contractId} changed concurrently; retrying`);
-    }
-    if (adjustment) await this.events.installmentAdjusted(adjustment);
+    return result;
   }
 
   private async load(caller: Caller, contractId: string): Promise<ContractRecord> {
-    const customerId = await this.repository.customerOf(caller.tenantId, caller.subject);
-    const record = customerId
-      ? await this.repository.find(caller.tenantId, customerId, contractId)
+    const link = await this.repository.customerOf(caller.tenantId, caller.subject);
+    const record = link
+      ? (await this.records(caller.tenantId, link)).find((c) => c.contractId === contractId)
       : undefined;
     if (!record) throw notFound("Contract not found");
     return record;

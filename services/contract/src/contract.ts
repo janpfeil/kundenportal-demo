@@ -1,34 +1,48 @@
-import { createHash } from "node:crypto";
 import {
   Cents,
   type ContractSnapshot,
   Division,
-  deterministicUuid,
   InstallmentAdjusted,
   IsoDate,
-  type LegacyContract,
-  METERED_DIVISIONS,
   MeterUnit,
 } from "@kundenportal/events";
 import { z } from "zod";
+import { addMonths, earliestTerminationDate } from "./dates.js";
+import { isMetered } from "./divisions.js";
 import {
-  addDays,
-  addMonths,
-  annualConsumptionFromInstallment,
-  recommendedInstallment,
-  TARIFFS,
-  tariffOption,
-} from "./tariffs.js";
+  DEFAULT_NOTICE_PERIOD_MONTHS,
+  DEFAULT_PRODUCT_IDS,
+  type PriceVersion,
+  type ProductOption,
+} from "./products.js";
+
+export { isMetered } from "./divisions.js";
 
 const Reading = z.object({ value: z.number().nonnegative(), readAt: IsoDate });
+
+/** A pending or effective end of a contract (mirrors `ContractTermination`). */
+export const Termination = z.object({
+  kind: z.enum(["termination", "withdrawal"]),
+  /** Last day of the contract; a withdrawal ends it on the day it is declared. */
+  effectiveDate: IsoDate,
+  requestedAt: z.iso.datetime({ offset: true }),
+  by: z.enum(["customer", "operator"]),
+  reason: z.string().optional(),
+});
+export type Termination = z.infer<typeof Termination>;
 
 /** A contract as the contract domain stores it (without storage keys). */
 export const ContractRecord = z.object({
   contractId: z.uuid(),
   customerId: z.string().min(1),
+  /** Display name of the customer when the contract was written (operator lists). */
+  customerName: z.string().optional(),
   division: Division,
   tariffName: z.string(),
   tariffOption: z.string(),
+  /** Product and price version (phase 7); missing on older contracts: default product, v1. */
+  productId: z.string().optional(),
+  productVersion: z.number().int().positive().optional(),
   monthlyInstallmentCent: Cents,
   installmentMinCent: Cents.optional(),
   installmentMaxCent: Cents.optional(),
@@ -45,13 +59,53 @@ export const ContractRecord = z.object({
   /** Contract number in the legacy system the contract was taken over from. */
   legacyContractId: z.string().optional(),
   startDate: IsoDate,
-  minimumTermMonths: z.number().int().positive(),
+  minimumTermMonths: z.number().int().nonnegative(),
+  /** Missing on contracts from before phase 7: one month. */
+  noticePeriodMonths: z.number().int().nonnegative().optional(),
+  /** Concluded by the customer in the portal (phase 7): when, and the withdrawal period. */
+  orderedAt: z.iso.datetime({ offset: true }).optional(),
+  withdrawableUntil: IsoDate.optional(),
+  termination: Termination.optional(),
+  blocked: z.boolean().optional(),
+  /** Stored `terminated` only for legacy contracts and withdrawals; see {@link statusOf}. */
   status: z.enum(["active", "terminated"]),
   version: z.number().int().positive(),
+  /** The contract directory has this contract (every save since phase 7 writes both). */
+  listed: z.boolean().optional(),
   createdAt: z.iso.datetime({ offset: true }),
   updatedAt: z.iso.datetime({ offset: true }),
 });
 export type ContractRecord = z.infer<typeof ContractRecord>;
+
+export type ContractStatus = "active" | "terminated";
+
+export const productIdOf = (record: ContractRecord) =>
+  record.productId ?? DEFAULT_PRODUCT_IDS[record.division];
+export const productVersionOf = (record: ContractRecord) => record.productVersion ?? 1;
+export const noticePeriodOf = (record: ContractRecord) =>
+  record.noticePeriodMonths ?? DEFAULT_NOTICE_PERIOD_MONTHS;
+export const minimumTermEndOf = (record: ContractRecord) =>
+  addMonths(record.startDate, record.minimumTermMonths);
+
+/**
+ * The status on a German calendar day: `terminated` once the termination's last day has
+ * passed, after a withdrawal, or as taken over; a pending termination keeps it `active`.
+ * Computed on every read, so no job has to flip it on the effective date.
+ */
+export function statusOf(record: ContractRecord, today: string): ContractStatus {
+  if (record.status === "terminated") return "terminated";
+  if (record.termination && record.termination.effectiveDate < today) return "terminated";
+  return "active";
+}
+
+/** A running contract with a termination that has not taken effect yet. */
+export function pendingTermination(record: ContractRecord, today: string): Termination | undefined {
+  return statusOf(record, today) === "active" ? record.termination : undefined;
+}
+
+export function optionOf(version: PriceVersion, optionId: string): ProductOption | undefined {
+  return version.options.find((option) => option.optionId === optionId);
+}
 
 /** The contract as the API returns it; mirrors `Contract` in the OpenAPI contract. */
 export interface ContractView {
@@ -73,24 +127,34 @@ export interface ContractView {
   startDate: string;
   minimumTermMonths: number;
   minimumTermEndDate: string;
-  status: "active" | "terminated";
+  status: ContractStatus;
   updatedAt: string;
+  productId: string;
+  productVersion: number;
+  noticePeriodMonths: number;
+  earliestTerminationDate?: string;
+  termination?: Termination;
+  withdrawableUntil?: string;
+  blocked: boolean;
 }
 
-export function isMetered(division: Division): boolean {
-  return METERED_DIVISIONS.includes(division);
-}
+const optional = <K extends string, V>(key: K, value: V | undefined) =>
+  value === undefined ? {} : ({ [key]: value } as Record<K, V>);
 
-export function toView(record: ContractRecord): ContractView {
-  const option = tariffOption(record.division, record.tariffOption);
-  const optional = <K extends string, V>(key: K, value: V | undefined) =>
-    value === undefined ? {} : ({ [key]: value } as Record<K, V>);
+/**
+ * The customer's view of a contract; `version` holds the prices of the contract's price
+ * version, `today` is the German date the status and the earliest end refer to.
+ */
+export function toView(record: ContractRecord, version: PriceVersion, today: string): ContractView {
+  const option = optionOf(version, record.tariffOption);
+  const minimumTermEndDate = minimumTermEndOf(record);
+  const status = statusOf(record, today);
   return {
     contractId: record.contractId,
     division: record.division,
     tariffName: record.tariffName,
     tariffOption: record.tariffOption,
-    tariffOptions: TARIFFS[record.division].options.map((o) => o.id),
+    tariffOptions: version.options.map((o) => o.optionId),
     monthlyInstallmentCent: record.monthlyInstallmentCent,
     installmentAdjustable: isMetered(record.division),
     ...optional("installmentMinCent", record.installmentMinCent),
@@ -103,14 +167,26 @@ export function toView(record: ContractRecord): ContractView {
     ...optional("dataVolumeMb", record.dataVolumeMb),
     startDate: record.startDate,
     minimumTermMonths: record.minimumTermMonths,
-    minimumTermEndDate: addMonths(record.startDate, record.minimumTermMonths),
-    status: record.status,
+    minimumTermEndDate,
+    status,
     updatedAt: record.updatedAt,
+    productId: productIdOf(record),
+    productVersion: productVersionOf(record),
+    noticePeriodMonths: noticePeriodOf(record),
+    ...optional(
+      "earliestTerminationDate",
+      status === "active"
+        ? earliestTerminationDate(today, minimumTermEndDate, noticePeriodOf(record))
+        : undefined,
+    ),
+    ...optional("termination", record.termination),
+    ...optional("withdrawableUntil", record.withdrawableUntil),
+    blocked: record.blocked ?? false,
   };
 }
 
 /** What other domains learn about a contract (`ContractChanged`). */
-export function toSnapshot(record: ContractRecord): ContractSnapshot {
+export function toSnapshot(record: ContractRecord, today: string): ContractSnapshot {
   const snapshot: ContractSnapshot = {
     contractId: record.contractId,
     customerId: record.customerId,
@@ -119,8 +195,11 @@ export function toSnapshot(record: ContractRecord): ContractSnapshot {
     tariffOption: record.tariffOption,
     monthlyInstallmentCent: record.monthlyInstallmentCent,
     startDate: record.startDate,
-    status: record.status,
+    status: statusOf(record, today),
     version: record.version,
+    productId: productIdOf(record),
+    productVersion: productVersionOf(record),
+    blocked: record.blocked ?? false,
   };
   if (record.meterNumber) snapshot.meterNumber = record.meterNumber;
   if (record.unit) snapshot.unit = record.unit;
@@ -130,6 +209,10 @@ export function toSnapshot(record: ContractRecord): ContractSnapshot {
     snapshot.estimatedAnnualConsumption = record.estimatedAnnualConsumption;
   }
   if (record.dataVolumeMb) snapshot.dataVolumeMb = record.dataVolumeMb;
+  if (record.termination) {
+    const { kind, effectiveDate, requestedAt, by } = record.termination;
+    snapshot.termination = { kind, effectiveDate, requestedAt, by };
+  }
   return snapshot;
 }
 
@@ -141,134 +224,3 @@ export const ContractUpdate = z
   })
   .refine((update) => Object.keys(update).length > 0, "At least one field is required");
 export type ContractUpdate = z.infer<typeof ContractUpdate>;
-
-interface DemoContract {
-  division: Division;
-  option: string;
-  /** Metered only: typical annual consumption and the meter at contract start. */
-  annualConsumption?: number;
-  startReading?: number;
-  meterPrefix?: string;
-}
-
-/**
- * Demo contracts a newly registered customer receives, so journeys J4–J6 work right
- * after sign-up: electricity and gas with meters, and a mobile contract with a data
- * volume. They start 180 days before registration, so the first reading can already be
- * extrapolated to a year.
- */
-export const DEMO_CONTRACTS: DemoContract[] = [
-  {
-    division: "electricity",
-    option: "standard",
-    annualConsumption: 2800,
-    startReading: 18234,
-    meterPrefix: "1EMH",
-  },
-  {
-    division: "gas",
-    option: "standard",
-    annualConsumption: 1200,
-    startReading: 7342,
-    meterPrefix: "7GMT",
-  },
-  { division: "mobile", option: "20gb" },
-];
-export const DEMO_START_DAYS_BEFORE = 180;
-
-/** Plausible meter number, stable per customer and division (e.g. `1EMH0012345678`). */
-function meterNumber(prefix: string, customerId: string, division: Division): string {
-  const digest = createHash("sha256").update(`${customerId}:${division}`).digest();
-  return `${prefix}00${(digest.readUInt32BE(0) % 100_000_000).toString().padStart(8, "0")}`;
-}
-
-/** Builds the demo contracts; ids derive from the triggering event (idempotent). */
-export function demoContracts(
-  customerId: string,
-  eventId: string,
-  occurredAt: string,
-): ContractRecord[] {
-  const startDate = addDays(occurredAt.slice(0, 10), -DEMO_START_DAYS_BEFORE);
-  return DEMO_CONTRACTS.map((demo) => {
-    const tariff = TARIFFS[demo.division];
-    const option = tariffOption(demo.division, demo.option);
-    if (!option) throw new Error(`Unknown demo option ${demo.option}`);
-    const record: ContractRecord = {
-      contractId: deterministicUuid(eventId, demo.division),
-      customerId,
-      division: demo.division,
-      tariffName: tariff.tariffName,
-      tariffOption: option.id,
-      monthlyInstallmentCent: option.monthlyPriceCent,
-      startDate,
-      minimumTermMonths: tariff.minimumTermMonths,
-      status: "active",
-      version: 1,
-      createdAt: occurredAt,
-      updatedAt: occurredAt,
-    };
-    if (option.dataVolumeMb) record.dataVolumeMb = option.dataVolumeMb;
-    if (tariff.unit && demo.annualConsumption !== undefined && demo.startReading !== undefined) {
-      const installment = recommendedInstallment(demo.annualConsumption, option);
-      Object.assign(record, {
-        unit: tariff.unit,
-        meterNumber: meterNumber(demo.meterPrefix ?? "", customerId, demo.division),
-        estimatedAnnualConsumption: demo.annualConsumption,
-        startReading: { value: demo.startReading, readAt: startDate },
-        monthlyInstallmentCent: installment.installmentCent,
-        installmentMinCent: installment.minCent,
-        installmentMaxCent: installment.maxCent,
-      });
-    }
-    return record;
-  });
-}
-
-/**
- * Contracts taken over from a legacy system (`LegacyAccountMigrated`, `AccountsLinked`).
- * The installment stays as the legacy system billed it; the allowed range follows the
- * consumption that installment implies. The last billed reading becomes the reference
- * for the next estimate. Ids derive from tenant and legacy contract number (idempotent).
- */
-export function legacyContracts(
-  tenantId: string,
-  customerId: string,
-  contracts: LegacyContract[],
-  occurredAt: string,
-): ContractRecord[] {
-  return contracts.map((legacy) => {
-    const tariff = TARIFFS[legacy.division];
-    const option = tariffOption(legacy.division, legacy.tariffOption) ?? tariff.options[0];
-    if (!option) throw new Error(`No tariff options for ${legacy.division}`);
-    const record: ContractRecord = {
-      contractId: deterministicUuid(tenantId, "legacy-contract", legacy.legacyContractId),
-      customerId,
-      division: legacy.division,
-      tariffName: tariff.tariffName,
-      tariffOption: option.id,
-      monthlyInstallmentCent: legacy.monthlyInstallmentCent,
-      legacyContractId: legacy.legacyContractId,
-      startDate: legacy.startDate,
-      minimumTermMonths: tariff.minimumTermMonths,
-      status: "active",
-      version: 1,
-      createdAt: occurredAt,
-      updatedAt: occurredAt,
-    };
-    const dataVolumeMb = legacy.dataVolumeMb ?? option.dataVolumeMb;
-    if (dataVolumeMb) record.dataVolumeMb = dataVolumeMb;
-    if (tariff.unit && isMetered(legacy.division)) {
-      const annual = annualConsumptionFromInstallment(legacy.monthlyInstallmentCent, option);
-      const range = recommendedInstallment(annual, option);
-      Object.assign(record, {
-        unit: legacy.unit ?? tariff.unit,
-        estimatedAnnualConsumption: annual,
-        installmentMinCent: Math.min(range.minCent, legacy.monthlyInstallmentCent),
-        installmentMaxCent: Math.max(range.maxCent, legacy.monthlyInstallmentCent),
-        ...(legacy.meterNumber ? { meterNumber: legacy.meterNumber } : {}),
-        ...(legacy.lastReading ? { startReading: legacy.lastReading } : {}),
-      });
-    }
-    return record;
-  });
-}
