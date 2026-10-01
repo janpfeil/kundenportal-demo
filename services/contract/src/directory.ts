@@ -185,7 +185,9 @@ export function contractPage(entries: DirectoryEntry[], query: ContractQuery, no
 export const ENDING_SOON_DAYS = 30;
 
 /** Key figures of the operator's cockpit (`OperatorOverview`). */
-export function overview(entries: DirectoryEntry[], now: Date) {
+export function overview(all: DirectoryEntry[], now: Date) {
+  // The E2E runs' throw-away accounts count nowhere, neither in totals nor per day.
+  const entries = all.filter((item) => !item.testAccount);
   const today = germanDate(now);
   const days = lastGermanDays(now, 7);
   const perDay = (dates: (string | undefined)[]) => {
@@ -199,7 +201,7 @@ export function overview(entries: DirectoryEntry[], now: Date) {
   >;
   const soon = addDays(today, ENDING_SOON_DAYS);
   let endingSoon = 0;
-  for (const entry of entries.filter((item) => !item.testAccount)) {
+  for (const entry of entries) {
     if (entry.blocked) contracts.blocked += 1;
     if (entryStatus(entry, today) === "terminated") {
       contracts.terminated += 1;

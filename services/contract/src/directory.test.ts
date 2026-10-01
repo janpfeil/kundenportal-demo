@@ -100,9 +100,21 @@ describe("contract directory", () => {
   });
 
   it("leaves the E2E runs' throw-away accounts out of the list and the figures", () => {
-    const test = entry({ testAccount: true });
+    const test = entry({
+      testAccount: true,
+      orderedAt: now.toISOString(),
+      termination: termination("2026-12-31", now.toISOString()),
+    });
     expect(ids(page({}, [test, running]))).toEqual([running.contractId]);
-    expect(overview([test], now).contracts.active).toBe(0);
+    const figures = overview([test], now);
+    expect(figures.contracts).toEqual({
+      active: 0,
+      pendingTermination: 0,
+      terminated: 0,
+      blocked: 0,
+    });
+    expect(figures.orders.at(-1)).toBe(0);
+    expect(figures.terminations.at(-1)).toBe(0);
   });
 
   it("filters contracts ending by a date (termination, else minimum term)", () => {
