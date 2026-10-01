@@ -1336,7 +1336,7 @@ components:
         estimatedAnnualConsumption: { type: number, minimum: 0 }
         dataVolumeMb: { type: integer, minimum: 1 }
         startDate: { type: string, format: date }
-        minimumTermMonths: { type: integer, minimum: 1 }
+        minimumTermMonths: { type: integer, minimum: 0 }
         minimumTermEndDate: { type: string, format: date }
         status:
           type: string

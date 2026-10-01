@@ -39,7 +39,8 @@
   "dependencies": {
     "@aws-sdk/client-cognito-identity-provider": "^3.1143.0",
     "@kundenportal/api-contract": "workspace:*",
-    "jose": "^6.2.12"
+    "jose": "^6.2.12",
+    "openapi-fetch": "^0.17.0"
   },
   "peerDependencies": {
     "next": "^16.3.7",

@@ -66,7 +66,7 @@ export class DomainServices extends Construct {
     // --- contract -------------------------------------------------------------------
     const contractApi = new ServiceFunction(this, "ContractApi", {
       entry: "services/contract/src/api-handler.ts",
-      description: "contract service: GET/PATCH /contracts",
+      description: "contract service: contracts, orders, terminations, products, back office",
       reservedConcurrency,
       environment,
     });
@@ -77,7 +77,7 @@ export class DomainServices extends Construct {
     const contractDlq = this.deadLetterQueue("ContractDlq", "contract");
     const contractWorker = this.worker("ContractWorker", contractDlq, {
       entry: "services/contract/src/worker-handler.ts",
-      description: "contract service: demo contracts and installment recalculation",
+      description: "contract service: demo and migrated contracts, installment recalculation",
       environment,
     });
     table.grantReadWriteData(contractWorker);

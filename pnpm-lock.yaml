@@ -547,6 +547,9 @@ importers:
       jose:
         specifier: ^6.2.12
         version: 6.2.12
+      openapi-fetch:
+        specifier: ^0.17.0
+        version: 0.17.0
     devDependencies:
       '@types/react':
         specifier: ^19.3.0
