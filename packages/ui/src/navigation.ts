@@ -39,15 +39,17 @@ export function portalNavigation(
   { signedIn, current, roles = {}, extra = [] }: PortalNavigationOptions,
 ): NavItem[] {
   const entries: Omit<NavItem, "active">[] = [
-    { href: "/", label: t.nav.home },
+    { href: "/", label: t.nav.home, icon: "home" as const },
     ...(signedIn
       ? [
           // "Mein Konto" lives in the user menu next to the sign-out.
-          { href: "/postfach", label: t.nav.mailbox },
-          { href: "/vertraege", label: t.nav.contracts },
-          { href: "/verbrauch", label: t.nav.consumption },
-          ...(roles.pass ? [{ href: "/pass", label: t.nav.pass }] : []),
-          ...(roles.cockpit ? [{ href: "/cockpit", label: t.nav.cockpit }] : []),
+          { href: "/postfach", label: t.nav.mailbox, icon: "mail" as const },
+          { href: "/vertraege", label: t.nav.contracts, icon: "file" as const },
+          { href: "/verbrauch", label: t.nav.consumption, icon: "chart" as const },
+          ...(roles.pass ? [{ href: "/pass", label: t.nav.pass, icon: "ticket" as const }] : []),
+          ...(roles.cockpit
+            ? [{ href: "/cockpit", label: t.nav.cockpit, icon: "gauge" as const }]
+            : []),
           ...extra,
         ]
       : []),

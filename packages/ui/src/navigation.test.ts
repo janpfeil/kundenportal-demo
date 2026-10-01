@@ -17,10 +17,10 @@ describe("isCurrentSection", () => {
 describe("portalNavigation", () => {
   it("shows the start page to everyone and marks it when current", () => {
     expect(portalNavigation(commonTexts.en, { signedIn: false, current: "/" })).toEqual([
-      { href: "/", label: "Home", active: true },
+      { href: "/", label: "Home", icon: "home", active: true },
     ]);
     expect(portalNavigation(commonTexts.en, { signedIn: false, current: "/vertraege" })).toEqual([
-      { href: "/", label: "Home" },
+      { href: "/", label: "Home", icon: "home" },
     ]);
   });
 
