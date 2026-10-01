@@ -1,0 +1,1502 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Design-Mockups · kundenportal-demo</title>
+<meta name="description" content="Phase 5 – Design und Theme: Mockups für Endkunden und Cockpit mit live einstellbaren Theme-Parametern.">
+<style>
+/* =========================================================================
+   Page chrome (toolbar, intro, legend). Independent of the mockup tokens;
+   follows the operating system's colour scheme.
+   ========================================================================= */
+:root {
+  --ui-bg: #eceef2; --ui-panel: #ffffff; --ui-panel-2: #f4f6f8; --ui-text: #1a1f27;
+  --ui-muted: #586271; --ui-border: #d3d9e1; --ui-accent: #2453c2; --ui-ok: #0b6e4f;
+  --ui-bad: #b3261e; --ui-font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --ui-mono: ui-monospace, "SFMono-Regular", "Cascadia Code", Menlo, Consolas, monospace;
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ui-bg: #0c0f13; --ui-panel: #151a20; --ui-panel-2: #1c222a; --ui-text: #e4e8ee;
+    --ui-muted: #9aa4b2; --ui-border: #2a313b; --ui-accent: #8db0ff; --ui-ok: #4fd1a1; --ui-bad: #ff8a80;
+  }
+}
+* , *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--ui-bg); color: var(--ui-text); font: 15px/1.5 var(--ui-font); }
+.page { display: grid; grid-template-columns: auto minmax(0, 1fr); min-height: 100vh; }
+.ui-skip { position: absolute; left: -999px; top: 8px; z-index: 50; background: var(--ui-panel); color: var(--ui-text); padding: 8px 12px; border-radius: 6px; }
+.ui-skip:focus { left: 8px; }
+:where(.tb, .doc) :focus-visible { outline: 3px solid var(--ui-accent); outline-offset: 2px; border-radius: 4px; }
+
+/* Toolbar ------------------------------------------------------------------ */
+.tb { position: sticky; top: 0; height: 100vh; width: 328px; overflow: auto; background: var(--ui-panel); border-right: 1px solid var(--ui-border); z-index: 20; scrollbar-width: thin; }
+.tb-head { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 8px; padding: 12px 14px; background: var(--ui-panel); border-bottom: 1px solid var(--ui-border); }
+.tb-head h2 { font-size: 15px; margin: 0; flex: 1; }
+.tb-toggle { width: 34px; height: 34px; display: grid; place-items: center; border: 1px solid var(--ui-border); border-radius: 8px; background: var(--ui-panel-2); color: var(--ui-text); cursor: pointer; }
+.tb-toggle svg { width: 18px; height: 18px; transition: transform .2s; }
+.tb[data-collapsed] { width: 62px; }
+.tb[data-collapsed] .tb-head h2, .tb[data-collapsed] .tb-body { display: none; }
+.tb[data-collapsed] .tb-toggle svg { transform: rotate(180deg); }
+.tb-body { padding: 4px 14px 24px; }
+.tb fieldset { border: 0; border-top: 1px solid var(--ui-border); margin: 0; padding: 12px 0 10px; min-width: 0; }
+.tb fieldset:first-child { border-top: 0; }
+.tb legend, .tb .lbl { font-size: 12px; font-weight: 650; letter-spacing: .04em; text-transform: uppercase; color: var(--ui-muted); padding: 0; margin-bottom: 6px; }
+.tb .row { display: grid; grid-template-columns: 104px 1fr; align-items: center; gap: 6px 10px; margin: 6px 0; }
+.tb .row > label, .tb .row > .rl { font-size: 13px; }
+.tb select, .tb input[type=number], .tb textarea { width: 100%; font: inherit; font-size: 13px; color: var(--ui-text); background: var(--ui-panel-2); border: 1px solid var(--ui-border); border-radius: 6px; padding: 5px 8px; min-height: 32px; }
+.tb input[type=range] { width: 100%; accent-color: var(--ui-accent); }
+.tb output { font: 12px var(--ui-mono); color: var(--ui-muted); }
+.seg { display: flex; flex-wrap: wrap; gap: 2px; padding: 2px; background: var(--ui-panel-2); border: 1px solid var(--ui-border); border-radius: 8px; }
+.seg label { flex: 1 1 auto; position: relative; }
+.seg input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.seg span { display: block; text-align: center; font-size: 12.5px; padding: 5px 6px; border-radius: 6px; color: var(--ui-muted); white-space: nowrap; }
+.seg input:checked + span { background: var(--ui-panel); color: var(--ui-text); font-weight: 600; box-shadow: 0 1px 2px rgb(0 0 0 / .15); }
+.seg input:focus-visible + span { outline: 3px solid var(--ui-accent); outline-offset: 1px; }
+.presets { display: grid; gap: 6px; }
+.preset { position: relative; display: grid; grid-template-columns: 28px 1fr; gap: 2px 10px; padding: 8px 10px; border: 1px solid var(--ui-border); border-radius: 8px; cursor: pointer; }
+.preset input { position: absolute; opacity: 0; }
+.preset .pv { grid-row: span 2; width: 28px; height: 28px; border-radius: 7px; border: 1px solid var(--ui-border); }
+.preset b { font-size: 13.5px; }
+.preset small { font-size: 12px; color: var(--ui-muted); line-height: 1.35; }
+.preset:has(input:checked) { border-color: var(--ui-accent); box-shadow: inset 0 0 0 1px var(--ui-accent); }
+.preset:has(input:focus-visible) { outline: 3px solid var(--ui-accent); outline-offset: 2px; }
+.modified { font-size: 12px; color: var(--ui-muted); margin: 6px 0 0; min-height: 18px; }
+.swatches { display: flex; flex-wrap: wrap; gap: 6px; grid-column: 1 / -1; }
+.swatches button { width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--ui-panel); box-shadow: 0 0 0 1px var(--ui-border); cursor: pointer; padding: 0; }
+.swatches button[aria-pressed=true] { box-shadow: 0 0 0 2px var(--ui-text); }
+.colorrow { display: flex; gap: 8px; align-items: center; }
+.colorrow input[type=color] { width: 44px; height: 32px; padding: 0 2px; border: 1px solid var(--ui-border); border-radius: 6px; background: var(--ui-panel-2); }
+.colorrow code { font: 12.5px var(--ui-mono); }
+.check { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.check input { width: 18px; height: 18px; accent-color: var(--ui-accent); }
+.contrast { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.contrast li { display: grid; grid-template-columns: 30px 1fr auto auto; gap: 8px; align-items: center; font-size: 12.5px; }
+.contrast .pair { width: 30px; height: 22px; border-radius: 5px; display: grid; place-items: center; font-weight: 700; font-size: 12px; border: 1px solid var(--ui-border); }
+.contrast .ratio { font: 12px var(--ui-mono); }
+.contrast .pf { font-size: 11px; font-weight: 700; padding: 1px 6px; border-radius: 99px; color: #fff; background: var(--ui-ok); }
+.contrast .pf.fail { background: var(--ui-bad); }
+@media (prefers-color-scheme: dark) { .contrast .pf { color: #0c0f13; } }
+.tb-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.ui-btn { font: inherit; font-size: 13px; font-weight: 600; min-height: 34px; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--ui-border); background: var(--ui-panel-2); color: var(--ui-text); cursor: pointer; }
+.ui-btn.primary { background: var(--ui-accent); border-color: var(--ui-accent); color: var(--ui-panel); grid-column: 1 / -1; }
+.tb textarea { font: 11.5px/1.45 var(--ui-mono); min-height: 160px; resize: vertical; margin-top: 8px; }
+.tb details summary { cursor: pointer; font-size: 13px; color: var(--ui-muted); margin-top: 8px; }
+.live { font-size: 12.5px; color: var(--ui-ok); min-height: 18px; margin: 6px 0 0; }
+
+/* Document area ------------------------------------------------------------ */
+.doc { min-width: 0; padding: 24px clamp(12px, 3vw, 40px) 48px; }
+.doc-intro { max-width: 980px; margin: 0 auto 18px; }
+.doc-intro h1 { font-size: 26px; margin: 0 0 6px; letter-spacing: -.01em; }
+.doc-intro p { margin: 0; color: var(--ui-muted); }
+.doc-meta { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 10px; font-size: 13px; color: var(--ui-muted); }
+.doc-meta b { color: var(--ui-text); font-weight: 600; }
+.stage { display: flex; justify-content: center; padding: 8px 0 24px; }
+.frame { width: 100%; max-width: 1280px; border-radius: 12px; overflow: hidden; border: 1px solid var(--ui-border); box-shadow: 0 1px 2px rgb(0 0 0 / .06), 0 18px 48px -18px rgb(0 0 0 / .35); background: var(--kp-bg); }
+.frame-bar { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: var(--ui-panel); border-bottom: 1px solid var(--ui-border); }
+.frame-bar .dots { display: flex; gap: 6px; }
+.frame-bar .dots i { width: 11px; height: 11px; border-radius: 50%; background: var(--ui-border); }
+.frame-bar .url { flex: 1; max-width: 520px; margin: 0 auto; font: 12.5px var(--ui-mono); color: var(--ui-muted); background: var(--ui-panel-2); border-radius: 99px; padding: 4px 14px; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.viewport { height: min(820px, calc(100vh - 140px)); min-height: 560px; overflow: auto; overscroll-behavior: contain; background: var(--kp-bg); scroll-padding-top: 80px; }
+.frame.mobile { width: 375px; max-width: 375px; border-radius: 40px; border: 10px solid #1d2128; box-shadow: 0 24px 60px -20px rgb(0 0 0 / .5); }
+.frame.mobile .frame-bar { justify-content: center; padding: 6px; }
+.frame.mobile .frame-bar .dots { display: none; }
+.frame.mobile .frame-bar .url { font-size: 11px; padding: 2px 10px; }
+.frame.mobile .viewport { height: 720px; }
+.legend { max-width: 1100px; margin: 32px auto 0; background: var(--ui-panel); border: 1px solid var(--ui-border); border-radius: 12px; padding: 20px clamp(14px, 3vw, 28px); }
+.legend h2 { font-size: 20px; margin: 0 0 4px; }
+.legend h3 { font-size: 16px; margin: 22px 0 8px; }
+.legend p, .legend li { color: var(--ui-muted); }
+.legend table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.legend th, .legend td { text-align: left; vertical-align: top; padding: 7px 10px 7px 0; border-bottom: 1px solid var(--ui-border); }
+.legend th { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--ui-muted); }
+.legend code { font: 12.5px var(--ui-mono); color: var(--ui-text); white-space: nowrap; }
+.legend .tbl-wrap { overflow-x: auto; }
+.rec { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+.rec > div { border: 1px solid var(--ui-border); border-radius: 10px; padding: 12px 16px; background: var(--ui-panel-2); }
+.rec h4 { margin: 0 0 6px; font-size: 14.5px; }
+.rec ul { margin: 0; padding-left: 18px; font-size: 13.5px; }
+@media (max-width: 900px) {
+  .page { grid-template-columns: minmax(0, 1fr); }
+  .tb { position: sticky; top: 0; width: auto; height: auto; max-height: 62vh; border-right: 0; border-bottom: 1px solid var(--ui-border); }
+  .tb[data-collapsed] { width: auto; }
+  .tb[data-collapsed] .tb-head h2 { display: block; }
+  .tb-toggle svg { transform: rotate(90deg); }
+  .tb[data-collapsed] .tb-toggle svg { transform: rotate(-90deg); }
+  .viewport { height: 78vh; }
+  .frame.mobile { border-width: 6px; border-radius: 28px; width: 100%; }
+}
+
+/* =========================================================================
+   Mockup application. All values come from --kp-* tokens that the script
+   computes from the theme parameters and sets on each .app element.
+   ========================================================================= */
+.app {
+  container: app / inline-size; position: relative; min-height: 100%; display: flex; flex-direction: column;
+  background: var(--kp-bg); color: var(--kp-text); font-family: var(--kp-font);
+  font-size: var(--kp-font-size); line-height: var(--kp-line-height); -webkit-font-smoothing: antialiased;
+}
+.app[hidden], .app [hidden] { display: none !important; }
+.app *:focus-visible { outline: 3px solid var(--kp-focus); outline-offset: 2px; }
+.app h1, .app h2, .app h3, .app h4 { font-family: var(--kp-font-heading); font-weight: var(--kp-heading-weight); line-height: 1.2; margin: 0; letter-spacing: var(--kp-heading-tracking); text-wrap: balance; }
+.app h1 { font-size: var(--kp-h1); }
+.app h2 { font-size: var(--kp-h2); }
+.app h3 { font-size: var(--kp-h3); }
+.app h4 { font-size: var(--kp-font-size); }
+.app p { margin: 0; }
+.app a { color: var(--kp-accent-text); text-underline-offset: 3px; }
+.app svg.i { width: 1.25em; height: 1.25em; flex: none; stroke: currentColor; fill: none; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; vertical-align: -0.25em; }
+.app .muted { color: var(--kp-muted); }
+.app .small { font-size: var(--kp-small); }
+.app .num { font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+.app .mono { font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; font-size: .92em; }
+.app .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.app .skip { position: absolute; left: -999px; top: 4px; z-index: 30; background: var(--kp-surface); padding: 8px 12px; border-radius: var(--kp-radius); }
+.app .skip:focus { left: 8px; }
+.stack { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--kp-space); }
+.stack-lg { display: grid; grid-template-columns: minmax(0, 1fr); gap: calc(var(--kp-space) * 1.75); }
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: calc(var(--kp-space) * .5) var(--kp-space); }
+.row.between { justify-content: space-between; }
+.grid { display: grid; gap: var(--kp-space); grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--min, 240px)), 1fr)); }
+.split { display: grid; gap: var(--kp-space); grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); align-items: start; }
+
+/* Header and navigation */
+.hdr { position: sticky; top: 0; z-index: 10; display: flex; align-items: center; gap: calc(var(--kp-space) * .75); min-height: calc(var(--kp-control) + var(--kp-space)); padding: 0 calc(var(--kp-space) * 1.25); background: var(--kp-header-bg); color: var(--kp-header-text); border-bottom: 1px solid var(--kp-border); }
+.brand { display: inline-flex; align-items: center; gap: 10px; color: inherit !important; text-decoration: none; font-weight: 700; font-family: var(--kp-font-heading); font-size: calc(var(--kp-font-size) * 1.08); white-space: nowrap; }
+.brand .logo { width: 30px; height: 30px; }
+.brand em { font-style: normal; font-weight: 500; color: var(--kp-muted); }
+.chip { display: inline-flex; align-items: center; gap: 6px; font: 600 11.5px/1 ui-monospace, Menlo, Consolas, monospace; color: var(--kp-muted); background: var(--kp-surface-2); border: 1px solid var(--kp-border); border-radius: 99px; padding: 4px 8px; white-space: nowrap; }
+.topnav { flex: 1; min-width: 0; }
+.topnav ul, .sidenav ul, .bottomnav ul { list-style: none; margin: 0; padding: 0; }
+.topnav ul { display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none; padding: 5px 4px; }
+.navlink { display: flex; align-items: center; gap: 8px; min-height: var(--kp-control); padding: 0 calc(var(--kp-space) * .75); border-radius: var(--kp-radius); color: var(--kp-muted) !important; text-decoration: none; font-weight: 550; white-space: nowrap; position: relative; }
+.navlink:hover { color: var(--kp-text) !important; background: var(--kp-surface-2); }
+.navlink[aria-current=page] { color: var(--kp-accent-text) !important; background: var(--kp-accent-soft); }
+.app[data-navstyle=underline] .topnav .navlink[aria-current=page] { background: none; border-radius: 0; box-shadow: inset 0 -3px 0 var(--kp-accent); }
+.app[data-navstyle=solid] .navlink[aria-current=page] { background: var(--kp-accent); color: var(--kp-accent-contrast) !important; }
+.navlink .cnt { margin-left: auto; font-size: 11.5px; font-weight: 700; min-width: 20px; padding: 1px 6px; border-radius: 99px; background: var(--kp-surface-2); color: var(--kp-text); text-align: center; }
+.topnav .navlink .cnt { margin-left: 2px; }
+.navlink[aria-current=page] kbd { color: inherit; border-color: currentColor; opacity: .8; }
+.navlink kbd { margin-left: auto; font: 11px ui-monospace, Menlo, monospace; color: var(--kp-muted); border: 1px solid var(--kp-border); border-radius: 4px; padding: 0 4px; }
+.hdr-actions { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+.iconbtn { position: relative; display: inline-grid; place-items: center; width: var(--kp-control); height: var(--kp-control); border: 0; border-radius: var(--kp-radius); background: transparent; color: inherit; cursor: pointer; }
+.iconbtn:hover { background: var(--kp-surface-2); }
+.iconbtn .i { width: 22px; height: 22px; }
+.dot-badge { position: absolute; top: 4px; right: 3px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 99px; background: var(--kp-badge); color: #fff; font: 700 11px/18px var(--kp-font); text-align: center; box-shadow: 0 0 0 2px var(--kp-header-bg); }
+.menu-btn { display: none; }
+.search { display: flex; align-items: center; gap: 8px; height: calc(var(--kp-control) - 4px); padding: 0 10px; min-width: 220px; border: 1px solid var(--kp-border); border-radius: var(--kp-radius); background: var(--kp-surface-2); color: var(--kp-muted); }
+.search input { border: 0; background: transparent; color: var(--kp-text); font: inherit; font-size: var(--kp-small); width: 100%; outline: none; }
+.search:focus-within { outline: 3px solid var(--kp-focus); outline-offset: 1px; }
+.search kbd { font: 11px ui-monospace, Menlo, monospace; border: 1px solid var(--kp-border); border-radius: 4px; padding: 0 5px; }
+.um { position: relative; }
+.userbtn { display: flex; align-items: center; gap: 8px; min-height: var(--kp-control); padding: 0 8px 0 4px; border: 1px solid transparent; border-radius: 99px; background: transparent; color: inherit; font: inherit; font-weight: 600; cursor: pointer; }
+.userbtn:hover, .userbtn[aria-expanded=true] { background: var(--kp-surface-2); border-color: var(--kp-border); }
+.avatar { display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: var(--kp-accent-soft); color: var(--kp-accent-text); font-size: 13px; font-weight: 700; letter-spacing: .02em; }
+.menu { position: absolute; right: 0; top: calc(100% + 6px); z-index: 20; width: 264px; padding: 6px; background: var(--kp-surface); color: var(--kp-text); border: 1px solid var(--kp-border); border-radius: var(--kp-radius-large); box-shadow: var(--kp-shadow-raised); }
+.menu[hidden] { display: none; }
+.menu-head { display: flex; gap: 10px; align-items: center; padding: 8px 10px 10px; border-bottom: 1px solid var(--kp-border); margin-bottom: 6px; }
+.menu-head .avatar { width: 40px; height: 40px; font-size: 15px; }
+.menu-head span { display: block; font-size: var(--kp-small); color: var(--kp-muted); }
+.menu a, .menu button.mi { display: flex; align-items: center; gap: 10px; width: 100%; min-height: calc(var(--kp-control) - 4px); padding: 0 10px; border: 0; border-radius: var(--kp-radius); background: none; color: var(--kp-text) !important; text-decoration: none; font: inherit; cursor: pointer; text-align: left; }
+.menu a:hover, .menu button.mi:hover, .menu a:focus-visible { background: var(--kp-surface-2); }
+.menu hr { border: 0; border-top: 1px solid var(--kp-border); margin: 6px 0; }
+.shell { flex: 1; display: flex; min-height: 0; }
+.sidenav { display: none; flex: none; width: 236px; padding: var(--kp-space) calc(var(--kp-space) * .75); background: var(--kp-side-bg); border-right: 1px solid var(--kp-border); }
+.sidenav .grp { font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--kp-muted); padding: calc(var(--kp-space) * .75) 10px 4px; }
+.sidenav li + li { margin-top: 2px; }
+.sidenav-inner { position: sticky; top: calc(var(--kp-control) + var(--kp-space) + 12px); }
+.app[data-nav=side] .sidenav { display: block; }
+.app[data-nav=side] .topnav { display: none; }
+.bottomnav { display: none; }
+.main { flex: 1; min-width: 0; padding: calc(var(--kp-space) * 1.5) calc(var(--kp-space) * 1.5) calc(var(--kp-space) * 3); }
+.main-inner { max-width: var(--kp-content-width); margin: 0 auto; }
+.screen[hidden] { display: none; }
+.ftr { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 24px; padding: var(--kp-space) calc(var(--kp-space) * 1.5); border-top: 1px solid var(--kp-border); color: var(--kp-muted); font-size: var(--kp-small); background: var(--kp-surface); }
+.ftr nav { display: flex; gap: 16px; flex-wrap: wrap; }
+.ftr a { color: var(--kp-muted); }
+
+/* Surfaces and components */
+.card { background: var(--kp-surface); border: var(--kp-card-border); border-radius: var(--kp-radius-large); box-shadow: var(--kp-shadow); padding: calc(var(--kp-space) * 1.25); min-width: 0; }
+.card.flat { box-shadow: none; }
+.card-h { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: calc(var(--kp-space) * .75); }
+.card-h h2, .card-h h3 { display: flex; align-items: center; gap: 8px; }
+.pagehead { display: grid; gap: 6px; margin-bottom: calc(var(--kp-space) * 1.5); }
+.pagehead .lead { color: var(--kp-muted); max-width: 64ch; font-size: calc(var(--kp-font-size) * 1.06); }
+.eyebrow { font-size: var(--kp-small); font-weight: 650; color: var(--kp-accent-text); letter-spacing: .02em; }
+.app[data-preset=klar] .eyebrow, .app[data-preset=dicht] .eyebrow { text-transform: uppercase; letter-spacing: .08em; font-size: 12px; }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: var(--kp-control); padding: 0 calc(var(--kp-space) * 1.1); border: 1px solid transparent; border-radius: var(--kp-btn-radius); font: inherit; font-weight: 600; text-decoration: none !important; cursor: pointer; white-space: nowrap; }
+.btn-primary { background: var(--kp-accent); color: var(--kp-accent-contrast) !important; }
+.btn-primary:hover { filter: brightness(1.08); }
+.btn-secondary { background: var(--kp-surface); color: var(--kp-text) !important; border-color: var(--kp-border-strong); }
+.btn-secondary:hover, .btn-ghost:hover { background: var(--kp-surface-2); }
+.btn-ghost { background: transparent; color: var(--kp-accent-text) !important; }
+.btn-danger { background: var(--kp-surface); color: var(--kp-error-text) !important; border-color: var(--kp-error-border); }
+.btn-sm { min-height: calc(var(--kp-control) - 10px); padding: 0 calc(var(--kp-space) * .7); font-size: var(--kp-small); }
+.field { display: grid; gap: 6px; }
+.field > label, .field > .fl { font-weight: 600; font-size: calc(var(--kp-font-size) * .95); }
+.field .hint { font-size: var(--kp-small); color: var(--kp-muted); }
+.input { width: 100%; min-height: var(--kp-control); padding: 0 12px; border: 1px solid var(--kp-border-strong); border-radius: var(--kp-radius); background: var(--kp-input-bg); color: var(--kp-text); font: inherit; }
+.input:focus { outline: 3px solid var(--kp-focus); outline-offset: 1px; border-color: var(--kp-accent); }
+.input-group { display: flex; gap: 8px; }
+.input-affix { position: relative; }
+.input-affix span { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: var(--kp-muted); }
+.alert { display: flex; gap: 12px; align-items: flex-start; padding: calc(var(--kp-space) * .75) var(--kp-space); border-radius: var(--kp-radius); border: 1px solid; border-left-width: 4px; }
+.alert .i { margin-top: 2px; }
+.alert.info { background: var(--kp-info-bg); border-color: var(--kp-info-border); }
+.alert.success { background: var(--kp-success-bg); border-color: var(--kp-success-border); }
+.alert.warning { background: var(--kp-warning-bg); border-color: var(--kp-warning-border); }
+.alert.error { background: var(--kp-error-bg); border-color: var(--kp-error-border); }
+.alert.info .i { color: var(--kp-info-text); } .alert.success .i { color: var(--kp-success-text); } .alert.warning .i { color: var(--kp-warning-text); } .alert.error .i { color: var(--kp-error-text); }
+.st { display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px 2px 7px; border-radius: 99px; font-size: var(--kp-small); font-weight: 600; white-space: nowrap; background: var(--kp-surface-2); color: var(--kp-muted); line-height: 1.6; }
+.st::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.st.ok { background: var(--kp-success-bg); color: var(--kp-success-text); }
+.st.warn { background: var(--kp-warning-bg); color: var(--kp-warning-text); }
+.st.err { background: var(--kp-error-bg); color: var(--kp-error-text); }
+.st.info { background: var(--kp-info-bg); color: var(--kp-info-text); }
+.st.pulse::before { box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 25%, transparent); }
+.tag { display: inline-block; padding: 1px 8px; border-radius: var(--kp-radius); background: var(--kp-surface-2); border: 1px solid var(--kp-border); font-size: 12px; font-weight: 600; color: var(--kp-muted); white-space: nowrap; }
+.tbl-wrap { overflow-x: auto; margin: 0 calc(var(--kp-space) * -1.25); padding: 0 calc(var(--kp-space) * 1.25); }
+.tbl { width: 100%; border-collapse: collapse; font-size: calc(var(--kp-font-size) * .95); }
+.tbl caption { text-align: left; font-size: var(--kp-small); color: var(--kp-muted); padding-bottom: 8px; }
+.tbl th { text-align: left; font-size: var(--kp-small); font-weight: 650; color: var(--kp-muted); padding: calc(var(--kp-space) * .45) calc(var(--kp-space) * .6); border-bottom: 1px solid var(--kp-border-strong); vertical-align: bottom; }
+.tbl td { padding: var(--kp-cell-y) calc(var(--kp-space) * .6); border-bottom: 1px solid var(--kp-border); vertical-align: middle; }
+.tbl th:first-child, .tbl td:first-child { padding-left: 0; }
+.tbl th:last-child, .tbl td:last-child { padding-right: 0; }
+.tbl th.num { text-align: right; }
+.tbl tbody tr:hover td { background: var(--kp-row-hover); }
+.app[data-zebra] .tbl tbody tr:nth-child(even) td { background: var(--kp-surface-2); }
+.tbl td.mono, .tbl td.tn { white-space: nowrap; }
+.app .tn { font-variant-numeric: tabular-nums; }
+.tbl .sub { display: block; font-size: var(--kp-small); color: var(--kp-muted); }
+.tbl tr.expanded td { background: var(--kp-surface-2); }
+.meter { height: 8px; border-radius: 99px; background: var(--kp-track); overflow: hidden; }
+.meter > i { display: block; height: 100%; border-radius: inherit; background: var(--kp-accent); }
+.meter.warn > i { background: var(--kp-warning-border); } .meter.err > i { background: var(--kp-error-border); }
+.meter.thin { height: 5px; }
+.dl { display: grid; grid-template-columns: minmax(120px, max-content) 1fr; gap: calc(var(--kp-space) * .5) calc(var(--kp-space) * 1.25); margin: 0; }
+.dl dt { color: var(--kp-muted); }
+.dl dd { margin: 0; font-weight: 550; }
+.kpi { display: grid; gap: 4px; }
+.kpi .v { white-space: nowrap; font-family: var(--kp-font-heading); font-size: var(--kp-h2); font-weight: var(--kp-heading-weight); line-height: 1.1; font-variant-numeric: tabular-nums; }
+.kpi .l { color: var(--kp-muted); font-size: var(--kp-small); }
+.kpi .d { font-size: var(--kp-small); font-weight: 600; }
+.up { color: var(--kp-success-text); } .down { color: var(--kp-error-text); }
+.iconcirc { display: inline-grid; place-items: center; width: 40px; height: 40px; flex: none; border-radius: var(--kp-icon-radius); background: var(--kp-accent-soft); color: var(--kp-accent-text); }
+.iconcirc .i { width: 22px; height: 22px; }
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--kp-border); margin-bottom: var(--kp-space); overflow-x: auto; }
+.tabs button { display: inline-flex; align-items: center; gap: 8px; min-height: var(--kp-control); padding: 0 var(--kp-space); border: 0; background: none; color: var(--kp-muted); font: inherit; font-weight: 600; cursor: pointer; box-shadow: inset 0 -3px 0 transparent; white-space: nowrap; }
+.tabs button[aria-selected=true] { color: var(--kp-text); box-shadow: inset 0 -3px 0 var(--kp-accent); }
+.optcards { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; border: 0; padding: 0; margin: 0; }
+.optcards legend { font-weight: 600; margin-bottom: 6px; padding: 0; }
+.optcard { position: relative; display: grid; gap: 2px; padding: 12px 14px; border: 1px solid var(--kp-border-strong); border-radius: var(--kp-radius); cursor: pointer; background: var(--kp-input-bg); }
+.optcard input { position: absolute; opacity: 0; }
+.optcard:has(input:checked) { border-color: var(--kp-accent); box-shadow: inset 0 0 0 1px var(--kp-accent); background: var(--kp-accent-soft); }
+.optcard:has(input:focus-visible) { outline: 3px solid var(--kp-focus); outline-offset: 2px; }
+.optcard small { color: var(--kp-muted); }
+.range { width: 100%; accent-color: var(--kp-accent); height: 28px; }
+.switch { display: inline-flex; align-items: center; gap: 10px; border: 0; background: none; color: inherit; font: inherit; font-weight: 600; cursor: pointer; padding: 4px 0; min-height: 36px; }
+.switch .tr { position: relative; width: 44px; height: 26px; border-radius: 99px; background: var(--kp-track); border: 1px solid var(--kp-border-strong); transition: background .15s; }
+.switch .tr::after { content: ""; position: absolute; top: 2px; left: 2px; width: 20px; height: 20px; border-radius: 50%; background: var(--kp-surface); box-shadow: 0 1px 2px rgb(0 0 0 / .3); transition: transform .15s; }
+.switch[aria-checked=true] .tr { background: var(--kp-accent); border-color: var(--kp-accent); }
+.switch[aria-checked=true] .tr::after { transform: translateX(18px); background: var(--kp-accent-contrast); }
+.chart { width: 100%; height: auto; display: block; overflow: visible; }
+.chart text { fill: var(--kp-muted); font-family: var(--kp-font); font-size: 12px; }
+.chart .gl { stroke: var(--kp-border); stroke-width: 1; }
+.chart .base { stroke: var(--kp-border-strong); stroke-width: 1; }
+.chart .bar { fill: var(--kp-accent); opacity: .5; }
+.chart .bar.cur { opacity: 1; }
+.chart g:hover .bar { opacity: .85; }
+.chart .prev { fill: none; stroke: var(--kp-muted); stroke-width: 2; stroke-dasharray: 5 4; }
+.chart .line { fill: none; stroke: var(--kp-accent); stroke-width: 2; }
+.chart .area { fill: var(--kp-accent); opacity: .12; }
+.chart .dot { fill: var(--kp-accent); stroke: var(--kp-surface); stroke-width: 2; }
+.chart .lbl { fill: var(--kp-text); font-weight: 650; }
+.chart .hit { fill: transparent; }
+.ring .trk { stroke: var(--kp-track); } .ring .val { stroke: var(--kp-accent); }
+.ring text { fill: var(--kp-text); font-family: var(--kp-font-heading); font-weight: 700; }
+.lgd { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: var(--kp-small); color: var(--kp-muted); }
+.lgd span { display: inline-flex; align-items: center; gap: 6px; }
+.lgd i { width: 12px; height: 12px; border-radius: 3px; background: var(--kp-accent); display: inline-block; }
+.lgd i.dash { height: 0; border-top: 2px dashed var(--kp-muted); border-radius: 0; background: none; width: 16px; }
+details.tv summary { cursor: pointer; color: var(--kp-accent-text); font-size: var(--kp-small); font-weight: 600; margin-top: 8px; }
+
+/* Customer screens */
+.hero { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: calc(var(--kp-space) * 2); align-items: center; padding: calc(var(--kp-space) * 2) 0 calc(var(--kp-space) * 2.5); }
+.hero h1 { font-size: calc(var(--kp-h1) * 1.25); }
+.hero .lead { font-size: calc(var(--kp-font-size) * 1.12); color: var(--kp-muted); margin-top: var(--kp-space); max-width: 54ch; }
+.hero .cta { margin-top: calc(var(--kp-space) * 1.5); }
+.hero-art { width: 100%; max-width: 420px; justify-self: center; }
+.hero-art .bgshape { fill: var(--kp-accent-soft); }
+.hero-art .house { fill: var(--kp-surface); stroke: var(--kp-accent); stroke-width: 3; }
+.hero-art .bub { fill: var(--kp-surface); stroke: var(--kp-border); stroke-width: 1.5; }
+.hero-art .ico { color: var(--kp-accent-text); }
+.hero-art .win { fill: var(--kp-accent); opacity: .85; }
+.app[data-preset=warm] .hero { background: radial-gradient(120% 90% at 100% 0%, var(--kp-accent-soft), transparent 60%); border-radius: var(--kp-radius-large); padding-left: calc(var(--kp-space) * 1.5); padding-right: calc(var(--kp-space) * 1.5); }
+.sparten { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: calc(var(--kp-space) * .75); }
+.sparte { display: grid; justify-items: start; gap: 8px; padding: var(--kp-space); }
+.sparte b { font-size: calc(var(--kp-font-size) * 1.02); }
+.notice { display: flex; gap: 10px; align-items: center; font-size: var(--kp-small); color: var(--kp-muted); margin-top: var(--kp-space); }
+.greet { display: flex; align-items: center; justify-content: space-between; gap: var(--kp-space); flex-wrap: wrap; }
+.todo { display: flex; gap: var(--kp-space); align-items: center; }
+.todo > div { flex: 1; }
+.contract { display: grid; gap: calc(var(--kp-space) * .6); }
+.contract .top { display: flex; align-items: center; gap: 12px; }
+.contract .price { font-family: var(--kp-font-heading); font-size: var(--kp-h2); font-weight: var(--kp-heading-weight); font-variant-numeric: tabular-nums; }
+.contract .price small { font-family: var(--kp-font); font-size: var(--kp-small); color: var(--kp-muted); font-weight: 500; }
+.contract a.more { display: inline-flex; align-items: center; gap: 4px; font-weight: 600; text-decoration: none; }
+.mail-list { list-style: none; margin: 0; padding: 0; }
+.mail-list li + li { border-top: 1px solid var(--kp-border); }
+.mail-item { display: grid; grid-template-columns: 10px 1fr auto; gap: 4px 12px; align-items: baseline; padding: calc(var(--kp-space) * .7) calc(var(--kp-space) * .5); color: inherit !important; text-decoration: none; border-radius: var(--kp-radius); }
+.mail-item:hover { background: var(--kp-surface-2); }
+.mail-item.unread { background: var(--kp-unread); }
+.mail-item .u { width: 9px; height: 9px; border-radius: 50%; align-self: center; }
+.mail-item.unread .u { background: var(--kp-accent); }
+.mail-item b { font-weight: 600; }
+.mail-item.unread b { font-weight: 750; }
+.mail-item .pv { grid-column: 2 / -1; color: var(--kp-muted); font-size: var(--kp-small); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mail-item[aria-current=true] { box-shadow: inset 3px 0 0 var(--kp-accent); background: var(--kp-surface-2); }
+.mailbox { display: grid; grid-template-columns: minmax(260px, 0.9fr) minmax(0, 1.4fr); gap: var(--kp-space); align-items: start; }
+.msg h2 { margin: 6px 0 4px; }
+.msg .body { display: grid; gap: calc(var(--kp-space) * .75); margin-top: var(--kp-space); max-width: 62ch; }
+.quota { display: grid; gap: 6px; }
+.quota .row { justify-content: space-between; }
+.secret { display: flex; gap: 8px; align-items: center; }
+.secret code { flex: 1; padding: 8px 12px; border-radius: var(--kp-radius); background: var(--kp-surface-2); border: 1px dashed var(--kp-border-strong); font-size: 1.02em; letter-spacing: .04em; }
+.passhero { display: grid; grid-template-columns: auto 1fr; gap: calc(var(--kp-space) * 1.25); align-items: center; }
+
+/* Cockpit screens */
+.app[data-aud=cockpit] .main-inner { max-width: 1440px; }
+.kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--kp-space); }
+.kpi-ring { display: flex; gap: var(--kp-space); align-items: center; }
+.cockpit-grid { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(300px, 1fr); gap: var(--kp-space); align-items: start; }
+.timeline { list-style: none; margin: 0; padding: 0; position: relative; }
+.timeline li { display: grid; grid-template-columns: 28px 1fr; gap: 10px; padding-bottom: calc(var(--kp-space) * .8); position: relative; }
+.timeline li::before { content: ""; position: absolute; left: 13px; top: 28px; bottom: 0; width: 2px; background: var(--kp-border); }
+.timeline li:last-child::before { display: none; }
+.timeline .ti { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--kp-surface-2); color: var(--kp-muted); border: 1px solid var(--kp-border); }
+.timeline .ti .i { width: 15px; height: 15px; }
+.timeline .ti.ok { background: var(--kp-success-bg); color: var(--kp-success-text); border-color: transparent; }
+.timeline .ti.warn { background: var(--kp-warning-bg); color: var(--kp-warning-text); border-color: transparent; }
+.timeline .ti.err { background: var(--kp-error-bg); color: var(--kp-error-text); border-color: transparent; }
+.timeline .ev { font-weight: 600; }
+.timeline .meta { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: var(--kp-small); color: var(--kp-muted); }
+.livedot { display: inline-flex; align-items: center; gap: 8px; font-size: var(--kp-small); color: var(--kp-muted); }
+.livedot::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--kp-success-border); box-shadow: 0 0 0 4px var(--kp-success-bg); }
+.redrive { display: grid; grid-template-columns: 1fr 1fr auto; gap: 10px; align-items: end; padding: 4px 0 6px; }
+.danger { border-color: var(--kp-error-border); }
+.app[data-aud=cockpit] .card { padding: calc(var(--kp-space) * 1.1); }
+.app[data-preset=dicht] .card-h h2, .app[data-preset=kontrast] .card-h h2 { font-size: var(--kp-h3); }
+.minibars { display: grid; grid-template-columns: repeat(3, 42px); gap: 8px; }
+.minibars span { display: grid; gap: 3px; font-size: 11px; line-height: 1.1; color: var(--kp-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.linkbox { display: flex; gap: 8px; align-items: center; }
+.linkbox code { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 8px 10px; border-radius: var(--kp-radius); border: 1px solid var(--kp-border-strong); background: var(--kp-surface-2); }
+
+/* Responsive behaviour follows the frame width (container queries), so the
+   375 px phone frame shows the real mobile layout. */
+@container app (max-width: 1080px) {
+  .app:not([data-nav=side]) .userbtn .uname { display: none; }
+  .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .cockpit-grid { grid-template-columns: minmax(0, 1fr); }
+}
+@container app (max-width: 1240px) {
+  .topnav .navlink > .i { display: none; }
+  .topnav .navlink { padding: 0 10px; }
+  .app[data-large=true]:not([data-nav=side]) .userbtn .uname { display: none; }
+  .app[data-nav=side] .sidenav { width: 192px; }
+}
+@container app (max-width: 860px) {
+  .app .topnav .navlink .lb-long { display: none; }
+  .split, .mailbox { grid-template-columns: minmax(0, 1fr); }
+  .sparten { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .chip.version { display: none; }
+  .topnav { display: none; }
+  .menu-btn { display: inline-grid; }
+}
+@container app (max-width: 640px) {
+  .hdr { padding: 0 calc(var(--kp-space) * .75); gap: 4px; }
+  .menu-btn { display: inline-grid; }
+  .topnav, .app[data-nav] .sidenav, .search, .userbtn .uname, .userbtn .chev { display: none; }
+  .app[data-nav=bottom] .menu-btn { display: none; }
+  .app[data-nav=bottom] .bottomnav { display: block; position: sticky; bottom: 0; z-index: 10; background: var(--kp-header-bg); border-top: 1px solid var(--kp-border); padding: 4px 4px max(4px, env(safe-area-inset-bottom)); }
+  .bottomnav ul { display: grid; grid-template-columns: repeat(5, 1fr); }
+  .bottomnav a { display: grid; justify-items: center; gap: 2px; padding: 6px 2px; min-height: 52px; border-radius: var(--kp-radius); color: var(--kp-muted) !important; text-decoration: none; font-size: 11px; font-weight: 600; position: relative; }
+  .bottomnav a .i { width: 22px; height: 22px; }
+  .bottomnav a[aria-current=page] { color: var(--kp-accent-text) !important; }
+  .bottomnav a[aria-current=page] .i { background: var(--kp-accent-soft); border-radius: 99px; width: 48px; padding: 0 13px; }
+  .bottomnav .cnt { position: absolute; top: 2px; left: calc(50% + 6px); min-width: 16px; height: 16px; border-radius: 99px; background: var(--kp-badge); color: #fff; font-size: 10px; line-height: 16px; text-align: center; padding: 0 4px; }
+  .main { padding: var(--kp-space) var(--kp-space) calc(var(--kp-space) * 2); }
+  .hero { grid-template-columns: minmax(0, 1fr); padding-top: var(--kp-space); }
+  .hero h1 { font-size: var(--kp-h1); }
+  .hero-art { max-width: 260px; grid-row: 1; }
+  .sparten { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .kpis { grid-template-columns: minmax(0, 1fr); }
+  .dl { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+  .dl dd { margin-bottom: 8px; }
+  .redrive { grid-template-columns: minmax(0, 1fr); }
+  .passhero { grid-template-columns: minmax(0, 1fr); justify-items: start; }
+  .ftr { padding-bottom: calc(var(--kp-space) * 1.5); }
+  .menu { width: calc(100cqw - 24px); right: -6px; }
+  .todo { flex-wrap: wrap; }
+  .todo .btn { width: 100%; }
+  /* Tables turn into labelled cards on small screens. */
+  .tbl.stackable thead { display: none; }
+  .tbl.stackable tr { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; padding: 12px 0; border-bottom: 1px solid var(--kp-border); }
+  .tbl.stackable td { border: 0; padding: 0 !important; text-align: left; }
+  .tbl.stackable td[data-label]:not(:first-child)::before { content: attr(data-label) ": "; color: var(--kp-muted); font-size: var(--kp-small); }
+  .tbl.stackable td:first-child { grid-column: 1 / -1; font-weight: 650; }
+}
+</style>
+</head>
+<body>
+<a class="ui-skip" href="#stage">Zu den Mockups springen</a>
+<!-- Icon sprite: one consistent outline style (24 px grid, 1.75 stroke, round caps). -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20h5v-6h4v6h5V9.5"/></symbol>
+    <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c1.5-3.5 4.5-5 8-5s6.5 1.5 8 5"/></symbol>
+    <symbol id="i-mail" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3.5 6.5 8.5 6.5 8.5-6.5"/></symbol>
+    <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></symbol>
+    <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 20V4M4 20h16"/><path d="M8 16v-4M12 16V8M16 16v-6"/></symbol>
+    <symbol id="i-ticket" viewBox="0 0 24 24"><path d="M3 8a2 2 0 0 0 2-2h14a2 2 0 0 0 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 0-2 2H5a2 2 0 0 0-2-2v-2a2 2 0 0 0 0-4z"/><path d="M14 6v12" stroke-dasharray="2 2.5"/></symbol>
+    <symbol id="i-gauge" viewBox="0 0 24 24"><path d="M4.5 18a9 9 0 1 1 15 0"/><path d="m12 13 4-4"/><circle cx="12" cy="13" r="1.3"/></symbol>
+    <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></symbol>
+    <symbol id="i-chev" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+    <symbol id="i-right" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+    <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 3 5 13.5h6L10 21l8-10.5h-6z"/></symbol>
+    <symbol id="i-flame" viewBox="0 0 24 24"><path d="M12 21a6 6 0 0 0 6-6c0-4-3-6-4-10-2 2-3 4-3 6-1-1-1.5-2-1.5-3C7 10 6 12.5 6 15a6 6 0 0 0 6 6z"/><path d="M12 21a2.5 2.5 0 0 1-2.5-2.5c0-1.5 1.5-2.5 2.5-4 1 1.5 2.5 2.5 2.5 4A2.5 2.5 0 0 1 12 21z"/></symbol>
+    <symbol id="i-drop" viewBox="0 0 24 24"><path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/><path d="M9 15a3 3 0 0 0 3 3"/></symbol>
+    <symbol id="i-wifi" viewBox="0 0 24 24"><path d="M2.5 9a14 14 0 0 1 19 0M5.5 12.5a9.5 9.5 0 0 1 13 0M8.5 16a5 5 0 0 1 7 0"/><circle cx="12" cy="19.5" r="1"/></symbol>
+    <symbol id="i-phone" viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.5h2"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 7.5v.5"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3.5 21.5 20h-19z"/><path d="M12 10v4.5M12 17.5v.5"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14.5-4.5L4 8M4 4v4h4M4 13a8 8 0 0 0 14.5 4.5L20 16M20 20v-4h-4"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></symbol>
+    <symbol id="i-logout" viewBox="0 0 24 24"><path d="M14 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4M9 8l-4 4 4 4M5 12h11"/></symbol>
+    <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.5 3.5 5.5 3.5 9s-1 6.5-3.5 9c-2.5-2.5-3.5-5.5-3.5-9s1-6.5 3.5-9z"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M4.2 6.5l2.6 1.5M17.2 16l2.6 1.5M4.2 17.5 6.8 16M17.2 8l2.6-1.5"/></symbol>
+    <symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="15" r="4"/><path d="m11 12 8.5-8.5M16.5 6.5l2.5 2.5M14 9l2 2"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></symbol>
+    <symbol id="i-inbox" viewBox="0 0 24 24"><path d="M3 13.5 5.5 5h13l2.5 8.5V19H3z"/><path d="M3 13.5h5l1.5 2.5h5l1.5-2.5h5"/></symbol>
+    <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></symbol>
+    <symbol id="i-ext" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9M18 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4"/></symbol>
+    <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 15V4M7.5 8.5 12 4l4.5 4.5M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 4.5 6v5.5c0 4.5 3.2 8 7.5 9.5 4.3-1.5 7.5-5 7.5-9.5V6z"/><path d="m9 12 2 2 4-4"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8.5" r="3.5"/><path d="M2.5 19.5c1-3 3.5-4.5 6.5-4.5s5.5 1.5 6.5 4.5M16 5.2a3.5 3.5 0 0 1 0 6.6M18 15.2c1.7.7 2.9 2.1 3.5 4.3"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></symbol>
+    <symbol id="i-panel" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16M15 10l-2 2 2 2"/></symbol>
+    <symbol id="i-logo" viewBox="0 0 32 32"><rect width="32" height="32" rx="9" fill="var(--kp-accent)" stroke="none"/><path d="M17.5 6 9.5 17.5h6L14 26l8.5-11.5h-6z" fill="var(--kp-accent-contrast)" stroke="none"/></symbol>
+  </defs>
+</svg>
+
+<div class="page">
+<!-- ======================================================================
+     Toolbar. Every control writes one parameter of the active audience.
+     ====================================================================== -->
+<aside class="tb" id="tb" aria-label="Design-Parameter">
+  <div class="tb-head">
+    <h2 id="tb-title">Design-Parameter</h2>
+    <button class="tb-toggle" id="tb-toggle" type="button" aria-expanded="true" aria-controls="tb-body" aria-label="Werkzeugleiste einklappen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></button>
+  </div>
+  <div class="tb-body" id="tb-body">
+    <fieldset>
+      <legend>Zielgruppe</legend>
+      <div class="seg" role="radiogroup" aria-label="Zielgruppe">
+        <label><input type="radio" name="aud" value="kunde"><span>Endkunde</span></label>
+        <label><input type="radio" name="aud" value="cockpit"><span>Cockpit</span></label>
+      </div>
+      <div class="row"><label for="screen">Screen</label><select id="screen"></select></div>
+      <label class="check"><input type="checkbox" id="mobile"> Mobil-Rahmen (375 px)</label>
+    </fieldset>
+    <fieldset>
+      <legend id="preset-legend">Theme-Preset</legend>
+      <div class="presets" id="presets" role="radiogroup" aria-labelledby="preset-legend"></div>
+      <p class="modified" id="modified" aria-live="polite"></p>
+    </fieldset>
+    <fieldset>
+      <legend>Farbe</legend>
+      <div class="row"><span class="rl" id="l-mode">Farbmodus</span>
+        <div class="seg" role="radiogroup" aria-labelledby="l-mode">
+          <label><input type="radio" name="mode" value="light" data-p="mode"><span>Hell</span></label>
+          <label><input type="radio" name="mode" value="dark" data-p="mode"><span>Dunkel</span></label>
+          <label><input type="radio" name="mode" value="system" data-p="mode"><span>System</span></label>
+        </div></div>
+      <div class="row"><label for="accent">Akzent</label>
+        <div class="colorrow"><input type="color" id="accent" data-p="accent"><code id="accent-hex"></code></div>
+        <div class="swatches" id="swatches" role="group" aria-label="Kuratierte Akzentfarben"></div></div>
+      <div class="row"><span class="rl" id="l-neutral">Neutralton</span>
+        <div class="seg" role="radiogroup" aria-labelledby="l-neutral">
+          <label><input type="radio" name="neutral" value="cool" data-p="neutral"><span>kühl</span></label>
+          <label><input type="radio" name="neutral" value="neutral" data-p="neutral"><span>neutral</span></label>
+          <label><input type="radio" name="neutral" value="warm" data-p="neutral"><span>warm</span></label>
+        </div></div>
+    </fieldset>
+    <fieldset>
+      <legend>Typografie</legend>
+      <div class="row"><label for="font">Schrift</label>
+        <select id="font" data-p="font">
+          <option value="sans">System-Sans</option><option value="humanist">Humanistisch</option>
+          <option value="serif">Serifen-Überschriften</option><option value="rounded">Gerundet</option>
+        </select></div>
+      <div class="row"><label for="size">Grundgröße <output id="o-size" for="size"></output></label><input type="range" id="size" min="14" max="18" step="1" data-p="size"></div>
+      <div class="row"><label for="lh">Zeilenhöhe <output id="o-lh" for="lh"></output></label><input type="range" id="lh" min="1.3" max="1.8" step="0.05" data-p="lh"></div>
+      <div class="row"><label for="scale">Skala</label>
+        <select id="scale" data-p="scale">
+          <option value="1.125">1,125 · eng</option><option value="1.15">1,15 · knapp</option><option value="1.2">1,2 · ausgewogen</option><option value="1.25">1,25 · deutlich</option><option value="1.333">1,333 · plakativ</option>
+        </select></div>
+    </fieldset>
+    <fieldset>
+      <legend>Form</legend>
+      <div class="row"><span class="rl" id="l-density">Dichte</span>
+        <div class="seg" role="radiogroup" aria-labelledby="l-density">
+          <label><input type="radio" name="density" value="compact" data-p="density"><span>kompakt</span></label>
+          <label><input type="radio" name="density" value="normal" data-p="density"><span>normal</span></label>
+          <label><input type="radio" name="density" value="airy" data-p="density"><span>luftig</span></label>
+        </div></div>
+      <div class="row"><label for="radius">Ecken <output id="o-radius" for="radius"></output></label><input type="range" id="radius" min="0" max="20" step="1" data-p="radius"></div>
+      <div class="row"><span class="rl" id="l-shadow">Schatten</span>
+        <div class="seg" role="radiogroup" aria-labelledby="l-shadow">
+          <label><input type="radio" name="shadow" value="none" data-p="shadow"><span>aus</span></label>
+          <label><input type="radio" name="shadow" value="soft" data-p="shadow"><span>fein</span></label>
+          <label><input type="radio" name="shadow" value="strong" data-p="shadow"><span>deutlich</span></label>
+        </div></div>
+      <div class="row"><span class="rl">Rahmen</span><label class="check"><input type="checkbox" id="border" data-p="border"> Karten mit Rahmen</label></div>
+    </fieldset>
+    <fieldset>
+      <legend>Navigation</legend>
+      <div class="row"><span class="rl" id="l-nav">Layout</span>
+        <div class="seg" role="radiogroup" aria-labelledby="l-nav">
+          <label><input type="radio" name="nav" value="top" data-p="nav"><span>Top</span></label>
+          <label><input type="radio" name="nav" value="side" data-p="nav"><span>Seite</span></label>
+          <label><input type="radio" name="nav" value="bottom" data-p="nav"><span>Bottom</span></label>
+        </div></div>
+      <div class="row"><span class="rl" id="l-navstyle">Markierung</span>
+        <div class="seg" role="radiogroup" aria-labelledby="l-navstyle">
+          <label><input type="radio" name="navstyle" value="pill" data-p="navstyle"><span>Fläche</span></label>
+          <label><input type="radio" name="navstyle" value="underline" data-p="navstyle"><span>Linie</span></label>
+          <label><input type="radio" name="navstyle" value="solid" data-p="navstyle"><span>Voll</span></label>
+        </div></div>
+      <p class="modified">Top-Bar, Sidebar oder Bottom-Nav. Die Bottom-Nav greift im Mobil-Rahmen; am Desktop gilt dann die Top-Bar.</p>
+    </fieldset>
+    <fieldset>
+      <legend>Kontrastprüfung (WCAG 2.2)</legend>
+      <ul class="contrast" id="contrast" aria-live="polite"></ul>
+      <p class="modified" id="contrast-mode"></p>
+    </fieldset>
+    <fieldset>
+      <legend>Übernehmen</legend>
+      <div class="tb-actions">
+        <button class="ui-btn primary" type="button" id="copy-params">Parameter kopieren</button>
+        <button class="ui-btn" type="button" id="copy-link">Link kopieren</button>
+        <button class="ui-btn" type="button" id="reset">Preset zurücksetzen</button>
+      </div>
+      <p class="live" id="copy-status" role="status"></p>
+      <details><summary>Export ansehen (JSON + CSS)</summary><label class="sr" for="export">Export</label><textarea id="export" readonly></textarea></details>
+    </fieldset>
+  </div>
+</aside>
+
+<div class="doc">
+  <header class="doc-intro">
+    <h1>Design und Theme · Mockups</h1>
+    <p>Phase 5 von kundenportal-demo: zwei Zielgruppen, mehrere Theme-Varianten, live einstellbar. Alle Daten sind erfunden. Die Werkzeugleiste ändert nur die <code>--kp-*</code>-Tokens; Inhalt und Aufbau bleiben gleich.</p>
+    <div class="doc-meta"><span>Zielgruppe: <b id="m-aud"></b></span><span>Preset: <b id="m-preset"></b></span><span>Modus: <b id="m-mode"></b></span><span>Zustand im Link (#) gespeichert</span></div>
+  </header>
+
+  <div class="stage" id="stage" tabindex="-1">
+    <div class="frame" id="frame">
+      <div class="frame-bar" aria-hidden="true"><span class="dots"><i></i><i></i><i></i></span><span class="url" id="url">kundenportal-demo.rypox.com/</span></div>
+      <div class="viewport" id="viewport">
+
+<!-- ======================================================================
+     Audience 1: customer portal (shell, contracts, consumption zones)
+     ====================================================================== -->
+<div class="app" id="app-kunde" data-aud="kunde">
+  <a class="skip" href="#k-main">Zum Inhalt springen</a>
+  <header class="hdr">
+    <button class="iconbtn menu-btn" type="button" aria-label="Menü öffnen"><svg class="i"><use href="#i-menu"/></svg></button>
+    <a class="brand" href="#" data-go="start"><svg class="logo" aria-hidden="true"><use href="#i-logo"/></svg>Kundenportal</a>
+    <span class="chip version" title="Version und Commit">v0.4.4 · a1b2c3d</span>
+    <nav class="topnav" aria-label="Hauptnavigation"><ul data-nav-list="top"></ul></nav>
+    <div class="hdr-actions">
+      <a class="btn btn-primary btn-sm only-public" href="#" data-go="konto">Anmelden</a>
+      <button class="iconbtn only-private" type="button" aria-label="Benachrichtigungen, 2 neu"><svg class="i"><use href="#i-bell"/></svg><span class="dot-badge" aria-hidden="true">2</span></button>
+      <div class="um only-private">
+        <button class="userbtn" type="button" aria-expanded="false" aria-haspopup="true" aria-controls="k-menu" aria-label="Benutzermenü Anna Becker"><span class="avatar" aria-hidden="true">AB</span><span class="uname">Anna Becker</span><svg class="i chev" aria-hidden="true"><use href="#i-chev"/></svg></button>
+        <div class="menu" id="k-menu" hidden>
+          <div class="menu-head"><span class="avatar" aria-hidden="true">AB</span><div><b>Anna Becker</b><span>anna.becker@example.org</span></div></div>
+          <a href="#" data-go="konto"><svg class="i"><use href="#i-user"/></svg>Mein Konto</a>
+          <a href="#" data-go="pass"><svg class="i"><use href="#i-ticket"/></svg>Demo-Pass</a>
+          <a href="#" data-go="postfach"><svg class="i"><use href="#i-mail"/></svg>Postfach <span class="st info" style="margin-left:auto">2 neu</span></a>
+          <a href="#" lang="en"><svg class="i"><use href="#i-globe"/></svg>English</a>
+          <hr><a href="#" data-go="start"><svg class="i"><use href="#i-logout"/></svg>Abmelden</a>
+        </div>
+      </div>
+    </div>
+  </header>
+  <div class="shell">
+    <nav class="sidenav" aria-label="Hauptnavigation (Seitenleiste)"><div class="sidenav-inner"><ul data-nav-list="side"></ul></div></nav>
+    <main class="main" id="k-main" tabindex="-1"><div class="main-inner">
+
+      <!-- Start (public) -->
+      <section class="screen" data-screen="start" aria-labelledby="k-start-h">
+        <div class="hero">
+          <div>
+            <p class="eyebrow">Ihr Versorger für zu Hause</p>
+            <h1 id="k-start-h" style="margin-top:8px">Strom, Gas, Wasser, Internet und Mobilfunk — alles in einem Konto</h1>
+            <p class="lead">Dieses Kundenportal ist ein Demo-Projekt. Es zeigt, wie ein Versorger sein Portal modernisiert und dabei die Kunden eines übernommenen Anbieters übernimmt.</p>
+            <div class="row cta"><a class="btn btn-primary" href="#" data-go="konto">Anmelden oder zum Konto <svg class="i"><use href="#i-right"/></svg></a><a class="btn btn-secondary" href="#" data-go="pass">Demo-Pass einlösen</a></div>
+            <p class="notice"><svg class="i"><use href="#i-info"/></svg>Alle Daten sind erfunden. Bitte keine echten persönlichen Daten eingeben.</p>
+          </div>
+          <svg class="hero-art" viewBox="0 0 400 320" role="img" aria-label="Illustration: ein Haus, verbunden mit Strom, Gas, Wasser, Internet und Mobilfunk">
+            <path class="bgshape" d="M64 70C110 12 250 0 320 44s82 150 30 210-200 66-268 24S18 128 64 70z"/>
+            <path class="house" d="M140 250V160l60-50 60 50v90z"/>
+            <rect class="win" x="170" y="175" width="22" height="22" rx="4"/><rect class="win" x="208" y="175" width="22" height="22" rx="4"/><rect class="win" x="189" y="214" width="22" height="36" rx="4" opacity=".5"/>
+            <g><circle class="bub" cx="78" cy="118" r="30"/><use class="ico" href="#i-bolt" x="62" y="102" width="32" height="32" stroke="currentColor" fill="none" stroke-width="1.75"/></g>
+            <g><circle class="bub" cx="200" cy="52" r="30"/><use class="ico" href="#i-flame" x="184" y="36" width="32" height="32" stroke="currentColor" fill="none" stroke-width="1.75"/></g>
+            <g><circle class="bub" cx="322" cy="118" r="30"/><use class="ico" href="#i-drop" x="306" y="102" width="32" height="32" stroke="currentColor" fill="none" stroke-width="1.75"/></g>
+            <g><circle class="bub" cx="92" cy="246" r="30"/><use class="ico" href="#i-wifi" x="76" y="230" width="32" height="32" stroke="currentColor" fill="none" stroke-width="1.75"/></g>
+            <g><circle class="bub" cx="308" cy="246" r="30"/><use class="ico" href="#i-phone" x="292" y="230" width="32" height="32" stroke="currentColor" fill="none" stroke-width="1.75"/></g>
+          </svg>
+        </div>
+        <h2 class="sr">Sparten</h2>
+        <ul class="sparten" role="list" style="list-style:none;margin:0;padding:0">
+          <li class="card sparte"><span class="iconcirc"><svg class="i"><use href="#i-bolt"/></svg></span><b>Strom</b><span class="small muted">Ökostrom ab 32,4 ct/kWh</span></li>
+          <li class="card sparte"><span class="iconcirc"><svg class="i"><use href="#i-flame"/></svg></span><b>Gas</b><span class="small muted">Klima-Option mit Ausgleich</span></li>
+          <li class="card sparte"><span class="iconcirc"><svg class="i"><use href="#i-drop"/></svg></span><b>Wasser</b><span class="small muted">Zählerstand online melden</span></li>
+          <li class="card sparte"><span class="iconcirc"><svg class="i"><use href="#i-wifi"/></svg></span><b>Internet</b><span class="small muted">Glasfaser bis 1000 Mbit/s</span></li>
+          <li class="card sparte"><span class="iconcirc"><svg class="i"><use href="#i-phone"/></svg></span><b>Mobilfunk</b><span class="small muted">10, 20 oder 40 GB</span></li>
+        </ul>
+        <div class="grid" style="--min:250px;margin-top:calc(var(--kp-space)*1.5)">
+          <article class="card stack"><h3>Was die Demo zeigt</h3><p class="muted">Ein Mehrsparten-Versorger übernimmt einen Telekommunikationsanbieter. Konten und Verträge werden beim ersten Anmelden oder im Bulk-Lauf übernommen.</p></article>
+          <article class="card stack"><h3>Eigene Instanz mit Einladung</h3><p class="muted">Mit einer Einladung bekommen Sie eine eigene Instanz für 48 Stunden — mit eigenen Demo-Kunden und eigenem Migrations-Cockpit.</p><a href="#" data-go="pass">Mehr zum Demo-Pass</a></article>
+          <article class="card stack"><h3>Code und Berichte</h3><p class="muted">Der gesamte Code, die Infrastruktur als Code und die Architekturberichte sind öffentlich.</p><a href="#">Code auf GitHub</a></article>
+        </div>
+      </section>
+
+      <!-- Konto: overview + account data; shows the opened user menu -->
+      <section class="screen" data-screen="konto" aria-labelledby="k-konto-h" hidden>
+        <div class="greet pagehead">
+          <div><p class="eyebrow">Mittwoch, 1. Oktober 2026</p><h1 id="k-konto-h">Guten Tag, Anna Becker</h1></div>
+          <a class="btn btn-secondary" href="#" data-go="verbrauch"><svg class="i"><use href="#i-chart"/></svg>Verbrauch ansehen</a>
+        </div>
+        <div class="stack-lg">
+          <div class="card todo" style="border-left:4px solid var(--kp-accent)">
+            <span class="iconcirc"><svg class="i"><use href="#i-bolt"/></svg></span>
+            <div><h2 style="font-size:var(--kp-h3)">Zählerstand Strom fällig</h2><p class="muted">Bitte melden Sie den Stand bis 15.10.2026 — so stimmt Ihr nächster Abschlag.</p></div>
+            <a class="btn btn-primary" href="#" data-go="verbrauch">Jetzt erfassen</a>
+          </div>
+          <section aria-labelledby="k-ov-c">
+            <div class="row between" style="margin-bottom:calc(var(--kp-space)*.75)"><h2 id="k-ov-c">Ihre Verträge</h2><a href="#" data-go="vertraege">Alle Verträge</a></div>
+            <div class="grid" style="--min:230px">
+              <article class="card contract">
+                <div class="top"><span class="iconcirc"><svg class="i"><use href="#i-bolt"/></svg></span><div><h3 style="font-size:var(--kp-font-size)">Strom Klassik</h3><span class="small muted">Standard · Zähler …4471</span></div></div>
+                <p class="price">87 € <small>Abschlag / Monat</small></p>
+                <div id="spark-strom" aria-hidden="true"></div>
+                <div class="row between"><span class="st ok">aktiv</span><a class="more" href="#" data-go="vertraege">Details <svg class="i"><use href="#i-right"/></svg></a></div>
+              </article>
+              <article class="card contract">
+                <div class="top"><span class="iconcirc"><svg class="i"><use href="#i-flame"/></svg></span><div><h3 style="font-size:var(--kp-font-size)">Gas Komfort</h3><span class="small muted">Klima · Zähler …0918</span></div></div>
+                <p class="price">68 € <small>Abschlag / Monat</small></p>
+                <div class="small muted">Geschätzt 9.800 kWh im Jahr</div>
+                <div class="row between"><span class="st ok">aktiv</span><a class="more" href="#" data-go="vertraege">Details <svg class="i"><use href="#i-right"/></svg></a></div>
+              </article>
+              <article class="card contract">
+                <div class="top"><span class="iconcirc"><svg class="i"><use href="#i-phone"/></svg></span><div><h3 style="font-size:var(--kp-font-size)">Mobil 20 GB</h3><span class="small muted">+49 151 2345 6789</span></div></div>
+                <p class="price">19,99 € <small>Monatspreis</small></p>
+                <div class="quota"><div class="meter" role="meter" aria-valuemin="0" aria-valuemax="20" aria-valuenow="12.4" aria-label="Datenvolumen"><i style="width:62%"></i></div><span class="small muted">12,4 von 20 GB verbraucht</span></div>
+                <div class="row between"><span class="st ok">aktiv</span><a class="more" href="#" data-go="vertraege">Details <svg class="i"><use href="#i-right"/></svg></a></div>
+              </article>
+            </div>
+          </section>
+          <div class="split">
+            <section class="card" aria-labelledby="k-ov-acc">
+              <div class="card-h"><h2 id="k-ov-acc" style="font-size:var(--kp-h3)">Mein Konto</h2><button class="btn btn-ghost btn-sm" type="button">Profil ändern</button></div>
+              <dl class="dl">
+                <dt>Kundennummer</dt><dd class="mono">KP-104 233</dd>
+                <dt>Name</dt><dd>Anna Becker</dd>
+                <dt>E-Mail</dt><dd>anna.becker@example.org</dd>
+                <dt>Anschrift</dt><dd>Lindenweg 12, 50667 Köln</dd>
+                <dt>Sprache</dt><dd>Deutsch</dd>
+                <dt>Herkunft</dt><dd>Versorger-Altsystem <span class="tag">übernommen</span></dd>
+                <dt>Kunde seit</dt><dd>März 2019</dd>
+              </dl>
+            </section>
+            <section class="card" aria-labelledby="k-ov-mail">
+              <div class="card-h"><h2 id="k-ov-mail" style="font-size:var(--kp-h3)">Postfach</h2><span class="st info">2 neu</span></div>
+              <ul class="mail-list">
+                <li><a class="mail-item unread" href="#" data-go="postfach"><span class="u"></span><b>Zählerstand gespeichert</b><span class="small muted">09:14</span><span class="pv">Ihr Zählerstand 48.213 kWh ist eingegangen.</span></a></li>
+                <li><a class="mail-item unread" href="#" data-go="postfach"><span class="u"></span><b>Neuer Abschlag ab November</b><span class="small muted">gestern</span><span class="pv">Ihr Abschlag für Strom Klassik beträgt ab 1. November 87 €.</span></a></li>
+                <li><a class="mail-item" href="#" data-go="postfach"><span class="u"></span><b>Willkommen im Kundenportal</b><span class="small muted">28.09.</span><span class="pv">Schön, dass Sie da sind. Hier finden Sie alle Verträge.</span></a></li>
+              </ul>
+            </section>
+          </div>
+          <section class="card" aria-labelledby="k-ov-link">
+            <div class="card-h"><h2 id="k-ov-link" style="font-size:var(--kp-h3)"><svg class="i"><use href="#i-link"/></svg>Weitere Kundenkonten</h2><span class="tag">Telko</span></div>
+            <p class="muted" style="max-width:68ch">Wir haben bei unserem übernommenen Anbieter ein Kundenkonto gefunden, das zu Ihnen gehören könnte. Bestätigen Sie es mit dem Passwort dieses Kontos, dann sehen Sie alle Verträge hier.</p>
+            <div class="row" style="margin-top:var(--kp-space);align-items:end">
+              <div class="field" style="flex:1;min-width:200px"><span class="fl">Kundenkonto</span><span class="mono">TK-88 41 207 · A. Becker</span></div>
+              <div class="field" style="flex:1;min-width:200px"><label for="k-linkpw">Passwort des anderen Kontos</label><input class="input" id="k-linkpw" type="password" autocomplete="current-password" value="geheim123"></div>
+              <button class="btn btn-primary" type="button">Verknüpfen</button>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <!-- Verträge -->
+      <section class="screen" data-screen="vertraege" aria-labelledby="k-vt-h" hidden>
+        <div class="pagehead"><h1 id="k-vt-h">Verträge &amp; Rechnungen</h1><p class="lead">Alle Ihre Verträge auf einen Blick. Wählen Sie einen Vertrag, um den Abschlag oder die Tarifoption zu ändern.</p></div>
+        <div class="stack-lg">
+          <div class="card">
+            <div class="tbl-wrap"><table class="tbl stackable">
+              <caption>Ihre Verträge</caption>
+              <thead><tr><th scope="col">Sparte</th><th scope="col">Tarif</th><th scope="col" class="num">Abschlag / Monatspreis</th><th scope="col">Laufzeitende</th><th scope="col">Status</th></tr></thead>
+              <tbody>
+                <tr><td><span class="row" style="gap:10px"><svg class="i"><use href="#i-bolt"/></svg><a href="#">Strom</a></span></td><td data-label="Tarif">Strom Klassik<span class="sub">Standard</span></td><td class="num" data-label="Abschlag">87,00 €</td><td data-label="Laufzeitende">31.12.2027</td><td data-label="Status"><span class="st ok">aktiv</span></td></tr>
+                <tr><td><span class="row" style="gap:10px"><svg class="i"><use href="#i-flame"/></svg><a href="#">Gas</a></span></td><td data-label="Tarif">Gas Komfort<span class="sub">Klima</span></td><td class="num" data-label="Abschlag">68,00 €</td><td data-label="Laufzeitende">31.03.2027</td><td data-label="Status"><span class="st ok">aktiv</span></td></tr>
+                <tr><td><span class="row" style="gap:10px"><svg class="i"><use href="#i-phone"/></svg><a href="#">Mobilfunk</a></span></td><td data-label="Tarif">Mobil 20 GB<span class="sub">20 GB</span></td><td class="num" data-label="Monatspreis">19,99 €</td><td data-label="Laufzeitende">30.06.2027</td><td data-label="Status"><span class="st ok">aktiv</span></td></tr>
+                <tr><td><span class="row" style="gap:10px"><svg class="i"><use href="#i-wifi"/></svg><a href="#">Internet</a></span></td><td data-label="Tarif">Glasfaser 250<span class="sub">250 Mbit/s</span></td><td class="num" data-label="Monatspreis">39,99 €</td><td data-label="Laufzeitende">30.11.2026</td><td data-label="Status"><span class="st">gekündigt</span></td></tr>
+              </tbody>
+            </table></div>
+          </div>
+          <div class="split">
+            <section class="card" aria-labelledby="k-vt-d">
+              <div class="card-h"><h2 id="k-vt-d" style="font-size:var(--kp-h3)"><svg class="i"><use href="#i-bolt"/></svg>Strom Klassik</h2><span class="st ok">aktiv</span></div>
+              <dl class="dl">
+                <dt>Vertragsnummer</dt><dd class="mono">VS-2019-004 711</dd>
+                <dt>Tarifoption</dt><dd>Standard</dd>
+                <dt>Monatlicher Abschlag</dt><dd>87,00 €</dd>
+                <dt>Grundpreis pro Monat</dt><dd>12,90 €</dd>
+                <dt>Arbeitspreis</dt><dd>32,4 ct pro kWh</dd>
+                <dt>Zählernummer</dt><dd class="mono">1ESY 1160 4471 23</dd>
+                <dt>Geschätzter Jahresverbrauch</dt><dd>2.650 kWh</dd>
+                <dt>Vertragsbeginn</dt><dd>01.03.2019 · 24 Monate</dd>
+              </dl>
+              <a class="btn btn-secondary" style="margin-top:var(--kp-space)" href="#" data-go="verbrauch"><svg class="i"><use href="#i-chart"/></svg>Zählerstand erfassen</a>
+            </section>
+            <form class="card stack" aria-labelledby="k-vt-f" onsubmit="return false">
+              <h2 id="k-vt-f" style="font-size:var(--kp-h3)">Vertrag ändern</h2>
+              <p class="muted small">Den Abschlag können Sie in ganzen Euro innerhalb der angegebenen Spanne wählen.</p>
+              <div class="field"><label for="k-abschlag">Neuer monatlicher Abschlag</label>
+                <div class="input-affix"><input class="input" id="k-abschlag" type="number" min="60" max="120" value="87" aria-describedby="k-abschlag-h"><span>€</span></div>
+                <input class="range" type="range" min="60" max="120" value="87" aria-label="Abschlag mit Schieberegler wählen">
+                <span class="hint" id="k-abschlag-h">Zwischen 60 € und 120 €, ganze Euro</span></div>
+              <fieldset class="optcards"><legend>Tarifoption</legend>
+                <label class="optcard"><input type="radio" name="k-opt" checked><b>Standard</b><small>32,4 ct/kWh</small></label>
+                <label class="optcard"><input type="radio" name="k-opt"><b>Öko</b><small>33,9 ct/kWh</small></label>
+                <label class="optcard"><input type="radio" name="k-opt"><b>Klima</b><small>34,6 ct/kWh</small></label>
+              </fieldset>
+              <div class="alert success" role="status"><svg class="i"><use href="#i-check"/></svg><p>Gespeichert. Die Bestätigung folgt im Postfach.</p></div>
+              <div class="row"><button class="btn btn-primary" type="submit">Änderung speichern</button><button class="btn btn-ghost" type="reset">Abbrechen</button></div>
+            </form>
+          </div>
+        </div>
+      </section>
+
+      <!-- Verbrauch -->
+      <section class="screen" data-screen="verbrauch" aria-labelledby="k-vb-h" hidden>
+        <div class="pagehead"><h1 id="k-vb-h">Verbrauch</h1><p class="lead">Zählerstände erfassen und den Verlauf ansehen; bei Mobilfunk das Datenvolumen des Monats.</p></div>
+        <div class="tabs" role="tablist" aria-label="Verträge">
+          <button role="tab" type="button" id="k-tab-s" aria-controls="k-pan-s" aria-selected="true"><svg class="i"><use href="#i-bolt"/></svg>Strom</button>
+          <button role="tab" type="button" id="k-tab-g" aria-controls="k-pan-g" aria-selected="false" tabindex="-1"><svg class="i"><use href="#i-flame"/></svg>Gas</button>
+          <button role="tab" type="button" id="k-tab-m" aria-controls="k-pan-m" aria-selected="false" tabindex="-1"><svg class="i"><use href="#i-phone"/></svg>Mobilfunk</button>
+        </div>
+        <div role="tabpanel" id="k-pan-s" aria-labelledby="k-tab-s" class="stack-lg">
+          <div class="grid" style="--min:180px">
+            <div class="card kpi"><span class="l">Letzter Stand</span><span class="v">48.213 kWh</span><span class="small muted">am 01.10.2026 · Ihre Angabe</span></div>
+            <div class="card kpi"><span class="l">Letzte 12 Monate</span><span class="v">2.635 kWh</span><span class="d up">−4,1 % zum Vorjahr</span></div>
+            <div class="card kpi"><span class="l">Ø pro Monat</span><span class="v">220 kWh</span><span class="small muted">≈ 71 € bei 32,4 ct/kWh</span></div>
+          </div>
+          <div class="split">
+            <section class="card" aria-labelledby="k-ch-h">
+              <div class="card-h"><h2 id="k-ch-h" style="font-size:var(--kp-h3)">Strom · Zähler 1ESY 1160 4471 23</h2></div>
+              <div class="lgd" aria-hidden="true"><span><i></i>Okt 2025 – Sep 2026</span><span><i class="dash"></i>Vorjahr</span></div>
+              <div id="chart-strom"></div>
+              <details class="tv"><summary>Als Tabelle anzeigen</summary><div id="chart-strom-table"></div></details>
+            </section>
+            <form class="card stack" aria-labelledby="k-rd-h" onsubmit="return false">
+              <h2 id="k-rd-h" style="font-size:var(--kp-h3)">Zählerstand erfassen</h2>
+              <p class="small muted">Letzter Stand: 48.213 kWh am 01.10.2026</p>
+              <div class="field"><label for="k-val">Zählerstand</label><div class="input-affix"><input class="input" id="k-val" inputmode="numeric" value="48 390" aria-invalid="true" aria-describedby="k-val-e"><span>kWh</span></div>
+                <span class="hint" id="k-val-e" style="color:var(--kp-error-text)">Der Zählerstand ist nicht plausibel. Bitte prüfen Sie Wert und Datum.</span></div>
+              <div class="field"><label for="k-date">Ablesedatum</label><input class="input" id="k-date" type="date" value="2026-10-01"></div>
+              <div class="field"><label for="k-photo">Zählerfoto (freiwillig)</label><input class="input" id="k-photo" type="file" style="padding-top:8px"><span class="hint">Ein Foto hilft bei Rückfragen. Es wird nach sieben Tagen gelöscht.</span></div>
+              <button class="btn btn-primary" type="submit">Zählerstand senden</button>
+            </form>
+          </div>
+          <section class="card" aria-labelledby="k-rt-h">
+            <h2 id="k-rt-h" style="font-size:var(--kp-h3);margin-bottom:8px">Zählerstände</h2>
+            <div class="tbl-wrap"><table class="tbl stackable"><caption>Zählerstände, neueste zuerst</caption>
+              <thead><tr><th scope="col">Ablesedatum</th><th scope="col" class="num">Zählerstand</th><th scope="col">Quelle</th></tr></thead>
+              <tbody>
+                <tr><td>01.10.2026</td><td class="num" data-label="Stand">48.213 kWh</td><td data-label="Quelle">Ihre Angabe <span class="tag">mit Foto</span></td></tr>
+                <tr><td>01.07.2026</td><td class="num" data-label="Stand">47.681 kWh</td><td data-label="Quelle">Ihre Angabe</td></tr>
+                <tr><td>02.04.2026</td><td class="num" data-label="Stand">47.072 kWh</td><td data-label="Quelle">Ihre Angabe</td></tr>
+                <tr><td>01.03.2019</td><td class="num" data-label="Stand">31.004 kWh</td><td data-label="Quelle">Vertragsbeginn</td></tr>
+              </tbody></table></div>
+          </section>
+        </div>
+        <div role="tabpanel" id="k-pan-g" aria-labelledby="k-tab-g" class="stack-lg" hidden>
+          <section class="card"><div class="card-h"><h2 style="font-size:var(--kp-h3)">Gas · Zähler 7GMT 0021 0918</h2><span class="st ok">aktiv</span></div>
+            <div class="lgd" aria-hidden="true"><span><i></i>Okt 2025 – Sep 2026</span><span><i class="dash"></i>Vorjahr</span></div>
+            <div id="chart-gas"></div></section>
+        </div>
+        <div role="tabpanel" id="k-pan-m" aria-labelledby="k-tab-m" class="stack-lg" hidden>
+          <section class="card passhero"><div id="ring-mobil"></div><div class="stack"><h2 style="font-size:var(--kp-h3)">Datenvolumen · Mobil 20 GB</h2><p class="muted">Abrechnungszeitraum 15.09.–14.10.2026. Noch 7,6 GB übrig, danach gedrosselt auf 64 kbit/s.</p><div class="row"><button class="btn btn-secondary" type="button"><svg class="i"><use href="#i-plus"/></svg>1 GB nachbuchen</button></div></div></section>
+        </div>
+      </section>
+
+      <!-- Postfach -->
+      <section class="screen" data-screen="postfach" aria-labelledby="k-pf-h" hidden>
+        <div class="pagehead"><div class="row between"><h1 id="k-pf-h">Demo-Postfach</h1><button class="btn btn-secondary btn-sm" type="button"><svg class="i"><use href="#i-refresh"/></svg>Aktualisieren</button></div></div>
+        <div class="mailbox">
+          <section class="card" style="padding:calc(var(--kp-space)*.5)" aria-label="Nachrichten">
+            <ul class="mail-list">
+              <li><a class="mail-item unread" href="#" aria-current="true"><span class="u"></span><b>Zählerstand gespeichert</b><span class="small muted">09:14</span><span class="pv">Ihr Zählerstand 48.213 kWh ist eingegangen.</span></a></li>
+              <li><a class="mail-item unread" href="#"><span class="u"></span><b>Neuer Abschlag ab November</b><span class="small muted">gestern</span><span class="pv">Ihr Abschlag für Strom Klassik beträgt ab 1. November 87 €.</span></a></li>
+              <li><a class="mail-item" href="#"><span class="u"></span><b>Ihr Konto wurde übernommen</b><span class="small muted">28.09.</span><span class="pv">Ihre Verträge aus dem bisherigen Portal sind jetzt hier.</span></a></li>
+              <li><a class="mail-item" href="#"><span class="u"></span><b>Willkommen im Kundenportal</b><span class="small muted">28.09.</span><span class="pv">Schön, dass Sie da sind. Hier finden Sie alle Verträge.</span></a></li>
+              <li><a class="mail-item" href="#"><span class="u"></span><b>Ihr Demo-Pass ist bereit</b><span class="small muted">28.09.</span><span class="pv">Ihre Instanz pass-7f3k2 ist eingerichtet.</span></a></li>
+            </ul>
+          </section>
+          <article class="card msg" aria-labelledby="k-msg-h">
+            <div class="row between"><span class="st info">neu</span><span class="small muted">Mi, 01.10.2026, 09:14</span></div>
+            <h2 id="k-msg-h" style="font-size:var(--kp-h2)">Zählerstand gespeichert</h2>
+            <p class="small muted">Von: Kundenportal · Strom Klassik</p>
+            <div class="body">
+              <p>Guten Tag Anna Becker,</p>
+              <p>vielen Dank: Ihr Zählerstand <b>48.213 kWh</b> vom 01.10.2026 für den Zähler 1ESY 1160 4471 23 ist eingegangen. Ihr Foto haben wir angehängt; es wird nach sieben Tagen gelöscht.</p>
+              <div class="alert info"><svg class="i"><use href="#i-info"/></svg><p>Ihr Verbrauch liegt 4,1 % unter dem Vorjahr. Ihr Abschlag von 87 € bleibt unverändert.</p></div>
+              <p>Freundliche Grüße<br>Ihr Kundenservice</p>
+            </div>
+            <div class="row" style="margin-top:var(--kp-space)"><button class="btn btn-primary" type="button"><svg class="i"><use href="#i-check"/></svg>Als gelesen markieren</button><a class="btn btn-ghost" href="#" data-go="verbrauch">Verbrauch ansehen</a></div>
+          </article>
+        </div>
+      </section>
+
+      <!-- Demo-Pass -->
+      <section class="screen" data-screen="pass" aria-labelledby="k-ps-h" hidden>
+        <div class="pagehead"><h1 id="k-ps-h">Ihr Demo-Pass</h1><p class="lead">Stand Ihrer eigenen Instanz, Kontingent und Zugangsdaten der Demo-Personen.</p></div>
+        <div class="stack-lg">
+          <section class="card passhero" aria-label="Status">
+            <div id="ring-pass"></div>
+            <div class="stack">
+              <div class="row"><span class="st ok pulse">Aktiv</span><span class="small muted">Mandant <span class="mono">pass-7f3k2</span></span></div>
+              <h2 style="font-size:var(--kp-h2)">Ihre Instanz ist bereit.</h2>
+              <p class="muted">Gültig bis Fr, 02.10.2026, 16:40 Uhr — noch 31 Std. Am Ende der Laufzeit wird die Instanz automatisch gelöscht: Konten, Verträge, Uploads und Altsystem-Daten.</p>
+              <div class="row"><a class="btn btn-primary" href="#" data-go-cockpit="cockpit">Zum Migrations-Cockpit Ihrer Instanz <svg class="i"><use href="#i-right"/></svg></a><button class="btn btn-secondary" type="button"><svg class="i"><use href="#i-refresh"/></svg>Aktualisieren</button></div>
+            </div>
+          </section>
+          <div class="split">
+            <section class="card stack" aria-labelledby="k-q-h">
+              <h2 id="k-q-h" style="font-size:var(--kp-h3)">Kontingent</h2>
+              <div class="quota"><div class="row"><span>API-Aufrufe</span><span class="num small">1.240 von 5.000 · <b>3.760 übrig</b></span></div><div class="meter" role="meter" aria-label="API-Aufrufe" aria-valuemin="0" aria-valuemax="5000" aria-valuenow="1240"><i style="width:24.8%"></i></div></div>
+              <div class="quota"><div class="row"><span>Domänen-Ereignisse</span><span class="num small">812 von 1.000 · <b>188 übrig</b></span></div><div class="meter warn" role="meter" aria-label="Domänen-Ereignisse" aria-valuemin="0" aria-valuemax="1000" aria-valuenow="812"><i style="width:81.2%"></i></div></div>
+              <div class="quota"><div class="row"><span>Uploads</span><span class="num small">3 von 20 · <b>17 übrig</b></span></div><div class="meter" role="meter" aria-label="Uploads" aria-valuemin="0" aria-valuemax="20" aria-valuenow="3"><i style="width:15%"></i></div></div>
+              <div class="alert warning"><svg class="i"><use href="#i-alert"/></svg><p class="small">Ereignisse zu 81 % verbraucht. Ist ein Kontingent aufgebraucht, nimmt die Instanz keine Änderungen mehr an; Sie können sich weiter umsehen.</p></div>
+            </section>
+            <section class="card stack" aria-labelledby="k-pp-h">
+              <h2 id="k-pp-h" style="font-size:var(--kp-h3)">Demo-Personen</h2>
+              <p class="small muted">Mit diesen Konten melden Sie sich als Kunde der beiden Altsysteme an und erleben die Übernahme.</p>
+              <table class="tbl"><thead><tr><th scope="col">Name</th><th scope="col">Anmeldename</th></tr></thead><tbody>
+                <tr><td>Anna Becker<span class="sub">Versorger</span></td><td class="mono">anna.becker</td></tr>
+                <tr><td>Jonas Wilke<span class="sub">Telko</span></td><td class="mono">j.wilke</td></tr>
+                <tr><td>Mira Osei<span class="sub">beide</span></td><td class="mono">mira.osei</td></tr>
+              </tbody></table>
+              <div class="field"><span class="fl">Demo-Passwort</span><div class="secret"><code>Lerche-Kompass-42</code><button class="btn btn-secondary btn-sm" type="button" aria-label="Demo-Passwort kopieren"><svg class="i"><use href="#i-copy"/></svg>Kopieren</button></div></div>
+            </section>
+          </div>
+        </div>
+      </section>
+    </div></main>
+  </div>
+  <nav class="bottomnav" aria-label="Hauptnavigation (unten)"><ul data-nav-list="bottom"></ul></nav>
+  <footer class="ftr"><span>Demo-Projekt · Quellcode auf GitHub · Alle Daten sind erfunden.</span><nav aria-label="Rechtliches"><a href="#">Impressum</a><a href="#">Datenschutz</a><a href="#" lang="en">English</a></nav></footer>
+</div>
+
+<!-- ======================================================================
+     Audience 2: migration cockpit for the operator (power user)
+     ====================================================================== -->
+<div class="app" id="app-cockpit" data-aud="cockpit" hidden>
+  <a class="skip" href="#c-main">Zum Inhalt springen</a>
+  <header class="hdr">
+    <button class="iconbtn menu-btn" type="button" aria-label="Menü öffnen"><svg class="i"><use href="#i-menu"/></svg></button>
+    <a class="brand" href="#" data-go="cockpit"><svg class="logo" aria-hidden="true"><use href="#i-logo"/></svg>Kundenportal <em>Cockpit</em></a>
+    <span class="chip version" title="Version und Commit">v0.4.4 · a1b2c3d</span>
+    <nav class="topnav" aria-label="Hauptnavigation"><ul data-nav-list="top"></ul></nav>
+    <div class="hdr-actions">
+      <label class="search"><svg class="i"><use href="#i-search"/></svg><span class="sr">Konto, Mandant oder Ereignis suchen</span><input id="c-search" type="search" placeholder="Konto, Mandant, Ereignis …"><kbd aria-hidden="true">/</kbd></label>
+      <button class="iconbtn" type="button" aria-label="Benachrichtigungen, 3 neue Klärfälle"><svg class="i"><use href="#i-bell"/></svg><span class="dot-badge" aria-hidden="true">3</span></button>
+      <div class="um">
+        <button class="userbtn" type="button" aria-expanded="false" aria-haspopup="true" aria-controls="c-menu" aria-label="Benutzermenü Lena Vogt"><span class="avatar" aria-hidden="true">LV</span><span class="uname">Lena Vogt</span><svg class="i chev" aria-hidden="true"><use href="#i-chev"/></svg></button>
+        <div class="menu" id="c-menu" hidden>
+          <div class="menu-head"><span class="avatar" aria-hidden="true">LV</span><div><b>Lena Vogt</b><span>Inhaberin des Portals</span></div></div>
+          <a href="#" data-go="paesse"><svg class="i"><use href="#i-ticket"/></svg>Demo-Pässe</a>
+          <a href="#"><svg class="i"><use href="#i-ext"/></svg>Zum Kundenportal</a>
+          <hr><a href="#"><svg class="i"><use href="#i-logout"/></svg>Abmelden</a>
+        </div>
+      </div>
+    </div>
+  </header>
+  <div class="shell">
+    <nav class="sidenav" aria-label="Cockpit-Navigation"><div class="sidenav-inner"><ul data-nav-list="side"></ul></div></nav>
+    <main class="main" id="c-main" tabindex="-1"><div class="main-inner">
+
+      <!-- Cockpit overview -->
+      <section class="screen" data-screen="cockpit" aria-labelledby="c-ov-h">
+        <div class="pagehead">
+          <div class="row between"><div><p class="eyebrow">Migration</p><h1 id="c-ov-h">Migrations-Cockpit</h1></div>
+            <div class="row"><span class="livedot">Aktualisiert sich alle 10 Sekunden · 10:42:18</span><button class="btn btn-secondary btn-sm" type="button"><svg class="i"><use href="#i-refresh"/></svg>Aktualisieren</button></div></div>
+          <p class="lead">Übernahme der Kundenkonten aus den Altsystemen von Versorger und Telko: Fortschritt, Klärfälle, fehlerhafte Datensätze und alle Ereignisse.</p>
+        </div>
+        <div class="stack">
+          <div class="kpis">
+            <section class="card kpi-ring" aria-label="Fortschritt Versorger"><div id="ring-utility"></div><div class="kpi"><span class="l">Versorger</span><span class="v">1.842 <span class="small muted">/ 2.400</span></span><span class="d up">+126 heute</span></div></section>
+            <section class="card kpi-ring" aria-label="Fortschritt Telko"><div id="ring-telco"></div><div class="kpi"><span class="l">Telko</span><span class="v">611 <span class="small muted">/ 1.150</span></span><span class="d up">+48 heute</span></div></section>
+            <section class="card kpi" aria-label="Klärfälle"><span class="l">Offene Klärfälle</span><span class="v">14</span><div class="row between"><span class="d down">+3 seit gestern</span><span id="spark-klaer" aria-hidden="true"></span></div></section>
+            <section class="card kpi" aria-label="Dead-Letter-Queue"><span class="l">Dead-Letter-Queue</span><span class="v">6</span><div class="row between"><span class="d up">−2 nach Redrive</span><span id="spark-dlq" aria-hidden="true"></span></div></section>
+          </div>
+          <div class="cockpit-grid">
+            <div class="stack">
+              <section class="card" aria-labelledby="c-bulk-h">
+                <div class="card-h"><h2 id="c-bulk-h">Bulk-Import der Inaktiven</h2><div class="row"><button class="btn btn-primary btn-sm" type="button">Import Versorger starten</button><button class="btn btn-secondary btn-sm" type="button" disabled aria-describedby="c-bulk-run">Import Telko starten</button></div></div>
+                <p class="small muted" id="c-bulk-run">Für Telko läuft bereits ein Import. Passwörter werden nicht übertragen; die Kunden erhalten eine Aufforderung, ein neues Passwort zu vergeben.</p>
+                <div class="tbl-wrap"><table class="tbl" style="margin-top:8px"><caption class="sr">Bulk-Import-Läufe</caption>
+                  <thead><tr><th scope="col">Gestartet</th><th scope="col">Altsystem</th><th scope="col">Status</th><th scope="col">Ergebnis</th></tr></thead>
+                  <tbody>
+                    <tr><td class="mono">01.10. 10:31</td><td>Telko</td><td><span class="st info pulse">läuft</span></td><td><div class="meter thin" style="margin-bottom:4px"><i style="width:58%"></i></div><span class="small muted">412 gelesen · 371 übernommen · 29 aktiv · 8 Klärfälle · 4 fehlgeschlagen</span></td></tr>
+                    <tr><td class="mono">30.09. 17:05</td><td>Versorger</td><td><span class="st ok">abgeschlossen</span></td><td><span class="small">1.204 gelesen · 1.122 übernommen · 61 aktiv · 6 Klärfälle · 15 fehlgeschlagen</span></td></tr>
+                  </tbody></table></div>
+              </section>
+              <section class="card" id="c-klaer" aria-labelledby="c-kl-h">
+                <div class="card-h"><h2 id="c-kl-h">Klärfälle <span class="tag">14</span></h2><a class="small" href="#">Alle anzeigen</a></div>
+                <div class="tbl-wrap"><table class="tbl"><caption class="sr">Klärfälle</caption>
+                  <thead><tr><th scope="col">Konto</th><th scope="col">Name</th><th scope="col">Problem</th><th scope="col">Stand</th></tr></thead>
+                  <tbody>
+                    <tr><td class="mono">VS-118 204</td><td>Karl Stein<span class="sub">Versorger</span></td><td><span class="st warn">keine gültige E-Mail</span></td><td class="mono small">10:38</td></tr>
+                    <tr><td class="mono">TK-88 02 911</td><td>Paula Brandt<span class="sub">Telko</span></td><td><span class="st warn">Dublette: 2 Konten</span></td><td class="mono small">10:36</td></tr>
+                    <tr><td class="mono">TK-88 17 450</td><td>Emre Yıldız<span class="sub">Telko</span></td><td><span class="st warn">Anschrift weicht ab</span></td><td class="mono small">10:21</td></tr>
+                    <tr><td class="mono">VS-120 877</td><td>Sophie Lang<span class="sub">Versorger</span></td><td><span class="st warn">keine gültige E-Mail</span></td><td class="mono small">09:55</td></tr>
+                  </tbody></table></div>
+              </section>
+              <section class="card" id="c-dlq" aria-labelledby="c-dlq-h">
+                <div class="card-h"><h2 id="c-dlq-h">Dead-Letter-Queue <span class="tag">6</span></h2></div>
+                <p class="small muted">Nach einer Korrektur lassen sich Datensätze erneut verarbeiten (Redrive); das Altsystem bleibt unverändert.</p>
+                <div class="tbl-wrap"><table class="tbl" style="margin-top:8px"><caption class="sr">Fehlgeschlagene Datensätze</caption>
+                  <thead><tr><th scope="col">Konto</th><th scope="col">Problem</th><th scope="col" class="num">Versuche</th><th scope="col"><span class="sr">Aktion</span></th></tr></thead>
+                  <tbody>
+                    <tr class="expanded"><td class="mono">VS-109 552<span class="sub">Henrik Maas</span></td><td><span class="st err">Postleitzahl ungültig: „5O667“</span></td><td class="num">3</td><td class="num"><button class="btn btn-ghost btn-sm" type="button" aria-expanded="true" aria-controls="c-rd-1" data-toggle-row>Schließen</button></td></tr>
+                    <tr id="c-rd-1"><td colspan="4"><form class="redrive" onsubmit="return false">
+                      <div class="field"><label for="c-plz">Postleitzahl (Korrektur)</label><input class="input" id="c-plz" value="50667" inputmode="numeric"></div>
+                      <div class="field"><label for="c-mail">E-Mail-Adresse (Korrektur)</label><input class="input" id="c-mail" value="h.maas@example.org"></div>
+                      <button class="btn btn-primary" type="submit"><svg class="i"><use href="#i-refresh"/></svg>Erneut verarbeiten</button></form></td></tr>
+                    <tr><td class="mono">TK-88 30 118<span class="sub">Lea Kraus</span></td><td><span class="st err">E-Mail-Format ungültig</span></td><td class="num">2</td><td class="num"><button class="btn btn-ghost btn-sm" type="button" aria-expanded="false">Korrigieren</button></td></tr>
+                    <tr><td class="mono">TK-88 41 902<span class="sub">Tim Hofer</span></td><td><span class="st err">Altsystem-Zeitüberschreitung</span></td><td class="num">5</td><td class="num"><button class="btn btn-ghost btn-sm" type="button" aria-expanded="false">Korrigieren</button></td></tr>
+                  </tbody></table></div>
+              </section>
+            </div>
+            <div class="stack">
+              <section class="card" id="c-tl" aria-labelledby="c-tl-h">
+                <div class="card-h"><h2 id="c-tl-h">Ereignis-Timeline</h2><span class="small muted">7 Tage</span></div>
+                <ol class="timeline">
+                  <li><span class="ti ok"><svg class="i"><use href="#i-check"/></svg></span><div><div class="ev">Konto übernommen</div><div class="meta"><span class="mono">AccountMigrated</span><span>VS-118 377</span><span>10:41</span></div></div></li>
+                  <li><span class="ti warn"><svg class="i"><use href="#i-alert"/></svg></span><div><div class="ev">Klärfall angelegt</div><div class="meta"><span class="mono">ClarificationRaised</span><span>VS-118 204</span><span>10:38</span></div></div></li>
+                  <li><span class="ti"><svg class="i"><use href="#i-link"/></svg></span><div><div class="ev">Konten verknüpft</div><div class="meta"><span class="mono">AccountsLinked</span><span>KP-104 233 ↔ TK-88 41 207</span><span>10:33</span></div></div></li>
+                  <li><span class="ti"><svg class="i"><use href="#i-upload"/></svg></span><div><div class="ev">Bulk-Import Telko gestartet</div><div class="meta"><span class="mono">BulkImportStarted</span><span>Lena Vogt</span><span>10:31</span></div></div></li>
+                  <li><span class="ti err"><svg class="i"><use href="#i-x"/></svg></span><div><div class="ev">Datensatz in DLQ</div><div class="meta"><span class="mono">RecordFailed</span><span>TK-88 41 902</span><span>10:29</span></div></div></li>
+                  <li><span class="ti ok"><svg class="i"><use href="#i-bolt"/></svg></span><div><div class="ev">Zählerstand erfasst</div><div class="meta"><span class="mono">MeterReadingRecorded</span><span>KP-104 233</span><span>09:14</span></div></div></li>
+                </ol>
+              </section>
+              <section class="card danger stack" aria-labelledby="c-rs-h">
+                <h2 id="c-rs-h" style="font-size:var(--kp-h3)">Demo zurücksetzen</h2>
+                <p class="small muted">Entfernt die Portal-Konten, die die Migration angelegt hat, sowie Läufe, Datensatz-Stände und die DLQ. Die Altsysteme behalten ihre Daten.</p>
+                <div><button class="btn btn-danger btn-sm" type="button">Demo zurücksetzen …</button></div>
+              </section>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Demo-Pässe -->
+      <section class="screen" data-screen="paesse" aria-labelledby="c-ps-h" hidden>
+        <div class="pagehead"><p class="eyebrow">Verwaltung</p><h1 id="c-ps-h">Demo-Pässe</h1><p class="lead">Einladungen ausstellen und laufende Demo-Pässe überwachen. Jeder Pass ist eine eigene Instanz für 48 Stunden ab der ersten Anmeldung.</p></div>
+        <div class="stack">
+          <div class="kpis">
+            <div class="card kpi"><span class="l">Aktive Pass-Mandanten</span><span class="v">3 <span class="small muted">/ 4</span></span><div class="meter thin"><i style="width:75%"></i></div></div>
+            <div class="card kpi"><span class="l">Offene Einladungen</span><span class="v">2</span><span class="small muted">gültig 14 Tage</span></div>
+            <div class="card kpi"><span class="l">Nie angemeldet</span><span class="v">1</span><span class="small muted">Erinnerung nach 24 Std.</span></div>
+            <div class="card kpi"><span class="l">API-Aufrufe heute</span><span class="v">3.918</span><span id="spark-api" aria-hidden="true"></span></div>
+          </div>
+          <section class="card" aria-labelledby="c-list-h">
+            <div class="card-h"><h2 id="c-list-h">Pässe</h2><span class="small muted">neueste zuerst</span></div>
+            <div class="tbl-wrap"><table class="tbl"><caption class="sr">Alle Demo-Pässe, neueste zuerst</caption>
+              <thead><tr><th scope="col">E-Mail</th><th scope="col">Mandant</th><th scope="col">Status</th><th scope="col">Erste Anmeldung</th><th scope="col">Letzte Aktivität</th><th scope="col">Kontingent (verbraucht, %)</th><th scope="col">Gültig bis</th><th scope="col"><span class="sr">Aktion</span></th></tr></thead>
+              <tbody id="pass-rows"></tbody></table></div>
+          </section>
+          <div class="cockpit-grid">
+            <section class="card stack" aria-labelledby="c-inv-h">
+              <h2 id="c-inv-h">Einladung erstellen</h2>
+              <p class="small muted">Das System verschickt keine E-Mail mit dem Link. Sie sehen den Link nur ein einziges Mal und geben ihn selbst weiter. Er gilt 14 Tage und lässt sich einmal einlösen.</p>
+              <div class="row" style="align-items:start">
+                <div class="field" style="flex:2;min-width:220px"><label for="c-inv-mail">E-Mail-Adresse der eingeladenen Person</label><input class="input" id="c-inv-mail" type="email" value="m.schulz@example.com" aria-describedby="c-inv-mh"><span class="hint" id="c-inv-mh">An diese Adresse schickt Cognito beim Einlösen das Einmal-Passwort.</span></div>
+                <div class="field" style="flex:1;min-width:160px"><label for="c-inv-min">Kurze Testlaufzeit (Min.)</label><input class="input" id="c-inv-min" type="number" min="1" max="60" placeholder="48 Std." aria-describedby="c-inv-nh"><span class="hint" id="c-inv-nh">Leer = 48 Stunden</span></div>
+              </div>
+              <div><button class="btn btn-primary" type="button"><svg class="i"><use href="#i-plus"/></svg>Einladung erstellen</button></div>
+              <div class="alert success"><svg class="i"><use href="#i-check"/></svg><div class="stack" style="gap:8px;flex:1;min-width:0"><p>Einladung erstellt. Kopieren Sie den Link jetzt — er wird nicht noch einmal angezeigt.</p>
+                <div class="linkbox"><code>https://kundenportal-demo.rypox.com/pass#t=Q2xhdWRlLWRlbW8tdG9rZW4tZmFrZQ</code><button class="btn btn-secondary btn-sm" type="button" aria-label="Einladungslink kopieren"><svg class="i"><use href="#i-copy"/></svg>Kopieren</button></div>
+                <span class="small muted">Gültig bis 15.10.2026, 10:44</span></div></div>
+            </section>
+            <section class="card stack" id="c-set" aria-labelledby="c-set-h">
+              <h2 id="c-set-h">Einstellungen</h2>
+              <div class="row between"><button class="switch" type="button" role="switch" aria-checked="true" id="c-redeem"><span class="tr" aria-hidden="true"></span>Einlösen <span id="c-redeem-l" class="st ok">offen</span></button></div>
+              <p class="small muted">Gesperrt lässt sich keine Einladung einlösen; laufende Pässe bleiben nutzbar. Der Budget-Alarm sperrt das Einlösen automatisch.</p>
+              <div class="field"><label for="c-cap">Höchstzahl gleichzeitiger Pass-Mandanten</label><div class="input-group"><input class="input" id="c-cap" type="number" min="1" max="4" value="4" style="max-width:120px" aria-describedby="c-cap-h"><button class="btn btn-secondary" type="button">Höchstzahl speichern</button></div>
+                <span class="hint" id="c-cap-h">Kostenlos sind 25/25 Kapazitätseinheiten je Konto; die Basis belegt 5/5, also passen höchstens 4 ohne Kosten.</span></div>
+            </section>
+          </div>
+        </div>
+      </section>
+    </div></main>
+  </div>
+  <nav class="bottomnav" aria-label="Cockpit-Navigation (unten)"><ul data-nav-list="bottom"></ul></nav>
+  <footer class="ftr"><span>Migrations-Cockpit · nur für Inhaber und Demo-Pass-Inhaber · Alle Daten sind erfunden.</span><nav aria-label="Weitere"><a href="#">Berichte</a><a href="#">Storybook</a></nav></footer>
+</div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ====================================================================
+       Legend: tokens and recommendation
+       ==================================================================== -->
+  <section class="legend" aria-labelledby="lg-h">
+    <h2 id="lg-h">Legende: Tokens und Empfehlung</h2>
+    <p>Bestehende Tokens aus <code>packages/ui/src/styles.css</code> behalten ihren Namen; neue sind mit <b>neu</b> markiert. „Parameter kopieren“ liefert genau diese Tokens für hell und dunkel.</p>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>Token</th><th>Bedeutung</th><th>Herkunft</th></tr></thead>
+      <tbody>
+        <tr><td><code>--kp-bg</code> · <code>--kp-surface</code></td><td>Seitenhintergrund · Fläche von Karten, Kopfzeile, Menüs</td><td>vorhanden</td></tr>
+        <tr><td><code>--kp-surface-2</code></td><td>zurückgenommene Fläche: Hover, Chips, Tabellen-Zebra, Code</td><td>neu</td></tr>
+        <tr><td><code>--kp-text</code> · <code>--kp-muted</code></td><td>Fließtext · Sekundärtext (beide ≥ 4,5:1 auf Fläche)</td><td>vorhanden</td></tr>
+        <tr><td><code>--kp-border</code> · <code>--kp-border-strong</code></td><td>Trennlinien · Rahmen von Eingabefeldern und Sekundär-Buttons</td><td>vorhanden · neu</td></tr>
+        <tr><td><code>--kp-accent</code> · <code>--kp-accent-contrast</code></td><td>Akzentfläche (Primär-Button, Markierung) · Text darauf; im Dunkelmodus automatisch aufgehellt</td><td>vorhanden</td></tr>
+        <tr><td><code>--kp-accent-text</code></td><td>Akzent als Text/Link auf Fläche, auf 4,5:1 nachgedunkelt bzw. aufgehellt</td><td>neu</td></tr>
+        <tr><td><code>--kp-accent-soft</code> · <code>--kp-unread</code></td><td>getönte Fläche für aktive Navigation, Icons, ungelesene Nachrichten</td><td>neu · vorhanden</td></tr>
+        <tr><td><code>--kp-focus</code></td><td>Farbe des Fokusrings (3 px, 2 px Abstand)</td><td>neu</td></tr>
+        <tr><td><code>--kp-{info,success,warning,error}-{bg,border}</code> · <code>-text</code></td><td>Statusfarben für Hinweise und Badges, immer mit Icon oder Text</td><td>vorhanden · <code>-text</code> neu</td></tr>
+        <tr><td><code>--kp-track</code> · <code>--kp-badge</code></td><td>Hintergrund von Balken, Ringen, Schaltern · Zähler-Badge an Glocke und Navigation</td><td>neu</td></tr>
+        <tr><td><code>--kp-font</code> · <code>--kp-font-heading</code></td><td>Schrift für Text · für Überschriften (nur Systemschriften)</td><td>vorhanden · neu</td></tr>
+        <tr><td><code>--kp-font-size</code> · <code>--kp-line-height</code> · <code>--kp-h1…h3</code> · <code>--kp-small</code></td><td>Grundgröße, Zeilenhöhe und daraus berechnete Typo-Skala</td><td>neu</td></tr>
+        <tr><td><code>--kp-heading-weight</code> · <code>--kp-heading-tracking</code></td><td>Gewicht und Laufweite der Überschriften je Schrift</td><td>neu</td></tr>
+        <tr><td><code>--kp-space</code> · <code>--kp-control</code> · <code>--kp-cell-y</code></td><td>Grundabstand · Höhe von Buttons/Feldern (Touch-Ziel) · Zeilenabstand in Tabellen</td><td>vorhanden · neu</td></tr>
+        <tr><td><code>--kp-radius</code> · <code>--kp-radius-large</code> · <code>--kp-btn-radius</code></td><td>Ecken von Feldern · Karten · Buttons (Warm: Pillenform)</td><td>vorhanden · neu</td></tr>
+        <tr><td><code>--kp-shadow</code> · <code>--kp-shadow-raised</code> · <code>--kp-card-border</code></td><td>Schatten von Karten · von Menüs · Kartenrahmen an/aus</td><td>neu</td></tr>
+        <tr><td><code>--kp-header-bg</code> · <code>--kp-side-bg</code></td><td>Fläche von Kopfzeile und Seitenleiste</td><td>neu</td></tr>
+        <tr><td><code>--kp-content-width</code></td><td>maximale Inhaltsbreite (Endkunde 1080 px, Cockpit 1440 px)</td><td>vorhanden</td></tr>
+      </tbody></table></div>
+    <h3>Empfehlung je Zielgruppe</h3>
+    <div class="rec">
+      <div><h4>Endkunden: „Vertrauen“, mit Elementen von „Warm“</h4><ul>
+        <li>Ruhiges Blau als Akzent, kühle Neutraltöne, 16–17 px Grundgröße, Zeilenhöhe ≈ 1,55.</li>
+        <li>Touch-Ziele 44 px (Dichte „normal“), Karten mit feinem Schatten und Rahmen.</li>
+        <li>Mobil: Bottom-Nav mit fünf Zielen statt Burger-Menü.</li>
+        <li>„Warm“ ist die freundlichere Alternative, wenn die Marke nahbarer wirken soll; „Klar“ passt, wenn der grüne Bestandsakzent bleibt.</li></ul></div>
+      <div><h4>Cockpit: „Dicht“, Dunkelmodus nach „Kontrast“</h4><ul>
+        <li>Seitenleiste mit Sektionen und Tastaturkürzeln, 14 px, Dichte „kompakt“, Tabellen mit Tabellenziffern.</li>
+        <li>Statusfarben nur mit Text und Icon; KPI-Kacheln oben, Timeline rechts.</li>
+        <li>Dunkelmodus mit den Werten von „Kontrast“ (aufgehellter Akzent, kräftigere Ränder).</li>
+        <li>Gleiche Token-Namen wie im Kundenportal, nur andere Werte: eine Component Library, zwei Themes.</li></ul></div>
+    </div>
+  </section>
+</div>
+</div>
+
+<script>
+/* Theme engine for the mockups: presets, live parameters, contrast check,
+   export and URL-hash persistence. Plain ES2020, no dependencies. */
+(() => {
+  "use strict";
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+
+  /* ---------- Colour helpers (sRGB, WCAG 2.x relative luminance) ---------- */
+  const hex2rgb = (h) => { h = h.replace("#", ""); if (h.length === 3) h = [...h].map((c) => c + c).join(""); const n = parseInt(h, 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
+  const rgb2hex = (a) => "#" + a.map((v) => Math.round(Math.max(0, Math.min(255, v))).toString(16).padStart(2, "0")).join("");
+  const lum = (h) => { const [r, g, b] = hex2rgb(h).map((v) => { v /= 255; return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
+  const contrast = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
+  const mix = (a, b, t) => { const A = hex2rgb(a), B = hex2rgb(b); return rgb2hex(A.map((v, i) => v + (B[i] - v) * t)); };
+  function toHsl(h) {
+    const [r, g, b] = hex2rgb(h).map((v) => v / 255); const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+    let H = 0, S = 0; const L = (mx + mn) / 2;
+    if (mx !== mn) { const d = mx - mn; S = L > 0.5 ? d / (2 - mx - mn) : d / (mx + mn);
+      H = mx === r ? (g - b) / d + (g < b ? 6 : 0) : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; H /= 6; }
+    return [H, S, L];
+  }
+  function fromHsl([H, S, L]) {
+    if (!S) return rgb2hex([L * 255, L * 255, L * 255]);
+    const q = L < 0.5 ? L * (1 + S) : L + S - L * S, p = 2 * L - q;
+    const f = (t) => { if (t < 0) t += 1; if (t > 1) t -= 1; if (t < 1 / 6) return p + (q - p) * 6 * t; if (t < 1 / 2) return q; if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6; return p; };
+    return rgb2hex([f(H + 1 / 3), f(H), f(H - 1 / 3)].map((v) => v * 255));
+  }
+  /* Moves the lightness of `hex` in direction `dir` until it reaches `target` contrast against `bg`. */
+  function fit(hex, bg, target, dir) {
+    let [h, s, l] = toHsl(hex), c = hex;
+    for (let i = 0; i < 100 && contrast(c, bg) < target; i++) { l = Math.max(0, Math.min(1, l + dir * 0.01)); c = fromHsl([h, s, l]); if (l === 0 || l === 1) break; }
+    return c;
+  }
+
+  /* ---------- Fixed design inputs ---------- */
+  const NEUTRALS = {
+    cool: { light: { bg: "#f4f6f9", surface: "#ffffff", s2: "#eef1f5", border: "#dce2ea", strong: "#b9c2ce", text: "#17202b", muted: "#535e6c" },
+            dark: { bg: "#0e1318", surface: "#161c23", s2: "#1e252e", border: "#2a333e", strong: "#3d4856", text: "#e5eaf0", muted: "#9ba6b4" } },
+    neutral: { light: { bg: "#f5f5f5", surface: "#ffffff", s2: "#f0f0f0", border: "#e0e0e0", strong: "#c0c0c0", text: "#1a1a1a", muted: "#595959" },
+            dark: { bg: "#111111", surface: "#1a1a1a", s2: "#232323", border: "#303030", strong: "#474747", text: "#ececec", muted: "#a3a3a3" } },
+    warm: { light: { bg: "#f8f4ee", surface: "#fffdfa", s2: "#f3ede4", border: "#e6dccd", strong: "#cbbda8", text: "#2a2119", muted: "#67594a" },
+            dark: { bg: "#15120e", surface: "#1e1a15", s2: "#28231c", border: "#38312a", strong: "#51483d", text: "#efe7dc", muted: "#b2a592" } },
+  };
+  const STATUS = {
+    light: { info: ["#e8f0fb", "#2f64b1", "#24508f"], success: ["#e6f4ed", "#0b6e4f", "#0a5c42"], warning: ["#fdf2df", "#9a5b00", "#7d4a00"], error: ["#fbeaea", "#b3261e", "#9c1f18"], badge: "#c62828" },
+    dark: { info: ["#172435", "#7aa7ea", "#9cbdf0"], success: ["#14302a", "#3ccf9a", "#6fdcb4"], warning: ["#352a14", "#f0b94d", "#f4c870"], error: ["#3a1c1c", "#f28b82", "#f6a59e"], badge: "#e5484d" },
+  };
+  const FONTS = {
+    sans: { body: 'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif', head: null, w: 650, t: "-0.01em" },
+    humanist: { body: 'Seravek, "Gill Sans Nova", Ubuntu, Calibri, "DejaVu Sans", source-sans-pro, sans-serif', head: null, w: 600, t: "0" },
+    serif: { body: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif', head: '"Iowan Old Style", "Palatino Linotype", "URW Palladio L", P052, "Book Antiqua", Georgia, serif', w: 600, t: "0" },
+    rounded: { body: 'ui-rounded, "SF Pro Rounded", "Hiragino Maru Gothic ProN", Quicksand, Comfortaa, Manjari, "Arial Rounded MT", "Arial Rounded MT Bold", Calibri, source-sans-pro, sans-serif', head: null, w: 700, t: "0" },
+  };
+  const DENSITY = { compact: { space: 10, control: 34, cell: 6 }, normal: { space: 16, control: 44, cell: 11 }, airy: { space: 22, control: 52, cell: 15 } };
+  const SHADOWS = {
+    light: { none: "none", soft: "0 1px 2px rgb(16 24 40 / .05), 0 1px 3px rgb(16 24 40 / .08)", strong: "0 2px 4px rgb(16 24 40 / .05), 0 12px 28px -6px rgb(16 24 40 / .18)", raised: "0 12px 32px -8px rgb(16 24 40 / .24), 0 2px 6px rgb(16 24 40 / .08)" },
+    dark: { none: "none", soft: "0 1px 2px rgb(0 0 0 / .4), 0 1px 3px rgb(0 0 0 / .3)", strong: "0 2px 4px rgb(0 0 0 / .4), 0 14px 32px -6px rgb(0 0 0 / .55)", raised: "0 16px 40px -8px rgb(0 0 0 / .7), 0 0 0 1px rgb(255 255 255 / .04)" },
+  };
+  const SWATCHES = [["#1f5fae", "Blau"], ["#0b6e4f", "Grün (Bestand)"], ["#0e5a63", "Petrol"], ["#b5461b", "Terrakotta"], ["#6d3fc0", "Violett"], ["#3451b2", "Indigo"], ["#0e7490", "Cyan"], ["#a8326e", "Beere"]];
+
+  const PRESETS = {
+    kunde: {
+      vertrauen: { label: "Vertrauen", intent: "Ruhiges Blau, kühle Grautöne, klare Karten mit feinem Schatten. Seriös, ohne kühl zu wirken.",
+        mode: "light", accent: "#1f5fae", neutral: "cool", font: "sans", size: 16, lh: 1.55, scale: 1.2, density: "normal", radius: 8, shadow: "soft", border: true, nav: "top", navstyle: "pill" },
+      warm: { label: "Warm", intent: "Terrakotta, warme Neutraltöne, gerundete Schrift, große Radien, viel Luft. Nahbar, für Familien und ältere Kunden.",
+        mode: "light", accent: "#b5461b", neutral: "warm", font: "rounded", size: 17, lh: 1.6, scale: 1.2, density: "airy", radius: 16, shadow: "soft", border: false, nav: "bottom", navstyle: "pill" },
+      klar: { label: "Klar", intent: "Monochrom mit dem grünen Bestandsakzent, fast keine Radien, Linien statt Schatten. Sachlich, sehr ruhig.",
+        mode: "light", accent: "#0b6e4f", neutral: "neutral", font: "humanist", size: 16, lh: 1.5, scale: 1.25, density: "normal", radius: 2, shadow: "none", border: true, nav: "top", navstyle: "underline" },
+      klassisch: { label: "Klassisch", intent: "Petrol mit Serifen-Überschriften und Seitenleiste. Wirkt wie ein etabliertes Stadtwerk.",
+        mode: "light", accent: "#0e5a63", neutral: "warm", font: "serif", size: 17, lh: 1.6, scale: 1.25, density: "normal", radius: 6, shadow: "soft", border: true, nav: "side", navstyle: "solid" },
+    },
+    cockpit: {
+      dicht: { label: "Dicht", intent: "Kompakt mit Seitenleiste, 14 px, Linien statt Schatten. Viele Zeilen auf einen Blick, gut per Tastatur.",
+        mode: "light", accent: "#3451b2", neutral: "cool", font: "sans", size: 14, lh: 1.4, scale: 1.125, density: "compact", radius: 4, shadow: "none", border: true, nav: "side", navstyle: "pill" },
+      uebersicht: { label: "Übersicht", intent: "Karten mit Schatten, Top-Bar, mehr Weißraum. Für den Überblick und für Vorführungen.",
+        mode: "light", accent: "#0b6e4f", neutral: "neutral", font: "sans", size: 15, lh: 1.5, scale: 1.2, density: "normal", radius: 12, shadow: "soft", border: false, nav: "top", navstyle: "underline" },
+      kontrast: { label: "Kontrast", intent: "Dunkel zuerst, aufgehellter Cyan-Akzent, kräftige Ränder. Für lange Sitzungen und Leitstand-Bildschirme.",
+        mode: "dark", accent: "#0e7490", neutral: "neutral", font: "sans", size: 14, lh: 1.45, scale: 1.15, density: "compact", radius: 6, shadow: "none", border: true, nav: "side", navstyle: "solid" },
+    },
+  };
+  const KEYS = ["mode", "accent", "neutral", "font", "size", "lh", "scale", "density", "radius", "shadow", "border", "nav", "navstyle"];
+  const ENUMS = { mode: ["light", "dark", "system"], neutral: Object.keys(NEUTRALS), font: Object.keys(FONTS), density: Object.keys(DENSITY), shadow: ["none", "soft", "strong"], nav: ["top", "side", "bottom"], navstyle: ["pill", "underline", "solid"], scale: [1.125, 1.15, 1.2, 1.25, 1.333] };
+  const SCREENS = {
+    kunde: [["start", "Start (öffentlich)", "/"], ["konto", "Übersicht / Konto · Menü offen", "/konto"], ["vertraege", "Verträge", "/vertraege"], ["verbrauch", "Verbrauch", "/verbrauch"], ["postfach", "Postfach", "/postfach"], ["pass", "Demo-Pass", "/pass"]],
+    cockpit: [["cockpit", "Übersicht", "/cockpit"], ["paesse", "Demo-Pässe", "/cockpit/paesse"]],
+  };
+  const NAV = {
+    kunde: [{ go: "start", label: "Start", icon: "home", sub: false, sideOnly: true }, { go: "konto", label: "Mein Konto", short: "Konto", icon: "user" }, { go: "postfach", label: "Postfach", icon: "mail", cnt: 2 },
+      { go: "vertraege", label: "Verträge", icon: "file" }, { go: "verbrauch", label: "Verbrauch", icon: "chart" }, { go: "pass", label: "Demo-Pass", short: "Pass", icon: "ticket" }],
+    cockpit: [{ grp: "Migration" }, { go: "cockpit", label: "Übersicht", icon: "gauge", kbd: "g c" }, { go: "cockpit", to: "c-klaer", label: "Klärfälle", icon: "alert", cnt: 14, sub: true },
+      { go: "cockpit", to: "c-dlq", label: "DLQ", short: "DLQ", icon: "inbox", cnt: 6, sub: true }, { go: "cockpit", to: "c-tl", label: "Ereignisse", icon: "clock", sub: true },
+      { grp: "Verwaltung" }, { go: "paesse", label: "Demo-Pässe", short: "Pässe", icon: "ticket", kbd: "g p" }, { go: "paesse", to: "c-set", label: "Einstellungen", icon: "settings", sub: true }],
+  };
+
+  /* ---------- State ---------- */
+  const state = { aud: "kunde", screen: { kunde: "konto", cockpit: "cockpit" }, mobile: false, preset: { kunde: "vertrauen", cockpit: "dicht" }, p: {} };
+  state.p.kunde = { ...PRESETS.kunde.vertrauen }; state.p.cockpit = { ...PRESETS.cockpit.dicht };
+  const mql = matchMedia("(prefers-color-scheme: dark)");
+  const isDark = (p) => p.mode === "dark" || (p.mode === "system" && mql.matches);
+
+  /* ---------- Token computation ---------- */
+  function tokens(p, dark, aud) {
+    const N = NEUTRALS[p.neutral][dark ? "dark" : "light"], S = STATUS[dark ? "dark" : "light"], F = FONTS[p.font], D = DENSITY[p.density];
+    const accent = dark ? fit(p.accent, N.surface, 4.5, +1) : p.accent;
+    const onLight = "#ffffff", onDark = dark ? N.bg : "#0b0f14";
+    const accentContrast = contrast(accent, onLight) >= contrast(accent, onDark) ? onLight : onDark;
+    const accentText = dark ? fit(accent, N.surface, 4.5, +1) : fit(p.accent, N.surface, 4.5, -1);
+    const sc = +p.scale, fs = +p.size, r = +p.radius;
+    const px = (v) => Math.round(v * 10) / 10 + "px";
+    const t = {
+      "--kp-bg": N.bg, "--kp-surface": N.surface, "--kp-surface-2": N.s2, "--kp-text": N.text, "--kp-muted": N.muted,
+      "--kp-border": N.border, "--kp-border-strong": N.strong, "--kp-accent": accent, "--kp-accent-contrast": accentContrast,
+      "--kp-accent-text": accentText, "--kp-accent-soft": mix(N.surface, accent, dark ? 0.2 : 0.1), "--kp-unread": mix(N.surface, accent, dark ? 0.12 : 0.06),
+      "--kp-focus": accentText, "--kp-track": dark ? mix(N.s2, N.text, 0.08) : mix(N.s2, N.text, 0.06), "--kp-badge": S.badge,
+      "--kp-row-hover": mix(N.surface, accent, dark ? 0.08 : 0.04), "--kp-input-bg": dark ? N.bg : N.surface,
+      "--kp-header-bg": N.surface, "--kp-side-bg": dark ? N.bg : N.surface,
+      "--kp-font": F.body, "--kp-font-heading": F.head || F.body, "--kp-heading-weight": String(F.w), "--kp-heading-tracking": F.t,
+      "--kp-font-size": fs + "px", "--kp-line-height": String(p.lh), "--kp-small": px(fs * 0.875),
+      "--kp-h1": px(fs * sc ** 3.4), "--kp-h2": px(fs * sc ** 2), "--kp-h3": px(fs * sc), "--kp-space": D.space + "px",
+      "--kp-control": D.control + "px", "--kp-cell-y": D.cell + "px", "--kp-radius": r + "px", "--kp-radius-large": Math.round(r * 1.4) + "px",
+      "--kp-btn-radius": p.font === "rounded" && r >= 12 ? "999px" : r + "px", "--kp-icon-radius": r >= 12 ? "50%" : Math.max(4, r) + "px",
+      "--kp-shadow": SHADOWS[dark ? "dark" : "light"][p.shadow], "--kp-shadow-raised": SHADOWS[dark ? "dark" : "light"].raised,
+      "--kp-card-border": p.border ? "1px solid " + N.border : "1px solid transparent", "--kp-content-width": aud === "cockpit" ? "1440px" : "1080px",
+    };
+    for (const k of ["info", "success", "warning", "error"]) { t[`--kp-${k}-bg`] = S[k][0]; t[`--kp-${k}-border`] = S[k][1]; t[`--kp-${k}-text`] = S[k][2]; }
+    // Cockpit "Kontrast" style: stronger lines in dark mode for scanability.
+    if (aud === "cockpit" && dark && p.border) t["--kp-border"] = mix(N.border, N.text, 0.06);
+    return t;
+  }
+
+  /* ---------- Rendering helpers: nav, charts, table ---------- */
+  const icon = (id) => `<svg class="i" aria-hidden="true"><use href="#i-${id}"/></svg>`;
+  function buildNav(aud) {
+    const app = $("#app-" + aud);
+    for (const ul of $$("[data-nav-list]", app)) {
+      const kind = ul.dataset.navList;
+      ul.innerHTML = NAV[aud].filter((n) => (kind === "side" ? true : !n.grp && !n.sub && !n.sideOnly)).map((n) => {
+        if (n.grp) return `<li class="grp" role="presentation">${n.grp}</li>`;
+        const label = kind === "bottom" ? n.short || n.label : n.label;
+        const cnt = n.cnt ? `<span class="cnt" aria-label="${n.cnt} offen">${n.cnt}</span>` : "";
+        const kbd = n.kbd && kind === "side" ? `<kbd aria-label="Tastenkürzel ${n.kbd}">${n.kbd}</kbd>` : "";
+        if (kind === "bottom") return `<li><a href="#" data-go="${n.go}">${icon(n.icon)}<span>${label}</span>${cnt}</a></li>`;
+        return `<li><a class="navlink" href="#" data-go="${n.go}"${n.to ? ` data-to="${n.to}"` : ""}${n.sub ? ' style="padding-left:calc(var(--kp-space)*.75 + 28px);font-weight:500"' : ""}>${n.sub ? "" : icon(n.icon)}<span class="lb">${label}</span>${cnt}${kbd}</a></li>`;
+      }).join("");
+    }
+  }
+  const fmt = (n, d = 0) => n.toLocaleString("de-DE", { minimumFractionDigits: d, maximumFractionDigits: d });
+  function barChart(el, { months, cur, prev, unit, title }) {
+    const W = 640, H = 250, L = 46, R = 10, T = 22, B = 30, pw = W - L - R, ph = H - T - B;
+    const max = Math.ceil(Math.max(...cur, ...prev) / 100) * 100, slot = pw / cur.length, bw = Math.min(30, slot * 0.6);
+    const y = (v) => T + ph - (v / max) * ph, x = (i) => L + slot * i + slot / 2;
+    let s = `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${title}">`;
+    for (let k = 0; k <= 4; k++) { const v = (max / 4) * k; s += `<line class="${k ? "gl" : "base"}" x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}"/><text x="${L - 8}" y="${y(v) + 4}" text-anchor="end">${fmt(v)}</text>`; }
+    s += `<text x="${L - 8}" y="10" text-anchor="end">${unit}</text>`;
+    cur.forEach((v, i) => {
+      const x0 = x(i) - bw / 2, y0 = y(v), r = 4, last = i === cur.length - 1, b = y(0);
+      s += `<g><title>${months[i]}: ${fmt(v)} ${unit} (Vorjahr ${fmt(prev[i])} ${unit})</title><rect class="hit" x="${x(i) - slot / 2}" y="${T}" width="${slot}" height="${ph}"/>`;
+      s += `<path class="bar${last ? " cur" : ""}" d="M${x0},${b} V${y0 + r} Q${x0},${y0} ${x0 + r},${y0} H${x0 + bw - r} Q${x0 + bw},${y0} ${x0 + bw},${y0 + r} V${b} Z"/>`;
+      s += `<text x="${x(i)}" y="${H - 10}" text-anchor="middle">${months[i]}</text>`;
+      if (last) s += `<text class="lbl" x="${x(i)}" y="${y0 - 8}" text-anchor="middle">${fmt(v)}</text>`;
+      s += "</g>";
+    });
+    s += `<polyline class="prev" points="${prev.map((v, i) => `${x(i)},${y(v)}`).join(" ")}"/></svg>`;
+    el.innerHTML = s;
+    const tbl = $("#" + el.id + "-table");
+    if (tbl) tbl.innerHTML = `<table class="tbl"><thead><tr><th scope="col">Monat</th><th scope="col" class="num">${unit}</th><th scope="col" class="num">Vorjahr</th></tr></thead><tbody>${cur.map((v, i) => `<tr><td>${months[i]}</td><td class="num">${fmt(v)}</td><td class="num">${fmt(prev[i])}</td></tr>`).join("")}</tbody></table>`;
+  }
+  function sparkline(el, vals, w = 120, h = 34) {
+    const mx = Math.max(...vals), mn = Math.min(...vals), sx = (i) => 3 + (i * (w - 6)) / (vals.length - 1), sy = (v) => h - 4 - ((v - mn) / (mx - mn || 1)) * (h - 8);
+    const pts = vals.map((v, i) => `${sx(i)},${sy(v)}`).join(" "), li = vals.length - 1;
+    el.innerHTML = `<svg class="chart" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" aria-hidden="true"><polygon class="area" points="${sx(0)},${h} ${pts} ${sx(li)},${h}"/><polyline class="line" points="${pts}"/><circle class="dot" cx="${sx(li)}" cy="${sy(vals[li])}" r="4"/></svg>`;
+  }
+  function ring(el, value, max, size, label, center, sub) {
+    const r = size / 2 - 7, c = 2 * Math.PI * r, f = Math.min(1, value / max);
+    el.innerHTML = `<svg class="ring" viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" role="img" aria-label="${label}"><circle class="trk" cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke-width="9"/><circle class="val" cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke-width="9" stroke-linecap="round" stroke-dasharray="${c * f} ${c}" transform="rotate(-90 ${size / 2} ${size / 2})"/><text x="50%" y="${sub ? "47%" : "53%"}" text-anchor="middle" dominant-baseline="middle" font-size="${size / 5.2}">${center}</text>${sub ? `<text x="50%" y="66%" text-anchor="middle" font-size="${size / 10}" style="fill:var(--kp-muted);font-weight:500">${sub}</text>` : ""}</svg>`;
+  }
+  const PASSES = [
+    ["m.schulz@example.com", "—", ["warn", "wird eingerichtet"], "noch nicht", "—", [0, 0, 0], "—"],
+    ["t.richter@example.net", "pass-7f3k2", ["ok", "aktiv"], "30.09. 16:40", "vor 4 Min.", [25, 81, 15], "02.10. 16:40"],
+    ["n.akin@example.org", "pass-c81mq", ["ok", "aktiv"], "noch nicht", "—", [0, 2, 0], "02.10. 09:12"],
+    ["j.berg@example.com", "pass-a2x9t", ["err", "Kontingent erschöpft"], "29.09. 11:03", "vor 2 Std.", [100, 64, 40], "01.10. 11:03"],
+    ["l.meyer@example.net", "pass-q0d4e", ["info", "wird gelöscht"], "28.09. 08:20", "gestern 21:15", [42, 37, 10], "30.09. 08:20"],
+    ["s.koch@example.org", "pass-k7w1b", ["", "gelöscht"], "27.09. 14:02", "28.09. 19:44", [18, 22, 5], "29.09. 14:02"],
+  ];
+  function passRows() {
+    $("#pass-rows").innerHTML = PASSES.map(([mail, tenant, [cls, st], first, last, q, until]) => {
+      const bar = (lab, v) => `<span>${lab} ${v}<i class="meter thin${v >= 100 ? " err" : v >= 80 ? " warn" : ""}" role="meter" aria-label="${lab} ${v} %" aria-valuenow="${v}" aria-valuemin="0" aria-valuemax="100" style="display:block"><i style="width:${v}%"></i></i></span>`;
+      const active = cls === "ok" || cls === "err";
+      return `<tr><td>${mail}</td><td class="mono">${tenant}</td><td><span class="st ${cls}">${st}</span></td><td class="tn small${first === "noch nicht" ? " muted" : ""}">${first}</td><td class="tn small">${last}</td><td><div class="minibars">${bar("API", q[0])}${bar("Ev.", q[1])}${bar("Up.", q[2])}</div></td><td class="tn small">${until}</td><td class="num">${active ? '<button class="btn btn-danger btn-sm" type="button" aria-label="Pass von ${mail} widerrufen …" title="Widerrufen …">${icon("x")}</button>' : ""}</td></tr>`;
+    }).join("");
+  }
+
+  /* ---------- Apply state to DOM ---------- */
+  function applyTheme() {
+    for (const aud of ["kunde", "cockpit"]) {
+      const p = state.p[aud], dark = isDark(p), t = tokens(p, dark, aud), app = $("#app-" + aud);
+      for (const [k, v] of Object.entries(t)) app.style.setProperty(k, v);
+      app.style.colorScheme = dark ? "dark" : "light";
+      app.dataset.nav = p.nav; app.dataset.navstyle = p.navstyle; app.dataset.preset = state.preset[aud]; app.dataset.mode = dark ? "dark" : "light"; app.dataset.large = String(p.size >= 17);
+      if (aud === state.aud) { const fr = $("#frame"); for (const k of ["--kp-bg"]) fr.style.setProperty(k, t[k]); $("#viewport").style.setProperty("--kp-bg", t["--kp-bg"]); }
+    }
+    renderContrast(); writeHash(); updateMeta();
+  }
+  function showScreen() {
+    const aud = state.aud, scr = state.screen[aud];
+    $("#app-kunde").hidden = aud !== "kunde"; $("#app-cockpit").hidden = aud !== "cockpit";
+    const app = $("#app-" + aud);
+    for (const s of $$(".screen", app)) s.hidden = s.dataset.screen !== scr;
+    for (const a of $$("[data-nav-list] a", app)) { if (a.dataset.go === scr && !a.dataset.to) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); }
+    const pub = aud === "kunde" && scr === "start";
+    for (const el of $$(".only-public", app)) el.hidden = !pub;
+    for (const el of $$(".only-private", app)) el.hidden = pub;
+    $(".topnav", app).hidden = pub; $(".bottomnav", app).hidden = pub; $(".sidenav", app).hidden = pub;
+    // The account screen demonstrates the opened user menu.
+    setMenu(app, aud === "kunde" && scr === "konto");
+    $("#url").textContent = "kundenportal-demo.rypox.com" + SCREENS[aud].find((s) => s[0] === scr)[2];
+    $("#frame").classList.toggle("mobile", state.mobile);
+    $("#viewport").scrollTop = 0;
+  }
+  function setMenu(app, open) { const b = $(".userbtn", app), m = $(".menu", app); if (!b) return; b.setAttribute("aria-expanded", String(open)); m.hidden = !open; }
+
+  /* ---------- Toolbar ---------- */
+  function renderToolbar() {
+    const aud = state.aud, p = state.p[aud];
+    $$('input[name="aud"]').forEach((r) => (r.checked = r.value === aud));
+    $("#screen").innerHTML = SCREENS[aud].map(([v, l]) => `<option value="${v}"${v === state.screen[aud] ? " selected" : ""}>${l}</option>`).join("");
+    $("#mobile").checked = state.mobile;
+    $("#presets").innerHTML = Object.entries(PRESETS[aud]).map(([k, pr]) => {
+      const n = NEUTRALS[pr.neutral][pr.mode === "dark" ? "dark" : "light"];
+      return `<label class="preset"><input type="radio" name="preset" value="${k}"${k === state.preset[aud] ? " checked" : ""}><span class="pv" aria-hidden="true" style="background:linear-gradient(135deg, ${n.bg} 0 50%, ${pr.accent} 50% 100%)"></span><b>${pr.label}</b><small>${pr.intent}</small></label>`;
+    }).join("");
+    syncControls(p);
+  }
+  function syncControls(p) {
+    for (const el of $$("[data-p]")) {
+      const k = el.dataset.p, v = p[k];
+      if (el.type === "radio") el.checked = String(v) === el.value;
+      else if (el.type === "checkbox") el.checked = !!v;
+      else el.value = String(v);
+    }
+    $("#accent-hex").textContent = p.accent; $("#o-size").textContent = p.size + " px"; $("#o-lh").textContent = (+p.lh).toFixed(2).replace(".", ",");
+    $("#o-radius").textContent = p.radius + " px";
+    $("#swatches").innerHTML = SWATCHES.map(([h, n]) => `<button type="button" data-swatch="${h}" style="background:${h}" aria-label="Akzent ${n} (${h})" aria-pressed="${h === p.accent}"></button>`).join("");
+    const base = PRESETS[state.aud][state.preset[state.aud]], diff = KEYS.filter((k) => String(base[k]) !== String(p[k]));
+    $("#modified").textContent = diff.length ? `Angepasst: ${diff.length} Parameter weichen vom Preset ab.` : "Unverändertes Preset.";
+  }
+  function renderContrast() {
+    const aud = state.aud, p = state.p[aud], dark = isDark(p), t = tokens(p, dark, aud);
+    const rows = [
+      ["Text / Fläche", t["--kp-text"], t["--kp-surface"], 4.5], ["Gedämpft / Fläche", t["--kp-muted"], t["--kp-surface"], 4.5],
+      ["Link / Fläche", t["--kp-accent-text"], t["--kp-surface"], 4.5], ["Button: Text / Akzent", t["--kp-accent-contrast"], t["--kp-accent"], 4.5],
+      ["Akzent / Seite (3:1)", t["--kp-accent"], t["--kp-bg"], 3],
+    ];
+    $("#contrast").innerHTML = rows.map(([l, fg, bg, min]) => {
+      const c = contrast(fg, bg), ok = c >= min;
+      return `<li><span class="pair" style="color:${fg};background:${bg}" aria-hidden="true">Aa</span><span>${l}</span><span class="ratio">${c.toFixed(2).replace(".", ",")}:1</span><span class="pf${ok ? "" : " fail"}">${ok ? "AA ✓" : "AA ✗"}</span></li>`;
+    }).join("");
+    $("#contrast-mode").textContent = `Geprüft im ${dark ? "Dunkel" : "Hell"}modus${p.mode === "system" ? " (vom System)" : ""}. Grenzwert 4,5:1 für Text, 3:1 für Bedienelemente.`;
+  }
+  function updateMeta() {
+    const aud = state.aud, p = state.p[aud];
+    $("#m-aud").textContent = aud === "kunde" ? "Endkunde" : "Cockpit";
+    $("#m-preset").textContent = PRESETS[aud][state.preset[aud]].label;
+    $("#m-mode").textContent = { light: "Hell", dark: "Dunkel", system: "System" }[p.mode];
+  }
+
+  /* ---------- Export ---------- */
+  function exportText() {
+    const aud = state.aud, p = state.p[aud], name = PRESETS[aud][state.preset[aud]].label;
+    const css = (dark) => Object.entries(tokens(p, dark, aud)).map(([k, v]) => `  ${k}: ${v};`).join("\n");
+    return `/* kundenportal-demo · ${aud === "kunde" ? "Endkunde" : "Cockpit"} · Preset "${name}" */\n/* Parameter (JSON):\n${JSON.stringify({ audience: aud, preset: state.preset[aud], params: Object.fromEntries(KEYS.map((k) => [k, p[k]])) }, null, 2)}\n*/\n:root {\n${css(false)}\n}\n@media (prefers-color-scheme: dark) {\n  :root:not([data-theme="light"]) {\n${css(true).replace(/^/gm, "  ")}\n  }\n}\n`;
+  }
+  async function copy(text, msg) {
+    $("#export").value = exportText();
+    try {
+      // Some browsers never settle the clipboard promise on file:// - fall back after 1.5 s.
+      await Promise.race([navigator.clipboard.writeText(text), new Promise((_, no) => setTimeout(() => no(new Error("timeout")), 1500))]);
+      $("#copy-status").textContent = msg;
+    }
+    catch { const ta = $("#export"); ta.value = text; ta.closest("details").open = true; ta.select(); const ok = document.execCommand && document.execCommand("copy"); $("#copy-status").textContent = ok ? msg : "Kopieren nicht möglich — bitte im Feld markieren und selbst kopieren."; }
+  }
+
+  /* ---------- URL hash (validated on read) ---------- */
+  function writeHash() {
+    const q = new URLSearchParams();
+    q.set("a", state.aud); q.set("s", state.screen[state.aud]); if (state.mobile) q.set("m", "1");
+    for (const [aud, pre] of [["kunde", "k"], ["cockpit", "c"]]) {
+      q.set(pre, state.preset[aud]); const base = PRESETS[aud][state.preset[aud]];
+      for (const k of KEYS) if (String(base[k]) !== String(state.p[aud][k])) q.set(pre + "." + k, String(state.p[aud][k]));
+    }
+    history.replaceState(null, "", "#" + q.toString());
+  }
+  function clean(k, v) {
+    if (v == null) return undefined;
+    if (k === "accent") return /^#[0-9a-f]{6}$/i.test(v) ? v.toLowerCase() : undefined;
+    if (k === "border") return v === "true" ? true : v === "false" ? false : undefined;
+    if (k === "size") { const n = Math.round(+v); return n >= 14 && n <= 18 ? n : undefined; }
+    if (k === "lh") { const n = +v; return n >= 1.3 && n <= 1.8 ? Math.round(n * 100) / 100 : undefined; }
+    if (k === "radius") { const n = Math.round(+v); return n >= 0 && n <= 20 ? n : undefined; }
+    if (k === "scale") { const n = +v; return ENUMS.scale.includes(n) ? n : undefined; }
+    return ENUMS[k] && ENUMS[k].includes(v) ? v : undefined;
+  }
+  function readHash() {
+    const q = new URLSearchParams(location.hash.slice(1));
+    if (["kunde", "cockpit"].includes(q.get("a"))) state.aud = q.get("a");
+    state.mobile = q.get("m") === "1";
+    for (const [aud, pre] of [["kunde", "k"], ["cockpit", "c"]]) {
+      if (PRESETS[aud][q.get(pre)]) state.preset[aud] = q.get(pre);
+      state.p[aud] = { ...PRESETS[aud][state.preset[aud]] };
+      for (const k of KEYS) { const v = clean(k, q.get(pre + "." + k)); if (v !== undefined) state.p[aud][k] = v; }
+    }
+    const s = q.get("s"); if (SCREENS[state.aud].some((x) => x[0] === s)) state.screen[state.aud] = s;
+  }
+
+  /* ---------- Events ---------- */
+  function bind() {
+    $("#tb").addEventListener("change", (e) => {
+      const el = e.target;
+      if (el.name === "aud") { state.aud = el.value; renderToolbar(); showScreen(); applyTheme(); return; }
+      if (el.name === "preset") { state.preset[state.aud] = el.value; state.p[state.aud] = { ...PRESETS[state.aud][el.value] }; syncControls(state.p[state.aud]); applyTheme(); return; }
+      if (el.id === "screen") { state.screen[state.aud] = el.value; showScreen(); writeHash(); return; }
+      if (el.id === "mobile") { state.mobile = el.checked; showScreen(); writeHash(); return; }
+    });
+    $("#tb").addEventListener("input", (e) => {
+      const el = e.target, k = el.dataset.p; if (!k) return;
+      if (el.type === "radio" && !el.checked) return;
+      const v = clean(k, el.type === "checkbox" ? String(el.checked) : el.value);
+      if (v === undefined) return;
+      state.p[state.aud][k] = v; syncControls(state.p[state.aud]); applyTheme();
+    });
+    $("#swatches").addEventListener("click", (e) => { const b = e.target.closest("[data-swatch]"); if (!b) return; state.p[state.aud].accent = b.dataset.swatch; syncControls(state.p[state.aud]); applyTheme(); $(`[data-swatch="${b.dataset.swatch}"]`).focus(); });
+    $("#reset").addEventListener("click", () => { state.p[state.aud] = { ...PRESETS[state.aud][state.preset[state.aud]] }; syncControls(state.p[state.aud]); applyTheme(); $("#copy-status").textContent = "Auf das Preset zurückgesetzt."; });
+    $("#copy-params").addEventListener("click", () => copy(exportText(), "Parameter als JSON und CSS kopiert."));
+    $("#copy-link").addEventListener("click", () => copy(location.href, "Link mit allen Parametern kopiert."));
+    $("#tb-toggle").addEventListener("click", (e) => {
+      const tb = $("#tb"), open = tb.hasAttribute("data-collapsed");
+      tb.toggleAttribute("data-collapsed", !open); e.currentTarget.setAttribute("aria-expanded", String(open));
+      e.currentTarget.setAttribute("aria-label", open ? "Werkzeugleiste einklappen" : "Werkzeugleiste ausklappen");
+    });
+    // Clickable prototype: navigation inside the mockups.
+    $("#viewport").addEventListener("click", (e) => {
+      const a = e.target.closest("a[href='#'], [data-go-cockpit]");
+      if (a) e.preventDefault();
+      if (!a) return;
+      if (a.dataset.goCockpit) { state.aud = "cockpit"; state.screen.cockpit = a.dataset.goCockpit; renderToolbar(); showScreen(); applyTheme(); return; }
+      const app = a.closest(".app"), aud = app.dataset.aud, go = a.dataset.go;
+      if (go && SCREENS[aud].some((s) => s[0] === go)) {
+        state.screen[aud] = go; showScreen(); setMenu(app, false); $("#screen").value = go; writeHash();
+        if (a.dataset.to) { const t = $("#" + a.dataset.to); t && t.scrollIntoView({ block: "start" }); }
+      }
+    });
+    for (const app of $$(".app")) {
+      const btn = $(".userbtn", app);
+      btn.addEventListener("click", () => setMenu(app, btn.getAttribute("aria-expanded") !== "true"));
+      app.addEventListener("keydown", (e) => { if (e.key === "Escape" && btn.getAttribute("aria-expanded") === "true") { setMenu(app, false); btn.focus(); } });
+    }
+    // Tabs on the consumption screen (arrow keys move between tabs).
+    const tabs = $$('[role="tab"]');
+    const select = (t) => { for (const x of tabs) { const on = x === t; x.setAttribute("aria-selected", String(on)); x.tabIndex = on ? 0 : -1; $("#" + x.getAttribute("aria-controls")).hidden = !on; } t.focus(); };
+    tabs.forEach((t, i) => { t.addEventListener("click", () => select(t)); t.addEventListener("keydown", (e) => { const d = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0; if (d) select(tabs[(i + d + tabs.length) % tabs.length]); }); });
+    $("#c-redeem").addEventListener("click", (e) => { const b = e.currentTarget, on = b.getAttribute("aria-checked") !== "true"; b.setAttribute("aria-checked", String(on)); const l = $("#c-redeem-l"); l.textContent = on ? "offen" : "gesperrt"; l.className = "st " + (on ? "ok" : "err"); });
+    $$("[data-toggle-row]").forEach((b) => b.addEventListener("click", () => { const r = $("#" + b.getAttribute("aria-controls")), open = b.getAttribute("aria-expanded") === "true"; r.hidden = open; b.setAttribute("aria-expanded", String(!open)); b.textContent = open ? "Korrigieren" : "Schließen"; b.closest("tr").classList.toggle("expanded", !open); }));
+    document.addEventListener("keydown", (e) => { if (e.key === "/" && state.aud === "cockpit" && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) { e.preventDefault(); $("#c-search").focus(); } });
+    mql.addEventListener("change", applyTheme);
+    addEventListener("hashchange", () => { readHash(); renderToolbar(); showScreen(); applyTheme(); });
+  }
+
+  /* ---------- Init ---------- */
+  buildNav("kunde"); buildNav("cockpit"); passRows();
+  const M = ["Okt", "Nov", "Dez", "Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep"];
+  barChart($("#chart-strom"), { months: M, unit: "kWh", title: "Stromverbrauch je Monat, Oktober 2025 bis September 2026, im Vergleich zum Vorjahr", cur: [215, 248, 281, 296, 262, 238, 205, 186, 172, 168, 175, 189], prev: [228, 262, 300, 312, 275, 250, 214, 190, 180, 176, 182, 198] });
+  barChart($("#chart-gas"), { months: M, unit: "kWh", title: "Gasverbrauch je Monat, Oktober 2025 bis September 2026, im Vergleich zum Vorjahr", cur: [820, 1240, 1560, 1690, 1410, 1120, 640, 310, 160, 120, 130, 290], prev: [880, 1310, 1620, 1750, 1480, 1190, 700, 350, 170, 130, 140, 320] });
+  sparkline($("#spark-strom"), [281, 296, 262, 238, 205, 186, 172, 168, 175, 189], 220, 40);
+  sparkline($("#spark-klaer"), [6, 8, 7, 9, 11, 11, 14]); sparkline($("#spark-dlq"), [3, 5, 9, 8, 8, 8, 6]); sparkline($("#spark-api"), [820, 1400, 2100, 1900, 2800, 3300, 3918]);
+  ring($("#ring-utility"), 1842, 2400, 84, "Versorger: 1.842 von 2.400 übernommen (77 %)", "77 %");
+  ring($("#ring-telco"), 611, 1150, 84, "Telko: 611 von 1.150 übernommen (53 %)", "53 %");
+  ring($("#ring-mobil"), 12.4, 20, 140, "Datenvolumen: 12,4 von 20 GB verbraucht", "12,4", "von 20 GB");
+  ring($("#ring-pass"), 31, 48, 128, "Laufzeit: noch 31 von 48 Stunden", "31 Std.", "von 48 Std.");
+  readHash(); bind(); renderToolbar(); showScreen(); applyTheme();
+})();
+</script>
+</body>
+</html>
