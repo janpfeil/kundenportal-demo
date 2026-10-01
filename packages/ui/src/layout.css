@@ -313,6 +313,12 @@
     margin-left: calc(-1 * var(--kp-side-w));
   }
 
+  /* Anchors (e.g. the cockpit's "DLQ", "Ereignisse") land below the sticky bar, which is
+     one control plus one space high, with a space of air above the heading. */
+  :root[data-nav="side"]:has(.kp-shell[data-nav-entries="many"]) {
+    scroll-padding-top: calc(var(--kp-control) + var(--kp-space) * 2);
+  }
+
   :root[data-nav="side"] .kp-shell[data-nav-entries="many"] :is(.kp-nav, .kp-sidenav) {
     position: absolute;
     top: 100%;

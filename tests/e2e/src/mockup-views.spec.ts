@@ -77,6 +77,32 @@ test("the cockpit shows the key figures, searches behind '/' and jumps with 'g p
   await expect(main).toContainText("Aktualisiert sich alle 10 Sekunden");
   await page.waitForLoadState("networkidle");
 
+  // The sidebar's anchors bring their heading just below the sticky top bar.
+  for (const [entry, id] of [
+    [/^DLQ/, "dlq"],
+    [/^Ereignisse/, "ereignisse"],
+  ] as const) {
+    await page.locator(".kp-sidenav").getByRole("link", { name: entry }).click();
+    await expect
+      .poll(() =>
+        page.evaluate(
+          `(() => { const bar = document.querySelector(".kp-topbar").getBoundingClientRect();` +
+            ` const heading = document.querySelector("#${id} h2").getBoundingClientRect();` +
+            ` return Math.round(heading.top - bar.bottom); })()`,
+        ),
+      )
+      .toBeGreaterThanOrEqual(0);
+    const gap = Number(
+      await page.evaluate(
+        `(() => { const bar = document.querySelector(".kp-topbar").getBoundingClientRect();` +
+          ` return Math.round(document.querySelector("#${id} h2").getBoundingClientRect().top - bar.bottom); })()`,
+      ),
+    );
+    expect(gap, `heading of #${id} below the top bar`).toBeLessThanOrEqual(48);
+  }
+  await page.goto("/cockpit");
+  await page.waitForLoadState("networkidle");
+
   await page.keyboard.press("/");
   // The top bar's field listens to "/"; the copy on the page is for phones only.
   const search = page
