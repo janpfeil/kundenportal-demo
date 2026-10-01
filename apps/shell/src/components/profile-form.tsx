@@ -41,7 +41,8 @@ export function ProfileForm({
 
   return (
     <form onSubmit={submit} data-testid="profile-form" aria-labelledby="profile-heading">
-      <h2 id="profile-heading">{texts.heading}</h2>
+      {/* Inside the card "Mein Konto" (h2). */}
+      <h3 id="profile-heading">{texts.heading}</h3>
       <TextField
         name="displayName"
         label={texts.name}

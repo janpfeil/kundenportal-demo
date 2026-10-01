@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "@kundenportal/ui";
+import { Button, Icon } from "@kundenportal/ui";
 import { sendJson } from "@kundenportal/web-auth/browser";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -17,7 +17,6 @@ export function MarkReadButton({
   const [busy, setBusy] = useState(false);
   return (
     <Button
-      variant="secondary"
       disabled={busy}
       onClick={async () => {
         setBusy(true);
@@ -30,6 +29,7 @@ export function MarkReadButton({
         if (result.ok) router.refresh();
       }}
     >
+      <Icon name="check" />
       {label}
     </Button>
   );

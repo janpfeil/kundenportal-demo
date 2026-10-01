@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "@kundenportal/ui";
+import { Button, Icon } from "@kundenportal/ui";
 import { useState } from "react";
 
 /**
@@ -31,6 +31,7 @@ export function CopyButton({
   return (
     <span className="copy">
       <Button variant="secondary" onClick={copy} aria-label={label}>
+        <Icon name="copy" />
         {texts.copy}
       </Button>
       <span role="status" className="kp-muted">

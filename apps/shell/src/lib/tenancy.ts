@@ -1,4 +1,5 @@
 import { config } from "./config";
+import { parseOffer } from "./offer";
 import type { Session } from "./session";
 
 /*
@@ -20,7 +21,7 @@ export interface PassView {
   status: PassStatus;
   validUntil: string;
   quotas: Partial<Record<QuotaKind, Quota>>;
-  demoPersons?: { name: string; login: string }[];
+  demoPersons?: { name: string; login: string; system?: "utility" | "telco" }[];
   demoPassword?: string;
 }
 
@@ -44,7 +45,7 @@ interface OwnPassResponse {
   status?: unknown;
   validUntil?: unknown;
   quota?: Partial<Record<QuotaKind, Quota>>;
-  demoPersons?: { name: string; signIn: string }[];
+  demoPersons?: { name: string; signIn: string; system?: unknown }[];
   demoPassword?: unknown;
 }
 
@@ -71,6 +72,9 @@ export function toPassLookup(status: number, body: unknown): PassLookup {
             demoPersons: value.demoPersons.map((person) => ({
               name: person.name,
               login: person.signIn,
+              ...(person.system === "utility" || person.system === "telco"
+                ? { system: person.system }
+                : {}),
             })),
           }
         : {}),
@@ -90,6 +94,27 @@ export async function fetchPass(session: Session): Promise<PassLookup> {
     return toPassLookup(response.status, body);
   } catch {
     return { kind: "error", status: 502 };
+  }
+}
+
+/** A pass's duration when the offer cannot be read (the platform's default). */
+export const DEFAULT_PASS_HOURS = 48;
+
+/**
+ * The pass duration in hours from the public offer (`GET /tenancy/offer`), the scale of the
+ * pass page's ring; the default if the offer cannot be read within a second.
+ */
+export async function fetchPassHours(): Promise<number> {
+  try {
+    const response = await fetch(`${config().apiUrl}/tenancy/offer`, {
+      headers: { accept: "application/json" },
+      cache: "no-store",
+      signal: AbortSignal.timeout(1000),
+    });
+    const offer = response.ok ? parseOffer(await response.json()) : undefined;
+    return offer && offer.passHours > 0 ? offer.passHours : DEFAULT_PASS_HOURS;
+  } catch {
+    return DEFAULT_PASS_HOURS;
   }
 }
 
