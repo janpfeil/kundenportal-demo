@@ -119,7 +119,7 @@ describe("redeem", () => {
 
     const issued = DemoPassIssued.detail.parse(s.published.at(-1)?.detail);
     expect(issued.payload).toMatchObject({ passId, email: "visitor@example.org" });
-    expect(issued.payload.validUntil).toBe("2026-10-07T12:00:00.000Z");
+    expect(issued.payload.validUntil).toBe("2026-10-02T12:00:00.000Z");
     expect(PassTenantId.safeParse(issued.tenantId).success).toBe(true);
     const tenant = s.repository.tenants.get(issued.tenantId);
     expect(tenant).toMatchObject({
@@ -290,7 +290,7 @@ describe("passes", () => {
         email: "visitor@example.org",
         status: "provisioning",
         createdAt: "2026-09-30T12:00:00.000Z",
-        validUntil: "2026-10-07T12:00:00.000Z",
+        validUntil: "2026-10-02T12:00:00.000Z",
         shortLived: false,
         quota: {
           api: { used: 1, limit: 5000 },
@@ -355,6 +355,31 @@ describe("passes", () => {
       apiEvent("GET /tenancy/pass", { claims: { tenant_id: "pzzzzzzz" } }),
     );
     expect(missing.statusCode).toBe(404);
+  });
+
+  it("activates the holder's pass on the first sign-in, and nobody else's", async () => {
+    const s = setup();
+    const { tenantId } = await issued(s);
+    await s.repository.setTenantStatus(tenantId, "active", s.ctx.now());
+    const activate = (claims: Record<string, string>) =>
+      s.api(
+        apiEvent("POST /tenancy/pass/activate", { claims: { tenant_id: tenantId, ...claims } }),
+      );
+
+    expect((await activate({})).statusCode).toBe(204);
+    expect(
+      (await s.api(apiEvent("POST /tenancy/pass/activate", { claims: OWNER }))).statusCode,
+    ).toBe(204);
+    expect(s.repository.tenants.get(tenantId)?.activatedAt).toBeUndefined();
+
+    s.advance(36 * 3_600_000);
+    const first = await activate({ "cognito:groups": "[pass]" });
+    expect(first.statusCode).toBe(200);
+    expect(body(first)).toMatchObject({ tenantId, validUntil: "2026-10-04T00:00:00.000Z" });
+    expect(body(first).demoPassword).toBeDefined();
+    s.advance(3_600_000);
+    const again = body(await activate({ "cognito:groups": "[pass]" }));
+    expect(again.validUntil).toBe("2026-10-04T00:00:00.000Z");
   });
 
   it("builds plus addresses", () => {

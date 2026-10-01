@@ -22,6 +22,13 @@ export interface TenantAccounts {
    * Cognito sends no invitation (short E2E passes).
    */
   createHolder(email: string, tenantId: string, suppressMail: boolean): Promise<void>;
+  /**
+   * Cognito `UserStatus` of the account (`FORCE_CHANGE_PASSWORD` until the first sign-in,
+   * then `CONFIRMED`); undefined if there is none.
+   */
+  holderStatus(email: string): Promise<string | undefined>;
+  /** Sends the invitation again, with a new temporary password, to the same address. */
+  resendInvitation(email: string): Promise<void>;
   /** Deletes every account whose `custom:tenant_id` is the tenant; returns how many. */
   deleteTenantAccounts(tenantId: string): Promise<number>;
 }
@@ -32,9 +39,16 @@ export interface LegacyTenants {
   remove(tenantId: string): Promise<void>;
 }
 
-/** One-time EventBridge Scheduler schedule that expires the pass. */
+/**
+ * One-time EventBridge Scheduler schedules of a pass: the expiry and the reminder to a
+ * holder who has not signed in yet.
+ */
 export interface ExpirySchedules {
   create(tenantId: string, passId: string, at: Date): Promise<void>;
+  createReminder(tenantId: string, passId: string, at: Date): Promise<void>;
+  /** A second expiry schedule at `at` (the first sign-in moved the end). */
+  moveExpiry(tenantId: string, passId: string, at: Date): Promise<void>;
+  /** Deletes every schedule of the tenant. */
   delete(tenantId: string): Promise<void>;
 }
 
@@ -55,3 +69,7 @@ export interface OwnerHints {
 
 /** Name of the expiry schedule of a tenant. */
 export const scheduleName = (tenantId: string) => `pass-expiry-${tenantId}`;
+/** Name of the expiry schedule after the first sign-in moved the end. */
+export const movedScheduleName = (tenantId: string) => `pass-expiry-moved-${tenantId}`;
+/** Name of the reminder schedule of a tenant. */
+export const reminderScheduleName = (tenantId: string) => `pass-reminder-${tenantId}`;

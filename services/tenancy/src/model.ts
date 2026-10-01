@@ -57,6 +57,8 @@ export const Pass = z.object({
   validUntil: isoDate,
   status: TenantStatus,
   shortLived: z.boolean().optional(),
+  /** First sign-in of the holder; from then the pass lasts `passHours` (not short ones). */
+  activatedAt: isoDate.optional(),
   endReason: PassEndReason.optional(),
   endedAt: isoDate.optional(),
 });
@@ -73,6 +75,13 @@ export const PlatformTenant = z.object({
   createdAt: isoDate,
   updatedAt: isoDate,
   shortLived: z.boolean().optional(),
+  /** First sign-in of the holder (see `Pass.activatedAt`). */
+  activatedAt: isoDate.optional(),
+  /**
+   * When the holder, still not signed in after `reminderHours`, got the invitation again
+   * (set at most once; architektur-mandanten §5).
+   */
+  reminderSentAt: isoDate.optional(),
   /** Password of the tenant's demo persons in both legacy systems. */
   demoPassword: z.string().min(16),
 });
@@ -126,7 +135,13 @@ export interface QuotaLimits {
 export interface TenancyConfig {
   portalUrl: string;
   tablePrefix: string;
-  passDays: number;
+  /** How long a pass lasts after redeeming (`PASS_HOURS`, default 48). */
+  passHours: number;
+  /**
+   * After how many hours a holder who has not signed in yet gets the invitation again
+   * (`REMINDER_HOURS`, default 24).
+   */
+  reminderHours: number;
   /** Upper bound of `validMinutes` of short test passes (`PASS_MINUTES`, at most 60). */
   maxShortMinutes: number;
   quotas: QuotaLimits;
@@ -139,11 +154,13 @@ export interface TenancyConfig {
 /** Scheduler input and the other direct invocations of the worker. */
 export const WorkerTask = z.discriminatedUnion("task", [
   z.object({ task: z.literal("expire"), tenantId: PassTenantId, passId: z.string().min(1) }),
+  z.object({ task: z.literal("remind"), tenantId: PassTenantId, passId: z.string().min(1) }),
   z.object({ task: z.literal("reconcile") }),
 ]);
 export type WorkerTask = z.infer<typeof WorkerTask>;
 
 export const addDays = (date: Date, days: number) => new Date(date.getTime() + days * 86_400_000);
+export const addHours = (date: Date, hours: number) => new Date(date.getTime() + hours * 3_600_000);
 export const addMinutes = (date: Date, minutes: number) =>
   new Date(date.getTime() + minutes * 60_000);
 export const epochSeconds = (date: Date) => Math.floor(date.getTime() / 1000);

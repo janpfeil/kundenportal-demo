@@ -1,12 +1,13 @@
 import { DemoPassIssued, TenantDeleted, TenantProvisioned } from "@kundenportal/events";
 import { describe, expect, it } from "vitest";
 import { createCleanup } from "./cleanup.js";
-import { teardownAllTenants, teardownTenant } from "./lifecycle.js";
+import { activatePass, endPass, teardownAllTenants, teardownTenant } from "./lifecycle.js";
 import { Passes } from "./passes.js";
 import { testContext } from "./testing.js";
 import { createWorker } from "./worker.js";
 
 const MINUTE = 60_000;
+const HOUR = 60 * MINUTE;
 
 /** A redeemed pass whose DemoPassIssued event has not been handled yet. */
 async function issuedPass(t: ReturnType<typeof testContext>, email = "visitor@example.org") {
@@ -55,12 +56,18 @@ describe("provisioning", () => {
       `legacy:provision:${tenantId}`,
       "account:create:visitor@example.org",
       `schedule:create:${tenantId}`,
+      `reminder:create:${tenantId}`,
     ]);
     expect(s.legacyTenants.get(tenantId)).toBe(s.repository.tenants.get(tenantId)?.demoPassword);
     expect(s.accounts.get("visitor@example.org")).toEqual({ tenantId, suppressMail: false });
     expect(s.schedules.get(tenantId)).toEqual({
       passId,
-      at: new Date("2026-10-07T12:00:00.000Z"),
+      at: new Date("2026-10-02T12:00:00.000Z"),
+    });
+    // 24 hours after redeeming, if the holder has not signed in by then.
+    expect(s.reminders.get(tenantId)).toEqual({
+      passId,
+      at: new Date("2026-10-01T12:00:00.000Z"),
     });
     expect(s.repository.tenants.get(tenantId)?.status).toBe("active");
     expect(s.repository.passes.get(passId)?.status).toBe("active");
@@ -72,13 +79,13 @@ describe("provisioning", () => {
         subject: "Demo-Pass eingelöst",
         message:
           `Demo-Pass eingelöst: visitor@example.org, Mandant ${tenantId}, ` +
-          "gültig bis 07.10.2026, 14:00 (Europe/Berlin).",
+          "gültig bis 02.10.2026, 14:00 (Europe/Berlin).",
       },
     ]);
 
     // A redelivered event does nothing.
     await s.worker(event);
-    expect(s.calls).toHaveLength(4);
+    expect(s.calls).toHaveLength(5);
     expect(s.types().filter((type) => type === "TenantProvisioned")).toHaveLength(1);
     expect(s.hints).toHaveLength(1);
   });
@@ -86,7 +93,7 @@ describe("provisioning", () => {
   it("tells the owner about the end without secrets, and survives a failing hint", async () => {
     const s = setup();
     const { tenantId, passId } = await activePass(s);
-    await s.worker({ task: "expire", tenantId, passId });
+    await endPass(s.ctx, tenantId, passId, "expired", "test");
     await s.worker(expiredEvent(s));
     const ended = s.hints.at(-1);
     expect(ended).toEqual({
@@ -119,6 +126,8 @@ describe("provisioning", () => {
       detail: s.published.at(-1)?.detail,
     });
     expect(s.accounts.get("e2e@example.org")?.suppressMail).toBe(true);
+    // No mail, nothing to remind of.
+    expect(s.reminders.size).toBe(0);
   });
 
   it("stops when the pass ended during the setup", async () => {
@@ -140,6 +149,7 @@ describe("expiry and teardown", () => {
     s.uploads.set(tenantId, 2);
     s.calls.length = 0;
 
+    s.advance(48 * HOUR);
     await s.worker({ task: "expire", tenantId, passId });
     expect(s.published.at(-1)).toMatchObject({
       detailType: "DemoPassExpired",
@@ -160,7 +170,7 @@ describe("expiry and teardown", () => {
     expect(s.accounts.size).toBe(0);
     const tenant = s.repository.tenants.get(tenantId);
     expect(tenant?.status).toBe("deleted");
-    expect(tenant?.ttl).toBe(Math.floor(Date.parse("2026-10-30T12:00:00.000Z") / 1000));
+    expect(tenant?.ttl).toBe(Math.floor(Date.parse("2026-11-01T12:00:00.000Z") / 1000));
     expect(s.repository.passes.get(passId)).toMatchObject({
       status: "deleted",
       endReason: "expired",
@@ -217,12 +227,13 @@ describe("reconcile", () => {
     s.tables.add("kp-tenant-porphan2");
     s.tables.add("kp-other-table");
 
-    s.advance(7 * 86_400_000 + MINUTE);
+    s.advance(48 * HOUR + MINUTE);
     const result = await s.worker({ task: "reconcile" });
     expect(result).toEqual({
       expired: [overdue.tenantId, stuck.tenantId].sort(),
       reprovisioned: [],
       tornDown: ["porphan2"],
+      reminded: [],
       // Both only expired so far (tearing-down): they still hold their place.
       activeTenants: 2,
     });
@@ -253,11 +264,138 @@ describe("reconcile", () => {
   it("finishes a teardown that hangs for more than ten minutes", async () => {
     const s = setup();
     const { tenantId, passId } = await activePass(s);
-    await s.worker({ task: "expire", tenantId, passId });
+    await endPass(s.ctx, tenantId, passId, "expired", "test");
     s.advance(11 * MINUTE);
     const result = await s.worker({ task: "reconcile" });
     expect(result).toMatchObject({ tornDown: [tenantId] });
     expect(s.repository.tenants.get(tenantId)?.status).toBe("deleted");
+  });
+});
+
+describe("reminder", () => {
+  it("sends the invitation once more to a holder who has not signed in", async () => {
+    const s = setup();
+    const { tenantId, passId } = await activePass(s);
+    s.advance(24 * HOUR);
+    await s.worker({ task: "remind", tenantId, passId });
+    expect(s.calls.at(-1)).toBe("account:resend:visitor@example.org");
+    expect(s.accounts.get("visitor@example.org")?.invitations).toBe(2);
+    expect(s.repository.tenants.get(tenantId)?.reminderSentAt).toBe(s.ctx.now().toISOString());
+    expect(s.hints.at(-1)).toEqual({
+      subject: "Demo-Pass: Erinnerung verschickt",
+      message: `Erinnerung an visitor@example.org verschickt: Mandant ${tenantId}, seit 24 Stunden nicht angemeldet.`,
+    });
+    // At most once: neither the schedule again nor the reconcile sends a second one.
+    await s.worker({ task: "remind", tenantId, passId });
+    expect(await s.worker({ task: "reconcile" })).toMatchObject({ reminded: [] });
+    expect(s.calls.filter((call) => call.startsWith("account:resend"))).toHaveLength(1);
+  });
+
+  it("does nothing once the holder signed in or the pass ended", async () => {
+    const s = setup();
+    const signedIn = await activePass(s, "a@example.org");
+    const account = s.accounts.get("a@example.org");
+    if (account) account.status = "CONFIRMED";
+    const ended = await activePass(s, "b@example.org");
+    await endPass(s.ctx, ended.tenantId, ended.passId, "expired", "test");
+    s.advance(24 * HOUR);
+    await s.worker({ task: "remind", tenantId: signedIn.tenantId, passId: signedIn.passId });
+    await s.worker({ task: "remind", tenantId: ended.tenantId, passId: ended.passId });
+    expect(s.calls.filter((call) => call.startsWith("account:resend"))).toEqual([]);
+    expect(s.repository.tenants.get(signedIn.tenantId)?.reminderSentAt).toBeUndefined();
+  });
+
+  it("frees the claim when Cognito fails, so a later run can send it", async () => {
+    const s = setup();
+    const { tenantId, passId } = await activePass(s);
+    s.advance(24 * HOUR);
+    s.ctx.accounts.resendInvitation = async () => {
+      throw new Error("Cognito down");
+    };
+    await expect(s.worker({ task: "remind", tenantId, passId })).rejects.toThrow("Cognito down");
+    expect(s.repository.tenants.get(tenantId)?.reminderSentAt).toBeUndefined();
+  });
+
+  it("is sent by the reconcile when no schedule did (paused stack)", async () => {
+    const s = setup();
+    const { tenantId } = await activePass(s);
+    s.advance(23 * HOUR);
+    expect(await s.worker({ task: "reconcile" })).toMatchObject({ reminded: [] });
+    s.advance(2 * HOUR);
+    expect(await s.worker({ task: "reconcile" })).toMatchObject({ reminded: [tenantId] });
+    expect(s.accounts.get("visitor@example.org")?.invitations).toBe(2);
+  });
+
+  it("is not scheduled when it would come after the end of the pass", async () => {
+    const s = testContext();
+    s.ctx.config = { ...s.ctx.config, passHours: 24, reminderHours: 24 };
+    const worker = createWorker(s.ctx);
+    const { tenantId, event } = await issuedPass(s);
+    await worker(event);
+    expect(s.schedules.has(tenantId)).toBe(true);
+    expect(s.reminders.size).toBe(0);
+  });
+
+  it("goes with the teardown", async () => {
+    const s = setup();
+    const { tenantId } = await activePass(s);
+    expect(s.reminders.has(tenantId)).toBe(true);
+    await teardownTenant(s.ctx, tenantId);
+    expect(s.reminders.size).toBe(0);
+  });
+});
+
+describe("activation by the first sign-in", () => {
+  it("moves the end to 48 hours from the sign-in, once", async () => {
+    const s = setup();
+    const { tenantId, passId } = await activePass(s);
+    s.advance(30 * HOUR);
+    expect(await activatePass(s.ctx, tenantId)).toBe(true);
+    const until = new Date(s.ctx.now().getTime() + 48 * HOUR).toISOString();
+    expect(s.repository.tenants.get(tenantId)).toMatchObject({
+      activatedAt: s.ctx.now().toISOString(),
+      validUntil: until,
+    });
+    expect(s.repository.passes.get(passId)?.validUntil).toBe(until);
+
+    s.advance(HOUR);
+    expect(await activatePass(s.ctx, tenantId)).toBe(false);
+    expect(s.repository.tenants.get(tenantId)?.validUntil).toBe(until);
+
+    // The first schedule fires at the old end and is followed by one at the new end.
+    s.advance(17 * HOUR);
+    await s.worker({ task: "expire", tenantId, passId });
+    expect(s.repository.tenants.get(tenantId)?.status).toBe("active");
+    expect(s.calls.at(-1)).toBe(`schedule:move:${tenantId}`);
+    expect(s.schedules.get(tenantId)?.at.toISOString()).toBe(until);
+    // A pending reminder skips an activated pass.
+    await s.worker({ task: "remind", tenantId, passId });
+    expect(s.calls.filter((call) => call.startsWith("account:resend"))).toEqual([]);
+
+    s.advance(30 * HOUR);
+    await s.worker({ task: "expire", tenantId, passId });
+    expect(s.repository.tenants.get(tenantId)?.status).toBe("tearing-down");
+  });
+
+  it("keeps the minutes of short test passes and ignores ended passes", async () => {
+    const s = setup();
+    const passes = new Passes(s.ctx);
+    const { link } = await passes.invite(
+      { tenantId: "owner", subject: "o" },
+      { email: "e2e@example.org", validMinutes: 5 },
+      "corr",
+    );
+    await passes.redeem(link.split("#")[1] ?? "", "corr");
+    const { tenantId } = DemoPassIssued.detail.parse(s.published.at(-1)?.detail).payload;
+    const before = s.repository.tenants.get(tenantId)?.validUntil;
+    expect(await activatePass(s.ctx, tenantId)).toBe(true);
+    expect(s.repository.tenants.get(tenantId)?.validUntil).toBe(before);
+    expect(s.repository.tenants.get(tenantId)?.activatedAt).toBeDefined();
+
+    const ended = await activePass(s, "b@example.org");
+    await endPass(s.ctx, ended.tenantId, ended.passId, "expired", "test");
+    expect(await activatePass(s.ctx, ended.tenantId)).toBe(false);
+    expect(await activatePass(s.ctx, "pzzzzzzz")).toBe(false);
   });
 });
 

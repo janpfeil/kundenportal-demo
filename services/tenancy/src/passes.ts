@@ -2,9 +2,10 @@ import { DemoPassIssued, deterministicUuid, InvitationCreated } from "@kundenpor
 import { type Caller, HttpError, notFound } from "@kundenportal/service-kit";
 import { z } from "zod";
 import { type TenancyContext, tableNameOf } from "./context.js";
-import { endPass } from "./lifecycle.js";
+import { activatePass, endPass } from "./lifecycle.js";
 import {
   addDays,
+  addHours,
   addMinutes,
   INVITATION_DAYS,
   type Invitation,
@@ -161,6 +162,15 @@ export class Passes {
   }
 
   /**
+   * The holder signed in: the first time the pass lasts `passHours` from now (see
+   * `activatePass`); later calls change nothing. Answers the own pass like `own`.
+   */
+  async activate(caller: Caller) {
+    await activatePass(this.ctx, caller.tenantId);
+    return this.own(caller, true);
+  }
+
+  /**
    * Redeems an invitation (after rate limit and ALTCHA, see the public API): kill switch,
    * cap of concurrent tenants, one pass per address; then pass and tenant in one
    * transaction and `DemoPassIssued` for the provisioning.
@@ -192,7 +202,7 @@ export class Passes {
     const passId = this.ctx.newId();
     const validUntil = invitation.shortLived
       ? addMinutes(now, invitation.validMinutes ?? config.maxShortMinutes)
-      : addDays(now, config.passDays);
+      : addHours(now, config.passHours);
     const flags = invitation.shortLived ? { shortLived: true } : {};
     const pass: Pass = {
       passId,

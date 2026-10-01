@@ -6,6 +6,7 @@ import {
   CognitoIdentityProviderClient,
   ListUsersCommand,
   UsernameExistsException,
+  UserNotFoundException,
 } from "@aws-sdk/client-cognito-identity-provider";
 import {
   CreateTableCommand,
@@ -165,6 +166,26 @@ describe("cognito accounts", () => {
     );
   });
 
+  it("reads the holder's status and knows a missing account", async () => {
+    cognitoMock
+      .on(AdminGetUserCommand)
+      .resolvesOnce({ UserStatus: "FORCE_CHANGE_PASSWORD" })
+      .rejectsOnce(new UserNotFoundException({ message: "gone", ...meta }));
+    expect(await accounts.holderStatus("visitor@example.org")).toBe("FORCE_CHANGE_PASSWORD");
+    expect(await accounts.holderStatus("visitor@example.org")).toBeUndefined();
+  });
+
+  it("resends the invitation to the same address", async () => {
+    cognitoMock.on(AdminCreateUserCommand).resolves({});
+    await accounts.resendInvitation("visitor@example.org");
+    expect(cognitoMock.commandCalls(AdminCreateUserCommand)[0]?.args[0].input).toEqual({
+      UserPoolId: "pool",
+      Username: "visitor@example.org",
+      MessageAction: "RESEND",
+      DesiredDeliveryMediums: ["EMAIL"],
+    });
+  });
+
   it("finds existing accounts by address", async () => {
     cognitoMock.on(ListUsersCommand).resolves({ Users: [{ Username: "x" }] });
     expect(await accounts.exists("anna@example.org")).toBe(true);
@@ -199,6 +220,26 @@ describe("expiry schedules", () => {
     });
   });
 
+  it("creates the reminder and the moved expiry under names of their own", async () => {
+    schedulerMock.on(CreateScheduleCommand).resolves({});
+    await schedules.createReminder("p4k7x2qa", "pass-1", new Date("2026-10-01T12:00:00Z"));
+    await schedules.moveExpiry("p4k7x2qa", "pass-1", new Date("2026-10-03T08:00:00Z"));
+    const [reminder, moved] = schedulerMock
+      .commandCalls(CreateScheduleCommand)
+      .map((call) => call.args[0].input);
+    expect(reminder).toMatchObject({
+      Name: "pass-reminder-p4k7x2qa",
+      ScheduleExpression: "at(2026-10-01T12:00:00)",
+      ActionAfterCompletion: "DELETE",
+      Target: { Input: '{"task":"remind","tenantId":"p4k7x2qa","passId":"pass-1"}' },
+    });
+    expect(moved).toMatchObject({
+      Name: "pass-expiry-moved-p4k7x2qa",
+      ScheduleExpression: "at(2026-10-03T08:00:00)",
+      Target: { Input: '{"task":"expire","tenantId":"p4k7x2qa","passId":"pass-1"}' },
+    });
+  });
+
   it("is idempotent in both directions", async () => {
     schedulerMock
       .on(CreateScheduleCommand)
@@ -208,6 +249,9 @@ describe("expiry schedules", () => {
       .rejects(new ScheduleNotFound({ message: "x", Message: "x", ...meta }));
     await schedules.create("p4k7x2qa", "pass-1", new Date());
     await schedules.delete("p4k7x2qa");
+    expect(
+      schedulerMock.commandCalls(DeleteScheduleCommand).map((call) => call.args[0].input.Name),
+    ).toEqual(["pass-expiry-p4k7x2qa", "pass-expiry-moved-p4k7x2qa", "pass-reminder-p4k7x2qa"]);
     expect(atExpression(new Date("2026-01-02T03:04:05Z"))).toBe("at(2026-01-02T03:04:05)");
   });
 });

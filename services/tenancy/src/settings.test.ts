@@ -82,7 +82,7 @@ describe("offer (public)", () => {
     expect(result.statusCode).toBe(200);
     expect(result.headers?.["cache-control"]).toBe("public, max-age=60");
     expect(body(result)).toEqual({
-      passDays: 7,
+      passHours: 48,
       quotas: { api: 5000, events: 3, uploads: 20 },
       uploadMaxBytes: 5 * 1024 * 1024,
       redemptionOpen: true,

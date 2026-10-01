@@ -264,6 +264,98 @@ export class TenancyRepository extends SettingsRepository {
    * already 0 (drift; the reconcile repairs it) is left alone rather than going negative.
    * Returns false if the tenant is missing or already deleted.
    */
+  /**
+   * Records the holder's first sign-in on tenant and pass in one transaction, at most
+   * once and only while the tenant is live; `validUntil` (if given) becomes the new end.
+   * Returns false if it was activated before or the tenant is gone.
+   */
+  async activateTenant(tenant: PlatformTenant, now: Date, validUntil?: Date): Promise<boolean> {
+    const set = `SET activatedAt = :now${validUntil ? ", validUntil = :until" : ""}`;
+    const values = {
+      ":now": now.toISOString(),
+      ...(validUntil ? { ":until": validUntil.toISOString() } : {}),
+    };
+    try {
+      await this.db.send(
+        new TransactWriteCommand({
+          TransactItems: [
+            {
+              Update: {
+                TableName: this.table,
+                Key: tenantKey(tenant.tenantId),
+                UpdateExpression: set,
+                ConditionExpression:
+                  "attribute_exists(PK) AND attribute_not_exists(activatedAt) AND passId = :pass AND #status IN (:s0, :s1, :s2)",
+                ExpressionAttributeNames: { "#status": "status" },
+                ExpressionAttributeValues: {
+                  ...values,
+                  ":pass": tenant.passId,
+                  ":s0": "provisioning",
+                  ":s1": "active",
+                  ":s2": "quota-exceeded",
+                },
+              },
+            },
+            {
+              Update: {
+                TableName: this.table,
+                Key: passKey(tenant.passId),
+                UpdateExpression: set,
+                ConditionExpression: "attribute_exists(PK)",
+                ExpressionAttributeValues: values,
+              },
+            },
+          ],
+        }),
+      );
+      return true;
+    } catch (error) {
+      if (
+        error instanceof TransactionCanceledException &&
+        cancellationCodes(error).includes("ConditionalCheckFailed")
+      ) {
+        return false;
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Claims the reminder of an active tenant: sets `reminderSentAt` unless it is set
+   * already, so the reminder goes out at most once (schedule and reconcile may race).
+   * With `release` it removes the claim again (the mail could not be sent). Returns
+   * whether the item changed.
+   */
+  async markReminderSent(tenantId: string, now: Date, release = false): Promise<boolean> {
+    try {
+      await this.db.send(
+        new UpdateCommand({
+          TableName: this.table,
+          Key: tenantKey(tenantId),
+          ...(release
+            ? {
+                UpdateExpression: "REMOVE reminderSentAt",
+                ConditionExpression: "reminderSentAt = :now",
+              }
+            : {
+                UpdateExpression: "SET reminderSentAt = :now",
+                ConditionExpression:
+                  "attribute_exists(PK) AND attribute_not_exists(reminderSentAt) AND #status = :active",
+                ExpressionAttributeNames: { "#status": "status" },
+              }),
+          ExpressionAttributeValues: {
+            ":now": now.toISOString(),
+            ...(release ? {} : { ":active": "active" }),
+          },
+        }),
+      );
+      return true;
+    } catch (error) {
+      if (isConditionFailure(error)) return false;
+      throw error;
+    }
+  }
+
   async markTenantDeleted(tenantId: string, now: Date, keepUntil: Date): Promise<boolean> {
     const tenantUpdate = {
       TableName: this.table,

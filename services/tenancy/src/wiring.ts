@@ -39,7 +39,8 @@ export function configFromEnv(): TenancyConfig {
   return {
     portalUrl: requireEnv("PORTAL_URL").replace(/\/$/, ""),
     tablePrefix: process.env.TENANT_TABLE_PREFIX || "kp-tenant-",
-    passDays: numberEnv("PASS_DAYS", 7),
+    passHours: numberEnv("PASS_HOURS", 48),
+    reminderHours: numberEnv("REMINDER_HOURS", 24),
     maxShortMinutes: numberEnv("PASS_MINUTES", 60, 60),
     quotas: {
       api: numberEnv("QUOTA_API_CALLS", 5000),

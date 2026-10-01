@@ -11,9 +11,10 @@ import type { TenancyContext } from "./context.js";
 import {
   closeRedemption,
   countEvent,
-  endPass,
+  expireBySchedule,
   provisionTenant,
   reconcile,
+  remindHolder,
   teardownTenant,
 } from "./lifecycle.js";
 import { WorkerTask } from "./model.js";
@@ -49,6 +50,7 @@ function parse<T extends z.ZodType>(schema: T, detail: unknown, name: string): z
  * - EventBridge rules: `DemoPassIssued` (provision), `DemoPassExpired` (teardown), and
  *   every other `kundenportal.*` event of a pass tenant (events quota);
  * - EventBridge Scheduler: `{task: "expire", tenantId, passId}` at the end of a pass,
+ *   `{task: "remind", tenantId, passId}` `reminderHours` after redeeming,
  *   `{task: "reconcile"}` daily;
  * - SNS: the budget alarm topic, which closes redemption (kill switch).
  * Lambda retries failed invocations; every step is idempotent.
@@ -63,7 +65,11 @@ export function createWorker(ctx: TenancyContext) {
         return result;
       }
       const { tenantId, passId } = task.data;
-      await endPass(ctx, tenantId, passId, "expired", `schedule-${passId}`);
+      if (task.data.task === "remind") {
+        await remindHolder(ctx, tenantId, passId);
+        return undefined;
+      }
+      await expireBySchedule(ctx, tenantId, passId);
       return undefined;
     }
 

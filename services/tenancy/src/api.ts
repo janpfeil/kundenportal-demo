@@ -8,12 +8,13 @@ import {
   forbidden,
   HttpError,
   json,
+  noContent,
   parseBody,
   router,
 } from "@kundenportal/service-kit";
 import type { Altcha } from "./altcha.js";
 import type { Repository } from "./context.js";
-import { OWNER_GROUP, PASS_GROUP, type TenancyConfig } from "./model.js";
+import { OWNER_GROUP, OWNER_TENANT, PASS_GROUP, type TenancyConfig } from "./model.js";
 import { InvitationRequest, type Passes, RedeemRequest } from "./passes.js";
 import { sha256 } from "./secrets.js";
 import { PlatformSettings, SettingsRequest } from "./settings.js";
@@ -74,6 +75,14 @@ export function createApi(passes: Passes, settings: PlatformSettings): ApiHandle
         const groups = groupsOf(event);
         const privileged = groups.includes(PASS_GROUP) || groups.includes(OWNER_GROUP);
         return json(200, await passes.own(caller, privileged));
+      },
+      // The portal calls this after every sign-in; only the holder's first one counts.
+      "POST /tenancy/pass/activate": async (event) => {
+        const caller = callerFrom(event);
+        if (!groupsOf(event).includes(PASS_GROUP) || caller.tenantId === OWNER_TENANT) {
+          return noContent();
+        }
+        return json(200, await passes.activate(caller));
       },
     },
     // Pass holders must see their pass in every state (being set up, quota used up), so

@@ -33,7 +33,9 @@ import { PASS_GROUP } from "./model.js";
 import {
   type ExpirySchedules,
   type LegacyTenants,
+  movedScheduleName,
   type OwnerHints,
+  reminderScheduleName,
   scheduleName,
   type TenantAccounts,
   type TenantTables,
@@ -168,6 +170,30 @@ export class CognitoTenantAccounts implements TenantAccounts {
     );
   }
 
+  async holderStatus(email: string): Promise<string | undefined> {
+    try {
+      const user = await this.cognito.send(
+        new AdminGetUserCommand({ UserPoolId: this.userPoolId, Username: email }),
+      );
+      return user.UserStatus;
+    } catch (error) {
+      if (error instanceof UserNotFoundException) return undefined;
+      throw error;
+    }
+  }
+
+  /** Cognito mails a new temporary password; the old one stops working. */
+  async resendInvitation(email: string): Promise<void> {
+    await this.cognito.send(
+      new AdminCreateUserCommand({
+        UserPoolId: this.userPoolId,
+        Username: email,
+        MessageAction: "RESEND",
+        DesiredDeliveryMediums: ["EMAIL"],
+      }),
+    );
+  }
+
   /**
    * ListUsers cannot filter by custom attributes, so this pages through the whole pool
    * and deletes the tenant's accounts (pass holder and migrated demo persons).
@@ -236,10 +262,42 @@ export class SchedulerExpiry implements ExpirySchedules {
   ) {}
 
   async create(tenantId: string, passId: string, at: Date): Promise<void> {
+    await this.createAt(scheduleName(tenantId), at, { task: "expire", tenantId, passId });
+  }
+
+  async createReminder(tenantId: string, passId: string, at: Date): Promise<void> {
+    await this.createAt(reminderScheduleName(tenantId), at, { task: "remind", tenantId, passId });
+  }
+
+  /**
+   * Called while the first expiry schedule is firing; Scheduler deletes that one after
+   * the invocation, so the new end gets a schedule of its own name.
+   */
+  async moveExpiry(tenantId: string, passId: string, at: Date): Promise<void> {
+    await this.createAt(movedScheduleName(tenantId), at, { task: "expire", tenantId, passId });
+  }
+
+  async delete(tenantId: string): Promise<void> {
+    for (const name of [scheduleName, movedScheduleName, reminderScheduleName]) {
+      await this.deleteNamed(name(tenantId));
+    }
+  }
+
+  private async deleteNamed(name: string): Promise<void> {
+    try {
+      await this.scheduler.send(
+        new DeleteScheduleCommand({ Name: name, GroupName: this.options.groupName }),
+      );
+    } catch (error) {
+      if (!(error instanceof ScheduleNotFound)) throw error;
+    }
+  }
+
+  private async createAt(name: string, at: Date, input: Record<string, string>): Promise<void> {
     try {
       await this.scheduler.send(
         new CreateScheduleCommand({
-          Name: scheduleName(tenantId),
+          Name: name,
           GroupName: this.options.groupName,
           ScheduleExpression: atExpression(at),
           ScheduleExpressionTimezone: "UTC",
@@ -248,25 +306,12 @@ export class SchedulerExpiry implements ExpirySchedules {
           Target: {
             Arn: this.options.workerArn,
             RoleArn: this.options.roleArn,
-            Input: JSON.stringify({ task: "expire", tenantId, passId }),
+            Input: JSON.stringify(input),
           },
         }),
       );
     } catch (error) {
       if (!(error instanceof ConflictException)) throw error;
-    }
-  }
-
-  async delete(tenantId: string): Promise<void> {
-    try {
-      await this.scheduler.send(
-        new DeleteScheduleCommand({
-          Name: scheduleName(tenantId),
-          GroupName: this.options.groupName,
-        }),
-      );
-    } catch (error) {
-      if (!(error instanceof ScheduleNotFound)) throw error;
     }
   }
 }

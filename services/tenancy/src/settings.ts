@@ -22,7 +22,7 @@ export interface SettingsView {
 
 /** `GET /tenancy/offer` response (`PassOffer` in the contract). */
 export interface OfferView {
-  passDays: number;
+  passHours: number;
   quotas: { api: number; events: number; uploads: number };
   uploadMaxBytes: number;
   /** Redeeming is possible right now: not closed and a pass tenant is free. */
@@ -60,9 +60,9 @@ export class PlatformSettings {
   /** What a demo pass offers, for the redeem page (public, no personal data). */
   async offer(): Promise<OfferView> {
     const settings = await this.repository.getSettings();
-    const { quotas, passDays } = this.config;
+    const { quotas, passHours } = this.config;
     return {
-      passDays,
+      passHours,
       quotas: { api: quotas.api, events: quotas.events, uploads: quotas.uploads },
       uploadMaxBytes: UPLOAD_MAX_BYTES,
       redemptionOpen:

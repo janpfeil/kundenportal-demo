@@ -1,7 +1,7 @@
 import { PublishCommand, SNSClient } from "@aws-sdk/client-sns";
 import { mockClient } from "aws-sdk-client-mock";
-import { describe, expect, it } from "vitest";
-import { ownerHintsFromEnv, workerArn } from "./wiring.js";
+import { describe, expect, it, vi } from "vitest";
+import { configFromEnv, ownerHintsFromEnv, workerArn } from "./wiring.js";
 
 describe("workerArn", () => {
   it("prefers an explicit WORKER_ARN", () => {
@@ -24,6 +24,17 @@ describe("workerArn", () => {
     expect(() =>
       workerArn({ AWS_REGION: "eu-central-1", AWS_LAMBDA_FUNCTION_NAME: "w" }),
     ).toThrow();
+  });
+});
+
+describe("configFromEnv", () => {
+  it("lasts 48 hours with a reminder after 24 unless PASS_HOURS/REMINDER_HOURS say else", () => {
+    vi.stubEnv("PORTAL_URL", "https://portal.example.org/");
+    expect(configFromEnv()).toMatchObject({ passHours: 48, reminderHours: 24 });
+    vi.stubEnv("PASS_HOURS", "72");
+    vi.stubEnv("REMINDER_HOURS", "12");
+    expect(configFromEnv()).toMatchObject({ passHours: 72, reminderHours: 12 });
+    vi.unstubAllEnvs();
   });
 });
 

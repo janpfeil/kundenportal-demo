@@ -93,6 +93,30 @@ export class MemoryRepository implements Repository {
     if (keepUntil) tenant.ttl = Math.floor(keepUntil.getTime() / 1000);
     return true;
   }
+  async activateTenant(tenant: PlatformTenant, now: Date, validUntil?: Date) {
+    const stored = this.tenants.get(tenant.tenantId);
+    const pass = this.passes.get(tenant.passId);
+    const live: TenantStatus[] = ["provisioning", "active", "quota-exceeded"];
+    if (!stored || !pass || stored.activatedAt || stored.passId !== tenant.passId) return false;
+    if (!live.includes(stored.status)) return false;
+    for (const item of [stored, pass]) {
+      item.activatedAt = now.toISOString();
+      if (validUntil) item.validUntil = validUntil.toISOString();
+    }
+    return true;
+  }
+  async markReminderSent(tenantId: string, now: Date, release = false) {
+    const tenant = this.tenants.get(tenantId);
+    if (!tenant) return false;
+    if (release) {
+      if (tenant.reminderSentAt !== now.toISOString()) return false;
+      delete tenant.reminderSentAt;
+      return true;
+    }
+    if (tenant.reminderSentAt || tenant.status !== "active") return false;
+    tenant.reminderSentAt = now.toISOString();
+    return true;
+  }
   async markTenantDeleted(tenantId: string, now: Date, keepUntil: Date) {
     const tenant = this.tenants.get(tenantId);
     if (!tenant || tenant.status === "deleted") return false;
@@ -163,7 +187,8 @@ export class MemoryRepository implements Repository {
 export const CONFIG: TenancyConfig = {
   portalUrl: "https://portal.example.org",
   tablePrefix: "kp-tenant-",
-  passDays: 7,
+  passHours: 48,
+  reminderHours: 24,
   maxShortMinutes: 60,
   quotas: { api: 5000, events: 3, uploads: 20 },
   redeemPerClient: 10,
@@ -176,9 +201,13 @@ export function testContext(overrides: Partial<TenancyContext> = {}) {
   const published: { detailType: string; detail: Record<string, unknown> }[] = [];
   const calls: string[] = [];
   const tables = new Set<string>();
-  const accounts = new Map<string, { tenantId: string; suppressMail: boolean }>();
+  const accounts = new Map<
+    string,
+    { tenantId: string; suppressMail: boolean; status?: string; invitations?: number }
+  >();
   const legacyTenants = new Map<string, string>();
   const schedules = new Map<string, { passId: string; at: Date }>();
+  const reminders = new Map<string, { passId: string; at: Date }>();
   const uploads = new Map<string, number>();
   const hints: { subject: string; message: string }[] = [];
   let clock = NOW;
@@ -217,6 +246,16 @@ export function testContext(overrides: Partial<TenancyContext> = {}) {
         calls.push(`account:create:${email}`);
         accounts.set(email, { tenantId, suppressMail });
       },
+      async holderStatus(email) {
+        const account = accounts.get(email);
+        return account ? (account.status ?? "FORCE_CHANGE_PASSWORD") : undefined;
+      },
+      async resendInvitation(email) {
+        calls.push(`account:resend:${email}`);
+        const account = accounts.get(email);
+        if (!account) throw new Error("no account");
+        account.invitations = (account.invitations ?? 1) + 1;
+      },
       async deleteTenantAccounts(tenantId) {
         let deleted = 0;
         for (const [email, account] of accounts) {
@@ -244,9 +283,18 @@ export function testContext(overrides: Partial<TenancyContext> = {}) {
         calls.push(`schedule:create:${tenantId}`);
         schedules.set(tenantId, { passId, at });
       },
+      async moveExpiry(tenantId, passId, at) {
+        calls.push(`schedule:move:${tenantId}`);
+        schedules.set(tenantId, { passId, at });
+      },
+      async createReminder(tenantId, passId, at) {
+        calls.push(`reminder:create:${tenantId}`);
+        reminders.set(tenantId, { passId, at });
+      },
       async delete(tenantId) {
         calls.push(`schedule:delete:${tenantId}`);
         schedules.delete(tenantId);
+        reminders.delete(tenantId);
       },
     },
     uploads: {
@@ -276,6 +324,7 @@ export function testContext(overrides: Partial<TenancyContext> = {}) {
     accounts,
     legacyTenants,
     schedules,
+    reminders,
     uploads,
     hints,
     types: () => published.map((p) => p.detailType),

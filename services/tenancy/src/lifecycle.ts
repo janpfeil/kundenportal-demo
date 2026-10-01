@@ -10,7 +10,14 @@ import {
 } from "@kundenportal/events";
 import { log } from "@kundenportal/service-kit";
 import { type TenancyContext, tableNameOf } from "./context.js";
-import { addDays, PASS_RECORD_DAYS, STUCK_AFTER_MS, type TenantStatus } from "./model.js";
+import {
+  addDays,
+  addHours,
+  PASS_RECORD_DAYS,
+  type PlatformTenant,
+  STUCK_AFTER_MS,
+  type TenantStatus,
+} from "./model.js";
 
 const LIVE: TenantStatus[] = ["provisioning", "active", "quota-exceeded"];
 const NOT_DELETED: TenantStatus[] = [...LIVE, "tearing-down"];
@@ -40,9 +47,19 @@ async function hintOwner(ctx: TenancyContext, subject: string, message: string) 
   }
 }
 
+/** Cognito status of an account whose holder has never signed in. */
+const NEVER_SIGNED_IN = "FORCE_CHANGE_PASSWORD";
+/** Schedules need a time in the future; closer than this they are not worth creating. */
+const SCHEDULE_LEAD_MS = 60_000;
+
+/** When a holder who has not signed in yet gets the invitation again. */
+const reminderAt = (ctx: TenancyContext, tenant: PlatformTenant) =>
+  addHours(new Date(tenant.createdAt), ctx.config.reminderHours);
+
 /**
  * Sets up the tenant of a new pass (on `DemoPassIssued`): own table, legacy data, the
- * holder's Cognito account, the expiry schedule; then `active` and `TenantProvisioned`.
+ * holder's Cognito account, the expiry schedule and (if the holder got Cognito's mail)
+ * the reminder schedule; then `active` and `TenantProvisioned`.
  * Every step is idempotent, so a retry or the reconcile simply runs it again. A pass
  * that ended meanwhile stops the setup; the reconcile removes what was left.
  */
@@ -69,8 +86,21 @@ export async function provisionTenant(
   await ctx.accounts.createHolder(tenant.email, tenantId, tenant.shortLived === true);
   // A schedule in the past is rejected; the reconcile catches passes that ran out meanwhile.
   const now = ctx.now();
-  const expiry = new Date(Math.max(Date.parse(tenant.validUntil), now.getTime() + 60_000));
+  const expiry = new Date(
+    Math.max(Date.parse(tenant.validUntil), now.getTime() + SCHEDULE_LEAD_MS),
+  );
   await ctx.schedules.create(tenantId, passId, expiry);
+  // Short test passes get no mail, so there is nothing to remind of. A reminder that is
+  // due already (re-driven setup) or falls after the end is skipped; the reconcile sends
+  // a due one.
+  const remind = reminderAt(ctx, tenant);
+  if (
+    tenant.shortLived !== true &&
+    remind.getTime() > now.getTime() + SCHEDULE_LEAD_MS &&
+    remind.getTime() < Date.parse(tenant.validUntil)
+  ) {
+    await ctx.schedules.createReminder(tenantId, passId, remind);
+  }
 
   if (!(await ctx.repository.setTenantStatus(tenantId, "active", ctx.now(), ["provisioning"]))) {
     return;
@@ -135,6 +165,98 @@ export async function endPass(
   return true;
 }
 
+/**
+ * The expiry schedule fired (`{task: "expire"}`). The holder's first sign-in may have
+ * moved the end since the schedule was made; then a schedule at the new end follows
+ * instead of ending the pass.
+ */
+export async function expireBySchedule(
+  ctx: TenancyContext,
+  tenantId: string,
+  passId: string,
+): Promise<void> {
+  const tenant = await ctx.repository.getTenant(tenantId);
+  const now = ctx.now();
+  if (
+    tenant?.passId === passId &&
+    LIVE.includes(tenant.status) &&
+    Date.parse(tenant.validUntil) > now.getTime() + SCHEDULE_LEAD_MS
+  ) {
+    await ctx.schedules.moveExpiry(tenantId, passId, new Date(tenant.validUntil));
+    log("info", "Expiry moved to the new end of the pass", {
+      tenantId,
+      validUntil: tenant.validUntil,
+    });
+    return;
+  }
+  await endPass(ctx, tenantId, passId, "expired", `schedule-${passId}`);
+}
+
+/**
+ * Reminds a holder who has not signed in yet (`{task: "remind"}` or the reconcile):
+ * Cognito sends the invitation again with a new temporary password. Only for an active,
+ * not yet activated pass with a Cognito mail, at most once (`reminderSentAt`). Returns
+ * whether the reminder went out.
+ */
+export async function remindHolder(
+  ctx: TenancyContext,
+  tenantId: string,
+  passId: string,
+): Promise<boolean> {
+  const tenant = await ctx.repository.getTenant(tenantId);
+  if (
+    !tenant ||
+    tenant.passId !== passId ||
+    tenant.status !== "active" ||
+    tenant.shortLived === true ||
+    tenant.activatedAt ||
+    tenant.reminderSentAt
+  ) {
+    return false;
+  }
+  const status = await ctx.accounts.holderStatus(tenant.email);
+  if (status !== NEVER_SIGNED_IN) {
+    log("info", "No reminder: the holder has signed in", { tenantId, status });
+    return false;
+  }
+  const now = ctx.now();
+  if (!(await ctx.repository.markReminderSent(tenantId, now))) return false;
+  try {
+    await ctx.accounts.resendInvitation(tenant.email);
+  } catch (error) {
+    // Give the next schedule run or reconcile the chance to send it.
+    await ctx.repository.markReminderSent(tenantId, now, true);
+    throw error;
+  }
+  log("info", "Invitation sent again to a holder who has not signed in", { tenantId });
+  await hintOwner(
+    ctx,
+    "Demo-Pass: Erinnerung verschickt",
+    `Erinnerung an ${tenant.email} verschickt: Mandant ${tenantId}, seit ` +
+      `${ctx.config.reminderHours} Stunden nicht angemeldet.`,
+  );
+  return true;
+}
+
+/**
+ * The holder signed in (`POST /tenancy/pass/activate`, called by the portal after the
+ * sign-in): the first call records `activatedAt` and, except for short test passes, moves
+ * the end to `passHours` from now. The expiry schedule notices the new end when it fires;
+ * a pending reminder skips activated passes. Returns whether this call activated it.
+ */
+export async function activatePass(ctx: TenancyContext, tenantId: string): Promise<boolean> {
+  const tenant = await ctx.repository.getTenant(tenantId);
+  if (!tenant || tenant.activatedAt || !LIVE.includes(tenant.status)) return false;
+  const now = ctx.now();
+  const validUntil = tenant.shortLived ? undefined : addHours(now, ctx.config.passHours);
+  if (!(await ctx.repository.activateTenant(tenant, now, validUntil))) return false;
+  log("info", "Pass activated by the first sign-in", {
+    tenantId,
+    validUntil: validUntil?.toISOString() ?? tenant.validUntil,
+  });
+  return true;
+}
+
 export interface TeardownResult {
   tenantId: string;
   deletedAccounts: number;
@@ -144,7 +266,7 @@ export interface TeardownResult {
 
 /**
  * Removes everything of one tenant (architektur-mandanten §7): Cognito accounts, legacy
- * data, uploads, table, schedule, counters; then the platform items go to `deleted`
+ * data, uploads, table, schedules (expiry and reminder), counters; then the platform items go to `deleted`
  * (kept 30 days) and `TenantDeleted` follows. Each step skips what is already gone, so it
  * is safe to repeat, and it also works for orphans without platform items.
  */
@@ -225,6 +347,8 @@ export interface ReconcileResult {
   expired: string[];
   reprovisioned: string[];
   tornDown: string[];
+  /** Holders reminded because no schedule did (e.g. it fired into a paused stack). */
+  reminded: string[];
   /** Pass tenants that are not deleted, after the run (the recomputed counter). */
   activeTenants?: number;
 }
@@ -236,7 +360,7 @@ export interface ReconcileResult {
  */
 export async function reconcile(ctx: TenancyContext): Promise<ReconcileResult> {
   const now = ctx.now();
-  const result: ReconcileResult = { expired: [], reprovisioned: [], tornDown: [] };
+  const result: ReconcileResult = { expired: [], reprovisioned: [], tornDown: [], reminded: [] };
   const tenants = await ctx.repository.listTenants();
   const correlationId = `reconcile-${now.toISOString()}`;
   for (const tenant of tenants) {
@@ -266,6 +390,16 @@ export async function reconcile(ctx: TenancyContext): Promise<ReconcileResult> {
       } else if (tenant.status === "tearing-down" && idleMs > STUCK_AFTER_MS) {
         await teardownTenant(ctx, tenant.tenantId, correlationId);
         result.tornDown.push(tenant.tenantId);
+      } else if (
+        tenant.status === "active" &&
+        !tenant.reminderSentAt &&
+        !tenant.activatedAt &&
+        !tenant.shortLived &&
+        reminderAt(ctx, tenant).getTime() <= now.getTime()
+      ) {
+        if (await remindHolder(ctx, tenant.tenantId, tenant.passId)) {
+          result.reminded.push(tenant.tenantId);
+        }
       }
     } catch (error) {
       // One broken tenant must not block the others; the next run tries again.

@@ -126,6 +126,52 @@ describe("tenancy repository", () => {
     );
   });
 
+  it("claims the reminder once, only for an active tenant, and can free the claim", async () => {
+    dbMock.on(UpdateCommand).resolvesOnce({}).rejectsOnce(failed()).resolvesOnce({});
+    expect(await repository.markReminderSent("p4k7x2qa", NOW)).toBe(true);
+    expect(dbMock.commandCalls(UpdateCommand)[0]?.args[0].input).toMatchObject({
+      Key: { PK: "PLATFORM", SK: "TENANT#p4k7x2qa" },
+      UpdateExpression: "SET reminderSentAt = :now",
+      ConditionExpression:
+        "attribute_exists(PK) AND attribute_not_exists(reminderSentAt) AND #status = :active",
+    });
+    expect(await repository.markReminderSent("p4k7x2qa", NOW)).toBe(false);
+    expect(await repository.markReminderSent("p4k7x2qa", NOW, true)).toBe(true);
+    expect(dbMock.commandCalls(UpdateCommand)[2]?.args[0].input).toMatchObject({
+      UpdateExpression: "REMOVE reminderSentAt",
+      ConditionExpression: "reminderSentAt = :now",
+    });
+  });
+
+  it("activates tenant and pass together, once", async () => {
+    dbMock
+      .on(TransactWriteCommand)
+      .resolvesOnce({})
+      .rejectsOnce(
+        new TransactionCanceledException({
+          message: "cancelled",
+          $metadata: {},
+          CancellationReasons: [{ Code: "ConditionalCheckFailed" }, { Code: "None" }],
+        }),
+      );
+    const until = new Date("2026-10-02T12:00:00.000Z");
+    expect(await repository.activateTenant(tenant, NOW, until)).toBe(true);
+    const items = dbMock.commandCalls(TransactWriteCommand)[0]?.args[0].input.TransactItems ?? [];
+    expect(items[0]?.Update).toMatchObject({
+      Key: { PK: "PLATFORM", SK: "TENANT#p4k7x2qa" },
+      UpdateExpression: "SET activatedAt = :now, validUntil = :until",
+      ExpressionAttributeValues: { ":until": until.toISOString(), ":pass": "pass-1" },
+    });
+    expect(items[0]?.Update?.ConditionExpression).toContain("attribute_not_exists(activatedAt)");
+    expect(items[1]?.Update).toMatchObject({
+      Key: { PK: "PASS#pass-1", SK: "META" },
+      UpdateExpression: "SET activatedAt = :now, validUntil = :until",
+    });
+    expect(await repository.activateTenant(tenant, NOW)).toBe(false);
+    const short = dbMock.commandCalls(TransactWriteCommand)[1]?.args[0].input.TransactItems;
+    expect(short?.[1]?.Update?.UpdateExpression).toBe("SET activatedAt = :now");
+  });
+
   it("counts attempts in hourly windows", async () => {
     dbMock.on(UpdateCommand).resolvesOnce({});
     expect(await repository.countAttempt("ip", 10, NOW)).toBe(true);
