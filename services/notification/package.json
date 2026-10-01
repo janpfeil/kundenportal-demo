@@ -2,7 +2,7 @@
   "name": "@kundenportal/notification",
   "version": "0.1.0",
   "private": true,
-  "description": "Notification service: demo mailbox fed from domain events (SQS), GET/PATCH /notifications, owner hints via SNS",
+  "description": "Notification service: demo mailbox fed from domain events (SQS), GET/PATCH /notifications, the operator's read-only view of a mailbox, owner hints via SNS",
   "license": "MIT",
   "type": "module",
   "scripts": {

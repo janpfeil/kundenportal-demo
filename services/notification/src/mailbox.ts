@@ -50,6 +50,18 @@ export class Mailbox {
     );
   }
 
+  /** Whether the mailbox knows the customer (`CustomerRegistered` arrived). */
+  async knows(tenantId: string, customerId: string): Promise<boolean> {
+    const { db, tableName } = await this.data(tenantId);
+    const result = await db.send(
+      new GetCommand({
+        TableName: tableName,
+        Key: { PK: tenantKey(tenantId, "CUST", customerId), SK: "MAILBOX" },
+      }),
+    );
+    return result.Item !== undefined;
+  }
+
   /** Language of the customer's mailbox; German if the customer is not known (yet). */
   async localeOf(tenantId: string, customerId: string): Promise<Locale> {
     const { db, tableName } = await this.data(tenantId);

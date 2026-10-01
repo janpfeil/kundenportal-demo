@@ -260,6 +260,40 @@ describe("notes from other domains", () => {
     expect(notes()).toEqual([]);
   });
 
+  it("confirms an order and warns about the operator's termination, without owner mails", async () => {
+    const ordered = domainEvent("kundenportal.contract", "ContractChanged", {
+      changeType: "created",
+      changes: [],
+      initiatedBy: "customer",
+      contract: { ...contract, version: 1 },
+    });
+    const terminated = domainEvent("kundenportal.contract", "ContractChanged", {
+      changeType: "updated",
+      changes: ["termination"],
+      initiatedBy: "operator",
+      reason: "Umzug ins Ausland",
+      contract: {
+        ...contract,
+        version: 3,
+        termination: {
+          kind: "termination",
+          effectiveDate: "2026-12-31",
+          requestedAt: "2026-09-30T12:30:00.000Z",
+          by: "operator",
+        },
+      },
+    });
+    const result = await consumer(event(record("m-1", ordered), record("m-2", terminated)));
+
+    expect(result.batchItemFailures).toEqual([]);
+    expect(notes().map((n) => [n.Item?.kind, n.Item?.title])).toEqual([
+      ["info", "Vertrag abgeschlossen"],
+      ["warning", "Vertrag gekündigt"],
+    ]);
+    expect(notes()[1]?.Item?.body).toContain("Begründung: Umzug ins Ausland");
+    expect(snsMock.commandCalls(PublishCommand)).toHaveLength(0);
+  });
+
   it("is idempotent: a redelivered event does not duplicate the note", async () => {
     dbMock
       .on(PutCommand)

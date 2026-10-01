@@ -14,7 +14,7 @@ import type {
   PasswordResetRequiredDetail,
 } from "@kundenportal/events";
 
-type Text = { title: string; body: string };
+export type Text = { title: string; body: string };
 
 /** Mailbox texts per UI language; the mailbox stores them in the customer's language. */
 export const welcomeText: Record<Locale, (name: string) => Text> = {
@@ -47,7 +47,7 @@ const SYSTEM: Record<Locale, Record<LegacySystem, string>> = {
 
 const TAG: Record<Locale, string> = { de: "de-DE", en: "en-GB" };
 
-const DIVISION: Record<Locale, Record<Division, string>> = {
+export const DIVISION: Record<Locale, Record<Division, string>> = {
   de: {
     electricity: "Strom",
     gas: "Gas",
@@ -66,11 +66,11 @@ const DIVISION: Record<Locale, Record<Division, string>> = {
 
 const UNIT: Record<MeterUnit, string> = { kWh: "kWh", m3: "m³" };
 
-const money = (locale: Locale, cents: number) =>
+export const money = (locale: Locale, cents: number) =>
   new Intl.NumberFormat(TAG[locale], { style: "currency", currency: "EUR" }).format(cents / 100);
 const number = (locale: Locale, value: number, digits = 3) =>
   new Intl.NumberFormat(TAG[locale], { maximumFractionDigits: digits }).format(value);
-const date = (locale: Locale, isoDate: string) =>
+export const date = (locale: Locale, isoDate: string) =>
   new Intl.DateTimeFormat(TAG[locale], { dateStyle: "medium", timeZone: "UTC" }).format(
     new Date(`${isoDate.slice(0, 10)}T00:00:00.000Z`),
   );

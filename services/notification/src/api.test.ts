@@ -94,3 +94,64 @@ describe("PATCH /notifications/{notificationId}", () => {
     expect(dbMock.commandCalls(UpdateCommand)).toHaveLength(0);
   });
 });
+
+describe("GET /admin/customers/{customerId}/notifications", () => {
+  const PASS = "p4k7x2qa";
+  const guarded: string[] = [];
+  const admin = createApi(new Mailbox(fixedTenantData()), {
+    tenantGuard: async (tenantId) => {
+      guarded.push(tenantId);
+    },
+  });
+  const read = (customerId: string, claims: Record<string, string>) =>
+    admin(
+      apiEvent("GET /admin/customers/{customerId}/notifications", {
+        claims,
+        pathParameters: { customerId },
+      }),
+    );
+
+  beforeEach(() => {
+    guarded.length = 0;
+  });
+
+  it("shows the owner a customer's mailbox newest first, read only", async () => {
+    dbMock
+      .on(QueryCommand)
+      .resolves({ Items: [{ PK: "TENANT#owner#CUST#c-7", SK: `NOTE#${id}`, ...note }] });
+
+    const result = await read("c-7", { "cognito:groups": "[owner]" });
+
+    expect(result.statusCode).toBe(200);
+    expect(body(result)).toEqual({ items: [note] });
+    const input = dbMock.commandCalls(QueryCommand)[0]?.args[0].input;
+    expect(input?.ExpressionAttributeValues?.[":pk"]).toBe("TENANT#owner#CUST#c-7");
+    expect(input?.ScanIndexForward).toBe(false);
+    expect(dbMock.commandCalls(UpdateCommand)).toHaveLength(0);
+  });
+
+  it("returns an empty mailbox of a known customer and 404 for an unknown one", async () => {
+    dbMock.on(QueryCommand).resolves({ Items: [] });
+    dbMock
+      .on(GetCommand, { Key: { PK: `TENANT#${PASS}#CUST#c-7`, SK: "MAILBOX" } })
+      .resolves({ Item: { locale: "de" } });
+    const pass = { "cognito:groups": "[pass]", tenant_id: PASS };
+
+    expect(body(await read("c-7", pass))).toEqual({ items: [] });
+    // A customer of another tenant is unknown here: the key always carries the token's tenant.
+    expect((await read("c-8", pass)).statusCode).toBe(404);
+    expect(guarded).toEqual([PASS, PASS]);
+  });
+
+  it.each([
+    ["a customer", {}],
+    ["a pass holder in the owner tenant", { "cognito:groups": "[pass]" }],
+  ])("refuses %s with 403", async (_who, claims) => {
+    expect((await read("c-1", claims)).statusCode).toBe(403);
+    expect(dbMock.commandCalls(QueryCommand)).toHaveLength(0);
+  });
+
+  it("rejects a malformed customer id with 400", async () => {
+    expect((await read("x".repeat(81), { "cognito:groups": "[owner]" })).statusCode).toBe(400);
+  });
+});

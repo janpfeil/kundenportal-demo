@@ -16,11 +16,11 @@ import {
 import { log } from "@kundenportal/service-kit";
 import type { SQSBatchResponse, SQSEvent, SQSRecord } from "aws-lambda";
 import type { z } from "zod";
+import { contractText } from "./contract-texts.js";
 import { type Mailbox, type Notification, notificationId } from "./mailbox.js";
 import type { OwnerHints } from "./owner-hints.js";
 import {
   accountsLinkedText,
-  contractChangedText,
   dataVolumeText,
   documentText,
   duplicateCandidateText,
@@ -44,7 +44,11 @@ type Detail = EventMetadata & { payload: { customerId: string } };
 interface NoteRule<D extends Detail> {
   event: { source: string; detailType: string; detail: z.ZodType<D> };
   kind: Notification["kind"];
-  text: (locale: Locale, detail: D) => { title: string; body: string } | undefined;
+  /** `kind` in the result overrides the rule's kind for this one entry. */
+  text: (
+    locale: Locale,
+    detail: D,
+  ) => { title: string; body: string; kind?: Notification["kind"] } | undefined;
 }
 
 const rule = <D extends Detail>(r: NoteRule<D>) => r as unknown as NoteRule<Detail>;
@@ -62,9 +66,9 @@ const NOTE_RULES: NoteRule<Detail>[] = [
       })),
     },
     kind: "info",
-    // Demo contracts created at registration need no message besides the welcome.
-    text: (locale, detail) =>
-      detail.payload.changeType === "updated" ? contractChangedText(locale, detail) : undefined,
+    // Orders, terminations, withdrawals and the operator's controls (phase 7); contracts
+    // the system creates at registration or migration need no message besides the welcome.
+    text: contractText,
   }),
   rule({ event: DataVolumeThresholdReached, kind: "warning", text: dataVolumeText }),
   rule({ event: DocumentUploaded, kind: "info", text: documentText }),
@@ -124,8 +128,9 @@ export function createConsumer(mailbox: Mailbox, ownerHints: OwnerHints) {
     if (!text) return;
     await mailbox.add(tenantId, payload.customerId, {
       notificationId: notificationId(occurredAt, eventId),
-      kind: noteRule.kind,
-      ...text,
+      kind: text.kind ?? noteRule.kind,
+      title: text.title,
+      body: text.body,
       createdAt: occurredAt,
       read: false,
     });
