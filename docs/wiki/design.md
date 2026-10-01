@@ -162,7 +162,7 @@ dieselbe Bedeutung hat.
 
 ## Phase 6: Oberflächen wie im Mockup
 
-Stand: 2026-10-01 · in Arbeit. Ziel: Cockpit, Demo-Pässe und die
+Stand: 2026-10-01 · abgeschlossen, Release v0.6.0. Ziel: Cockpit, Demo-Pässe und die
 Endkunden-Ansichten zeigen **denselben Aufbau, dieselben Bausteine und
 dieselben Inhalte** wie das Mockup — mit echten Daten aus dem API. Was nicht
 in vertretbarer Zeit echt umsetzbar ist, zeigt einen plausiblen Wert mit dem
@@ -290,3 +290,19 @@ maschinenlesbar per `data-fake="true"`, für Screenreader beschriftet.
   haben keine Icons und keinen „n neu“-Zähler (die Glocke zeigt ihn).
 - **Kopfzeile:** bei wenig Platz bekommt die Navigation eine eigene Zeile,
   statt Einträge wegzuscrollen.
+
+### Prüfung
+
+**[B]** Live am 01.10.2026 (v0.6.0): E2E 29/29, davon drei neue Journeys für
+die Bausteine (Konto-Karten, Diagramm mit Tabelle, Demo-Werte,
+Cockpit-Kennzahlen, Suche mit `/`, Kürzel `g p`). Der Screenshot-Lauf
+(`E2E_SCREENS=1`, Workflow-Schalter `screens`) fotografiert jeden Bildschirm
+in „Klar“ bzw. „Dicht“ hell und dunkel bei Desktop-Breite und 375 px sowie
+Stichproben der übrigen Presets (55 Bilder im Report) und schlägt fehl, wenn
+eine Seite seitwärts scrollt oder ein Navigationseintrag verdeckt ist. Er fand
+zwei Fehler, die behoben sind: die Telefon-Navigation schnitt „Verbrauch“ ab,
+und die Vertragskarten zeigten die Options-ID „standard“. Kontraste prüfen die
+Unit-Tests aller Presets × Modi (31 Paare, darunter der Demo-Wert-Marker).
+**Kosten:** keine neuen Ressourcentypen (CDK-Tests), drei Routen im
+bestehenden HTTP API, DynamoDB weiter 5/5; den Budgetstand selbst konnte ich
+ohne lokale AWS-Sitzung nicht ablesen.
