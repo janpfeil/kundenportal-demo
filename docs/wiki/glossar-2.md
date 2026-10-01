@@ -281,3 +281,13 @@ Generator liest beide Dateien und erzeugt daraus **eine** Glossar-Seite.
 | Kennzahl-Kachel | KPI-Kachel, Stat-Kachel | Karte mit einer großen Zahl, ihrer Bezeichnung und der Veränderung (z. B. „+3 seit gestern“) | Grafana-Stat-Panel, Dashboard-Widget |
 | Demo-Wert | Fake-Marker, simulierter Wert | Wert, den das Portal nur vorspielt, weil die echte Quelle fehlt (z. B. das Datenvolumen ohne Mobilfunknetz); trägt sichtbar den Marker „Demo-Wert“ und `data-fake="true"` | Platzhalterdaten, Mock |
 | Tastenkürzel | Shortcut, Tastenfolge | Taste oder Folge von Tasten für häufige Wege; im Cockpit `/` für die Suche, `g c` zur Übersicht, `g p` zu den Demo-Pässen | Gmail- und GitHub-Tastenkürzel |
+
+## Produkte und Verträge (Phase 7)
+
+| Begriff | Auch | Erklärung | Außerhalb von AWS |
+|---|---|---|---|
+| Betreiber-Cockpit | Backoffice, Admin-Oberfläche | Arbeitsplatz des Betreibers: Kunden, Verträge, Produkte, Migration; im Demo der Inhaber, im Pass-Mandanten der Pass-Inhaber | CRM-Backoffice, SAP IS-U/CRM |
+| Preisversion | Preisstand, Tarifversion | Preise eines Produkts ab einem Stichtag; neue Verträge bekommen die gültige Version, laufende behalten ihre, bis der Betreiber sie umstellt | Preisblatt mit Gültigkeit |
+| Kündigungsfrist | Notice period | Zeit zwischen Kündigung und Vertragsende; im Demo 1 Monat zum Monatsende nach der Mindestlaufzeit | — |
+| Widerruf | Widerrufsrecht | Rücktritt von einem online geschlossenen Vertrag innerhalb von 14 Tagen; im Demo sofort wirksam | Fernabsatzrecht (§ 355 BGB) |
+| Verzeichnis-Partition | Directory, Listen-Partition | eine Partition je Mandant mit kurzen Einträgen aller Kunden bzw. Verträge, die eine Liste mit einer Abfrage liest — statt Scan oder Index | materialisierte Sicht, Suchindex |

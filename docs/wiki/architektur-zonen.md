@@ -442,6 +442,28 @@ Einträgen, 860–1680 px, alle Kunden-Presets ohne Überlauf, 01.10.2026]**.
 **Demo-Werte:** Was simuliert ist, trägt `FakeMarker` („Demo-Wert“,
 `data-fake="true"`); die Liste steht in [Design und Theme](design.md).
 
+## 14. Betreiber-Cockpit und Vertragsverwaltung (Phase 7)
+
+Das Cockpit ist der Arbeitsplatz des Betreibers; die Migration ist ein
+Bereich davon ([Fachkonzept](fachkonzept.md) §5.1).
+
+| Seite | Zone | Inhalt | Daten |
+|---|---|---|---|
+| `/cockpit` | Cockpit | Übersicht: Kunden, aktive Verträge, offene Kündigungen, Abschlüsse und Kündigungen der letzten 7 Tage, Verträge je Sparte, Kurzstatus Migration, neueste Verträge | `/admin/overview`, `/admin/customers`, `/admin/contracts`, `/migration/status` |
+| `/cockpit/kunden`, `/cockpit/kunden/<id>` | Cockpit | Liste mit Suche, Herkunft, Sparte, Vertragsstatus, Sortierung, Seiten; Detail mit Reitern Verträge, Zählerstände, Dokumente, Postfach | `/admin/customers…`, `/admin/contracts?customerId=`, `…/readings` |
+| `/cockpit/vertraege`, `/cockpit/vertraege/<id>` | Cockpit | Liste mit Filtern; Detail mit Aktionen (Option/Produkt wechseln, Preisversion übernehmen, Abschlag festsetzen, kündigen, Kündigung zurücknehmen, sperren) und Verlauf | `/admin/contracts…`, `POST …/actions` |
+| `/cockpit/produkte`, `/neu`, `/<id>` | Cockpit | Katalog, Anlegen, Status (Freigeben, Auslaufen lassen, Archivieren), Texte, Preisversionen | `/admin/products…` |
+| `/cockpit/migration` | Cockpit | bisheriges Migrations-Cockpit (bis Phase 6 unter `/cockpit`) | `/migration/status` |
+| `/vertraege/neu`, `/vertraege/neu/<productId>` | Verträge | Produktkatalog, Bestellung mit Zustimmung und Bestätigung | `/products`, `POST /contracts` |
+| `/vertraege/<id>` | Verträge | zusätzlich Kündigung (frühester Termin, Bestätigung, Rücknahme), Widerruf (14 Tage), Hinweis bei Sperre | `…/termination`, `…/withdrawal` |
+
+**Navigation des Cockpits:** Abschnitte „Betrieb“ (Übersicht `g c`, Kunden
+`g k`, Verträge `g v`, Produkte `g t`), „Migration“ (`g m`, mit Klärfällen,
+DLQ, Ereignissen), „Verwaltung“ (nur Inhaber: Demo-Pässe `g p`,
+Einstellungen) und „Kundenportal“. Filter sind GET-Formulare: die Adresse
+hält den Zustand, Blättern geht ohne JavaScript. Jede Betreiberaktion
+verlangt eine Begründung; Kündigen und Sperren fragen nach.
+
 ## Quellen
 
 - CloudFront OAC für Lambda Function URLs (Payload-Hash bei PUT/POST): https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/private-content-restricting-access-to-lambda.html

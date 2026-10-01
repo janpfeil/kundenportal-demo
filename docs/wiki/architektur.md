@@ -152,9 +152,10 @@ Der OpenAPI-Vertrag (`packages/api-contract/openapi.yaml`) nennt je Operation
 den nötigen Scope. Die CDK-App liest ihn und erzeugt daraus
 
 - den [Resource Server](glossar.md#resource-server) `kundenportal` mit
-  14 Scopes, je Bereich `.read` und `.write`: `profile`, `notifications`
+  16 Scopes, je Bereich `.read` und `.write`: `profile`, `notifications`
   (Phase 1), `contracts`, `readings`, `documents` (Phase 2), `migration`
-  (Phase 3) sowie `tenancy.read` und `tenancy.admin` (Phase 4);
+  (Phase 3), `tenancy.read` und `tenancy.admin` (Phase 4) sowie `admin`
+  (Betreiber, Phase 7);
 - je Route einen Eintrag im HTTP API mit
   [JWT-Authorizer](glossar.md#jwt-authorizer) (Aussteller = User Pool,
   Zielgruppe = Client-ID) und den verlangten Scopes.
@@ -164,6 +165,9 @@ den nötigen Scope. Die CDK-App liest ihn und erzeugt daraus
 | `getMe`, `updateMe` | `GET/PATCH /me` | `profile.read` / `profile.write` | customer |
 | `listNotifications`, `markNotificationRead` | `GET /notifications`, `PATCH /notifications/{id}` | `notifications.read` / `notifications.write` | notification |
 | `listContracts`, `getContract`, `updateContract` | `GET /contracts`, `GET/PATCH /contracts/{id}` | `contracts.read` / `contracts.write` | contract |
+| `concludeContract`, `requestTermination`, `cancelTermination`, `withdrawContract`, `listProducts` (Phase 7) | `POST /contracts`, `POST/DELETE /contracts/{id}/termination`, `POST /contracts/{id}/withdrawal`, `GET /products` | `contracts.write` / `contracts.read` | contract |
+| Betreiber (Phase 7): `getOperatorOverview`, `listContractsAsOperator`, `getContractAsOperator`, `actOnContract`, `listProductsAsOperator`, `createProduct`, `getProductAsOperator`, `updateProduct`, `createPriceVersion` | `GET /admin/overview`, `GET /admin/contracts[/{id}]`, `POST /admin/contracts/{id}/actions`, `GET/POST /admin/products`, `GET/PATCH /admin/products/{id}`, `POST /admin/products/{id}/versions` | `admin.read` / `admin.write` (Gruppe `owner`, oder `pass` im eigenen Mandanten) | contract |
+| Betreiber (Phase 7): `listCustomers`, `getCustomerAsOperator`, `listCustomerNotifications`, `listCustomerDocuments`, `listReadingsAsOperator` | `GET /admin/customers[/{id}]`, `…/{id}/notifications`, `…/{id}/documents`, `GET /admin/contracts/{id}/readings` | `admin.read` | customer, notification, documents, consumption |
 | `listMeterReadings`, `submitMeterReading` | `GET/POST /contracts/{id}/readings` | `readings.read` / `readings.write` | consumption |
 | `getDataUsage` | `GET /contracts/{id}/usage` | `readings.read` | consumption |
 | `getConsumptionHistory` (Phase 6) | `GET /contracts/{id}/consumption` | `readings.read` | consumption |
@@ -202,6 +206,11 @@ mit dem Mandanten — mit einer begründeten Ausnahme (`SCHEDULE#DATAVOLUME`):
 | `SCHEDULE#DATAVOLUME` | `TENANT#<t>#CONTRACT#<contractId>` | consumption | Mobilfunkverträge, die der tägliche Lauf prüft |
 | `TENANT#<t>#CUST#<c>` | `DOC#<documentId>` | documents | Dokument-Metadaten; die ID beginnt mit dem Zeitpunkt, der Sort Key ordnet also nach Datum |
 | `TENANT#<t>#SUBJ#<sub>` | `DOCUMENTS` | documents | Projektion aus `CustomerRegistered` |
+| `TENANT#<t>#CUSTOMERS` | `CUST#<c>` | customer | Kundenverzeichnis des Betreibers (Phase 7): Profilzusammenfassung mit `rev` |
+| `TENANT#<t>#CUSTOMERS` | `CUST#<c>#C#<contractId>` | customer | je Vertrag Sparte, Status, Kündigung, Sperre — aus `ContractChanged`, Versionsschutz |
+| `TENANT#<t>#CONTRACTS` | `CONTRACT#<contractId>` | contract | Vertragsverzeichnis des Betreibers (Phase 7), in derselben Transaktion wie der Vertrag |
+| `TENANT#<t>#CUST#<c>` | `HISTORY#<contractId>#<version>` | contract | Verlauf eines Vertrags (wer, wann, Begründung, Zusammenfassung) |
+| `TENANT#<t>#PRODUCTS` | `PRODUCT#<productId>` | contract | Produktkatalog mit allen Preisversionen; Startbestand beim ersten Lesen |
 
 - **Jeder Service hat eigene Einträge.** Braucht ein Service fremde Daten,
   hält er eine eigene [Projektion](glossar.md#projektion) aus Ereignissen
@@ -217,6 +226,17 @@ mit dem Mandanten — mit einer begründeten Ausnahme (`SCHEDULE#DATAVOLUME`):
 - Profil und Verknüpfung entstehen in **einer** Transaktion mit Bedingung;
   bei zwei gleichzeitigen Erstaufrufen gewinnt einer, der andere liest
   dessen Ergebnis.
+
+- **Listen des Betreibers ohne Index (Phase 7):** Kunden- und Vertragsliste
+  lesen je **eine** Partition ihres Verzeichnisses und filtern, sortieren und
+  blättern im Dienst (Cursor = Position nach dem letzten Eintrag). Ein
+  [GSI](glossar.md#single-table-design) bekäme eigene Kapazität und sprengte die 25 freien
+  Einheiten; bis zu einigen Tausend Einträgen je Mandant reicht das. Einträge
+  von vor Phase 7 kommen beim nächsten Lesen bzw. bei der nächsten Änderung
+  hinzu. Testkonten der E2E-Läufe (reservierte Domain `.invalid`) bleiben
+  draußen.
+- **Status einer Kündigung** wird beim Lesen berechnet (`terminated`, sobald
+  der Termin vorbei ist); es gibt kein eigenes Ereignis zum Stichtag.
 
 Der Abgleich mit dem geplanten Datenmodell steht im
 [Fachkonzept](fachkonzept.md) §7.1.
