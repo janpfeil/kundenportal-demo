@@ -1,9 +1,10 @@
 "use client";
 
-import { Badge, Button, Facts, Notice, Select, formatDateTime } from "@kundenportal/ui";
+import { Button, Notice, Select, StatusBadge, Switch, formatDateTime } from "@kundenportal/ui";
 import { fill } from "@kundenportal/ui/i18n";
 import { sendJson } from "@kundenportal/web-auth/browser";
-import { type FormEvent, useState } from "react";
+import { useRouter } from "next/navigation";
+import { type FormEvent, useId, useState } from "react";
 import type { Dictionary, Locale } from "@/i18n";
 import {
   MAX_TENANTS,
@@ -20,10 +21,11 @@ type Feedback = { tone: "success" | "error"; text: string };
 const CAPS = Array.from({ length: MAX_TENANTS - MIN_TENANTS + 1 }, (_, i) => MIN_TENANTS + i);
 
 /**
- * The owner's switches for demo passes: close or reopen redemption (the budget alarm
- * closes it by itself; the reason is shown) and the cap of concurrent pass tenants.
- * Writes go through sendJson (x-amz-content-sha256) to the zone's PUT /api/settings; the
- * panel then shows the settings the API answered with.
+ * The owner's switches for demo passes, as in the mockup: the switch "Einlösen" (offen /
+ * gesperrt; the budget alarm closes it by itself, the reason is shown) and the cap of
+ * concurrent pass tenants. Writes go through sendJson (x-amz-content-sha256) to the zone's
+ * PUT /api/settings; the panel then shows what the API answered and the page refreshes its
+ * key figures.
  */
 export function SettingsPanel({
   settings: initial,
@@ -34,6 +36,8 @@ export function SettingsPanel({
   texts: Texts;
   locale: Locale;
 }) {
+  const router = useRouter();
+  const hintId = useId();
   const [settings, setSettings] = useState(initial);
   const [cap, setCap] = useState(initial.maxTenants);
   const [busy, setBusy] = useState(false);
@@ -58,6 +62,7 @@ export function SettingsPanel({
     setSettings(next);
     setCap(next.maxTenants);
     setFeedback({ tone: "success", text: texts.saved });
+    router.refresh();
   }
 
   function saveCap(event: FormEvent<HTMLFormElement>) {
@@ -66,63 +71,45 @@ export function SettingsPanel({
   }
 
   return (
-    <div data-testid="tenancy-settings" data-redemption={settings.redemption}>
-      <Facts
-        items={[
-          {
-            term: texts.redemption,
-            description: (
-              <Badge tone={closed ? "warning" : "success"}>
-                {closed ? texts.closed : texts.open}
-              </Badge>
-            ),
-          },
-          ...(closed
-            ? [
-                ...(settings.closedAt
-                  ? [
-                      {
-                        term: texts.closedAt,
-                        description: formatDateTime(settings.closedAt, locale, "medium"),
-                      },
-                    ]
-                  : []),
-                {
-                  term: texts.reason,
-                  description: (
-                    <span data-testid="closed-reason">
-                      {settings.closedReason ?? texts.noReason}
-                    </span>
-                  ),
-                },
-              ]
-            : []),
-          {
-            term: texts.active,
-            description: (
-              <span data-testid="active-tenants">
-                {fill(texts.activeText, {
-                  active: settings.activeTenants,
-                  max: settings.maxTenants,
-                })}
-              </span>
-            ),
-          },
-        ]}
-      />
-      {full && <Notice tone="info">{texts.full}</Notice>}
-      <p className="kp-muted">{texts.redemptionHint}</p>
-      <div className="cockpit-actions">
-        <Button
-          variant={closed ? "primary" : "secondary"}
+    <div
+      className="cockpit-settings"
+      data-testid="tenancy-settings"
+      data-redemption={settings.redemption}
+    >
+      <div>
+        <Switch
+          checked={!closed}
           disabled={busy}
-          onClick={() => void update({ redemption: closed ? "open" : "closed" })}
+          aria-describedby={hintId}
+          onCheckedChange={(open) => void update({ redemption: open ? "open" : "closed" })}
+          status={
+            <StatusBadge tone={closed ? "warn" : "ok"}>
+              {closed ? texts.closed : texts.open}
+            </StatusBadge>
+          }
           data-testid="toggle-redemption"
         >
-          {busy ? texts.saving : closed ? texts.reopen : texts.close}
-        </Button>
+          {texts.redemption}
+        </Switch>
       </div>
-      <form className="cockpit-settings" onSubmit={saveCap}>
+      {closed && (
+        <p className="cockpit-small">
+          {settings.closedAt && (
+            <>
+              {fill(texts.closedAt, { date: formatDateTime(settings.closedAt, locale, "medium") })}
+              {" · "}
+            </>
+          )}
+          <span data-testid="closed-reason">
+            {fill(texts.reason, { reason: settings.closedReason ?? texts.noReason })}
+          </span>
+        </p>
+      )}
+      <p className="kp-muted cockpit-small" id={hintId}>
+        {texts.redemptionHint}
+      </p>
+      {full && <Notice tone="info">{texts.full}</Notice>}
+      <form className="cockpit-cap" onSubmit={saveCap}>
         <Select
           label={texts.cap}
           hint={texts.capHint}
@@ -134,12 +121,13 @@ export function SettingsPanel({
             (value) => ({ value: String(value), label: String(value) }),
           )}
         />
-        <div>
-          <Button type="submit" variant="secondary" disabled={busy || cap === settings.maxTenants}>
-            {texts.saveCap}
-          </Button>
-        </div>
+        <Button type="submit" variant="secondary" disabled={busy || cap === settings.maxTenants}>
+          {busy ? texts.saving : texts.saveCap}
+        </Button>
       </form>
+      <p className="kp-muted cockpit-small" data-testid="active-tenants">
+        {fill(texts.activeText, { active: settings.activeTenants, max: settings.maxTenants })}
+      </p>
       {feedback && <Notice tone={feedback.tone}>{feedback.text}</Notice>}
     </div>
   );

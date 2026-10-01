@@ -1,24 +1,42 @@
 "use client";
 
-import { Button, Notice } from "@kundenportal/ui";
+import { Button } from "@kundenportal/ui";
+import { fill } from "@kundenportal/ui/i18n";
 import { sendJson } from "@kundenportal/web-auth/browser";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { Dictionary } from "@/i18n";
-import { fill } from "@kundenportal/ui/i18n";
 import { zonePath } from "@/lib/zone";
 
+type System = "utility" | "telco";
 type Feedback = { tone: "success" | "error"; text: string } | undefined;
 
-/** J7: starts the bulk import of the inactive accounts of one legacy system. */
-export function BulkStart({ texts }: { texts: Pick<Dictionary, "bulk" | "systems"> }) {
+const SYSTEMS: readonly System[] = ["utility", "telco"];
+
+/**
+ * J7: starts the bulk import of the inactive accounts of one legacy system. Sits in the
+ * card's heading row; a system with a running import is disabled and described by the hint
+ * below the heading (`hintId`).
+ */
+export function BulkStart({
+  texts,
+  running = [],
+  hintId,
+}: {
+  texts: Pick<Dictionary, "bulk" | "systems">;
+  running?: readonly System[];
+  hintId?: string | undefined;
+}) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState<Feedback>();
 
-  async function start(system: "utility" | "telco") {
+  async function start(system: System) {
     setBusy(true);
-    const result = await sendJson("POST", zonePath("/api/bulk"), { system });
+    const result = await sendJson("POST", zonePath("/api/bulk"), { system }).catch(() => ({
+      ok: false,
+      status: 0,
+    }));
     setBusy(false);
     if (result.ok) {
       setFeedback({ tone: "success", text: texts.bulk.started });
@@ -32,19 +50,33 @@ export function BulkStart({ texts }: { texts: Pick<Dictionary, "bulk" | "systems
   }
 
   return (
-    <div className="cockpit-actions" data-testid="bulk-start">
-      {(["telco", "utility"] as const).map((system) => (
-        <Button
-          key={system}
-          variant={system === "telco" ? "primary" : "secondary"}
-          disabled={busy}
-          onClick={() => start(system)}
-          data-system={system}
+    <div className="cockpit-bulk" data-testid="bulk-start">
+      <div className="cockpit-row">
+        {SYSTEMS.map((system, index) => {
+          const isRunning = running.includes(system);
+          return (
+            <Button
+              key={system}
+              variant={index === 0 ? "primary" : "secondary"}
+              className="cockpit-button-small"
+              disabled={busy || isRunning}
+              aria-describedby={isRunning ? hintId : undefined}
+              onClick={() => start(system)}
+              data-system={system}
+            >
+              {fill(texts.bulk.start, { system: texts.systems[system] })}
+            </Button>
+          );
+        })}
+      </div>
+      {feedback && (
+        <p
+          role={feedback.tone === "error" ? "alert" : "status"}
+          className={`cockpit-feedback cockpit-feedback-${feedback.tone}`}
         >
-          {fill(texts.bulk.start, { system: texts.systems[system] })}
-        </Button>
-      ))}
-      {feedback && <Notice tone={feedback.tone}>{feedback.text}</Notice>}
+          {feedback.text}
+        </p>
+      )}
     </div>
   );
 }

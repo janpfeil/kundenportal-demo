@@ -36,15 +36,28 @@ export function DemoReset({ texts }: { texts: Dictionary["reset"] }) {
     <div className="cockpit-actions" data-testid="demo-reset">
       {state === "confirm" ? (
         <>
-          <Button variant="primary" onClick={reset}>
+          <Button
+            variant="secondary"
+            className="cockpit-button-small cockpit-button-danger-solid"
+            onClick={reset}
+          >
             {texts.confirm}
           </Button>
-          <Button variant="secondary" onClick={() => setState("idle")}>
+          <Button
+            variant="secondary"
+            className="cockpit-button-small"
+            onClick={() => setState("idle")}
+          >
             {texts.cancel}
           </Button>
         </>
       ) : (
-        <Button variant="secondary" disabled={state === "busy"} onClick={() => setState("confirm")}>
+        <Button
+          variant="secondary"
+          className="cockpit-button-small cockpit-button-danger"
+          disabled={state === "busy"}
+          onClick={() => setState("confirm")}
+        >
           {texts.start}
         </Button>
       )}

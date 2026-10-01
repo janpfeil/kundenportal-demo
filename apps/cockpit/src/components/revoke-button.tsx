@@ -1,6 +1,7 @@
 "use client";
 
-import { Button, Notice } from "@kundenportal/ui";
+import { Button, Icon } from "@kundenportal/ui";
+import { fill } from "@kundenportal/ui/i18n";
 import { sendJson } from "@kundenportal/web-auth/browser";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -9,12 +10,17 @@ import { zonePath } from "@/lib/zone";
 
 type State = "idle" | "confirm" | "busy" | "done" | "failed";
 
-/** Revokes a demo pass with a second click as confirmation (no browser dialog). */
+/**
+ * Revokes a demo pass: a small danger icon button in the table row (named after the pass
+ * holder's address), then a second click as confirmation (no browser dialog).
+ */
 export function RevokeButton({
   passId,
+  email,
   texts,
 }: {
   passId: string;
+  email: string;
   texts: Dictionary["passes"]["revoke"];
 }) {
   const router = useRouter();
@@ -32,23 +38,47 @@ export function RevokeButton({
   }
 
   return (
-    <div className="cockpit-actions" data-testid="revoke" data-pass={passId}>
-      {state === "confirm" ? (
+    <div className="cockpit-revoke" data-testid="revoke" data-pass={passId}>
+      {state === "confirm" || state === "busy" ? (
         <>
-          <Button variant="primary" onClick={revoke}>
+          <Button
+            variant="secondary"
+            className="cockpit-button-small cockpit-button-danger-solid"
+            disabled={state === "busy"}
+            onClick={revoke}
+          >
             {texts.confirm}
           </Button>
-          <Button variant="secondary" onClick={() => setState("idle")}>
+          <Button
+            variant="secondary"
+            className="cockpit-button-small"
+            disabled={state === "busy"}
+            onClick={() => setState("idle")}
+          >
             {texts.cancel}
           </Button>
         </>
       ) : state !== "done" ? (
-        <Button variant="secondary" disabled={state === "busy"} onClick={() => setState("confirm")}>
-          {texts.start}
+        <Button
+          variant="secondary"
+          className="cockpit-button-small cockpit-button-danger cockpit-button-icon"
+          aria-label={fill(texts.startLabel, { email })}
+          title={texts.start}
+          onClick={() => setState("confirm")}
+        >
+          <Icon name="x" />
         </Button>
       ) : null}
-      {state === "done" && <Notice tone="success">{texts.done}</Notice>}
-      {state === "failed" && <Notice tone="error">{texts.failed}</Notice>}
+      {state === "done" && (
+        <p role="status" className="cockpit-feedback cockpit-feedback-success">
+          {texts.done}
+        </p>
+      )}
+      {state === "failed" && (
+        <p role="alert" className="cockpit-feedback cockpit-feedback-error">
+          {texts.failed}
+        </p>
+      )}
     </div>
   );
 }

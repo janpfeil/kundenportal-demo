@@ -61,14 +61,31 @@ describe("invitation form", () => {
 });
 
 describe("revoke button", () => {
-  it("asks for a second click before revoking", async () => {
+  it("is a danger icon button named after the holder and asks for a second click", async () => {
     sendJson.mockResolvedValue({ ok: true, status: 204 });
-    render(<RevokeButton passId="pass-1" texts={texts.revoke} />);
-    fireEvent.click(screen.getByRole("button", { name: texts.revoke.start }));
+    render(<RevokeButton passId="pass-1" email="gast@example.org" texts={texts.revoke} />);
+    const start = screen.getByRole("button", { name: "Pass von gast@example.org widerrufen …" });
+    expect(start).toHaveAttribute("title", texts.revoke.start);
+    // The live E2E finds it by "Widerrufen …" (Playwright matches a substring, any case).
+    expect(start.getAttribute("aria-label")?.toLowerCase()).toContain(
+      texts.revoke.start.toLowerCase(),
+    );
+    fireEvent.click(start);
     expect(sendJson).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: texts.revoke.confirm }));
-    await waitFor(() => expect(screen.getByText(texts.revoke.done)).toBeDefined());
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent(texts.revoke.done));
     expect(sendJson).toHaveBeenCalledWith("POST", "/cockpit/api/passes/pass-1/revoke", {});
     expect(refresh).toHaveBeenCalled();
+  });
+
+  it("can be cancelled and reports a failure", async () => {
+    sendJson.mockResolvedValue({ ok: false, status: 500 });
+    render(<RevokeButton passId="pass-2" email="x@example.org" texts={texts.revoke} />);
+    fireEvent.click(screen.getByRole("button", { name: /widerrufen/i }));
+    fireEvent.click(screen.getByRole("button", { name: texts.revoke.cancel }));
+    expect(screen.queryByRole("button", { name: texts.revoke.confirm })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /widerrufen/i }));
+    fireEvent.click(screen.getByRole("button", { name: texts.revoke.confirm }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(texts.revoke.failed);
   });
 });

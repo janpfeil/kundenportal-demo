@@ -1,55 +1,393 @@
-/* Zone-specific styles; tokens, base styles and components come from @kundenportal/ui/styles.css. */
+/*
+ * Zone-specific styles of the cockpit; tokens, base styles and the building blocks come from
+ * @kundenportal/ui/styles.css. What the library does not offer yet (small, ghost and danger
+ * buttons, the bell, tables inside cards, the inline correction row) follows the mockup
+ * (docs/design/mockups.html) here, using only the theme's tokens.
+ */
 
-.zone-section {
-  margin-top: 24px;
+/* Text helpers */
+
+.cockpit-small {
+  font-size: var(--kp-small);
 }
 
-/* Long ids and messages must wrap on 360 px wide screens. */
-.zone-break {
+.cockpit-nowrap {
+  white-space: nowrap;
+}
+
+/* Long ids, addresses and messages must wrap on 360 px wide screens. */
+.cockpit-break {
   overflow-wrap: anywhere;
 }
 
-.cockpit-progress {
-  display: grid;
-  gap: 16px;
-  padding: 0;
-  list-style: none;
-}
-
-.cockpit-progress progress {
+/* A second line in a table cell, e.g. the name below the account number. */
+.cockpit-sub {
   display: block;
-  width: 100%;
-  height: 12px;
-  margin: 8px 0 4px;
+  color: var(--kp-muted);
+  font-size: var(--kp-small);
 }
 
-.cockpit-counts {
-  font-size: 0.875rem;
+/* Count next to a card title, e.g. "Klärfälle 14". */
+.cockpit-tag {
+  display: inline-block;
+  padding: 1px 8px;
+  border: 1px solid var(--kp-border);
+  border-radius: var(--kp-radius);
+  background: var(--kp-surface-2);
+  color: var(--kp-muted);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+.cockpit-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
 }
 
 .cockpit-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
-  margin: 16px 0;
+  align-items: center;
+  gap: 8px;
+}
+
+.cockpit-actions > .kp-notice {
+  flex-basis: 100%;
+  margin: 4px 0 0;
+}
+
+/* Buttons the library has no variant for yet */
+
+.cockpit-button-small {
+  min-height: calc(var(--kp-control) - 10px);
+  padding: 0 calc(var(--kp-space) * 0.7);
+  font-size: var(--kp-small);
+}
+
+.cockpit-button-small .kp-icon {
+  width: 1.1em;
+  height: 1.1em;
+}
+
+.kp-button.cockpit-button-ghost {
+  border-color: transparent;
+  background: transparent;
+  color: var(--kp-accent-text);
+}
+
+.kp-button.cockpit-button-ghost:hover {
+  background: var(--kp-surface-2);
+}
+
+.kp-button.cockpit-button-danger {
+  border-color: var(--kp-error-border);
+  background: var(--kp-surface);
+  color: var(--kp-error-text);
+}
+
+.kp-button.cockpit-button-danger:hover {
+  background: var(--kp-error-bg);
+}
+
+.kp-button.cockpit-button-danger-solid {
+  border-color: var(--kp-error-border);
+  background: var(--kp-error-bg);
+  color: var(--kp-error-text);
+}
+
+.kp-button.cockpit-button-icon {
+  width: calc(var(--kp-control) - 10px);
+  padding: 0;
+}
+
+/* Short feedback next to buttons (status line, not a notice box). */
+.cockpit-feedback {
+  flex-basis: 100%;
+  margin: 4px 0 0;
+  font-size: var(--kp-small);
+  font-weight: 600;
+}
+
+.cockpit-feedback-success {
+  color: var(--kp-success-text);
+}
+
+.cockpit-feedback-error {
+  color: var(--kp-error-text);
+}
+
+/* Top bar: bell with the number of new clarification cases, footer links */
+
+.cockpit-bell {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: var(--kp-control);
+  height: var(--kp-control);
+  border-radius: var(--kp-radius);
+  color: var(--kp-text);
+}
+
+.cockpit-bell:hover {
+  background: var(--kp-surface-2);
+}
+
+.cockpit-bell .kp-icon {
+  width: 22px;
+  height: 22px;
+}
+
+.cockpit-bell-count {
+  position: absolute;
+  top: 2px;
+  right: 1px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 99px;
+  background: var(--kp-badge);
+  color: #fff;
+  font:
+    700 11px/18px var(--kp-font),
+    sans-serif;
+  text-align: center;
+  box-shadow: 0 0 0 2px var(--kp-header-bg);
+}
+
+.cockpit-footer {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 16px;
+}
+
+/* The cockpit's search field shows its whole placeholder. */
+.kp-topbar-search .kp-search {
+  min-width: 260px;
+}
+
+/* Search on the page itself where the top bar hides it (phones). */
+.cockpit-phone-search {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .cockpit-phone-search {
+    display: block;
+  }
+
+  .cockpit-phone-search .kp-search {
+    min-width: 0;
+  }
+}
+
+/* Tables inside cards: no frame of their own, as in the mockup */
+
+.kp-table.cockpit-table {
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  font-size: calc(var(--kp-font-size) * 0.95);
+}
+
+.kp-table.cockpit-table > caption {
+  padding: 0;
+}
+
+.kp-table.cockpit-table thead th {
+  overflow-wrap: normal;
+  white-space: nowrap;
+  background: transparent;
+  font-weight: 650;
+  border-bottom-color: var(--kp-border-strong);
+  vertical-align: bottom;
+}
+
+.kp-table.cockpit-table td {
+  vertical-align: middle;
+}
+
+.kp-table.cockpit-table :is(th, td):first-child {
+  padding-left: 0;
+}
+
+.kp-table.cockpit-table :is(th, td):last-child {
+  padding-right: 0;
+}
+
+.kp-table.cockpit-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+/* The wide pass table scrolls inside its card between phone and desktop widths. */
+.cockpit-table-scroll {
+  overflow-x: auto;
+}
+
+@media (min-width: 600px) {
+  .cockpit-passes {
+    min-width: 860px;
+  }
+}
+
+/* The expanded dead letter and its correction row. */
+.kp-table.cockpit-table tr.cockpit-expanded td {
+  background: var(--kp-surface-2);
+}
+
+.kp-table.cockpit-table tr.cockpit-expanded:not(.cockpit-form-row) td {
+  border-bottom: 0;
+}
+
+.kp-table.cockpit-table tr.cockpit-form-row td {
+  padding: 4px 12px 10px;
 }
 
 .cockpit-redrive {
   display: grid;
-  gap: 8px;
-  min-width: 12rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+  gap: 10px;
+  align-items: end;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
 }
 
-.cockpit-timeline {
+.cockpit-redrive .kp-field,
+.cockpit-redrive p {
+  margin: 0;
+}
+
+@media (max-width: 599px) {
+  .kp-table.cockpit-table td {
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .kp-table.cockpit-table tr.cockpit-form-row td {
+    display: block;
+    padding: 8px;
+  }
+
+  .kp-table.cockpit-table tr.cockpit-form-row td::before {
+    content: none;
+  }
+
+  .kp-table.cockpit-table tr.cockpit-form-row[hidden] {
+    display: none;
+  }
+}
+
+/* Progress of a running bulk import (thin bar above the counters). */
+.cockpit-run-bar {
+  height: 5px;
+  margin-bottom: 4px;
+  border-radius: 99px;
+  background: var(--kp-track);
+  overflow: hidden;
+}
+
+.cockpit-run-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--kp-accent);
+}
+
+/* Bulk start in the card's heading row; its feedback wraps below the buttons. */
+.cockpit-bulk {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.cockpit-bulk .kp-button {
+  padding: 0 calc(var(--kp-space) * 0.7);
+  min-height: calc(var(--kp-control) - 10px);
+  font-size: var(--kp-small);
+}
+
+/* Revoke in the pass table: icon button, then the confirmation. */
+.cockpit-revoke {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+/* Invitation: address and test minutes side by side, link box with copy button. */
+.cockpit-invite {
   display: grid;
-  gap: 8px;
-  padding-left: 1.25rem;
-  font-size: 0.9375rem;
+  gap: calc(var(--kp-space) * 0.75);
 }
 
-/* Demo-pass settings: cap selector and its save button. */
+.cockpit-invite-fields {
+  display: grid;
+  grid-template-columns: minmax(min(100%, 220px), 2fr) minmax(min(100%, 160px), 1fr);
+  gap: 0 var(--kp-space);
+  align-items: start;
+}
+
+.cockpit-invite-fields .kp-field,
+.cockpit-invite .kp-notice {
+  margin-bottom: 0;
+}
+
+@media (max-width: 479px) {
+  .cockpit-invite-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.cockpit-linkbox {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 8px 0;
+}
+
+.cockpit-linkbox-code {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  padding: 8px 10px;
+  border: 1px solid var(--kp-border-strong);
+  border-radius: var(--kp-radius);
+  background: var(--kp-surface-2);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Settings: switch, hints, cap with its save button in one row. */
 .cockpit-settings {
   display: grid;
-  gap: 16px;
-  max-width: 32rem;
+  gap: calc(var(--kp-space) * 0.75);
+}
+
+.cockpit-settings > p,
+.cockpit-settings > .kp-notice {
+  margin: 0;
+}
+
+.cockpit-cap {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.cockpit-cap .kp-field {
+  flex: 1 1 16rem;
+  margin: 0;
+}
+
+.cockpit-cap .kp-input {
+  max-width: 120px;
 }

@@ -1,54 +1,32 @@
-import {
-  Badge,
-  type BadgeProps,
-  ButtonLink,
-  Card,
-  type Column,
-  DataTable,
-  Notice,
-  Page,
-  formatDateTime,
-} from "@kundenportal/ui";
+import { ButtonLink, Card, CockpitGrid, DataTable, Notice, Page, Stack } from "@kundenportal/ui";
+import { requireSession } from "@kundenportal/web-auth/pages";
 import { InvitationForm } from "@/components/invitation-form";
-import { RevokeButton } from "@/components/revoke-button";
+import { PassKpis, passColumns } from "@/components/passes";
 import { SettingsPanel } from "@/components/settings-panel";
 import { dictionary } from "@/i18n";
-import { requireSession } from "@kundenportal/web-auth/pages";
-import {
-  type PassStatus,
-  type PassSummary,
-  accessOf,
-  isRevocable,
-  fetchSettings,
-  listPasses,
-} from "@/lib/tenancy";
-import { fill } from "@kundenportal/ui/i18n";
+import { passRows } from "@/lib/passes";
+import { accessOf, fetchOverview, fetchSettings, listPasses } from "@/lib/tenancy";
 import { zonePath } from "@/lib/zone";
 import { ZoneLink } from "@/lib/zone-link";
 
 export const dynamic = "force-dynamic";
 
-const TONES: Record<PassStatus, NonNullable<BadgeProps["tone"]>> = {
-  provisioning: "accent",
-  active: "success",
-  "quota-exceeded": "warning",
-  "tearing-down": "neutral",
-  deleted: "neutral",
-};
-
-/** Owner area "Demo-Pässe": create invitations, watch and revoke passes. */
+/** Owner area "Demo-Pässe" (mockup screen "paesse"): key figures, passes, invite, settings. */
 export default async function PassesPage() {
   const session = await requireSession(zonePath("/paesse"));
   const { locale, t } = await dictionary();
   const texts = t.passes;
-  const back = (
-    <ButtonLink href={zonePath()} variant="secondary" linkComponent={ZoneLink}>
-      {t.access.toCockpit}
-    </ButtonLink>
-  );
   if (accessOf(session) !== "owner") {
     return (
-      <Page title={texts.title} actions={back}>
+      <Page
+        eyebrow={texts.eyebrow}
+        title={texts.title}
+        actions={
+          <ButtonLink href={zonePath()} variant="secondary" linkComponent={ZoneLink}>
+            {t.access.toCockpit}
+          </ButtonLink>
+        }
+      >
         <Notice tone="warning" data-testid="passes-forbidden">
           {texts.ownerOnly}
         </Notice>
@@ -56,106 +34,65 @@ export default async function PassesPage() {
     );
   }
 
-  const [passes, settings] = await Promise.all([listPasses(session), fetchSettings(session)]);
-  const used = (pass: PassSummary, kind: "api" | "events" | "uploads") => {
-    const quota = pass.quotas[kind];
-    return quota ? `${quota.used}/${quota.limit}` : "–";
-  };
-  const columns: Column<PassSummary>[] = [
-    {
-      key: "email",
-      header: texts.list.email,
-      render: (pass) => <span className="zone-break">{pass.email}</span>,
-    },
-    { key: "tenant", header: texts.list.tenant, render: (pass) => <code>{pass.tenantId}</code> },
-    {
-      key: "status",
-      header: texts.list.status,
-      render: (pass) => (
-        <span data-testid="pass-status" data-status={pass.status}>
-          <Badge tone={TONES[pass.status] ?? "neutral"}>
-            {texts.statuses[pass.status] ?? pass.status}
-          </Badge>
-        </span>
-      ),
-    },
-    {
-      key: "activatedAt",
-      header: texts.list.activatedAt,
-      render: (pass) => (
-        <span data-testid="pass-activated">
-          {pass.activatedAt ? formatDateTime(pass.activatedAt, locale, "medium") : texts.list.never}
-        </span>
-      ),
-    },
-    {
-      key: "lastActiveAt",
-      header: texts.list.lastActiveAt,
-      render: (pass) => (
-        <span data-testid="pass-last-active">
-          {pass.lastActiveAt
-            ? formatDateTime(pass.lastActiveAt, locale, "medium")
-            : texts.list.never}
-        </span>
-      ),
-    },
-    {
-      key: "quotas",
-      header: texts.list.quotas,
-      render: (pass) =>
-        fill(texts.list.quotaText, {
-          api: used(pass, "api"),
-          events: used(pass, "events"),
-          uploads: used(pass, "uploads"),
-        }),
-    },
-    {
-      key: "validUntil",
-      header: texts.list.validUntil,
-      render: (pass) => formatDateTime(pass.validUntil, locale, "medium"),
-    },
-    {
-      key: "action",
-      header: texts.list.action,
-      render: (pass) =>
-        isRevocable(pass.status) ? <RevokeButton passId={pass.passId} texts={texts.revoke} /> : "",
-    },
-  ];
+  const [passes, settings, overview] = await Promise.all([
+    listPasses(session),
+    fetchSettings(session),
+    fetchOverview(session),
+  ]);
+  const now = new Date();
+  const rows = passes === undefined ? undefined : passRows(passes, overview?.invitations ?? []);
+  const columns = passColumns(texts, t.time, locale, now);
 
   return (
-    <Page title={texts.title} lead={texts.lead} actions={back}>
-      <Card title={texts.settings.title}>
-        <p className="kp-muted">{texts.settings.intro}</p>
-        {settings === undefined ? (
-          <Notice tone="error">{texts.settings.error}</Notice>
-        ) : (
-          <SettingsPanel settings={settings} texts={texts.settings} locale={locale} />
-        )}
-      </Card>
-
-      <Card title={texts.invite.title} className="zone-section">
-        <p className="kp-muted">{texts.invite.intro}</p>
-        <InvitationForm texts={texts.invite} locale={locale} />
-      </Card>
-
-      <Card title={texts.list.title} className="zone-section">
-        {passes === undefined ? (
-          <Notice tone="error">{texts.error}</Notice>
-        ) : (
-          <DataTable
-            data-testid="passes"
-            caption={texts.list.caption}
-            columns={columns}
-            rows={[...passes].sort((a, b) => b.validUntil.localeCompare(a.validUntil))}
-            rowKey={(pass) => pass.passId}
-            empty={
-              <p className="kp-muted" data-testid="passes">
-                {texts.list.empty}
-              </p>
-            }
-          />
-        )}
-      </Card>
+    <Page eyebrow={texts.eyebrow} title={texts.title} lead={texts.lead}>
+      <Stack>
+        {overview === undefined && <Notice tone="error">{texts.overviewError}</Notice>}
+        <PassKpis
+          overview={overview}
+          settings={settings}
+          passes={passes}
+          texts={texts}
+          locale={locale}
+        />
+        <Card
+          as="section"
+          title={texts.list.title}
+          actions={<span className="kp-muted cockpit-small">{texts.list.order}</span>}
+        >
+          {rows === undefined ? (
+            <Notice tone="error">{texts.error}</Notice>
+          ) : (
+            <div className="cockpit-table-scroll">
+              <DataTable
+                data-testid="passes"
+                className="cockpit-table cockpit-passes"
+                caption={<span className="kp-sr-only">{texts.list.caption}</span>}
+                columns={columns}
+                rows={rows}
+                rowKey={(row) => row.key}
+                empty={
+                  <p className="kp-muted cockpit-small" data-testid="passes">
+                    {texts.list.empty}
+                  </p>
+                }
+              />
+            </div>
+          )}
+        </Card>
+        <CockpitGrid className="cockpit-pass-grid">
+          <Card as="section" title={texts.invite.title}>
+            <p className="kp-muted cockpit-small">{texts.invite.intro}</p>
+            <InvitationForm texts={texts.invite} locale={locale} />
+          </Card>
+          <Card as="section" id="einstellungen" title={texts.settings.title}>
+            {settings === undefined ? (
+              <Notice tone="error">{texts.settings.error}</Notice>
+            ) : (
+              <SettingsPanel settings={settings} texts={texts.settings} locale={locale} />
+            )}
+          </Card>
+        </CockpitGrid>
+      </Stack>
     </Page>
   );
 }

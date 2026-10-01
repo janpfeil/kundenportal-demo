@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, Notice, NumberField, TextField, formatDateTime } from "@kundenportal/ui";
+import { Button, Icon, Notice, NumberField, TextField, formatDateTime } from "@kundenportal/ui";
 import { sendJson } from "@kundenportal/web-auth/browser";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
@@ -60,46 +60,60 @@ export function InvitationForm({
   }
 
   return (
-    <form onSubmit={submit} data-testid="invitation-form" aria-busy={busy}>
-      <TextField
-        name="email"
-        type="email"
-        label={texts.email}
-        hint={texts.emailHint}
-        required
-        maxLength={254}
-        autoComplete="off"
-      />
-      <NumberField
-        name="validMinutes"
-        label={texts.minutes}
-        hint={texts.minutesHint}
-        min={1}
-        max={60}
-        step={1}
-      />
-      <Button type="submit" disabled={busy}>
-        {busy ? texts.sending : texts.submit}
-      </Button>
+    <form
+      className="cockpit-invite"
+      onSubmit={submit}
+      data-testid="invitation-form"
+      aria-busy={busy}
+    >
+      <div className="cockpit-invite-fields">
+        <TextField
+          name="email"
+          type="email"
+          label={texts.email}
+          hint={texts.emailHint}
+          required
+          maxLength={254}
+          autoComplete="off"
+        />
+        <NumberField
+          name="validMinutes"
+          label={texts.minutes}
+          hint={texts.minutesHint}
+          placeholder={texts.minutesPlaceholder}
+          min={1}
+          max={60}
+          step={1}
+        />
+      </div>
+      <div>
+        <Button type="submit" disabled={busy}>
+          <Icon name="plus" />
+          {busy ? texts.sending : texts.submit}
+        </Button>
+      </div>
       {failure && <Notice tone="error">{texts[failure]}</Notice>}
       {created && (
         <Notice tone="success" title={texts.created} data-testid="invitation-created">
-          <p>
-            <strong>{texts.link}:</strong>{" "}
-            <code className="zone-break" data-testid="invitation-link">
+          <div className="cockpit-linkbox">
+            <code className="cockpit-linkbox-code" data-testid="invitation-link" title={texts.link}>
               {created.link}
             </code>
-          </p>
-          <p className="kp-muted">
-            {fill(texts.expiresAt, {
-              date: formatDateTime(created.expiresAt, locale, "medium"),
-            })}
-          </p>
-          <p className="cockpit-actions">
-            <Button variant="secondary" onClick={copyLink} aria-label={texts.copyLink}>
+            <Button
+              variant="secondary"
+              className="cockpit-button-small"
+              onClick={copyLink}
+              aria-label={texts.copyLink}
+            >
+              <Icon name="copy" />
               {texts.copy}
             </Button>
-            <span role="status" className="kp-muted">
+          </div>
+          <p className="kp-muted cockpit-small">
+            {fill(texts.expiresAt, {
+              date: formatDateTime(created.expiresAt, locale),
+            })}{" "}
+            <span role="status">
               {copy === "copied" ? texts.copied : copy === "failed" ? texts.copyFailed : ""}
             </span>
           </p>

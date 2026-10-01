@@ -5,9 +5,11 @@ import { de } from "@/i18n/de";
 import { SettingsPanel } from "./settings-panel";
 
 const sendJson = vi.fn();
+const refresh = vi.fn();
 vi.mock("@kundenportal/web-auth/browser", () => ({
   sendJson: (...args: unknown[]) => sendJson(...args),
 }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh }) }));
 
 beforeEach(() => vi.clearAllMocks());
 
@@ -21,23 +23,53 @@ const closed = {
 };
 
 describe("settings panel", () => {
-  it("shows why redemption is closed and reopens it", async () => {
+  it("shows why redemption is closed and reopens it with the switch", async () => {
     sendJson.mockResolvedValue({
       ok: true,
       status: 200,
       data: { redemption: "open", maxTenants: 3, activeTenants: 1 },
     });
     render(<SettingsPanel settings={closed} texts={texts} locale="de" />);
-    expect(screen.getByText("gesperrt")).toBeInTheDocument();
+    const toggle = screen.getByRole("switch", { name: /Einlösen/ });
+    expect(toggle).toHaveAttribute("aria-checked", "false");
+    expect(toggle).toHaveTextContent("gesperrt");
+    expect(toggle).toHaveAccessibleDescription(texts.redemptionHint);
     expect(screen.getByTestId("closed-reason")).toHaveTextContent("Budget-Alarm");
     expect(screen.getByText(/30\.09\.2026, 10:00:00/)).toBeInTheDocument();
     expect(screen.getByTestId("active-tenants")).toHaveTextContent("1 von 3");
+    expect(screen.getByTestId("tenancy-settings")).toHaveAttribute("data-redemption", "closed");
 
-    fireEvent.click(screen.getByRole("button", { name: texts.reopen }));
-    await waitFor(() => expect(screen.getByText("offen")).toBeInTheDocument());
+    fireEvent.click(toggle);
+    await waitFor(() => expect(toggle).toHaveAttribute("aria-checked", "true"));
+    expect(toggle).toHaveTextContent("offen");
     expect(sendJson).toHaveBeenCalledWith("PUT", "/cockpit/api/settings", { redemption: "open" });
     expect(screen.queryByTestId("closed-reason")).not.toBeInTheDocument();
     expect(screen.getByRole("status")).toHaveTextContent(texts.saved);
+    expect(screen.getByTestId("tenancy-settings")).toHaveAttribute("data-redemption", "open");
+    // The page's key figures follow the change.
+    expect(refresh).toHaveBeenCalled();
+  });
+
+  it("closes redemption while it is open", async () => {
+    sendJson.mockResolvedValue({
+      ok: true,
+      status: 200,
+      data: { redemption: "closed", maxTenants: 3, activeTenants: 1 },
+    });
+    render(
+      <SettingsPanel
+        settings={{ redemption: "open", maxTenants: 3, activeTenants: 1 }}
+        texts={texts}
+        locale="de"
+      />,
+    );
+    fireEvent.click(screen.getByTestId("toggle-redemption"));
+    await waitFor(() =>
+      expect(screen.getByTestId("tenancy-settings")).toHaveAttribute("data-redemption", "closed"),
+    );
+    expect(sendJson).toHaveBeenCalledWith("PUT", "/cockpit/api/settings", {
+      redemption: "closed",
+    });
   });
 
   it("offers caps from 1 to 4 with the capacity explanation and saves a new one", async () => {
@@ -69,12 +101,14 @@ describe("settings panel", () => {
     expect(screen.queryByText(texts.full)).not.toBeInTheDocument();
   });
 
-  it("reports a failed change", async () => {
+  it("reports a failed change and keeps the switch as it was", async () => {
     sendJson.mockResolvedValue({ ok: false, status: 403 });
     render(<SettingsPanel settings={closed} texts={texts} locale="de" />);
-    fireEvent.click(screen.getByRole("button", { name: texts.reopen }));
+    const toggle = screen.getByRole("switch", { name: /Einlösen/ });
+    fireEvent.click(toggle);
     expect(await screen.findByText(texts.failed)).toBeInTheDocument();
-    expect(screen.getByText("gesperrt")).toBeInTheDocument();
+    expect(toggle).toHaveAttribute("aria-checked", "false");
+    expect(refresh).not.toHaveBeenCalled();
   });
 
   it("keeps a stored cap of 0 visible instead of pretending it is 1", () => {
