@@ -4,7 +4,7 @@ import { parseOffer } from "./offer";
 import { cookieValue, isUiHint } from "./ui-hint";
 
 const offer = {
-  passDays: 7,
+  passHours: 7,
   quotas: { api: 5000, events: 1000, uploads: 20 },
   uploadMaxBytes: 5242880,
   redemptionOpen: true,
@@ -19,8 +19,8 @@ describe("parseOffer", () => {
     for (const body of [
       null,
       "x",
-      { ...offer, passDays: -1 },
-      { ...offer, passDays: 1.5 },
+      { ...offer, passHours: -1 },
+      { ...offer, passHours: 1.5 },
       { ...offer, quotas: null },
       { ...offer, quotas: { api: 1, events: 1 } },
       { ...offer, redemptionOpen: "yes" },

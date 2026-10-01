@@ -4,6 +4,7 @@ import type { NextRequest } from "next/server";
 import { config } from "@/lib/config";
 import { client, oidc } from "@/lib/oidc";
 import { takeLoginTransaction, writeSession } from "@/lib/session";
+import { activatePass } from "@/lib/tenancy";
 
 /** Completes the sign-in: exchanges the code (with PKCE verifier), checks state and nonce, opens the session. */
 export async function GET(request: NextRequest) {
@@ -39,5 +40,7 @@ export async function GET(request: NextRequest) {
   // The navigation of prerendered pages shows pass status and cockpit from this hint.
   const roles = rolesOf(tokens.access_token);
   await writeSession(session, roles.pass ? "pass" : roles.cockpit ? "owner" : "user");
+  // The holder's first sign-in starts the pass anew (waits at most two seconds).
+  if (roles.pass) await activatePass(tokens.access_token);
   redirect(transaction.returnTo);
 }

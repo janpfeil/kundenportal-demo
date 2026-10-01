@@ -142,6 +142,7 @@ export class AppStack extends Stack {
         listPasses: tenancy.api,
         revokePass: tenancy.api,
         getOwnPass: tenancy.api,
+        activateOwnPass: tenancy.api,
         getRedeemChallenge: tenancy.publicApi,
         redeemInvitation: tenancy.publicApi,
         getOffer: tenancy.publicApi,

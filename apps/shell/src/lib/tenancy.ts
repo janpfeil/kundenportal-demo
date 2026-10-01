@@ -93,6 +93,37 @@ export async function fetchPass(session: Session): Promise<PassLookup> {
   }
 }
 
+/** How long the sign-in waits for the activation at most. */
+export const ACTIVATE_TIMEOUT_MS = 2000;
+
+/**
+ * POST /tenancy/pass/activate after a pass holder's sign-in: the first one starts the 48
+ * hours anew. The sign-in must never fail over it, so every error is only logged.
+ */
+export async function activatePass(accessToken: string): Promise<void> {
+  try {
+    const response = await fetch(`${config().apiUrl}/tenancy/pass/activate`, {
+      method: "POST",
+      headers: { authorization: `Bearer ${accessToken}` },
+      cache: "no-store",
+      signal: AbortSignal.timeout(ACTIVATE_TIMEOUT_MS),
+    });
+    if (!response.ok) {
+      console.error(
+        JSON.stringify({
+          level: "warn",
+          message: "Pass activation failed",
+          status: response.status,
+        }),
+      );
+    }
+  } catch (error) {
+    console.error(
+      JSON.stringify({ level: "warn", message: "Pass activation failed", error: String(error) }),
+    );
+  }
+}
+
 /** Calls a public (unauthenticated) tenancy endpoint of the API from the server. */
 export function publicApi(path: "/tenancy/challenge" | "/tenancy/redeem", init?: RequestInit) {
   return fetch(`${config().apiUrl}${path}`, { ...init, cache: "no-store" });

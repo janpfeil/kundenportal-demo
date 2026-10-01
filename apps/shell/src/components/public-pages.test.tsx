@@ -13,7 +13,7 @@ vi.mock("altcha/i18n/de", () => ({}));
 vi.mock("altcha/i18n/en", () => ({}));
 
 const offer = {
-  passDays: 5,
+  passHours: 5,
   quotas: { api: 4000, events: 900, uploads: 10 },
   uploadMaxBytes: 5 * 1024 * 1024,
   redemptionOpen: true,
@@ -124,7 +124,7 @@ describe("RedeemPage", () => {
     render(<RedeemPage />);
     const facts = screen.getByTestId("redeem-offer");
     expect(facts).toHaveTextContent(publicDe.redeem.about.loading);
-    expect(await screen.findByText("5 Tage ab dem Einlösen")).toBeInTheDocument();
+    expect(await screen.findByText("5 Stunden ab der ersten Anmeldung")).toBeInTheDocument();
     expect(facts.textContent?.replace(/[\u00a0\u202f]/g, " ")).toContain(
       "4.000 API-Aufrufe, 900 Ereignisse, 10 Uploads mit je höchstens 5 MB",
     );

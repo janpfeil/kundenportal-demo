@@ -91,7 +91,7 @@ export const en: Dictionary = {
   },
   passes: {
     title: "Demo passes",
-    lead: "Issue invitations and watch running demo passes. Every pass is an instance of its own for 7 days.",
+    lead: "Issue invitations and watch running demo passes. Every pass is an instance of its own for 48 hours from the first sign-in.",
     ownerOnly: "Managing demo passes is open only to the owner of the portal.",
     error: "The demo passes could not be loaded right now.",
     invite: {
@@ -101,7 +101,7 @@ export const en: Dictionary = {
       email: "E-mail address of the invited person",
       emailHint: "Cognito sends the one-time password to this address on redemption.",
       minutes: "Short test duration in minutes (optional, at most 60)",
-      minutesHint: "Leave empty for the normal duration of 7 days.",
+      minutesHint: "Leave empty for the normal duration of 48 hours.",
       submit: "Create invitation",
       sending: "Creating …",
       created: "Invitation created. Copy the link now — it is not shown again.",

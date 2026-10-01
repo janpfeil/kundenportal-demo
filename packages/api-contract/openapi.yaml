@@ -524,6 +524,27 @@ paths:
         "401": { $ref: "#/components/responses/Problem" }
         "403": { $ref: "#/components/responses/Problem" }
         "404": { $ref: "#/components/responses/Problem" }
+  /tenancy/pass/activate:
+    post:
+      operationId: activateOwnPass
+      summary: Start the pass with the holder's first sign-in
+      description: >-
+        Called by the portal after a sign-in. For the pass holder (group `pass`) the
+        first call records the activation and moves the end to `passHours` from now
+        (short test passes keep their minutes); later calls change nothing. Answers the
+        own pass like `getOwnPass`. Everyone else gets 204 and nothing happens.
+      security:
+        - oidc: [kundenportal/tenancy.read]
+      responses:
+        "200":
+          description: Own pass after the activation
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OwnPass" }
+        "204": { description: Not a pass holder; nothing to activate }
+        "401": { $ref: "#/components/responses/Problem" }
+        "403": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
   /tenancy/settings:
     get:
       operationId: getSettings
@@ -1054,9 +1075,12 @@ components:
         maxTenants: { type: integer, minimum: 1, maximum: 4 }
     PassOffer:
       type: object
-      required: [passDays, quotas, uploadMaxBytes, redemptionOpen]
+      required: [passHours, quotas, uploadMaxBytes, redemptionOpen]
       properties:
-        passDays: { type: integer, minimum: 1 }
+        passHours:
+          type: integer
+          minimum: 1
+          description: How long a pass lasts after redeeming and again after the first sign-in
         quotas:
           type: object
           required: [api, events, uploads]

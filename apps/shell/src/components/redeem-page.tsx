@@ -41,7 +41,7 @@ export function RedeemPage() {
           items={[
             {
               term: about.duration,
-              description: offer ? fill(about.durationText, { days: offer.passDays }) : pending,
+              description: offer ? fill(about.durationText, { hours: offer.passHours }) : pending,
             },
             { term: about.instance, description: about.instanceText },
             {

@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { redeemError, tokenFromHash } from "./redeem";
 import { fill } from "@kundenportal/ui/i18n";
-import { clientIp, timeLeft, toPassLookup } from "./tenancy";
+import { activatePass, clientIp, timeLeft, toPassLookup } from "./tenancy";
 
 vi.mock("next/headers", () => ({ cookies: vi.fn() }));
 vi.mock("./config", () => ({
@@ -89,6 +89,30 @@ describe("challenge route", () => {
   it("answers 503 when the API has no challenge", async () => {
     fetchMock.mockResolvedValue(new Response("nope", { status: 500 }));
     expect((await challenge()).status).toBe(503);
+  });
+});
+
+describe("pass activation after the sign-in", () => {
+  it("posts with the access token and a timeout", async () => {
+    fetchMock.mockResolvedValue(Response.json({ tenantId: "p4k7x2qa" }));
+    await activatePass("access-token");
+    const [url, init] = fetchMock.mock.calls[0] ?? [];
+    expect(url).toBe("https://api.example/api/tenancy/pass/activate");
+    expect(init).toMatchObject({
+      method: "POST",
+      headers: { authorization: "Bearer access-token" },
+    });
+    expect(init?.signal).toBeInstanceOf(AbortSignal);
+  });
+
+  it("never fails the sign-in", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    fetchMock.mockRejectedValueOnce(new Error("timeout"));
+    await expect(activatePass("t")).resolves.toBeUndefined();
+    fetchMock.mockResolvedValueOnce(new Response("nope", { status: 500 }));
+    await expect(activatePass("t")).resolves.toBeUndefined();
+    expect(log).toHaveBeenCalledTimes(2);
+    log.mockRestore();
   });
 });
 

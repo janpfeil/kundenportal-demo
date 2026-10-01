@@ -57,6 +57,7 @@ describe("OpenAPI contract", () => {
       "GET /tenancy/passes kundenportal/tenancy.admin",
       "POST /tenancy/passes/{passId}/revoke kundenportal/tenancy.admin",
       "GET /tenancy/pass kundenportal/tenancy.read",
+      "POST /tenancy/pass/activate kundenportal/tenancy.read",
       "GET /tenancy/settings kundenportal/tenancy.admin",
       "PUT /tenancy/settings kundenportal/tenancy.admin",
       "GET /tenancy/offer ",

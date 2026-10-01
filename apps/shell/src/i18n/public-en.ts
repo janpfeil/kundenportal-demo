@@ -22,7 +22,7 @@ export const publicEn: PublicTexts = {
     },
     pass: {
       title: "Your own instance with an invitation",
-      text: "If you received an invitation, its link gives you an instance of your own for a few days — with its own demo customers, legacy data and migration cockpit. When it ends, it is deleted completely.",
+      text: "If you received an invitation, its link gives you an instance of your own for 48 hours — with its own demo customers, legacy data and migration cockpit. When it ends, it is deleted completely.",
     },
   },
   redeem: {
@@ -31,7 +31,7 @@ export const publicEn: PublicTexts = {
     about: {
       title: "What you get",
       duration: "Duration",
-      durationText: "{days} days from redemption",
+      durationText: "{hours} hours from your first sign-in",
       instance: "Your own instance",
       instanceText:
         "Your own demo customers, legacy data and migration cockpit. Other visitors cannot see your instance.",

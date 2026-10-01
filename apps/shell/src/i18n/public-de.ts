@@ -21,7 +21,7 @@ export const publicDe = {
     },
     pass: {
       title: "Eigene Instanz mit Einladung",
-      text: "Wer eine Einladung erhalten hat, bekommt mit dem Link eine eigene Instanz für einige Tage — mit eigenen Demo-Kunden, eigenen Altsystem-Daten und eigenem Migrations-Cockpit. Nach Ablauf wird sie vollständig gelöscht.",
+      text: "Wer eine Einladung erhalten hat, bekommt mit dem Link eine eigene Instanz für 48 Stunden — mit eigenen Demo-Kunden, eigenen Altsystem-Daten und eigenem Migrations-Cockpit. Nach Ablauf wird sie vollständig gelöscht.",
     },
   },
   redeem: {
@@ -30,7 +30,7 @@ export const publicDe = {
     about: {
       title: "Was Sie bekommen",
       duration: "Laufzeit",
-      durationText: "{days} Tage ab dem Einlösen",
+      durationText: "{hours} Stunden ab der ersten Anmeldung",
       instance: "Eigene Instanz",
       instanceText:
         "Eigene Demo-Kunden, eigene Altsystem-Daten und ein eigenes Migrations-Cockpit. Andere Besucher sehen Ihre Instanz nicht.",

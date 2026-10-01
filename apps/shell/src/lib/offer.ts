@@ -20,13 +20,13 @@ const count = (value: unknown): value is number =>
 /** Validates the API's answer; `undefined` if it does not have the expected shape. */
 export function parseOffer(body: unknown): Offer | undefined {
   if (typeof body !== "object" || body === null) return undefined;
-  const { passDays, quotas, uploadMaxBytes, redemptionOpen } = body as Record<string, unknown>;
-  if (!count(passDays) || !count(uploadMaxBytes) || typeof redemptionOpen !== "boolean")
+  const { passHours, quotas, uploadMaxBytes, redemptionOpen } = body as Record<string, unknown>;
+  if (!count(passHours) || !count(uploadMaxBytes) || typeof redemptionOpen !== "boolean")
     return undefined;
   if (typeof quotas !== "object" || quotas === null) return undefined;
   const { api, events, uploads } = quotas as Record<string, unknown>;
   if (!count(api) || !count(events) || !count(uploads)) return undefined;
-  return { passDays, quotas: { api, events, uploads }, uploadMaxBytes, redemptionOpen };
+  return { passHours, quotas: { api, events, uploads }, uploadMaxBytes, redemptionOpen };
 }
 
 /** Loads the offer; `undefined` on any failure (the page then shows no numbers). */

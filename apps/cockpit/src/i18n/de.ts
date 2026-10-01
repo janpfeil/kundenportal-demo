@@ -90,7 +90,7 @@ export const de = {
   },
   passes: {
     title: "Demo-Pässe",
-    lead: "Einladungen ausstellen und laufende Demo-Pässe überwachen. Jeder Pass ist eine eigene Instanz für 7 Tage.",
+    lead: "Einladungen ausstellen und laufende Demo-Pässe überwachen. Jeder Pass ist eine eigene Instanz für 48 Stunden ab der ersten Anmeldung.",
     ownerOnly: "Die Verwaltung der Demo-Pässe steht nur dem Inhaber des Portals offen.",
     error: "Die Demo-Pässe konnten gerade nicht geladen werden.",
     invite: {
@@ -100,7 +100,7 @@ export const de = {
       email: "E-Mail-Adresse der eingeladenen Person",
       emailHint: "An diese Adresse schickt Cognito beim Einlösen das Einmal-Passwort.",
       minutes: "Kurze Testlaufzeit in Minuten (optional, höchstens 60)",
-      minutesHint: "Leer lassen für die normale Laufzeit von 7 Tagen.",
+      minutesHint: "Leer lassen für die normale Laufzeit von 48 Stunden.",
       submit: "Einladung erstellen",
       sending: "Wird erstellt …",
       created:
