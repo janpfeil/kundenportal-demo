@@ -13,6 +13,7 @@ import {
   TenantDirectory,
   type TenantStatusLookup,
 } from "@kundenportal/service-kit";
+import { type ConsumptionHistory, consumptionHistory, isMeteredDivision } from "./history.js";
 import {
   type ContractProjection,
   type DataUsage,
@@ -28,6 +29,12 @@ import type { ConsumptionRepository } from "./repository.js";
 export interface Clock {
   now(): Date;
 }
+
+/**
+ * Readings the history reads in one query, newest first: 25 years of quarterly readings.
+ * Only spans touching the last 24 months matter, so older ones are not missed.
+ */
+const HISTORY_READINGS = 100;
 
 const unprocessable = (detail: string) => new HttpError(422, "Unprocessable Content", detail);
 
@@ -100,6 +107,31 @@ export class ConsumptionService {
     return reading;
   }
 
+  /**
+   * Monthly consumption of the last 12 complete months and the 12 before, key figures,
+   * next reading due and plausible range (see `history.ts`). Reads the projection and one
+   * page of readings; contracts without a meter are rejected like when submitting one.
+   */
+  async history(caller: Caller, contractId: string): Promise<ConsumptionHistory> {
+    const contract = await this.ownContract(caller, contractId);
+    if (!contract.unit || !isMeteredDivision(contract.division)) {
+      throw unprocessable("The contract has no meter");
+    }
+    const readings = await this.repository.readings(
+      caller.tenantId,
+      contract.contractId,
+      HISTORY_READINGS,
+    );
+    return consumptionHistory({
+      contractId: contract.contractId,
+      division: contract.division,
+      unit: contract.unit,
+      readings,
+      estimatedAnnualConsumption: contract.estimatedAnnualConsumption,
+      now: this.clock.now(),
+    });
+  }
+
   async usage(caller: Caller, contractId: string): Promise<DataUsage> {
     const contract = await this.ownContract(caller, contractId);
     if (!contract.dataVolumeMb) throw unprocessable("The contract has no data volume");
@@ -140,9 +172,9 @@ export class ConsumptionService {
   }
 
   /**
-   * `ContractChanged`: keeps the own projection (owner, meter, data volume) and the list of
-   * mobile contracts for the daily check; a new metered contract brings its start reading
-   * as the first entry of the history.
+   * `ContractChanged`: keeps the own projection (owner, meter, annual estimate, data volume)
+   * and the list of mobile contracts for the daily check; a new metered contract brings
+   * its start reading as the first entry of the history.
    */
   async onContractChanged(event: ContractChangedDetail): Promise<void> {
     const { tenantId, payload } = event;
@@ -156,6 +188,9 @@ export class ConsumptionService {
     };
     if (snapshot.meterNumber) projection.meterNumber = snapshot.meterNumber;
     if (snapshot.unit) projection.unit = snapshot.unit;
+    if (snapshot.estimatedAnnualConsumption !== undefined) {
+      projection.estimatedAnnualConsumption = snapshot.estimatedAnnualConsumption;
+    }
     if (snapshot.dataVolumeMb) projection.dataVolumeMb = snapshot.dataVolumeMb;
 
     if (await this.repository.saveContract(tenantId, projection)) {

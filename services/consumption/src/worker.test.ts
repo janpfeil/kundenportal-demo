@@ -64,6 +64,7 @@ const electricity = {
   meterNumber: "1EMH0012345678",
   unit: "kWh",
   startReading: { value: 18234, readAt: "2026-04-03" },
+  estimatedAnnualConsumption: 2800,
   startDate: "2026-04-03",
   status: "active",
   version: 1,
@@ -128,6 +129,7 @@ describe("ContractChanged", () => {
       division: "electricity",
       meterNumber: "1EMH0012345678",
       unit: "kWh",
+      estimatedAnnualConsumption: 2800,
       status: "active",
       version: 1,
     });
@@ -138,6 +140,14 @@ describe("ContractChanged", () => {
       source: "contract-start",
     });
     expect(start?.ConditionExpression).toBe("attribute_not_exists(PK)");
+  });
+
+  it("keeps projecting snapshots published without an annual estimate (before phase 6)", async () => {
+    const { estimatedAnnualConsumption: _annual, ...older } = electricity;
+    await worker(contractChanged({ ...older, version: 2 }, "updated"));
+    const [projection] = puts();
+    expect(projection?.Item).toMatchObject({ unit: "kWh", version: 2 });
+    expect(projection?.Item).not.toHaveProperty("estimatedAnnualConsumption");
   });
 
   it("puts a mobile contract on the watch list of the daily check", async () => {

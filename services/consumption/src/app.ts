@@ -34,6 +34,10 @@ export function createApi(service: ConsumptionService): ApiHandler {
         await service.submitReading(caller, contractId, input, event.requestContext.requestId),
       );
     },
+    "GET /contracts/{contractId}/consumption": async (event) => {
+      const caller = callerFrom(event);
+      return json(200, await service.history(caller, contractIdOf(event)));
+    },
     "GET /contracts/{contractId}/usage": async (event) => {
       const caller = callerFrom(event);
       return json(200, await service.usage(caller, contractIdOf(event)));

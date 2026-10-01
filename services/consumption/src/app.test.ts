@@ -215,3 +215,84 @@ describe("GET /contracts/{contractId}/usage", () => {
     expect((await usage(electricityId)).statusCode).toBe(422);
   });
 });
+
+describe("GET /contracts/{contractId}/consumption", () => {
+  const history = (contractId: string, sub = "sub-1") =>
+    api(
+      apiEvent("GET /contracts/{contractId}/consumption", {
+        pathParameters: { contractId },
+        claims: { sub },
+      }),
+    );
+
+  it("aggregates the readings of the caller's contract into 12 months", async () => {
+    now = new Date("2026-10-01T06:00:00.000Z");
+    const result = await history(electricityId);
+
+    expect(result.statusCode).toBe(200);
+    const answer = body(result);
+    expect(answer).toMatchObject({
+      contractId: electricityId,
+      unit: "kWh",
+      latestReading: latest,
+      // Due three months after 2026-04-03, long passed: within the next 14 days.
+      nextReadingDue: "2026-10-15",
+      readingDue: true,
+      changePercent: 0,
+    });
+    expect(answer.months.map((m: { month: string }) => m.month)).toEqual([
+      "2025-10",
+      "2025-11",
+      "2025-12",
+      "2026-01",
+      "2026-02",
+      "2026-03",
+      "2026-04",
+      "2026-05",
+      "2026-06",
+      "2026-07",
+      "2026-08",
+      "2026-09",
+    ]);
+    // Only the start reading and a projection from before phase 6: the default 2 500 kWh.
+    expect(answer.total).toBeGreaterThanOrEqual(2494);
+    expect(answer.total).toBeLessThanOrEqual(2506);
+    expect(answer.plausibleRange.at).toBe("2026-10-01");
+
+    // One page of readings, newest first, of the caller's contract.
+    const queries = dbMock.commandCalls(QueryCommand);
+    expect(queries).toHaveLength(1);
+    expect(queries[0]?.args[0].input).toMatchObject({
+      ExpressionAttributeValues: { ":pk": `TENANT#owner#CONTRACT#${electricityId}` },
+      ScanIndexForward: false,
+      Limit: 100,
+    });
+  });
+
+  it("estimates with the annual consumption of the projection", async () => {
+    dbMock
+      .on(GetCommand, { Key: { PK: `TENANT#owner#CONTRACT#${electricityId}`, SK: "CONSUMPTION" } })
+      .resolves({ Item: { ...projection, estimatedAnnualConsumption: 3600 } });
+    const answer = body(await history(electricityId));
+    expect(answer.total).toBeGreaterThanOrEqual(3594);
+    expect(answer.total).toBeLessThanOrEqual(3606);
+  });
+
+  it("rejects contracts without a meter with 422", async () => {
+    expect((await history(mobileId)).statusCode).toBe(422);
+    expect(dbMock.commandCalls(QueryCommand)).toHaveLength(0);
+  });
+
+  it("answers 404 for contracts of other customers and unknown contracts", async () => {
+    dbMock
+      .on(GetCommand, { Key: { PK: "TENANT#owner#SUBJ#sub-2", SK: "CONSUMPTION" } })
+      .resolves({ Item: { customerId: "c-2" } });
+    expect((await history(electricityId, "sub-2")).statusCode).toBe(404);
+    expect((await history("2d8b5b90-3e4f-4a71-8cbd-2e3f4a5b6c7d")).statusCode).toBe(404);
+    expect(dbMock.commandCalls(QueryCommand)).toHaveLength(0);
+  });
+
+  it("rejects malformed contract ids with 400", async () => {
+    expect((await history("CONTRACT#x")).statusCode).toBe(400);
+  });
+});

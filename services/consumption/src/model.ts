@@ -8,6 +8,12 @@ export const ContractProjection = z.object({
   division: Division,
   meterNumber: z.string().optional(),
   unit: MeterUnit.optional(),
+  /**
+   * The contract domain's annual estimate (`ContractSnapshot.estimatedAnnualConsumption`,
+   * phase 6). Projections stored before lack it; the history then falls back to the
+   * division's default (`defaultAnnualConsumption`).
+   */
+  estimatedAnnualConsumption: z.number().nonnegative().optional(),
   dataVolumeMb: z.number().int().positive().optional(),
   status: z.enum(["active", "terminated"]),
   version: z.number().int().positive(),
