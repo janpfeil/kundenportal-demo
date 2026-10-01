@@ -11,6 +11,10 @@ on:
       portal_url:
         description: Portal URL
         default: https://kundenportal-demo.rypox.com
+      screens:
+        description: Only take screenshots of every screen (visual check, see screens.spec.ts)
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -42,7 +46,8 @@ jobs:
           PORTAL_URL: ${{ inputs.portal_url }}
           # Phase 3: password of the demo persons in both legacy systems (environment secret).
           LEGACY_DEMO_PASSWORD: ${{ secrets.LEGACY_DEMO_PASSWORD }}
-        run: pnpm --filter @kundenportal/e2e run e2e
+          E2E_SCREENS: ${{ inputs.screens && '1' || '' }}
+        run: pnpm --filter @kundenportal/e2e run e2e ${{ inputs.screens && 'src/screens.spec.ts' || '' }}
       - if: always()
         uses: actions/upload-artifact@v7
         with:
