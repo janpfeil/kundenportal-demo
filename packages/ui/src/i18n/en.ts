@@ -15,6 +15,8 @@ export const en: CommonTexts = {
   auth: {
     login: "Sign in",
     logout: "Sign out",
+    /** Accessible name of the user menu button (followed by the user's name). */
+    menu: "User menu",
   },
   language: {
     label: "Language",

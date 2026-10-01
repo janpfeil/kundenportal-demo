@@ -42,11 +42,18 @@ const meta: Meta<Args> = {
           hrefLang: target,
           title: t.language.label,
         }}
-        authLink={
-          signedIn
-            ? { href: "#logout", label: t.auth.logout, variant: "secondary" }
-            : { href: "#login", label: t.auth.login }
-        }
+        version="v0.4.1 · 1a2b3c4"
+        {...(signedIn
+          ? {
+              user: {
+                name: "Anna Becker",
+                email: "anna.becker@example.org",
+                label: t.auth.menu,
+                links: [{ href: "#konto", label: t.nav.account }],
+                logout: { href: "#logout", label: t.auth.logout },
+              },
+            }
+          : { authLink: { href: "#login", label: t.auth.login } })}
         widget={withWidget ? <a href="#glocke">{demo.bell}</a> : undefined}
         footer={<a href={t.footer.href}>{t.footer.text}</a>}
       >

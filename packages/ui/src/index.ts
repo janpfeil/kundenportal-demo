@@ -1,4 +1,6 @@
 export { AppShell, TopBar } from "./components/app-shell.js";
+export { UserMenu, initialsOf } from "./components/user-menu.js";
+export type { MenuLink, UserMenuProps } from "./components/user-menu.js";
 export type { AppShellProps, NavItem, TopBarProps } from "./components/app-shell.js";
 export { Button, ButtonLink } from "./components/button.js";
 export type { ButtonLinkProps, ButtonProps, ButtonVariant } from "./components/button.js";

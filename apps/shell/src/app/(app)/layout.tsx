@@ -29,7 +29,16 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
         <script type="module" src="/widgets/bell.js" async />
       </head>
       <body>
-        <ShellFrame state={{ locale, signedIn: Boolean(session), roles }}>{children}</ShellFrame>
+        <ShellFrame
+          state={{
+            locale,
+            signedIn: Boolean(session),
+            roles,
+            user: session ? { name: session.name, email: session.email } : undefined,
+          }}
+        >
+          {children}
+        </ShellFrame>
       </body>
     </html>
   );

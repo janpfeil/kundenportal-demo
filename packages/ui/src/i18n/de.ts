@@ -13,6 +13,8 @@ export const de = {
   auth: {
     login: "Anmelden",
     logout: "Abmelden",
+    /** Accessible name of the user menu button (followed by the user's name). */
+    menu: "Benutzermenü",
   },
   language: {
     label: "Sprache",

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { publicDe } from "@/i18n/public-de";
 import { RedeemPage } from "./redeem-page";
@@ -42,13 +42,29 @@ describe("ShellFrame", () => {
   it("marks the current section, also below it", () => {
     pathname = "/postfach";
     render(
-      <ShellFrame state={{ locale: "de", signedIn: true, roles: { cockpit: false, pass: false } }}>
+      <ShellFrame
+        state={{
+          locale: "de",
+          signedIn: true,
+          roles: { cockpit: false, pass: false },
+          user: { name: "Anna Becker", email: "anna.becker@example.org" },
+        }}
+      >
         <p>Inhalt</p>
       </ShellFrame>,
     );
     expect(screen.getByRole("link", { name: "Postfach" })).toHaveAttribute("aria-current", "page");
     expect(screen.getByRole("link", { name: "Start" })).not.toHaveAttribute("aria-current");
-    expect(screen.getByRole("link", { name: "Abmelden" })).toHaveAttribute("href", "/auth/logout");
+    // Who is signed in: avatar with initials and name; the sign-out sits in the menu.
+    const button = screen.getByRole("button", { name: "Benutzermenü: Anna Becker" });
+    expect(button).toHaveTextContent("AB");
+    expect(screen.queryByRole("menuitem", { name: "Abmelden" })).toBeNull();
+    fireEvent.click(button);
+    expect(screen.getByRole("menu")).toHaveTextContent("anna.becker@example.org");
+    expect(screen.getByRole("menuitem", { name: "Abmelden" })).toHaveAttribute(
+      "href",
+      "/auth/logout",
+    );
   });
 
   it("on prerendered pages takes language and signed-in state from the browser's cookies", () => {

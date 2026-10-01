@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Footer } from "./footer.js";
 import { type LinkComponent, joinClasses } from "./link.js";
+import { UserMenu, type UserMenuProps } from "./user-menu.js";
 
 export interface NavItem {
   href: string;
@@ -22,6 +23,8 @@ export interface TopBarProps {
   languageLink?: { href: string; label: string; hrefLang: string; title?: string };
   /** Sign-in (primary) or sign-out (secondary) link. Plain GET link, no form. */
   authLink?: { href: string; label: string; variant?: "primary" | "secondary" };
+  /** Signed-in user: avatar, name and a menu with the sign-out; replaces `authLink`. */
+  user?: UserMenuProps | undefined;
   /** Slot for the notification bell widget. */
   widget?: ReactNode;
   /** Deployed version, e.g. "v0.4.1 · 1a2b3c4"; shown next to the brand. */
@@ -37,6 +40,7 @@ export function TopBar({
   authLink,
   widget,
   version,
+  user,
   linkComponent: Link = "a",
 }: TopBarProps) {
   return (
@@ -72,7 +76,8 @@ export function TopBar({
             {languageLink.label}
           </a>
         )}
-        {authLink && (
+        {user && <UserMenu {...user} />}
+        {!user && authLink && (
           <a
             href={authLink.href}
             className={joinClasses(

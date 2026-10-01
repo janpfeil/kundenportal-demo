@@ -4,7 +4,7 @@ import { AppShell, portalNavigation } from "@kundenportal/ui";
 import { type Locale, commonTexts, otherLocale } from "@kundenportal/ui/i18n";
 import { usePathname } from "next/navigation";
 import { type ReactNode, useEffect } from "react";
-import { useBrowserLocale, useUiHint } from "@/lib/client-state";
+import { useBrowserLocale, useMenuUser, useUiHint } from "@/lib/client-state";
 import { ShellLink } from "@/lib/shell-link";
 
 /** What the server knows about the visitor on pages rendered per request. */
@@ -12,6 +12,8 @@ export interface FrameState {
   locale: Locale;
   signedIn: boolean;
   roles: { cockpit: boolean; pass: boolean };
+  /** Signed-in user for the user menu. */
+  user?: { name?: string | undefined; email?: string | undefined } | undefined;
 }
 
 /** Deployed version, fixed at build time (next.config.ts). */
@@ -43,6 +45,9 @@ export function ShellFrame({ state, children }: ShellFrameProps) {
     cockpit: hint === "pass" || hint === "owner",
     pass: hint === "pass",
   };
+  // Prerendered pages ask the shell for name and address; per-request pages bring them.
+  const fetched = useMenuUser(state === undefined && signedIn);
+  const user = state?.user ?? fetched;
   const t = commonTexts[locale];
   const target = otherLocale(locale);
 
@@ -68,11 +73,20 @@ export function ShellFrame({ state, children }: ShellFrameProps) {
         hrefLang: target,
         title: t.language.label,
       }}
-      authLink={
-        signedIn
-          ? { href: "/auth/logout", label: t.auth.logout, variant: "secondary" }
-          : { href: "/auth/login", label: t.auth.login }
-      }
+      {...(signedIn
+        ? {
+            user: {
+              name: user?.name,
+              email: user?.email,
+              label: t.auth.menu,
+              links: [
+                { href: "/konto", label: t.nav.account },
+                ...(roles.pass ? [{ href: "/pass", label: t.nav.pass }] : []),
+              ],
+              logout: { href: "/auth/logout", label: t.auth.logout },
+            },
+          }
+        : { authLink: { href: "/auth/login", label: t.auth.login } })}
       linkComponent={ShellLink}
       version={VERSION}
       widget={signedIn ? <kp-bell label={t.nav.mailbox} /> : undefined}

@@ -1,7 +1,7 @@
 "use client";
 
 import { LOCALE_COOKIE, type Locale, negotiateLocale } from "@kundenportal/ui/i18n";
-import { useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { UI_HINT_COOKIE, type UiHint, cookieValue, isUiHint } from "./ui-hint";
 
 // Cookies change only through full page loads (language switch, sign-in, sign-out), so
@@ -34,4 +34,33 @@ export function useUiHint(): UiHint | undefined {
     },
     () => undefined,
   );
+}
+
+/** Name and address for the user menu (`GET /auth/me`). */
+export interface MenuUser {
+  name?: string | undefined;
+  email?: string | undefined;
+}
+
+/**
+ * The signed-in user on prerendered pages: asked once from the shell when the hint says
+ * "signed in". Pages rendered per request pass the user in directly and skip this.
+ */
+export function useMenuUser(enabled: boolean): MenuUser | undefined {
+  const [user, setUser] = useState<MenuUser>();
+  useEffect(() => {
+    if (!enabled) return;
+    let cancelled = false;
+    fetch("/auth/me", { cache: "no-store" })
+      .then((response) => (response.ok ? response.json() : undefined))
+      .then((body: { name?: string | null; email?: string | null } | undefined) => {
+        if (!cancelled && body)
+          setUser({ name: body.name ?? undefined, email: body.email ?? undefined });
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [enabled]);
+  return user;
 }

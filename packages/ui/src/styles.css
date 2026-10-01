@@ -561,3 +561,122 @@ a {
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
+
+/* User menu in the top bar: avatar with initials, name, dropdown with sign-out. */
+.kp-user-menu {
+  position: relative;
+}
+
+.kp-user-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 260px;
+  padding: 4px 10px 4px 4px;
+  border: 1px solid var(--kp-border);
+  border-radius: 999px;
+  background: var(--kp-surface);
+  color: var(--kp-text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.kp-user-button:hover,
+.kp-user-button[aria-expanded="true"] {
+  border-color: var(--kp-accent);
+}
+
+.kp-user-button:focus-visible {
+  outline: 2px solid var(--kp-accent);
+  outline-offset: 2px;
+}
+
+.kp-avatar {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--kp-accent);
+  color: var(--kp-accent-contrast);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.kp-user-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.kp-user-caret {
+  color: var(--kp-muted);
+  font-size: 0.8rem;
+}
+
+.kp-user-popup {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 20;
+  min-width: 220px;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background: var(--kp-surface);
+  border: 1px solid var(--kp-border);
+  border-radius: var(--kp-radius-large);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 12%);
+}
+
+.kp-user-head {
+  display: grid;
+  gap: 2px;
+  padding: 8px 10px 10px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--kp-border);
+  font-size: 0.85rem;
+}
+
+.kp-user-head-name {
+  font-weight: 700;
+}
+
+.kp-user-head-email {
+  color: var(--kp-muted);
+  overflow-wrap: anywhere;
+}
+
+.kp-user-popup a {
+  display: block;
+  padding: 8px 10px;
+  border-radius: var(--kp-radius);
+  color: var(--kp-text);
+  text-decoration: none;
+}
+
+.kp-user-popup a:hover,
+.kp-user-popup a:focus-visible {
+  background: var(--kp-bg);
+  outline: 2px solid var(--kp-accent);
+  outline-offset: -2px;
+}
+
+.kp-user-separator {
+  height: 1px;
+  margin: 4px 0;
+  background: var(--kp-border);
+}
+
+.kp-user-popup .kp-user-logout {
+  color: var(--kp-error-border);
+}
+
+@media (max-width: 480px) {
+  .kp-user-name {
+    display: none;
+  }
+}

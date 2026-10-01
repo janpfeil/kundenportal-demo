@@ -3,6 +3,7 @@ import { otherLocale } from "@kundenportal/ui/i18n";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { dictionary } from "@/i18n";
+import { rolesOf } from "@kundenportal/web-auth";
 import { currentSession } from "@kundenportal/web-auth/pages";
 import { navigation } from "@/lib/zone";
 import { ZoneLink } from "@/lib/zone-link";
@@ -35,11 +36,22 @@ export default async function ZoneLayout({ children }: { children: ReactNode }) 
             hrefLang: target,
             title: t.language.label,
           }}
-          authLink={
-            session
-              ? { href: "/auth/logout", label: t.auth.logout, variant: "secondary" }
-              : { href: "/auth/login", label: t.auth.login }
-          }
+          {...(session
+            ? {
+                user: {
+                  name: session.name,
+                  email: session.email,
+                  label: t.auth.menu,
+                  links: [
+                    { href: "/konto", label: t.nav.account },
+                    ...(rolesOf(session.accessToken).pass
+                      ? [{ href: "/pass", label: t.nav.pass }]
+                      : []),
+                  ],
+                  logout: { href: "/auth/logout", label: t.auth.logout },
+                },
+              }
+            : { authLink: { href: "/auth/login", label: t.auth.login } })}
           linkComponent={ZoneLink}
           version={process.env.NEXT_PUBLIC_APP_VERSION}
           widget={

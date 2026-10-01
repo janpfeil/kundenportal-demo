@@ -48,7 +48,11 @@ test("first sign-in shows the account and a welcome message within seconds", asy
   test.info().annotations.push({ type: "welcome-after-ms", description: String(welcomeAfterMs) });
   console.log(`Welcome message visible ${welcomeAfterMs} ms after the account page`);
 
-  await page.getByRole("link", { name: /Abmelden|Sign out/ }).click();
+  // The header shows who is signed in; the sign-out sits in the user menu.
+  const menu = page.getByTestId("user-menu");
+  await expect(menu.getByRole("button")).toContainText(/@|\w/);
+  await menu.getByRole("button").click();
+  await menu.getByRole("menuitem", { name: /Abmelden|Sign out/ }).click();
   await page.waitForURL((url) => !url.pathname.startsWith("/auth/logout"));
   // Signed out means the portal's session cookie is gone (Cognito may keep its own session).
   const cookies = await page.context().cookies(baseURL);
