@@ -7,6 +7,8 @@ export function apiEvent(
     claims?: Record<string, string>;
     body?: unknown;
     pathParameters?: Record<string, string>;
+    /** Decoded query parameters, as the gateway passes them. */
+    query?: Record<string, string>;
   } = {},
 ): ApiEvent {
   const [method = "GET", rawPath = "/"] = routeKey.split(" ");
@@ -14,11 +16,12 @@ export function apiEvent(
     version: "2.0",
     routeKey,
     rawPath,
-    rawQueryString: "",
+    rawQueryString: options.query ? new URLSearchParams(options.query).toString() : "",
     headers: {},
     isBase64Encoded: false,
     ...(options.body === undefined ? {} : { body: JSON.stringify(options.body) }),
     ...(options.pathParameters ? { pathParameters: options.pathParameters } : {}),
+    ...(options.query ? { queryStringParameters: options.query } : {}),
     requestContext: {
       accountId: "123456789012",
       apiId: "api",

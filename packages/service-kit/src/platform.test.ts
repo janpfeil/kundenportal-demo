@@ -67,15 +67,36 @@ describe("API quota", () => {
     expect(call?.args[0].input).toMatchObject({
       TableName: "kundenportal",
       Key: { PK: `TENANT#${PASS}`, SK: "QUOTA#api" },
-      // The same write records the tenant's last activity for the owner's cockpit.
-      UpdateExpression: "ADD #used :one SET #lastActiveAt = :now",
+      // The same write records the tenant's last activity for the owner's cockpit and
+      // counts the call on its German day.
+      UpdateExpression: "ADD #used :one, #day :one SET #lastActiveAt = :now",
       ConditionExpression: "attribute_not_exists(#used) OR #used < :limit",
+      ExpressionAttributeNames: {
+        "#used": "used",
+        "#day": "d20261001",
+        "#lastActiveAt": "lastActiveAt",
+      },
       ExpressionAttributeValues: {
         ":one": 1,
         ":limit": 5000,
         ":now": "2026-10-01T08:00:00.000Z",
       },
     });
+    expect(dbMock.commandCalls(UpdateCommand)).toHaveLength(1);
+  });
+
+  it("counts a call shortly before midnight UTC on the next German day", async () => {
+    platformStatus("active");
+    await createApiQuota({
+      data: base,
+      directory: new TenantDirectory({ data: base }),
+      limit: 5000,
+      now: () => new Date("2026-10-01T22:15:00.000Z"),
+    })(PASS);
+
+    expect(dbMock.commandCalls(UpdateCommand)).toHaveLength(1);
+    const [call] = dbMock.commandCalls(UpdateCommand);
+    expect(call?.args[0].input.ExpressionAttributeNames?.["#day"]).toBe("d20261002");
   });
 
   it("refuses with 429 once the limit is reached", async () => {
