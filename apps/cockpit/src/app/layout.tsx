@@ -73,7 +73,7 @@ export default async function ZoneLayout({ children }: { children: ReactNode }) 
     ? [
         ...(access === "owner" ? [{ href: zonePath("/paesse"), label: t.frame.passes }] : []),
         ...(access === "pass" ? [{ href: "/pass", label: common.nav.pass }] : []),
-        { href: "/", label: t.frame.toPortal },
+        { href: "/konto", label: t.frame.toPortal },
         { href: "/konto", label: common.nav.account },
       ]
     : [{ href: "/konto", label: common.nav.account }];

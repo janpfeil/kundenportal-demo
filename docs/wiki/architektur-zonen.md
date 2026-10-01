@@ -426,8 +426,11 @@ fügt sie zu einem `dist/styles.css` zusammen.
 
 **Cockpit-Rahmen:** Seitenleiste mit den Abschnitten „Migration“ (Übersicht,
 Klärfälle, DLQ, Ereignisse mit Zählern) und „Verwaltung“ (Demo-Pässe,
-Einstellungen; nur Inhaber), Suchfeld in der Kopfzeile, Glocke mit den neuen
-Klärfällen der letzten 24 Stunden. Tastenkürzel: `/` setzt den Fokus ins
+Einstellungen; nur Inhaber) und „Kundenportal“ (Zum Kundenportal → `/konto`,
+bei Pass-Inhabern zusätzlich „Demo-Pass“), Suchfeld in der Kopfzeile, Glocke
+mit den neuen Klärfällen der letzten 24 Stunden. Ein Link auf die schon offene
+Seite (z. B. „Übersicht“ bei `/cockpit#klaerfaelle`) führt nach oben und
+entfernt den Anker — Next.js selbst würde dabei nicht scrollen. Tastenkürzel: `/` setzt den Fokus ins
 Suchfeld, `g c` öffnet die Übersicht, `g p` die Demo-Pässe; während der
 Eingabe in Feldern sind sie aus.
 

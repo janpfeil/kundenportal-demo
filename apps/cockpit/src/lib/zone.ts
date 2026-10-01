@@ -39,6 +39,7 @@ export interface CockpitNavTexts {
   passes: string;
   settings: string;
   passStatus: string;
+  toPortal: string;
 }
 
 export interface CockpitCounts {
@@ -49,7 +50,8 @@ export interface CockpitCounts {
 /**
  * The cockpit's own navigation as in the mockup: "Migration" (overview and its sections
  * with open counts) for owner and pass holders, "Verwaltung" (demo passes and their
- * settings) for the owner only. Pass holders get their pass status instead.
+ * settings) for the owner only. Pass holders get their pass status instead. Both find the
+ * way back to the customer area ("Kundenportal") at the end.
  */
 export function cockpitNavigation(
   texts: CockpitNavTexts,
@@ -81,11 +83,14 @@ export function cockpitNavigation(
     },
     { href: zonePath("#ereignisse"), label: texts.events, icon: "clock", sub: true },
   ];
+  const portal: ZoneNavItem = {
+    href: "/konto",
+    label: texts.toPortal,
+    icon: "home",
+    group: texts.groups.portal,
+  };
   if (access === "pass") {
-    return [
-      ...migration,
-      { href: "/pass", label: texts.passStatus, icon: "ticket", group: texts.groups.portal },
-    ];
+    return [...migration, portal, { href: "/pass", label: texts.passStatus, icon: "ticket" }];
   }
   return [
     ...migration,
@@ -103,6 +108,7 @@ export function cockpitNavigation(
       icon: "settings",
       sub: true,
     },
+    portal,
   ];
 }
 

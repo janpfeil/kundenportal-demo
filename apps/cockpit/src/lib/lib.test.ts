@@ -45,6 +45,7 @@ describe("cockpit helpers", () => {
       ["Ereignisse", "/cockpit#ereignisse", undefined, true],
       ["Demo-Pässe", "/cockpit/paesse", "Verwaltung", false],
       ["Einstellungen", "/cockpit/paesse#einstellungen", undefined, true],
+      ["Zum Kundenportal", "/konto", "Kundenportal", false],
     ]);
     expect(items.map((item) => item.icon)).toEqual([
       "gauge",
@@ -53,6 +54,7 @@ describe("cockpit helpers", () => {
       "clock",
       "ticket",
       "settings",
+      "home",
     ]);
     expect(items.find((item) => item.label === "Klärfälle")?.count).toBe(14);
     expect(items.find((item) => item.label === "DLQ")?.count).toBe(6);
@@ -67,11 +69,10 @@ describe("cockpit helpers", () => {
     const items = cockpitNavigation(navTexts, "pass", {});
     expect(items.some((item) => item.href.startsWith("/cockpit/paesse"))).toBe(false);
     expect(items.some((item) => item.group === "Verwaltung")).toBe(false);
-    expect(items.at(-1)).toMatchObject({
-      href: "/pass",
-      label: "Demo-Pass",
-      group: "Kundenportal",
-    });
+    expect(items.slice(-2)).toMatchObject([
+      { href: "/konto", label: "Zum Kundenportal", group: "Kundenportal" },
+      { href: "/pass", label: "Demo-Pass" },
+    ]);
     expect(cockpitShortcuts("pass")).toEqual([{ keys: "g c", href: "/cockpit" }]);
   });
 
