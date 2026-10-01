@@ -1,17 +1,29 @@
 /** Texts of the prerendered public pages (start page, redeem page); shipped to the browser. */
 export const publicDe = {
   home: {
+    eyebrow: "Ihr Versorger für zu Hause",
     title: "Strom, Gas, Wasser, Internet und Mobilfunk — alles in einem Konto",
     lead: "Dieses Kundenportal ist ein Demo-Projekt. Es zeigt, wie ein Versorger sein Portal modernisiert und dabei die Kunden eines übernommenen Anbieters übernimmt.",
     toPortal: "Anmelden oder zum Konto",
+    redeem: "Demo-Pass einlösen",
     notice: "Alle Daten sind erfunden. Bitte keine echten persönlichen Daten eingeben.",
+    art: "Illustration: ein Haus, verbunden mit Strom, Gas, Wasser, Internet und Mobilfunk",
+    divisionsTitle: "Sparten",
+    divisions: {
+      electricity: { name: "Strom", text: "Ökostrom ab 32,4 ct/kWh" },
+      gas: { name: "Gas", text: "Klima-Option mit Ausgleich" },
+      water: { name: "Wasser", text: "Zählerstand online melden" },
+      internet: { name: "Internet", text: "Glasfaser bis 1000 Mbit/s" },
+      mobile: { name: "Mobilfunk", text: "10, 20 oder 40 GB" },
+    },
     what: {
       title: "Was die Demo zeigt",
-      text: "Ein Mehrsparten-Versorger (Strom, Gas, Wasser) übernimmt einen Telekommunikationsanbieter. Kunden beider Altsysteme melden sich im neuen Portal an, ihre Konten und Verträge werden beim ersten Anmelden oder im Bulk-Lauf übernommen, und ein Migrations-Cockpit zeigt Fortschritt, Klärfälle und Fehler.",
+      text: "Ein Mehrsparten-Versorger übernimmt einen Telekommunikationsanbieter. Konten und Verträge werden beim ersten Anmelden oder im Bulk-Lauf übernommen; ein Migrations-Cockpit zeigt Fortschritt, Klärfälle und Fehler.",
     },
-    architecture: {
-      title: "Architektur",
-      text: "Next.js-Multi-Zones in AWS Lambda hinter CloudFront, Anmeldung per OpenID Connect (Amazon Cognito) im BFF-Muster, eine REST-API mit Lambda-Services und ein Ereignisfluss über EventBridge. Jede Demo-Instanz ist ein eigener Mandant mit eigener Tabelle und eigenen Konten.",
+    pass: {
+      title: "Eigene Instanz mit Einladung",
+      text: "Mit einer Einladung bekommen Sie eine eigene Instanz für 48 Stunden — mit eigenen Demo-Kunden und eigenem Migrations-Cockpit. Nach Ablauf wird sie vollständig gelöscht.",
+      more: "Mehr zum Demo-Pass",
     },
     code: {
       title: "Code und Berichte",
@@ -19,14 +31,27 @@ export const publicDe = {
       repo: "Code auf GitHub",
       reports: "Berichte und Storybook",
     },
-    pass: {
-      title: "Eigene Instanz mit Einladung",
-      text: "Wer eine Einladung erhalten hat, bekommt mit dem Link eine eigene Instanz für 48 Stunden — mit eigenen Demo-Kunden, eigenen Altsystem-Daten und eigenem Migrations-Cockpit. Nach Ablauf wird sie vollständig gelöscht.",
-    },
   },
   redeem: {
     title: "Demo-Pass einlösen",
     lead: "Mit dieser Einladung erhalten Sie eine eigene Instanz des Kundenportals.",
+    eyebrow: "Demo-Pass",
+    stepsTitle: "So lösen Sie Ihre Einladung ein",
+    steps: {
+      check: "Ihr Browser bestätigt eine kurze Prüfung gegen Missbrauch — von selbst.",
+      redeem:
+        "Mit „Demo-Pass einlösen“ wird Ihre Instanz eingerichtet, meist in unter einer Minute.",
+      signIn:
+        "Die Zugangsdaten kommen per E-Mail an die eingeladene Adresse; damit melden Sie sich an.",
+    },
+    ring: {
+      center: "{hours} Std.",
+      sub: "Laufzeit",
+      label: "Laufzeit: {hours} Stunden ab der ersten Anmeldung",
+    },
+    privacyTitle: "Datenschutz",
+    noInvitation:
+      "Zum Einlösen brauchen Sie einen Einladungslink. Öffnen Sie ihn genau so, wie Sie ihn erhalten haben — dann geht es hier weiter.",
     about: {
       title: "Was Sie bekommen",
       duration: "Laufzeit",

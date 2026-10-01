@@ -7,7 +7,7 @@ import type { Locale } from "@kundenportal/ui/i18n";
 import type { RedeemTexts } from "@/i18n/public";
 import { type RedeemError, redeemError, tokenFromHash } from "@/lib/redeem";
 
-type Phase = "loading" | "noToken" | "ready" | "sending" | "done";
+type Phase = "loading" | "noInvitation" | "noToken" | "ready" | "sending" | "done";
 
 /**
  * Redeems an invitation. The token comes from the URL fragment, which browsers never send
@@ -24,8 +24,10 @@ export function RedeemForm({ texts, locale }: { texts: RedeemTexts; locale: Loca
   const result = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    token.current = tokenFromHash(window.location.hash);
-    setPhase(token.current ? "ready" : "noToken");
+    const hash = window.location.hash;
+    token.current = tokenFromHash(hash);
+    // No fragment at all: a visitor from the start page, not a broken invitation link.
+    setPhase(token.current ? "ready" : hash.length > 1 ? "noToken" : "noInvitation");
     // The widget is a web component; load it (and its texts) only in the browser.
     void import("altcha").then(() =>
       locale === "de" ? import("altcha/i18n/de") : import("altcha/i18n/en"),
@@ -85,6 +87,13 @@ export function RedeemForm({ texts, locale }: { texts: RedeemTexts; locale: Loca
         </Notice>
         <ButtonLink href="/auth/login?returnTo=/pass">{texts.done.signIn}</ButtonLink>
       </div>
+    );
+  }
+  if (phase === "noInvitation") {
+    return (
+      <Notice tone="info" data-testid="redeem-no-invitation">
+        {texts.noInvitation}
+      </Notice>
     );
   }
   if (phase === "noToken") {

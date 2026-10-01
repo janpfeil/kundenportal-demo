@@ -1,52 +1,492 @@
-/* Shell-specific styles; tokens, base styles and components come from @kundenportal/ui/styles.css. */
+/*
+ * Shell-specific styles; tokens, base styles and components come from @kundenportal/ui/styles.css.
+ * Layouts follow docs/design/mockups.html (classes hero, sparten, contract, mailbox,
+ * passhero, secret) and use only theme tokens, so every preset works in light and dark.
+ */
 
-.mailbox {
-  list-style: none;
+/* Shared bits */
+
+/* A small neutral label, e.g. "übernommen" or the legacy system ("Telko"). */
+.shell-tag {
+  display: inline-block;
+  padding: 1px 8px;
+  border: 1px solid var(--kp-border-strong);
+  border-radius: var(--kp-radius);
+  background: var(--kp-surface);
+  color: var(--kp-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+  vertical-align: 0.1em;
+}
+
+.shell-measure {
+  max-width: 68ch;
+}
+
+/* Facts inside a card: a plain list (the card already draws the frame), terms muted. */
+.kp-card .kp-facts {
+  margin: 0;
   padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  grid-template-columns: minmax(120px, max-content) 1fr;
+  gap: calc(var(--kp-space) * 0.5) calc(var(--kp-space) * 1.25);
+}
+
+.kp-card .kp-facts dt {
+  color: var(--kp-muted);
+  font-weight: 400;
+}
+
+.kp-card .kp-facts dd {
+  font-weight: 550;
+}
+
+@media (max-width: 479px) {
+  .kp-card .kp-facts {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
+
+  .kp-card .kp-facts dd {
+    margin-bottom: 8px;
+  }
+}
+
+.section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px var(--kp-space);
+  margin-bottom: calc(var(--kp-space) * 0.75);
+}
+
+.section-head h2 {
+  margin: 0;
+}
+
+/* Start page */
+
+.home-hero {
   display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  gap: calc(var(--kp-space) * 2);
+  align-items: center;
+  padding-bottom: calc(var(--kp-space) * 1.5);
+}
+
+.home-hero .kp-page-head h1 {
+  font-size: clamp(1.6rem, 4.5vw, calc(var(--kp-h1) * 1.25));
+}
+
+.home-hero .kp-lead {
+  color: var(--kp-muted);
+  max-width: 54ch;
+}
+
+.home-notice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: var(--kp-space) 0 0;
+  color: var(--kp-muted);
+  font-size: var(--kp-small);
+}
+
+.home-art {
+  width: 100%;
+  max-width: 420px;
+  height: auto;
+  justify-self: center;
+}
+
+.home-art-bg {
+  fill: var(--kp-accent-soft);
+}
+
+.home-art-house {
+  fill: var(--kp-surface);
+  stroke: var(--kp-accent);
+  stroke-width: 3;
+}
+
+.home-art-window {
+  fill: var(--kp-accent);
+}
+
+.home-art-bubble {
+  fill: var(--kp-surface);
+  stroke: var(--kp-border-strong);
+  stroke-width: 1.5;
+}
+
+/* The icon is a nested SVG placed by x/y; its size is in the illustration's units. */
+.home-art .home-art-icon {
+  width: 32px;
+  height: 32px;
+  color: var(--kp-accent-text);
+}
+
+.home-divisions {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: calc(var(--kp-space) * 0.75);
+  margin: 0 0 calc(var(--kp-space) * 1.5);
+  padding: 0;
+  list-style: none;
+}
+
+.home-division.kp-card {
+  display: grid;
+  justify-items: start;
+  align-content: start;
+  gap: 8px;
+  margin: 0;
+  padding: var(--kp-space);
+}
+
+.home-division .kp-muted {
+  font-size: var(--kp-small);
+}
+
+.home-cards .kp-card {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+}
+
+.home-cards .kp-card p {
+  margin: 0;
+}
+
+.home-links {
+  margin: 0;
+  padding-left: 1.2em;
+}
+
+@media (max-width: 860px) {
+  .home-divisions {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .home-hero {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+
+  .home-art {
+    max-width: 260px;
+    grid-row: 1;
+  }
+
+  .home-hero .kp-page-head h1 {
+    font-size: var(--kp-h1);
+  }
+
+  .home-divisions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Overview: account pass hint, contract tiles, account card, link offers */
+
+.account-pass {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+
+/* A column whose status row sits at the bottom, so the rows of a grid line up. */
+.contract.kp-card {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--kp-space) * 0.6);
+}
+
+.contract-foot {
+  margin-top: auto;
+}
+
+.contract-top {
+  display: flex;
+  align-items: center;
   gap: 12px;
 }
 
-.mailbox li {
-  background: var(--kp-surface);
-  border: 1px solid var(--kp-border);
-  border-radius: var(--kp-radius-large);
-  padding: 12px 16px;
+.contract-name {
+  display: grid;
+  min-width: 0;
 }
 
-.mailbox li.unread {
-  background: var(--kp-unread);
+.contract-name h3 {
+  margin: 0;
+  font-size: var(--kp-font-size);
 }
 
-.mailbox h2 {
-  font-size: 1.1rem;
-  margin: 4px 0;
-}
-
-.mailbox p {
+.contract-name .kp-muted {
+  font-size: var(--kp-small);
   overflow-wrap: anywhere;
 }
 
-.meta {
+.contract-price {
+  margin: 0;
+  font-family: var(--kp-font-heading);
+  font-size: var(--kp-h2);
+  font-weight: var(--kp-heading-weight);
+  font-variant-numeric: tabular-nums;
+}
+
+.contract-price small {
+  font-family: var(--kp-font);
+  font-size: var(--kp-small);
+  font-weight: 500;
+  color: var(--kp-muted);
+}
+
+.contract-trend.kp-sparkline {
+  width: 100%;
+  max-width: 220px;
+  height: auto;
+}
+
+.contract-note {
+  margin: 0;
+  font-size: var(--kp-small);
+}
+
+.contract-usage {
+  display: grid;
+  gap: 6px;
+}
+
+.contract-usage .kp-meter {
+  margin: 0;
+}
+
+.contract-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.contract-more {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 44px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.contract-more:hover {
+  text-decoration: underline;
+}
+
+/* Smaller text and padding; the height stays at the theme's 44 px touch target. */
+.shell-small-button.kp-button {
+  padding: 0 calc(var(--kp-space) * 0.8);
+  font-size: var(--kp-small);
+}
+
+.account-profile {
+  margin-top: var(--kp-space);
+  padding-top: var(--kp-space);
+  border-top: 1px solid var(--kp-border);
+}
+
+.account-profile h3 {
+  margin-top: 0;
+  font-size: var(--kp-font-size);
+}
+
+.link-offers {
+  display: grid;
+  gap: var(--kp-space);
+  margin: var(--kp-space) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.link-offer-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px var(--kp-space);
+}
+
+.link-offer-row > .link-offer-field,
+.link-offer-row > .kp-field {
+  flex: 1 1 200px;
+  min-width: 0;
+  margin: 0;
+}
+
+.link-offer-field {
+  display: grid;
+  gap: 4px;
+}
+
+.link-offer-address {
+  font-size: var(--kp-small);
+}
+
+.link-offer .kp-notice {
+  margin: 12px 0 0;
+}
+
+/* Mailbox: list and opened message side by side, one column on phones */
+
+.mailbox {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.9fr) minmax(0, 1.4fr);
+  gap: var(--kp-space);
+  align-items: start;
+}
+
+.mailbox > .kp-card {
+  margin: 0;
+}
+
+.mailbox-list.kp-card {
+  padding: calc(var(--kp-space) * 0.5);
+}
+
+.mailbox-message-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: var(--kp-small);
+}
+
+.mailbox-message h2 {
+  margin: 6px 0 4px;
+  font-size: var(--kp-h2);
+  overflow-wrap: anywhere;
+}
+
+.mailbox-from {
+  margin: 0;
+  font-size: var(--kp-small);
+}
+
+.mailbox-body {
+  display: grid;
+  gap: calc(var(--kp-space) * 0.75);
+  max-width: 62ch;
+  margin-top: var(--kp-space);
+}
+
+.mailbox-body p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.mailbox-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
-  color: var(--kp-muted);
-  font-size: 0.9rem;
+  margin-top: var(--kp-space);
 }
 
-/* Demo pass */
+@media (max-width: 860px) {
+  .mailbox {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
 
-.pass-secret {
+/* Demo pass and redeem page: ring next to the texts */
+
+.pass-hero.kp-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: calc(var(--kp-space) * 1.25);
+  align-items: center;
+  margin: 0;
+}
+
+.pass-hero-body {
+  display: grid;
+  gap: calc(var(--kp-space) * 0.75);
+  min-width: 0;
+}
+
+.pass-hero-body > * {
+  margin: 0;
+}
+
+.pass-hero-body h2 {
+  font-size: var(--kp-h2);
+}
+
+.pass-hero-status,
+.pass-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px var(--kp-space);
+}
+
+.pass-person-system {
+  display: block;
+  color: var(--kp-muted);
+  font-size: var(--kp-small);
+}
+
+.pass-login {
   overflow-wrap: anywhere;
-  font-size: 0.95rem;
+}
+
+/* The card's heading names the table; its caption stays for screen readers only. */
+.pass-persons caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.pass-persons td:first-child {
+  overflow-wrap: normal;
+  white-space: nowrap;
 }
 
 .pass-password {
+  display: grid;
+  gap: 6px;
+}
+
+.pass-secret {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
+}
+
+.pass-secret code {
+  /* Its full width first: the copy button rather wraps below than the password breaks. */
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 8px 12px;
+  border: 1px dashed var(--kp-border-strong);
+  border-radius: var(--kp-radius);
+  background: var(--kp-surface-2);
+  color: var(--kp-text);
+  font-size: 1.02em;
+  letter-spacing: 0.04em;
+  overflow-wrap: anywhere;
 }
 
 .copy {
@@ -56,6 +496,29 @@
   gap: 8px;
 }
 
+.redeem-icon.kp-icon-circle {
+  width: 96px;
+  height: 96px;
+}
+
+.redeem-icon .kp-icon {
+  width: 44px;
+  height: 44px;
+}
+
+.redeem-steps {
+  display: grid;
+  gap: 6px;
+  padding-left: 1.4em;
+}
+
 .redeem-check {
   margin: 0 0 var(--kp-space);
+}
+
+@media (max-width: 640px) {
+  .pass-hero.kp-card {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: start;
+  }
 }

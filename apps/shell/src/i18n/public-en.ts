@@ -2,17 +2,29 @@ import type { PublicTexts } from "./public";
 
 export const publicEn: PublicTexts = {
   home: {
+    eyebrow: "Your utility at home",
     title: "Electricity, gas, water, internet and mobile — all in one account",
     lead: "This customer portal is a demo project. It shows how a utility modernises its portal while taking over the customers of an acquired provider.",
     toPortal: "Sign in or go to your account",
+    redeem: "Redeem a demo pass",
     notice: "All data is fictional. Please do not enter real personal data.",
+    art: "Illustration: a house connected to electricity, gas, water, internet and mobile",
+    divisionsTitle: "Divisions",
+    divisions: {
+      electricity: { name: "Electricity", text: "Green power from 32.4 ct/kWh" },
+      gas: { name: "Gas", text: "Climate option with offsetting" },
+      water: { name: "Water", text: "Submit meter readings online" },
+      internet: { name: "Internet", text: "Fibre up to 1000 Mbit/s" },
+      mobile: { name: "Mobile", text: "10, 20 or 40 GB" },
+    },
     what: {
       title: "What the demo shows",
-      text: "A multi-utility (electricity, gas, water) takes over a telecommunications provider. Customers of both legacy systems sign in to the new portal; their accounts and contracts are migrated at first sign-in or in a bulk run, and a migration cockpit shows progress, cases to review and failures.",
+      text: "A multi-utility takes over a telecommunications provider. Accounts and contracts are migrated at first sign-in or in a bulk run; a migration cockpit shows progress, cases to review and failures.",
     },
-    architecture: {
-      title: "Architecture",
-      text: "Next.js multi-zones in AWS Lambda behind CloudFront, sign-in via OpenID Connect (Amazon Cognito) in the BFF pattern, a REST API with Lambda services and an event flow through EventBridge. Every demo instance is a tenant of its own with its own table and accounts.",
+    pass: {
+      title: "Your own instance with an invitation",
+      text: "An invitation gives you an instance of your own for 48 hours — with its own demo customers and migration cockpit. When it ends, it is deleted completely.",
+      more: "More about the demo pass",
     },
     code: {
       title: "Code and reports",
@@ -20,14 +32,25 @@ export const publicEn: PublicTexts = {
       repo: "Code on GitHub",
       reports: "Reports and Storybook",
     },
-    pass: {
-      title: "Your own instance with an invitation",
-      text: "If you received an invitation, its link gives you an instance of your own for 48 hours — with its own demo customers, legacy data and migration cockpit. When it ends, it is deleted completely.",
-    },
   },
   redeem: {
     title: "Redeem your demo pass",
     lead: "This invitation gives you an instance of the customer portal of your own.",
+    eyebrow: "Demo pass",
+    stepsTitle: "How to redeem your invitation",
+    steps: {
+      check: "Your browser confirms a short check against abuse — by itself.",
+      redeem: "“Redeem demo pass” sets up your instance, usually in under a minute.",
+      signIn: "Your sign-in details arrive by e-mail at the invited address; use them to sign in.",
+    },
+    ring: {
+      center: "{hours} h",
+      sub: "duration",
+      label: "Duration: {hours} hours from your first sign-in",
+    },
+    privacyTitle: "Privacy",
+    noInvitation:
+      "To redeem a pass you need an invitation link. Open it exactly as you received it — then you can continue here.",
     about: {
       title: "What you get",
       duration: "Duration",

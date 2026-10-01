@@ -80,9 +80,12 @@ export function ShellFrame({ state, children }: ShellFrameProps) {
               name: user?.name,
               email: user?.email,
               label: t.auth.menu,
+              // As in the mockup's user menu; the unread count stays with the bell (it would
+              // cost an API call on every page, and prerendered pages have no session).
               links: [
                 { href: "/konto", label: t.nav.account },
                 ...(roles.pass ? [{ href: "/pass", label: t.nav.pass }] : []),
+                { href: "/postfach", label: t.nav.mailbox },
               ],
               logout: { href: "/auth/logout", label: t.auth.logout },
             },

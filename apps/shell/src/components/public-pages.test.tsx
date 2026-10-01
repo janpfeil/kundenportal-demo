@@ -2,6 +2,7 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { publicDe } from "@/i18n/public-de";
+import { HomeContent } from "./home-content";
 import { RedeemPage } from "./redeem-page";
 import { ShellFrame } from "./shell-frame";
 
@@ -65,6 +66,12 @@ describe("ShellFrame", () => {
       "href",
       "/auth/logout",
     );
+    // The mockup's menu: account and mailbox (the pass only for pass holders).
+    expect(screen.getAllByRole("menuitem").map((item) => item.textContent)).toEqual([
+      "Mein Konto",
+      "Postfach",
+      "Abmelden",
+    ]);
   });
 
   it("on prerendered pages takes language and signed-in state from the browser's cookies", () => {
@@ -111,6 +118,44 @@ describe("ShellFrame", () => {
   });
 });
 
+describe("HomeContent", () => {
+  beforeEach(() => {
+    document.cookie = "kp_locale=de; path=/";
+  });
+
+  it("shows the hero, the illustration, five divisions and three cards", () => {
+    render(<HomeContent />);
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("alles in einem Konto");
+    expect(screen.getByRole("img", { name: publicDe.home.art })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Anmelden oder zum Konto" })).toHaveAttribute(
+      "href",
+      "/konto",
+    );
+    expect(screen.getByRole("link", { name: "Demo-Pass einlösen" })).toHaveAttribute(
+      "href",
+      "/pass/einloesen",
+    );
+    const divisions = within(screen.getByRole("region", { name: "Sparten" })).getAllByRole(
+      "listitem",
+    );
+    expect(divisions.map((item) => item.querySelector("strong")?.textContent)).toEqual([
+      "Strom",
+      "Gas",
+      "Wasser",
+      "Internet",
+      "Mobilfunk",
+    ]);
+    expect(
+      screen.getAllByRole("article").map((card) => card.querySelector("h3")?.textContent),
+    ).toEqual(["Was die Demo zeigt", "Eigene Instanz mit Einladung", "Code und Berichte"]);
+    expect(screen.getByRole("link", { name: "Code auf GitHub" })).toHaveAttribute(
+      "href",
+      "https://github.com/janpfeil/kundenportal-demo",
+    );
+  });
+});
+
 describe("RedeemPage", () => {
   // jsdom's browser prefers English; these checks read the German texts.
   beforeEach(() => {
@@ -130,6 +175,21 @@ describe("RedeemPage", () => {
     );
     expect(fetchMock).toHaveBeenCalledWith("/api/tenancy/offer", expect.anything());
     expect(screen.getByTestId("redeem-form")).toBeInTheDocument();
+    // The pass duration as the ring of the pass page.
+    expect(
+      screen.getByRole("img", { name: "Laufzeit: 5 Stunden ab der ersten Anmeldung" }),
+    ).toBeInTheDocument();
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+  });
+
+  it("explains the invitation link to visitors who come without one", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(Response.json(offer)));
+    window.location.hash = "";
+    render(<RedeemPage />);
+    expect(await screen.findByTestId("redeem-no-invitation")).toHaveTextContent(
+      publicDe.redeem.noInvitation,
+    );
+    expect(screen.queryByTestId("redeem-error")).not.toBeInTheDocument();
   });
 
   it("explains a paused redemption instead of offering the form", async () => {
