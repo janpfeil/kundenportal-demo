@@ -325,7 +325,8 @@ Erinnerung („Erinnerung an <E-Mail> verschickt: Mandant <kennung>, seit 24
 Stunden nicht angemeldet."). Alle gehen genau
 einmal hinaus (nur der Lauf, der den Status umstellt), nennen nie das
 Demo-Passwort oder einen Token, und ein Fehler beim Versand bricht
-Einrichtung oder Rückbau nicht ab.
+Einrichtung oder Rückbau nicht ab. Kurze Test-Pässe (`validMinutes`, nur die
+E2E-Läufe, mehrere je Lauf) lösen seit v0.6.1 keine Hinweise aus.
 
 ## 9. Ausblick: Silo für den Inhaber
 

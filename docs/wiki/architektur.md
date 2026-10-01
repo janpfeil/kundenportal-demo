@@ -264,7 +264,7 @@ Cent; Ereignisse werden vor dem Veröffentlichen gegen die Schemas aus
 
 | Ereignis | Quelle | Ziel | Zustellung | Wirkung |
 |---|---|---|---|---|
-| `CustomerRegistered` | customer | notification | Regel → SQS | Willkommensnachricht, Hinweis an den Inhaber |
+| `CustomerRegistered` | customer | notification | Regel → SQS | Willkommensnachricht; Hinweis an den Inhaber nur bei einer Selbstregistrierung im Inhaber-Mandanten — nicht für übernommene Altkonten, Pass-Mandanten oder E2E-Testbenutzer an der reservierten Domain `.invalid` (seit v0.6.1) |
 | `CustomerRegistered` | customer | contract, consumption, documents | Regel → Worker direkt | Demo-Verträge; Projektionen Identität → Kunde |
 | `ContractChanged` | contract | consumption | Regel → Worker direkt | Vertragsprojektion; Mobilfunkvertrag in `SCHEDULE#DATAVOLUME` aufnehmen |
 | `ContractChanged` | contract | notification | Regel → SQS | Bestätigung (nicht bei Demo-Verträgen) |
