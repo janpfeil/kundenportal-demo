@@ -283,6 +283,14 @@
   }
 }
 
+/* On phones the row wraps rather than scrolling entries out of sight (the bottom bar of
+   "Warm" is a grid and keeps its own layout). */
+@media (max-width: 640px) {
+  .kp-nav ul {
+    flex-wrap: wrap;
+  }
+}
+
 /* Sidebar */
 
 @media (min-width: 960px) {

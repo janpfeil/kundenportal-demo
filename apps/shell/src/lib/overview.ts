@@ -201,21 +201,23 @@ function trendOf(
 export function contractCard(
   contract: Contract,
   customer: Pick<Customer, "phone"> | undefined,
-  texts: { meter: string },
+  texts: { meter: string; options?: Readonly<Record<string, string>> },
   history?: ConsumptionHistory,
   usage?: DataUsage,
   dataVolume?: (megabytes: number) => string,
 ): ContractCardView {
   const metered = METERED.has(contract.division);
-  let sub = contract.tariffOption;
+  // Option ids such as "standard" are no text; unknown ones show as they are.
+  const option = texts.options?.[contract.tariffOption] ?? contract.tariffOption;
+  let sub = option;
   if (metered && contract.meterNumber) {
-    sub = `${contract.tariffOption} · ${texts.meter} …${meterTail(contract.meterNumber)}`;
+    sub = `${option} · ${texts.meter} …${meterTail(contract.meterNumber)}`;
   } else if (contract.division === "mobile") {
     sub =
       customer?.phone ??
       (contract.dataVolumeMb !== undefined && dataVolume
         ? dataVolume(contract.dataVolumeMb)
-        : contract.tariffOption);
+        : option);
   }
   return {
     contractId: contract.contractId,

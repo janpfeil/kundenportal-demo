@@ -58,6 +58,13 @@ async function capture(page: Page, info: TestInfo, path: string, variant: Varian
   );
   const name = `${path} · ${variant.preset} ${variant.mode} ${variant.width}px`;
   expect.soft(overflow, `${name} scrolls sideways`).toBeLessThanOrEqual(0);
+  // No navigation entry may hide in the scroll row of the top bar.
+  const hidden = Number(
+    await page.evaluate(
+      "(() => { const ul = document.querySelector('.kp-nav ul'); return ul && ul.offsetParent ? ul.scrollWidth - ul.clientWidth : 0; })()",
+    ),
+  );
+  expect.soft(hidden, `${name} hides navigation entries`).toBeLessThanOrEqual(0);
   await info.attach(name, {
     body: await page.screenshot({ fullPage: true }),
     contentType: "image/png",

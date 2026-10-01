@@ -128,6 +128,16 @@ describe("contract cards", () => {
     expect(meterTail("1ESY 1160 4471 23")).toBe("7123");
   });
 
+  it("names the tariff option instead of showing its id", () => {
+    const named = { ...texts, options: { oeko: "Öko" } };
+    expect(contractCard(contract({ tariffOption: "oeko" }), undefined, named).sub).toBe(
+      "Öko · Zähler …7123",
+    );
+    expect(contractCard(contract({ tariffOption: "neu" }), undefined, named).sub).toBe(
+      "neu · Zähler …7123",
+    );
+  });
+
   it("states the annual estimate when only estimates stand behind the months", () => {
     const gas = contract({ division: "gas", unit: "m3", estimatedAnnualConsumption: 980 });
     expect(
