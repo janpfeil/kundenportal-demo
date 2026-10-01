@@ -125,6 +125,10 @@ export function toSnapshot(record: ContractRecord): ContractSnapshot {
   if (record.meterNumber) snapshot.meterNumber = record.meterNumber;
   if (record.unit) snapshot.unit = record.unit;
   if (record.startReading) snapshot.startReading = record.startReading;
+  // The consumption domain estimates months without readings from it (phase 6).
+  if (record.estimatedAnnualConsumption !== undefined) {
+    snapshot.estimatedAnnualConsumption = record.estimatedAnnualConsumption;
+  }
   if (record.dataVolumeMb) snapshot.dataVolumeMb = record.dataVolumeMb;
   return snapshot;
 }

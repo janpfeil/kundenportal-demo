@@ -108,6 +108,11 @@ describe("CustomerRegistered", () => {
       expect(type).toBe("ContractChanged");
       expect(ContractChanged.detail.parse(detail).payload.changeType).toBe("created");
     }
+    // Metered snapshots carry the annual consumption the consumption domain estimates with.
+    const annual = events.map(
+      (e) => ContractChanged.detail.parse(e.detail).payload.contract.estimatedAnnualConsumption,
+    );
+    expect(annual).toEqual([2800, 1200, undefined]);
   });
 
   it("is idempotent: a redelivery creates nothing new and re-publishes the same event ids", async () => {
@@ -259,9 +264,10 @@ describe("LegacyAccountMigrated", () => {
     });
     const events = published();
     expect(events.map((e) => e.type)).toEqual(["ContractChanged", "ContractChanged"]);
-    expect(ContractChanged.detail.parse(events[0]?.detail).payload.contract.customerId).toBe(
-      "c-legacy",
-    );
+    const snapshot = ContractChanged.detail.parse(events[0]?.detail).payload.contract;
+    expect(snapshot.customerId).toBe("c-legacy");
+    expect(snapshot.estimatedAnnualConsumption).toBe(puts[1]?.estimatedAnnualConsumption);
+    expect(snapshot.estimatedAnnualConsumption).toBeGreaterThan(0);
   });
 
   it("is idempotent across sources and redeliveries (same contract and event ids)", async () => {

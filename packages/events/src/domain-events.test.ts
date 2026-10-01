@@ -23,6 +23,7 @@ const snapshot = {
   meterNumber: "1EMH0012345678",
   unit: "kWh",
   startReading: { value: 18234, readAt: "2026-04-03" },
+  estimatedAnnualConsumption: 2800,
   startDate: "2026-04-03",
   status: "active",
   version: 1,
@@ -121,6 +122,17 @@ describe("payload rules", () => {
   it("accepts only the upload content types of the portal", () => {
     const payload = { ...payloadOf("DocumentUploaded"), contentType: "image/gif" };
     expect(parses(DocumentUploaded, payload)).toBe(false);
+  });
+
+  it("accepts snapshots without annual consumption (published before phase 6), not negative ones", () => {
+    const { estimatedAnnualConsumption: _annual, ...older } = snapshot;
+    expect(parses(ContractChanged, { changeType: "created", changes: [], contract: older })).toBe(
+      true,
+    );
+    const negative = { ...snapshot, estimatedAnnualConsumption: -1 };
+    expect(
+      parses(ContractChanged, { changeType: "created", changes: [], contract: negative }),
+    ).toBe(false);
   });
 
   it("rejects unknown divisions and malformed months", () => {

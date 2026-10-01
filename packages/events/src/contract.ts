@@ -34,6 +34,12 @@ export const ContractSnapshot = z.object({
   unit: MeterUnit.optional(),
   /** Meter reading at the start of the contract (billing reference). */
   startReading: z.object({ value: z.number().nonnegative(), readAt: IsoDate }).optional(),
+  /**
+   * Only for metered divisions: the contract domain's estimate of the consumption per
+   * year in `unit` (typical value at contract start, later extrapolated from readings).
+   * Optional, because snapshots published before phase 6 do not carry it.
+   */
+  estimatedAnnualConsumption: z.number().nonnegative().optional(),
   /** Only for mobile contracts: included data volume per month. */
   dataVolumeMb: z.number().int().positive().optional(),
   startDate: IsoDate,

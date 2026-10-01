@@ -143,7 +143,12 @@ describe("PATCH /contracts/{contractId}", () => {
         changeType: "updated",
         changes: ["installment"],
         previous: { monthlyInstallmentCent: 8700, tariffOption: "standard" },
-        contract: { contractId: electricity.contractId, monthlyInstallmentCent: 10000, version: 2 },
+        contract: {
+          contractId: electricity.contractId,
+          monthlyInstallmentCent: 10000,
+          estimatedAnnualConsumption: 2800,
+          version: 2,
+        },
       },
     });
   });
