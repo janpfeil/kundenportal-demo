@@ -33,7 +33,7 @@ import {
 } from "@/lib/cockpit";
 import { eventLook, eventTitle } from "@/lib/events";
 import { dayStamp, shortStamp } from "@/lib/time";
-import { zonePath } from "@/lib/zone";
+import { MIGRATION_PATH } from "@/lib/zone";
 import { ZoneLink } from "@/lib/zone-link";
 import { BulkStart } from "./bulk-start";
 import { DeadLetterTable } from "./dead-letter-table";
@@ -291,7 +291,7 @@ export function ClarificationsCard({
         more ? (
           <ZoneLink
             className="cockpit-small"
-            href={zonePath(all ? "#klaerfaelle" : "?klaerfaelle=alle#klaerfaelle")}
+            href={`${MIGRATION_PATH}${all ? "#klaerfaelle" : "?klaerfaelle=alle#klaerfaelle"}`}
           >
             {all ? t.clarifications.showFewer : t.clarifications.showAll}
           </ZoneLink>

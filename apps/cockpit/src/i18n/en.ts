@@ -1,4 +1,6 @@
 import type { Dictionary } from "./index";
+import { operatorEn } from "./operator-en";
+import { productsEn } from "./products-en";
 
 export const en: Dictionary = {
   title: "Migration cockpit",
@@ -18,15 +20,24 @@ export const en: Dictionary = {
     bell: "Notifications: {count} new clarification cases",
     bellOne: "Notifications: 1 new clarification case",
     bellNone: "Notifications: no new clarification cases",
-    groups: { migration: "Migration", admin: "Administration", portal: "Customer portal" },
+    groups: {
+      operations: "Operations",
+      migration: "Migration",
+      admin: "Administration",
+      portal: "Customer portal",
+    },
     overview: "Overview",
+    customers: "Customers",
+    contracts: "Contracts",
+    products: "Products",
+    migration: "Migration",
     clarifications: "Clarification cases",
     deadLetters: "DLQ",
     events: "Events",
     passes: "Demo passes",
     settings: "Settings",
     toPortal: "To the customer portal",
-    footer: "Migration cockpit · for the owner and demo-pass holders only · All data is made up.",
+    footer: "Operator cockpit · for the owner and demo-pass holders only · All data is made up.",
     reports: "Reports",
     storybook: "Storybook",
   },
@@ -298,4 +309,6 @@ export const en: Dictionary = {
       error: "The settings could not be loaded right now.",
     },
   },
+  operator: operatorEn,
+  products: productsEn,
 };

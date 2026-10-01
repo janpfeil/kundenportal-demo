@@ -55,11 +55,16 @@ describe("cockpit frame", () => {
     location.pathname = "/paesse";
     render(shell());
     const side = screen.getByRole("navigation", { name: de.frame.sideNav });
-    expect(within(side).getByText("Migration")).toBeDefined();
+    expect(within(side).getByText("Betrieb")).toBeDefined();
+    expect(within(side).getAllByText("Migration").length).toBeGreaterThan(0);
     expect(within(side).getByText("Verwaltung")).toBeDefined();
     expect(within(side).getByRole("link", { name: /Klärfälle 14 offen/ })).toHaveAttribute(
       "href",
-      "/cockpit#klaerfaelle",
+      "/cockpit/migration#klaerfaelle",
+    );
+    expect(within(side).getByRole("link", { name: /^Kunden Tastenkürzel g k/ })).toHaveAttribute(
+      "href",
+      "/cockpit/kunden",
     );
     expect(within(side).getByRole("link", { name: /Demo-Pässe/ })).toHaveAttribute(
       "aria-current",
@@ -80,25 +85,30 @@ describe("cockpit frame", () => {
     expect(within(search).getByRole("searchbox")).toHaveValue("T/88");
   });
 
-  it("goes back to the top when 'Übersicht' points to the open page", () => {
+  it("goes back to the top when 'Migration' points to the open page", () => {
+    location.pathname = "/migration";
     const scrollTo = vi.fn();
     const pushState = vi.spyOn(window.history, "pushState").mockImplementation(() => undefined);
     vi.stubGlobal("scrollTo", scrollTo);
     vi.stubGlobal("location", {
       ...window.location,
-      href: "https://portal.example/cockpit#klaerfaelle",
-      pathname: "/cockpit",
+      href: "https://portal.example/cockpit/migration#klaerfaelle",
+      pathname: "/cockpit/migration",
       search: "",
       hash: "#klaerfaelle",
       assign,
     });
     render(shell());
     const sidebar = screen.getByRole("navigation", { name: de.frame.sideNav });
+    expect(within(sidebar).getByRole("link", { name: /^Migration/ })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
 
-    const overview = within(sidebar).getByRole("link", { name: /^Übersicht/ });
-    expect(fireEvent.click(overview)).toBe(false);
+    const migration = within(sidebar).getByRole("link", { name: /^Migration/ });
+    expect(fireEvent.click(migration)).toBe(false);
     expect(scrollTo).toHaveBeenCalledWith({ top: 0 });
-    expect(pushState).toHaveBeenCalledWith(null, "", "/cockpit");
+    expect(pushState).toHaveBeenCalledWith(null, "", "/cockpit/migration");
 
     // A link to another page stays a normal navigation.
     scrollTo.mockClear();
@@ -107,10 +117,19 @@ describe("cockpit frame", () => {
     expect(scrollTo).not.toHaveBeenCalled();
   });
 
-  it("follows the shortcuts g c and g p", () => {
+  it("follows the shortcuts of the sidebar", () => {
     render(shell());
-    fireEvent.keyDown(document.body, { key: "g" });
-    fireEvent.keyDown(document.body, { key: "p" });
-    expect(assign).toHaveBeenCalledWith("/cockpit/paesse");
+    for (const [key, href] of [
+      ["p", "/cockpit/paesse"],
+      ["k", "/cockpit/kunden"],
+      ["v", "/cockpit/vertraege"],
+      ["t", "/cockpit/produkte"],
+      ["m", "/cockpit/migration"],
+      ["c", "/cockpit"],
+    ] as const) {
+      fireEvent.keyDown(document.body, { key: "g" });
+      fireEvent.keyDown(document.body, { key });
+      expect(assign).toHaveBeenLastCalledWith(href);
+    }
   });
 });

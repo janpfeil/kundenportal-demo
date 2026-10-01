@@ -96,9 +96,9 @@ describe("cockpit key figures", () => {
     expect(problem("missing-required-field", ["shoeSize"])).toBe("shoeSize fehlt");
   });
 
-  it("links clarification cases and dead letters to their place on the overview", () => {
-    expect(recordAnchor("clarification")).toBe("?klaerfaelle=alle#klaerfaelle");
-    expect(recordAnchor("failed")).toBe("#dlq");
+  it("links clarification cases and dead letters to their place on the migration page", () => {
+    expect(recordAnchor("clarification")).toBe("/migration?klaerfaelle=alle#klaerfaelle");
+    expect(recordAnchor("failed")).toBe("/migration#dlq");
     expect(recordAnchor("migrated")).toBeUndefined();
   });
 });

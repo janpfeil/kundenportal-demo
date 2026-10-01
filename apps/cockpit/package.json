@@ -2,7 +2,7 @@
   "name": "@kundenportal/zone-cockpit",
   "version": "0.1.0",
   "private": true,
-  "description": "Zone /cockpit of the customer portal: migration cockpit for the owner (Next.js multi-zone)",
+  "description": "Zone /cockpit of the customer portal: the operator's back office with customers, contracts, products and the migration (Next.js multi-zone)",
   "license": "MIT",
   "type": "module",
   "scripts": {

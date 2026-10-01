@@ -13,6 +13,9 @@ export function zonePath(path = ""): string {
 /** Path of the search results; the search forms send `?q=` there (GET, a full page load). */
 export const SEARCH_PATH = zonePath("/suche");
 
+/** The migration cockpit (the phase 6 overview), now one area of the operator's cockpit. */
+export const MIGRATION_PATH = zonePath("/migration");
+
 /**
  * Main navigation, identical to the shell's; the cockpit entry (owner and pass holders) is
  * marked as the current section. Used for visitors without cockpit access.
@@ -31,8 +34,12 @@ export interface ZoneNavItem extends NavItem {
 }
 
 export interface CockpitNavTexts {
-  groups: { migration: string; admin: string; portal: string };
+  groups: { operations: string; migration: string; admin: string; portal: string };
   overview: string;
+  customers: string;
+  contracts: string;
+  products: string;
+  migration: string;
   clarifications: string;
   deadLetters: string;
   events: string;
@@ -48,40 +55,71 @@ export interface CockpitCounts {
 }
 
 /**
- * The cockpit's own navigation as in the mockup: "Migration" (overview and its sections
- * with open counts) for owner and pass holders, "Verwaltung" (demo passes and their
- * settings) for the owner only. Pass holders get their pass status instead. Both find the
- * way back to the customer area ("Kundenportal") at the end.
+ * The operator's sidebar: "Betrieb" (overview, customers, contracts, products) and
+ * "Migration" (the migration cockpit and its sections with open counts) for owner and pass
+ * holders, "Verwaltung" (demo passes and their settings) for the owner only. Pass holders get
+ * their pass status instead. Both find the way back to the customer area ("Kundenportal").
  */
 export function cockpitNavigation(
   texts: CockpitNavTexts,
   access: "owner" | "pass",
   counts: CockpitCounts,
 ): ZoneNavItem[] {
-  const migration: ZoneNavItem[] = [
+  const operations: ZoneNavItem[] = [
     {
       href: zonePath(),
       label: texts.overview,
       icon: "gauge",
       kbd: "g c",
-      group: texts.groups.migration,
+      group: texts.groups.operations,
       currentOn: ["/"],
     },
     {
-      href: zonePath("#klaerfaelle"),
+      href: zonePath("/kunden"),
+      label: texts.customers,
+      icon: "users",
+      kbd: "g k",
+      currentOn: ["/kunden"],
+    },
+    {
+      href: zonePath("/vertraege"),
+      label: texts.contracts,
+      icon: "file",
+      kbd: "g v",
+      currentOn: ["/vertraege"],
+    },
+    {
+      href: zonePath("/produkte"),
+      label: texts.products,
+      icon: "chart",
+      kbd: "g t",
+      currentOn: ["/produkte"],
+    },
+  ];
+  const migration: ZoneNavItem[] = [
+    {
+      href: MIGRATION_PATH,
+      label: texts.migration,
+      icon: "refresh",
+      kbd: "g m",
+      group: texts.groups.migration,
+      currentOn: ["/migration"],
+    },
+    {
+      href: `${MIGRATION_PATH}#klaerfaelle`,
       label: texts.clarifications,
       icon: "alert",
       count: counts.clarifications,
       sub: true,
     },
     {
-      href: zonePath("#dlq"),
+      href: `${MIGRATION_PATH}#dlq`,
       label: texts.deadLetters,
       icon: "inbox",
       count: counts.deadLetters,
       sub: true,
     },
-    { href: zonePath("#ereignisse"), label: texts.events, icon: "clock", sub: true },
+    { href: `${MIGRATION_PATH}#ereignisse`, label: texts.events, icon: "clock", sub: true },
   ];
   const portal: ZoneNavItem = {
     href: "/konto",
@@ -90,9 +128,15 @@ export function cockpitNavigation(
     group: texts.groups.portal,
   };
   if (access === "pass") {
-    return [...migration, portal, { href: "/pass", label: texts.passStatus, icon: "ticket" }];
+    return [
+      ...operations,
+      ...migration,
+      portal,
+      { href: "/pass", label: texts.passStatus, icon: "ticket" },
+    ];
   }
   return [
+    ...operations,
     ...migration,
     {
       href: zonePath("/paesse"),
@@ -112,17 +156,25 @@ export function cockpitNavigation(
   ];
 }
 
-/** Key sequences of the sidebar's hints: "g c" overview, "g p" passes (owner only). */
+/**
+ * Key sequences of the sidebar's hints: "g c" overview, "g k" customers, "g v" contracts,
+ * "g t" products (Tarife), "g m" migration, "g p" passes (owner only).
+ */
 export function cockpitShortcuts(access: "owner" | "pass"): Shortcut[] {
   return [
     { keys: "g c", href: zonePath() },
+    { keys: "g k", href: zonePath("/kunden") },
+    { keys: "g v", href: zonePath("/vertraege") },
+    { keys: "g t", href: zonePath("/produkte") },
+    { keys: "g m", href: MIGRATION_PATH },
     ...(access === "owner" ? [{ keys: "g p", href: zonePath("/paesse") }] : []),
   ];
 }
 
 /**
- * Marks the entries whose `currentOn` holds the current page. `pathname` may carry the
- * basePath or not (Next's usePathname leaves it out).
+ * Marks the entries whose `currentOn` holds the current page or a page below it ("/kunden"
+ * also marks "/kunden/K-1"; "/" only itself). `pathname` may carry the basePath or not
+ * (Next's usePathname leaves it out).
  */
 export function markCurrent(items: readonly ZoneNavItem[], pathname: string): NavItem[] {
   const inner =
@@ -130,7 +182,8 @@ export function markCurrent(items: readonly ZoneNavItem[], pathname: string): Na
       ? pathname.slice(BASE_PATH.length)
       : pathname;
   const path = inner.replace(/\/+$/, "") || "/";
+  const matches = (page: string) => page === path || (page !== "/" && path.startsWith(`${page}/`));
   return items.map(({ currentOn, ...item }) =>
-    currentOn ? { ...item, active: currentOn.includes(path) } : item,
+    currentOn ? { ...item, active: currentOn.some(matches) } : item,
   );
 }

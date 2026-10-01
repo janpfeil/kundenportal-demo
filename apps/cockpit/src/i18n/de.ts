@@ -1,3 +1,6 @@
+import { operatorDe } from "./operator-de";
+import { productsDe } from "./products-de";
+
 export const de = {
   title: "Migrations-Cockpit",
   eyebrow: "Migration",
@@ -16,16 +19,24 @@ export const de = {
     bell: "Benachrichtigungen: {count} neue Klärfälle",
     bellOne: "Benachrichtigungen: 1 neuer Klärfall",
     bellNone: "Benachrichtigungen: keine neuen Klärfälle",
-    groups: { migration: "Migration", admin: "Verwaltung", portal: "Kundenportal" },
+    groups: {
+      operations: "Betrieb",
+      migration: "Migration",
+      admin: "Verwaltung",
+      portal: "Kundenportal",
+    },
     overview: "Übersicht",
+    customers: "Kunden",
+    contracts: "Verträge",
+    products: "Produkte",
+    migration: "Migration",
     clarifications: "Klärfälle",
     deadLetters: "DLQ",
     events: "Ereignisse",
     passes: "Demo-Pässe",
     settings: "Einstellungen",
     toPortal: "Zum Kundenportal",
-    footer:
-      "Migrations-Cockpit · nur für Inhaber und Demo-Pass-Inhaber · Alle Daten sind erfunden.",
+    footer: "Betreiber-Cockpit · nur für Inhaber und Demo-Pass-Inhaber · Alle Daten sind erfunden.",
     reports: "Berichte",
     storybook: "Storybook",
   },
@@ -298,4 +309,6 @@ export const de = {
       error: "Die Einstellungen konnten gerade nicht geladen werden.",
     },
   },
+  operator: operatorDe,
+  products: productsDe,
 } as const;

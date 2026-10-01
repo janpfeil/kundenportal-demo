@@ -9,13 +9,20 @@ import { dictionary } from "@/i18n";
 import { currentSession } from "@kundenportal/web-auth/pages";
 import { loadStatus } from "@/lib/status";
 import { accessOf } from "@/lib/tenancy";
-import { cockpitNavigation, cockpitShortcuts, navigation, zonePath } from "@/lib/zone";
+import {
+  MIGRATION_PATH,
+  cockpitNavigation,
+  cockpitShortcuts,
+  navigation,
+  zonePath,
+} from "@/lib/zone";
 import "@kundenportal/ui/styles.css";
 import "./zone.css";
+import "./operator.css";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t, common } = await dictionary();
-  return { title: `${t.title} · ${common.brand} (Demo)`, robots: { index: false } };
+  return { title: `${t.operator.appTitle} · ${common.brand} (Demo)`, robots: { index: false } };
 }
 
 const REPORTS_URL = "https://janpfeil.github.io/kundenportal-demo/";
@@ -47,7 +54,7 @@ export default async function ZoneLayout({ children }: { children: ReactNode }) 
   const bell = cockpit ? (
     <a
       className="cockpit-bell"
-      href={zonePath("#klaerfaelle")}
+      href={`${MIGRATION_PATH}#klaerfaelle`}
       aria-label={
         fresh === undefined || fresh === 0
           ? t.frame.bellNone

@@ -61,10 +61,10 @@ export const RECORD_TONES: Record<RecordStatus, StatusTone> = {
   failed: "err",
 };
 
-/** Where the overview lists a record of this status, if anywhere. */
+/** Where the migration page lists a record of this status, if anywhere (below the basePath). */
 export function recordAnchor(status: RecordStatus): string | undefined {
-  if (status === "clarification") return "?klaerfaelle=alle#klaerfaelle";
-  if (status === "failed") return "#dlq";
+  if (status === "clarification") return "/migration?klaerfaelle=alle#klaerfaelle";
+  if (status === "failed") return "/migration#dlq";
   return undefined;
 }
 

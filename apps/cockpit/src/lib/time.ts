@@ -114,3 +114,10 @@ export function relativeTime(iso: string, now: Date, texts: RelativeTexts, local
   }
   return dayStamp(iso, locale);
 }
+
+/** A calendar day `YYYY-MM-DD` moved by whole days, e.g. today + 30 for "endet bis". */
+export function addDays(day: string, days: number): string {
+  const date = new Date(`${day}T12:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}

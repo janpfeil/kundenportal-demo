@@ -36,19 +36,27 @@ describe("cockpit helpers", () => {
     expect(navigation(texts as never)).toHaveLength(1);
   });
 
-  it("gives the owner the mockup's sidebar: Migration and Verwaltung with counts and keys", () => {
+  it("gives the owner the operator's sidebar: Betrieb, Migration and Verwaltung", () => {
     const items = cockpitNavigation(navTexts, "owner", { clarifications: 14, deadLetters: 6 });
     expect(items.map((item) => [item.label, item.href, item.group, item.sub ?? false])).toEqual([
-      ["Übersicht", "/cockpit", "Migration", false],
-      ["Klärfälle", "/cockpit#klaerfaelle", undefined, true],
-      ["DLQ", "/cockpit#dlq", undefined, true],
-      ["Ereignisse", "/cockpit#ereignisse", undefined, true],
+      ["Übersicht", "/cockpit", "Betrieb", false],
+      ["Kunden", "/cockpit/kunden", undefined, false],
+      ["Verträge", "/cockpit/vertraege", undefined, false],
+      ["Produkte", "/cockpit/produkte", undefined, false],
+      ["Migration", "/cockpit/migration", "Migration", false],
+      ["Klärfälle", "/cockpit/migration#klaerfaelle", undefined, true],
+      ["DLQ", "/cockpit/migration#dlq", undefined, true],
+      ["Ereignisse", "/cockpit/migration#ereignisse", undefined, true],
       ["Demo-Pässe", "/cockpit/paesse", "Verwaltung", false],
       ["Einstellungen", "/cockpit/paesse#einstellungen", undefined, true],
       ["Zum Kundenportal", "/konto", "Kundenportal", false],
     ]);
     expect(items.map((item) => item.icon)).toEqual([
       "gauge",
+      "users",
+      "file",
+      "chart",
+      "refresh",
       "alert",
       "inbox",
       "clock",
@@ -58,25 +66,49 @@ describe("cockpit helpers", () => {
     ]);
     expect(items.find((item) => item.label === "Klärfälle")?.count).toBe(14);
     expect(items.find((item) => item.label === "DLQ")?.count).toBe(6);
-    expect(items.filter((item) => item.kbd).map((item) => item.kbd)).toEqual(["g c", "g p"]);
+    expect(items.filter((item) => item.kbd).map((item) => item.kbd)).toEqual([
+      "g c",
+      "g k",
+      "g v",
+      "g t",
+      "g m",
+      "g p",
+    ]);
     expect(cockpitShortcuts("owner")).toEqual([
       { keys: "g c", href: "/cockpit" },
+      { keys: "g k", href: "/cockpit/kunden" },
+      { keys: "g v", href: "/cockpit/vertraege" },
+      { keys: "g t", href: "/cockpit/produkte" },
+      { keys: "g m", href: "/cockpit/migration" },
       { keys: "g p", href: "/cockpit/paesse" },
     ]);
   });
 
-  it("gives pass holders their cockpit and pass status, but no administration", () => {
+  it("gives pass holders the operator areas and their pass status, but no administration", () => {
     const items = cockpitNavigation(navTexts, "pass", {});
     expect(items.some((item) => item.href.startsWith("/cockpit/paesse"))).toBe(false);
     expect(items.some((item) => item.group === "Verwaltung")).toBe(false);
+    expect(items.map((item) => item.label).slice(0, 5)).toEqual([
+      "Übersicht",
+      "Kunden",
+      "Verträge",
+      "Produkte",
+      "Migration",
+    ]);
     expect(items.slice(-2)).toMatchObject([
       { href: "/konto", label: "Zum Kundenportal", group: "Kundenportal" },
       { href: "/pass", label: "Demo-Pass" },
     ]);
-    expect(cockpitShortcuts("pass")).toEqual([{ keys: "g c", href: "/cockpit" }]);
+    expect(cockpitShortcuts("pass").map((shortcut) => shortcut.keys)).toEqual([
+      "g c",
+      "g k",
+      "g v",
+      "g t",
+      "g m",
+    ]);
   });
 
-  it("marks the current page with or without the basePath, never the anchors", () => {
+  it("marks the current area with or without the basePath, also on detail pages", () => {
     const items = cockpitNavigation(navTexts, "owner", {});
     const current = (path: string) =>
       markCurrent(items, path)
@@ -86,6 +118,13 @@ describe("cockpit helpers", () => {
     expect(current("/cockpit")).toEqual(["Übersicht"]);
     expect(current("/paesse")).toEqual(["Demo-Pässe"]);
     expect(current("/cockpit/paesse/")).toEqual(["Demo-Pässe"]);
+    expect(current("/migration")).toEqual(["Migration"]);
+    expect(current("/kunden")).toEqual(["Kunden"]);
+    expect(current("/cockpit/kunden/K-100042")).toEqual(["Kunden"]);
+    expect(current("/vertraege/0a1b2c3d-1111-2222-3333-444455556666")).toEqual(["Verträge"]);
+    expect(current("/produkte/neu")).toEqual(["Produkte"]);
+    // A path that merely starts like an area is none of it.
+    expect(current("/kundenkarte")).toEqual([]);
     expect(current("/suche")).toEqual([]);
     expect(markCurrent(items, "/").some((item) => "currentOn" in item)).toBe(false);
   });

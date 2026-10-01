@@ -1,0 +1,331 @@
+/*
+ * Styles of the operator's areas (Übersicht, Kunden, Verträge, Produkte). What the library
+ * has no building block for yet — five key figures in a row, bars per division, filter bars,
+ * pager, forms with repeatable rows, the read-only mailbox — uses only the theme's tokens,
+ * so every preset in light and dark mode applies.
+ */
+
+/* Five key figures in a row on wide screens (the library's grid has four). */
+@media (min-width: 1281px) {
+  .kp-kpis.cockpit-kpis-5 {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1081px) and (max-width: 1280px) {
+  .kp-kpis.cockpit-kpis-5 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* A division as icon and name. */
+.cockpit-division {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.cockpit-division .kp-icon,
+.cockpit-icons .kp-icon {
+  width: 1.15em;
+  height: 1.15em;
+  color: var(--kp-accent-text);
+}
+
+.cockpit-icons {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* Running contracts per division: name, bar, number. */
+.cockpit-bars {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cockpit-bars li {
+  display: grid;
+  grid-template-columns: minmax(7.5rem, auto) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.cockpit-bar-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cockpit-bar-track {
+  height: 8px;
+  border-radius: 99px;
+  background: var(--kp-track);
+  overflow: hidden;
+}
+
+.cockpit-bar-track > span {
+  display: block;
+  height: 100%;
+  min-width: 2px;
+  border-radius: inherit;
+  background: var(--kp-accent);
+}
+
+.cockpit-bar-value {
+  font-size: var(--kp-small);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+@media (max-width: 479px) {
+  .cockpit-bars li {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .cockpit-bar-track {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+}
+
+/* Migration in one card: a small ring per legacy system. */
+.cockpit-systems {
+  display: grid;
+  gap: 10px;
+  margin: 0 0 8px;
+  padding: 0;
+  list-style: none;
+}
+
+.cockpit-systems li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Quick links. */
+.cockpit-links {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cockpit-links a {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+}
+
+.cockpit-links .kp-icon {
+  width: 1.1em;
+  height: 1.1em;
+  flex: none;
+}
+
+/* Filter bar: fields side by side, wrapping; buttons at the end of the row. */
+.cockpit-filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr));
+  gap: 0 var(--kp-space);
+  align-items: end;
+}
+
+.cockpit-filters .kp-field {
+  margin-bottom: calc(var(--kp-space) * 0.6);
+}
+
+.cockpit-filter-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: calc(var(--kp-space) * 0.6);
+  min-height: var(--kp-control);
+}
+
+/* Total and "Weitere laden" below a list. */
+.cockpit-pager {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 8px 0 0;
+  padding-top: 8px;
+  border-top: 1px solid var(--kp-border);
+}
+
+/* Wide tables keep their columns between phone and desktop widths and scroll in the card. */
+@media (min-width: 600px) {
+  .kp-table.cockpit-wide {
+    min-width: 760px;
+  }
+}
+
+/* Facts inside a card: no frame of their own. */
+.kp-facts.cockpit-facts {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  box-shadow: none;
+  background: transparent;
+}
+
+.cockpit-h3 {
+  margin: 4px 0 8px;
+  font-size: var(--kp-font-size);
+}
+
+/* "gekündigt zum 31.12.2026" in a table cell and the state card. */
+.cockpit-end-notice {
+  color: var(--kp-warning-text);
+  font-size: var(--kp-small);
+  font-weight: 600;
+}
+
+.cockpit-status {
+  display: grid;
+  gap: 6px;
+}
+
+.cockpit-status p {
+  margin: 0;
+}
+
+.cockpit-blocked {
+  color: var(--kp-error-text);
+  font-weight: 600;
+}
+
+/* The customer's mailbox, read only. */
+.cockpit-mail {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cockpit-mail li {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--kp-border);
+}
+
+.cockpit-mail li:last-child {
+  border-bottom: 0;
+}
+
+.cockpit-mail li[data-unread] {
+  box-shadow: inset 3px 0 0 var(--kp-accent);
+  padding-left: 12px;
+}
+
+.cockpit-mail-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+}
+
+.cockpit-mail-title {
+  flex: 1 1 12rem;
+  overflow-wrap: anywhere;
+}
+
+.cockpit-mail-body {
+  margin: 4px 0 0;
+  color: var(--kp-muted);
+  font-size: var(--kp-small);
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+/* Options with their prices in a table cell. */
+.cockpit-options {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Forms: the contract's actions, product, edit and price version. */
+.cockpit-action-form,
+.cockpit-product-form {
+  display: grid;
+  gap: 0;
+}
+
+.cockpit-action-form > .kp-notice,
+.cockpit-product-form > .kp-notice {
+  margin: 8px 0 0;
+}
+
+.cockpit-textarea {
+  min-height: calc(var(--kp-control) * 1.6);
+  padding-block: 8px;
+  resize: vertical;
+  font: inherit;
+}
+
+.cockpit-confirm {
+  display: grid;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--kp-error-border);
+  border-radius: var(--kp-radius);
+  background: var(--kp-error-bg);
+  color: var(--kp-error-text);
+}
+
+.cockpit-confirm p {
+  margin: 0;
+}
+
+.cockpit-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+  gap: 0 var(--kp-space);
+}
+
+.cockpit-fieldset {
+  margin: 0 0 var(--kp-space);
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.cockpit-option-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr));
+  gap: 0 12px;
+  align-items: end;
+  margin: 0 0 12px;
+  padding: 10px 12px 0;
+  border: 1px solid var(--kp-border);
+  border-radius: var(--kp-radius);
+  min-width: 0;
+}
+
+.cockpit-option-legend {
+  padding: 0 4px;
+  font-size: var(--kp-small);
+  font-weight: 650;
+}
+
+.cockpit-option-remove {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: var(--kp-space);
+}
+
+.cockpit-form-card {
+  max-width: 960px;
+}

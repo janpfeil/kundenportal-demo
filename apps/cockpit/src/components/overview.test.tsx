@@ -173,7 +173,7 @@ describe("cockpit cards", () => {
     expect(within(screen.getByTestId("clarifications")).getAllByRole("row")).toHaveLength(6);
     expect(screen.getByRole("link", { name: "Alle anzeigen" })).toHaveAttribute(
       "href",
-      "/cockpit/?klaerfaelle=alle#klaerfaelle",
+      "/cockpit/migration?klaerfaelle=alle#klaerfaelle",
     );
     const first = within(screen.getByTestId("clarifications")).getAllByRole("row")[1];
     if (!first) throw new Error("rows expected");
