@@ -52,8 +52,16 @@ Zusätzlich zwei Rollen außerhalb der Geschichte:
 
 | Rolle | Wer | darf |
 |---|---|---|
-| **Pass-Inhaber** | Besucher mit Einladungslink | Demo-Personen nutzen, Migrations-Cockpit seines Mandanten, Mandant zurücksetzen |
-| **Inhaber** | Projektinhaber | Einladungslinks erzeugen, Mandanten starten/löschen, Übersicht aller Mandanten |
+| **Pass-Inhaber** | Besucher mit Einladungslink | Demo-Personen nutzen; im eigenen Mandanten Betreiber: Betreiber-Cockpit (Kunden, Verträge, Produkte, Migration), Mandant zurücksetzen |
+| **Inhaber** | Projektinhaber | Betreiber des Inhaber-Mandanten (Betreiber-Cockpit); Einladungslinks erzeugen, Mandanten starten/löschen, Übersicht aller Mandanten |
+
+**Betreiber (seit Phase 7):** Wer das Portal betreibt und die Leistungen
+anbietet, arbeitet im **Betreiber-Cockpit** (`/cockpit`): Kunden und Verträge
+in Listen mit Filtern und im Detail, Steuerung der Verträge
+(Produktwechsel, Preisversion, Abschlag, Kündigung, Sperre — jeweils mit
+Begründung, die der Kunde im Postfach liest), Pflege des Produktkatalogs; die
+Migration ist ein Bereich davon. Betreiber ist der Inhaber in seinem Mandanten
+und jeder Pass-Inhaber in seinem eigenen.
 
 ## 4. Journeys
 
@@ -72,12 +80,42 @@ veröffentlicht Ereignisse; Bereiche lesen fremde Daten nie direkt [E].
 |---|---|---|---|
 | **Identität & Konto** | Login, Registrierung, Verknüpfung von Altkonten, Rollen | Shell (`/`, Login, Onboarding) | Cognito + `identity`-Lambda (Cognito-Trigger, u. a. Migrate User) |
 | **Kunde** | Stammdaten, Adresse, Einwilligungen, Profilvollständigkeit | Shell (`/profil`) | `customer` |
-| **Vertrag** | Verträge je Sparte, Tarif, Abschlag, Laufzeit | Zone „Verträge & Rechnungen" (`/vertraege`) | `contract` |
+| **Vertrag** | Verträge je Sparte, Tarif, Abschlag, Laufzeit; seit Phase 7 Produktkatalog, Abschluss, Kündigung, Widerruf, Steuerung durch den Betreiber | Zone „Verträge & Rechnungen" (`/vertraege`), Betreiber-Cockpit (`/cockpit/vertraege`, `/cockpit/produkte`) | `contract` |
 | **Verbrauch** | Zählerstände (Strom, Gas, Wasser), Datenvolumen (Mobilfunk) | Zone „Verbrauch" (`/verbrauch`) | `consumption` |
 | **Dokumente** | Rechnungen (PDF), Uploads (Zählerfotos) | Zone „Verträge & Rechnungen" | `documents` (S3) |
 | **Benachrichtigung** | Demo-Postfach, In-App-Feed | Widget „Glocke" in allen Zonen | `notification` (SNS) |
-| **Migration** | Lazy-/Bulk-Migration, Dubletten, Klärfälle, Fortschritt | Zone „Migrations-Cockpit" (`/cockpit`) | `migration` |
+| **Kunde (Betreiber-Sicht)** | Kundenliste mit Filtern, Kundendetail mit Verträgen, Zählerständen, Dokumenten, Postfach | Betreiber-Cockpit (`/cockpit/kunden`) | `customer` (Verzeichnis), lesend `contract`, `consumption`, `documents`, `notification` |
+| **Migration** | Lazy-/Bulk-Migration, Dubletten, Klärfälle, Fortschritt | Betreiber-Cockpit, Bereich Migration (`/cockpit/migration`; bis Phase 6 `/cockpit`) | `migration` |
 | **Mandant & Pass** | Einladungen, Mandanten anlegen/löschen, Kontingent | Verwaltungsbereich (`/admin`, `/pass`) | `tenancy` |
+
+### 5.1 Produkte und Vertragslebenszyklus (Phase 7)
+
+**Produkt** = Tarif einer Sparte mit Optionen (z. B. „Strom Klassik“ mit
+Standard und Öko), Mindestlaufzeit, Kündigungsfrist und **Preisversionen**
+(Preise je Option, gültig ab). Status: Entwurf → aktiv (bestellbar) →
+auslaufend (nicht mehr bestellbar, laufende Verträge bleiben) → archiviert
+(nur ohne laufende Verträge). Neue Verträge erhalten die gültige
+Preisversion; laufende behalten ihre, bis der Betreiber sie umstellt. Der
+bisherige Demo-Tarifkatalog ist der Startbestand jedes Mandanten.
+
+**Lebenszyklus eines Vertrags** (Entscheidung des Inhabers, 02.10.2026):
+
+| Schritt | Regel |
+|---|---|
+| Abschluss | Kunde wählt ein aktives Produkt und eine Option; Beginn heute bis +90 Tage; Strom/Gas/Wasser mit Zählernummer und Anfangsstand |
+| Widerruf | bis 14 Tage nach Abschluss im Portal, wirkt sofort |
+| Kündigung | frühestens zum Ende der Mindestlaufzeit, danach mit der Kündigungsfrist (Standard 1 Monat) zum Monatsende; späterer Termin wählbar; bis zum Termin rücknehmbar; der Vertrag bleibt bis dahin aktiv |
+| Steuerung durch den Betreiber | Option/Produkt wechseln, Preisversion übernehmen, Abschlag festsetzen, kündigen (auch früher), Kündigung zurücknehmen, sperren/entsperren — immer mit Begründung |
+
+Nicht Teil des Demos: Abrechnung, Zahlungen, rechtlich belastbare
+Vertragstexte, Lieferantenwechsel (GPKE/GeLi Gas).
+
+**Neue Journeys:** **J10** Abschluss: Anna bestellt Internet aus dem Katalog,
+das Postfach bestätigt, sie widerruft am selben Tag. **J11** Kündigung: Anna
+kündigt Gas zum frühestmöglichen Termin und nimmt die Kündigung zurück.
+**J12** Betreiber: findet Anna über die Kundenliste, stellt ihren Stromvertrag
+auf eine neue Preisversion um und legt ein neues Produkt an, das Kunden danach
+bestellen können.
 
 ## 6. Ereigniskatalog
 
