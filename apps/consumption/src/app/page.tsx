@@ -1,25 +1,13 @@
 import type { Contract, DataUsage, MeterReading } from "@kundenportal/api-contract";
-import {
-  ButtonLink,
-  Card,
-  type Column,
-  DataTable,
-  EmptyState,
-  Notice,
-  Page,
-  formatDataVolume,
-  formatDate,
-  formatDateTime,
-  formatQuantity,
-} from "@kundenportal/ui";
-import type { Locale } from "@kundenportal/ui/i18n";
+import { ButtonLink, EmptyState, Notice, Page, divisionIcon } from "@kundenportal/ui";
 import { apiFor, loginUrl } from "@kundenportal/web-auth";
 import { requireSession } from "@kundenportal/web-auth/pages";
-import { ReadingForm } from "@/components/reading-form";
-import { UploadForm } from "@/components/upload-form";
-import { type Dictionary, dictionary } from "@/i18n";
+import { ContractTabs } from "@/components/contract-tabs";
+import { type ConsumptionHistory, MeteredPanel } from "@/components/metered-panel";
+import { UsagePanel } from "@/components/usage-panel";
+import { dictionary } from "@/i18n";
+import { TAB_PARAM, isMetered, selectedTab, tabContracts } from "@/lib/consumption";
 import { todayInGermany } from "@/lib/reading";
-import { fill } from "@kundenportal/ui/i18n";
 import { zonePath } from "@/lib/zone";
 import { ZoneLink } from "@/lib/zone-link";
 
@@ -46,6 +34,17 @@ async function loadReadings(api: Api, contractId: string): Promise<MeterReading[
   }
 }
 
+async function loadHistory(api: Api, contractId: string): Promise<ConsumptionHistory | undefined> {
+  try {
+    const { data } = await api.GET("/contracts/{contractId}/consumption", {
+      params: { path: { contractId } },
+    });
+    return data;
+  } catch {
+    return undefined;
+  }
+}
+
 async function loadUsage(api: Api, contractId: string): Promise<DataUsage | undefined> {
   try {
     return (await api.GET("/contracts/{contractId}/usage", { params: { path: { contractId } } }))
@@ -55,180 +54,96 @@ async function loadUsage(api: Api, contractId: string): Promise<DataUsage | unde
   }
 }
 
-function monthName(month: string, locale: Locale): string {
-  const date = new Date(`${month}-01T00:00:00.000Z`);
-  if (Number.isNaN(date.getTime())) return month;
-  return new Intl.DateTimeFormat(locale, {
-    month: "long",
-    year: "numeric",
-    timeZone: "UTC",
-  }).format(date);
-}
-
-function Usage({ usage, t, locale }: { usage: DataUsage; t: Dictionary; locale: Locale }) {
-  const id = `usage-${usage.contractId}`;
-  const volume = (mb: number) => formatDataVolume(mb, locale);
-  return (
-    <div className="zone-usage" data-testid="usage">
-      <p className="zone-usage-title">
-        {fill(t.usage.title, { month: monthName(usage.month, locale) })}
-      </p>
-      <label className="kp-label" htmlFor={id}>
-        {t.usage.label}
-      </label>
-      <progress
-        id={id}
-        className="zone-progress"
-        max={usage.includedMb}
-        value={Math.min(usage.usedMb, usage.includedMb)}
-        aria-describedby={`${id}-text`}
-      >
-        {usage.usedPercent} %
-      </progress>
-      <p id={`${id}-text`}>
-        {fill(t.usage.text, {
-          used: volume(usage.usedMb),
-          included: volume(usage.includedMb),
-          percent: usage.usedPercent,
-        })}
-      </p>
-      <p className="kp-muted">{fill(t.usage.asOf, { time: formatDateTime(usage.asOf, locale) })}</p>
-      {usage.usedPercent >= usage.thresholdPercent && (
-        <Notice tone="warning">{fill(t.usage.warning, { percent: usage.usedPercent })}</Notice>
-      )}
-    </div>
-  );
-}
-
-export default async function ConsumptionPage() {
+export default async function ConsumptionPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const path = zonePath();
   const session = await requireSession(path);
-  const { locale, t } = await dictionary();
+  const [{ locale, t }, query] = await Promise.all([dictionary(), searchParams]);
   const api = apiFor(session);
-  const refresh = (
-    <ButtonLink href={path} variant="secondary" linkComponent={ZoneLink}>
-      {t.overview.refresh}
-    </ButtonLink>
-  );
 
   const contracts = await loadContracts(api);
   if (!contracts) {
     return (
-      <Page title={t.title} lead={t.overview.lead} actions={refresh}>
+      <Page title={t.title} lead={t.overview.lead}>
         <Notice tone="error">{t.overview.error}</Notice>
       </Page>
     );
   }
-  const metered = contracts.filter((contract) => contract.meterNumber && contract.unit);
-  const mobile = contracts.filter((contract) => contract.dataVolumeMb !== undefined);
-  const [readings, usages] = await Promise.all([
-    Promise.all(metered.map((contract) => loadReadings(api, contract.contractId))),
-    Promise.all(mobile.map((contract) => loadUsage(api, contract.contractId))),
-  ]);
-  const today = todayInGermany();
-  const loginHref = loginUrl(path);
+  const tabs = tabContracts(contracts);
+  if (tabs.length === 0) {
+    return (
+      <Page title={t.title} lead={t.overview.lead}>
+        <EmptyState
+          title={t.overview.empty}
+          action={
+            <ButtonLink href={path} variant="secondary" linkComponent={ZoneLink}>
+              {t.overview.refresh}
+            </ButtonLink>
+          }
+        >
+          {t.overview.emptyText}
+        </EmptyState>
+      </Page>
+    );
+  }
 
-  const columns = (unit: string): Column<MeterReading>[] => [
-    { key: "readAt", header: t.meter.readAt, render: (row) => formatDate(row.readAt, locale) },
-    {
-      key: "value",
-      header: t.meter.value,
-      align: "end",
-      render: (row) => formatQuantity(row.value, unit, locale),
-    },
-    {
-      key: "source",
-      header: t.meter.source,
-      render: (row) => t.meter.sources[row.source] ?? row.source,
-    },
-  ];
+  const data = await Promise.all(
+    tabs.map(async (contract) => {
+      if (!isMetered(contract))
+        return { kind: "usage" as const, usage: await loadUsage(api, contract.contractId) };
+      const [readings, history] = await Promise.all([
+        loadReadings(api, contract.contractId),
+        loadHistory(api, contract.contractId),
+      ]);
+      return { kind: "metered" as const, readings, history };
+    }),
+  );
+  const today = todayInGermany();
+  // Sign-in after an expired session returns to the tab the customer was on.
+  const selected = selectedTab(
+    tabs.map((contract) => contract.contractId),
+    query[TAB_PARAM],
+  );
+  const loginHref = loginUrl(
+    selected ? `${path}?${TAB_PARAM}=${encodeURIComponent(selected)}` : path,
+  );
+  // Two contracts of one division are told apart by their tariff.
+  const label = (contract: Contract) =>
+    tabs.filter((other) => other.division === contract.division).length > 1
+      ? `${t.divisions[contract.division]} · ${contract.tariffName}`
+      : t.divisions[contract.division];
 
   return (
-    <Page title={t.title} lead={t.overview.lead} actions={refresh}>
-      {metered.length === 0 && mobile.length === 0 && (
-        <EmptyState title={t.overview.empty}>{t.overview.emptyText}</EmptyState>
-      )}
-
-      {metered.map((contract, index) => {
-        const unit = contract.unit ?? "kWh";
-        const items = readings[index];
-        const latest = items?.[0];
-        return (
-          <Card
-            key={contract.contractId}
-            className="zone-section"
-            title={fill(t.meter.heading, {
-              division: t.divisions[contract.division],
-              meter: contract.meterNumber ?? "",
-            })}
-          >
-            <p>
-              <a href={`/vertraege/${contract.contractId}`}>{t.overview.toContract}</a>
-            </p>
-            <div
-              data-testid="readings"
-              data-contract-id={contract.contractId}
-              data-latest-value={latest ? String(latest.value) : ""}
-            >
-              {items ? (
-                <DataTable
-                  caption={t.meter.caption}
-                  columns={columns(unit)}
-                  rows={items}
-                  rowKey={(row) => row.readingId}
-                  empty={<p className="kp-muted">{t.meter.empty}</p>}
-                />
-              ) : (
-                <Notice tone="error">{t.meter.error}</Notice>
-              )}
-            </div>
-            {contract.status === "active" ? (
-              <>
-                <h3 className="zone-subheading">{t.reading.title}</h3>
-                <ReadingForm
-                  contractId={contract.contractId}
-                  unit={unit}
-                  latest={latest ? { value: latest.value, readAt: latest.readAt } : undefined}
+    <Page title={t.title} lead={t.overview.lead}>
+      <ContractTabs
+        label={t.overview.tabs}
+        defaultTab={selected}
+        items={tabs.map((contract, index) => {
+          const entry = data[index];
+          return {
+            id: contract.contractId,
+            label: label(contract),
+            icon: divisionIcon(contract.division),
+            panel:
+              entry?.kind === "metered" ? (
+                <MeteredPanel
+                  contract={contract}
+                  readings={entry.readings}
+                  history={entry.history}
                   today={today}
                   locale={locale}
-                  texts={t.reading}
+                  t={t}
                   loginHref={loginHref}
                 />
-                <h3 className="zone-subheading">{t.photo.title}</h3>
-                <p className="kp-muted">{t.photo.intro}</p>
-                <UploadForm
-                  texts={t.upload}
-                  endpoint={zonePath("/api/documents/upload-url")}
-                  loginHref={loginHref}
-                  categories={[{ value: "meter-photo", label: t.photo.title }]}
-                  accept={["image/jpeg", "image/png"]}
-                  fileLabel={t.photo.file}
-                  data-testid="meter-photo-upload"
-                />
-              </>
-            ) : (
-              <Notice tone="info">{t.meter.inactive}</Notice>
-            )}
-          </Card>
-        );
-      })}
-
-      {mobile.map((contract, index) => {
-        const usage = usages[index];
-        return (
-          <Card
-            key={contract.contractId}
-            className="zone-section"
-            title={`${t.divisions[contract.division]} · ${contract.tariffName}`}
-          >
-            {usage ? (
-              <Usage usage={usage} t={t} locale={locale} />
-            ) : (
-              <Notice tone="error">{t.usage.error}</Notice>
-            )}
-          </Card>
-        );
-      })}
+              ) : (
+                <UsagePanel contract={contract} usage={entry?.usage} locale={locale} t={t} />
+              ),
+          };
+        })}
+      />
     </Page>
   );
 }

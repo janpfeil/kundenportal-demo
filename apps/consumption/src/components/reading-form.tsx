@@ -3,6 +3,7 @@
 import type { MeterReading, MeterUnit, Problem } from "@kundenportal/api-contract";
 import {
   Button,
+  Icon,
   Notice,
   NumberField,
   TextField,
@@ -14,6 +15,7 @@ import { sendJson } from "@kundenportal/web-auth/browser";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useId, useState } from "react";
 import type { Dictionary } from "@/i18n";
+import { isImplausible, unitLabel as unitText } from "@/lib/consumption";
 import { type ReadingField, checkReading, readingProblem } from "@/lib/reading";
 import { fill } from "@kundenportal/ui/i18n";
 import { zonePath } from "@/lib/zone";
@@ -27,6 +29,11 @@ export interface ReadingFormProps {
   latest?: { value: number; readAt: string } | undefined;
   /** Today in German time (`YYYY-MM-DD`), default and upper bound of the date. */
   today: string;
+  /**
+   * Range the API expects a reading taken on `at` to lie in; outside it the form warns while
+   * typing, but still sends (the server decides).
+   */
+  plausibleRange?: { min: number; max: number; at: string } | undefined;
   locale: Locale;
   texts: ReadingTexts;
   loginHref: string;
@@ -40,12 +47,15 @@ export function ReadingForm({
   unit,
   latest,
   today,
+  plausibleRange,
   locale,
   texts,
   loginHref,
 }: ReadingFormProps) {
   const router = useRouter();
   const ids = { value: useId(), readAt: useId() };
+  const latestId = useId();
+  const warningId = useId();
   const [value, setValue] = useState("");
   const [readAt, setReadAt] = useState(today);
   const [errors, setErrors] = useState<Partial<Record<ReadingField, string>>>({});
@@ -54,7 +64,8 @@ export function ReadingForm({
 
   const quantity = (amount: number) => formatQuantity(amount, unit, locale);
   const date = (iso: string) => formatDate(iso, locale);
-  const unitLabel = unit === "m3" ? "m³" : unit;
+  const unitLabel = unitText(unit);
+  const implausible = isImplausible(value, readAt, plausibleRange);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -118,23 +129,43 @@ export function ReadingForm({
 
   return (
     <form className="zone-form" onSubmit={submit} noValidate data-testid="reading-form">
-      <NumberField
-        id={ids.value}
-        label={texts.value}
-        unit={unitLabel}
-        hint={
-          latest
-            ? fill(texts.latest, { value: quantity(latest.value), date: date(latest.readAt) })
-            : undefined
-        }
-        error={errors.value}
-        name="value"
-        min={latest?.value ?? 0}
-        step="any"
-        value={value}
-        onChange={(event) => setValue(event.target.value)}
-        required
-      />
+      {latest && (
+        <p className="kp-muted zone-small" id={latestId}>
+          {fill(texts.latest, { value: quantity(latest.value), date: date(latest.readAt) })}
+        </p>
+      )}
+      <div className="zone-field-group">
+        <NumberField
+          id={ids.value}
+          label={texts.value}
+          unit={unitLabel}
+          error={errors.value}
+          name="value"
+          min={latest?.value ?? 0}
+          step="any"
+          value={value}
+          onChange={(event) => setValue(event.target.value)}
+          aria-describedby={
+            [latest && latestId, implausible && warningId].filter(Boolean).join(" ") || undefined
+          }
+          required
+        />
+        {/* A live region without a role: it speaks up while typing but is no status message. */}
+        <div aria-live="polite" className="zone-live">
+          {implausible && plausibleRange && (
+            <p className="zone-warning" id={warningId}>
+              <Icon name="alert" />
+              <span>
+                {texts.errorImplausible}{" "}
+                {fill(texts.expected, {
+                  min: quantity(plausibleRange.min),
+                  max: quantity(plausibleRange.max),
+                })}
+              </span>
+            </p>
+          )}
+        </div>
+      </div>
       <TextField
         id={ids.readAt}
         label={texts.readAt}

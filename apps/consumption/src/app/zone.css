@@ -1,35 +1,103 @@
 /* Zone-specific styles; tokens, base styles and components come from @kundenportal/ui/styles.css. */
 
-.zone-section {
-  margin-top: 24px;
-}
-
 .zone-form {
   display: grid;
-  gap: 16px;
-  max-width: 32rem;
-  margin-top: 16px;
+  gap: var(--kp-space);
+  min-width: 0;
 }
 
-.zone-subheading {
-  font-size: 1.05rem;
-  margin: 24px 0 0;
-}
-
-.zone-usage {
-  display: grid;
-  gap: 8px;
-}
-
-.zone-usage-title {
-  font-weight: 600;
+.zone-form .kp-field,
+.zone-form .kp-notice {
   margin: 0;
 }
 
-.zone-progress {
-  width: 100%;
-  height: 1.25rem;
-  accent-color: var(--kp-accent);
+/* The photo upload continues the reading form inside the same card. */
+.zone-form + .kp-upload {
+  max-width: none;
+  margin-top: var(--kp-space);
+  padding-top: var(--kp-space);
+  border-top: 1px solid var(--kp-border);
+}
+
+.kp-upload .kp-field {
+  margin: 0;
+}
+
+.zone-small {
+  margin: 0;
+  font-size: var(--kp-small);
+}
+
+/* Value field with its plausibility warning right below. */
+.zone-field-group {
+  display: grid;
+  gap: 4px;
+}
+
+.zone-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
+  color: var(--kp-warning-text);
+  font-size: var(--kp-small);
+  font-weight: 600;
+}
+
+/* Tables sit inside a card: the card draws the frame. */
+.zone-table {
+  margin: 0;
+  border: 0;
+}
+
+/* Stacked rows on phones: labels break at word boundaries, not mid-word. */
+@media (max-width: 599px) {
+  .zone-table td {
+    grid-template-columns: minmax(8.5rem, 2fr) minmax(0, 3fr);
+  }
+
+  .zone-table td::before {
+    overflow-wrap: normal;
+    hyphens: auto;
+  }
+}
+
+/* Mobile tab: data volume ring next to the texts; one column on phones. */
+.zone-hero {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: calc(var(--kp-space) * 1.25);
+}
+
+.zone-hero-ring {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+}
+
+.zone-hero-body {
+  display: grid;
+  gap: calc(var(--kp-space) * 0.5);
+  min-width: 0;
+}
+
+.zone-hero-body > * {
+  margin: 0;
+}
+
+.zone-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px var(--kp-space);
+}
+
+@media (max-width: 640px) {
+  .zone-hero {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: start;
+  }
 }
 
 /* Long file names and ids must wrap on 360 px wide screens. */
