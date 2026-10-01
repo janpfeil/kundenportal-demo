@@ -2,7 +2,7 @@
   "name": "@kundenportal/customer",
   "version": "0.1.0",
   "private": true,
-  "description": "Customer service: profile of the signed-in customer (GET/PATCH /me), publishes CustomerRegistered",
+  "description": "Customer service: profile of the signed-in customer (GET/PATCH /me), the operator's customer directory (GET /admin/customers), publishes CustomerRegistered",
   "license": "MIT",
   "type": "module",
   "scripts": {

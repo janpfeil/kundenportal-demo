@@ -6,6 +6,7 @@ import { EventBridgeClient, PutEventsCommand } from "@aws-sdk/client-eventbridge
 import {
   DynamoDBDocumentClient,
   GetCommand,
+  PutCommand,
   TransactWriteCommand,
   UpdateCommand,
 } from "@aws-sdk/lib-dynamodb";
@@ -30,6 +31,8 @@ const profile = {
   locale: "de",
   origin: "registration",
   createdAt: "2026-09-29T12:00:00.000Z",
+  rev: 3,
+  listed: true,
 };
 
 let ids: string[];
@@ -65,7 +68,53 @@ describe("GET /me", () => {
     expect(result.statusCode).toBe(200);
     expect(body(result)).toMatchObject({ customerId: "c-1", displayName: "David" });
     expect(body(result)).not.toHaveProperty("PK");
+    expect(body(result)).not.toHaveProperty("rev");
+    expect(body(result)).not.toHaveProperty("listed");
     expect(ebMock.commandCalls(PutEventsCommand)).toHaveLength(0);
+    // Already in the directory: a read writes nothing.
+    expect(dbMock.commandCalls(PutCommand)).toHaveLength(0);
+    expect(dbMock.commandCalls(UpdateCommand)).toHaveLength(0);
+  });
+
+  it("adds a profile from before phase 7 to the directory once (backfill)", async () => {
+    const { rev: _rev, listed: _listed, ...old } = profile;
+    dbMock
+      .on(GetCommand, { Key: { PK: "TENANT#owner#SUBJ#sub-1", SK: "CUSTOMER" } })
+      .resolves({ Item: { customerId: "c-1" } })
+      .on(GetCommand, { Key: { PK: "TENANT#owner#CUST#c-1", SK: "PROFILE" } })
+      .resolves({ Item: old });
+    dbMock.on(PutCommand).resolves({});
+    dbMock.on(UpdateCommand).resolves({});
+
+    const result = await handler()(apiEvent("GET /me", { claims }));
+
+    expect(result.statusCode).toBe(200);
+    const put = dbMock.commandCalls(PutCommand)[0]?.args[0].input;
+    expect(put?.Item).toMatchObject({
+      PK: "TENANT#owner#CUSTOMERS",
+      SK: "CUST#c-1",
+      displayName: "David",
+      rev: 0,
+    });
+    expect(put?.ConditionExpression).toBe("attribute_not_exists(PK) OR #rev < :rev");
+    const mark = dbMock.commandCalls(UpdateCommand)[0]?.args[0].input;
+    expect(mark?.Key).toEqual({ PK: "TENANT#owner#CUST#c-1", SK: "PROFILE" });
+    expect(mark?.UpdateExpression).toBe("SET #listed = :true");
+  });
+
+  it("still answers when the backfill fails; the next read tries again", async () => {
+    const { listed: _listed, ...old } = profile;
+    dbMock
+      .on(GetCommand, { Key: { PK: "TENANT#owner#SUBJ#sub-1", SK: "CUSTOMER" } })
+      .resolves({ Item: { customerId: "c-1" } })
+      .on(GetCommand, { Key: { PK: "TENANT#owner#CUST#c-1", SK: "PROFILE" } })
+      .resolves({ Item: old });
+    dbMock.on(PutCommand).rejects(new Error("throttled"));
+
+    const result = await handler()(apiEvent("GET /me", { claims }));
+
+    expect(result.statusCode).toBe(200);
+    expect(dbMock.commandCalls(UpdateCommand)).toHaveLength(0);
   });
 
   it("creates the customer on first access and publishes CustomerRegistered", async () => {
@@ -88,7 +137,20 @@ describe("GET /me", () => {
     expect(writes.map((item) => item.Put?.Item?.PK)).toEqual([
       "TENANT#owner#SUBJ#sub-1",
       "TENANT#owner#CUST#c-new",
+      "TENANT#owner#CUSTOMERS",
     ]);
+    expect(writes[1]?.Put?.Item).toMatchObject({ rev: 1, listed: true });
+    expect(writes[2]?.Put?.Item).toEqual({
+      PK: "TENANT#owner#CUSTOMERS",
+      SK: "CUST#c-new",
+      customerId: "c-new",
+      email: "david@example.org",
+      displayName: "David Neumann",
+      locale: "en",
+      origin: "registration",
+      createdAt: "2026-09-29T12:00:00.000Z",
+      rev: 1,
+    });
 
     const entry = ebMock.commandCalls(PutEventsCommand)[0]?.args[0].input.Entries?.[0];
     expect(entry).toMatchObject({
@@ -153,16 +215,35 @@ describe("PATCH /me", () => {
       .resolves({ Item: profile });
   });
 
-  it("updates editable fields only", async () => {
-    dbMock.on(UpdateCommand).resolves({ Attributes: { ...profile, locale: "en" } });
+  it("updates editable fields only and refreshes the directory's summary", async () => {
+    dbMock.on(UpdateCommand).resolves({ Attributes: { ...profile, locale: "en", rev: 4 } });
+    dbMock.on(PutCommand).resolves({});
 
     const result = await handler()(apiEvent("PATCH /me", { claims, body: { locale: "en" } }));
 
     expect(result.statusCode).toBe(200);
     expect(body(result)).toMatchObject({ locale: "en" });
+    expect(body(result)).not.toHaveProperty("rev");
     const input = dbMock.commandCalls(UpdateCommand)[0]?.args[0].input;
     expect(input?.Key).toEqual({ PK: "TENANT#owner#CUST#c-1", SK: "PROFILE" });
-    expect(input?.UpdateExpression).toBe("SET #locale = :locale");
+    expect(input?.UpdateExpression).toBe("SET #locale = :locale, #listed = :true ADD #rev :one");
+    const put = dbMock.commandCalls(PutCommand)[0]?.args[0].input;
+    expect(put?.Item).toMatchObject({
+      PK: "TENANT#owner#CUSTOMERS",
+      SK: "CUST#c-1",
+      locale: "en",
+      rev: 4,
+    });
+    expect(put?.ExpressionAttributeValues).toEqual({ ":rev": 4 });
+  });
+
+  it("leaves a newer summary alone (concurrent change)", async () => {
+    dbMock.on(UpdateCommand).resolves({ Attributes: { ...profile, displayName: "D", rev: 4 } });
+    dbMock
+      .on(PutCommand)
+      .rejects(new ConditionalCheckFailedException({ message: "newer", $metadata: {} }));
+    const result = await handler()(apiEvent("PATCH /me", { claims, body: { displayName: "D" } }));
+    expect(result.statusCode).toBe(200);
   });
 
   it.each([{}, { email: "evil@example.org" }, { displayName: "" }, { locale: "fr" }])(

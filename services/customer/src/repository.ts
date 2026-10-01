@@ -6,16 +6,46 @@ import { GetCommand, TransactWriteCommand, UpdateCommand } from "@aws-sdk/lib-dy
 import { deleteKeys, tenantKey, type TenantDataSource } from "@kundenportal/service-kit";
 import type { PostalAddress } from "@kundenportal/events";
 import { Customer, type CustomerUpdate } from "./customer.js";
+import { profileSummary } from "./directory.js";
+import { DirectoryRepository, profileItem } from "./directory-repository.js";
+
+/**
+ * A stored profile with its bookkeeping: `rev` counts the changes (the directory keeps
+ * the summary of the highest), `listed` says the directory has a summary of it — missing
+ * on profiles from before phase 7 until their next read or change.
+ */
+export interface ProfileRecord {
+  customer: Customer;
+  rev: number;
+  listed: boolean;
+}
+
+function profileRecord(item: Record<string, unknown>): ProfileRecord {
+  return {
+    customer: Customer.parse(item),
+    rev: typeof item.rev === "number" ? item.rev : 0,
+    listed: item.listed === true,
+  };
+}
+
+/** Every change of the profile counts up `rev` and marks it as listed in the directory. */
+const REVISED_NAMES = { "#listed": "listed", "#rev": "rev" };
+const REVISED_VALUES = { ":true": true, ":one": 1 };
 
 /**
  * Items of the customer domain in the single table (see fachkonzept §7.1):
  * - `TENANT#<t>#CUST#<customerId>` / `PROFILE` — the profile
  * - `TENANT#<t>#SUBJ#<subject>` / `CUSTOMER` — which customer a sign-in identity belongs to
+ * - the operator's customer directory, see `DirectoryRepository`
  */
 export class CustomerRepository {
-  constructor(private readonly data: TenantDataSource) {}
+  readonly directory: DirectoryRepository;
 
-  async findBySubject(tenantId: string, subject: string): Promise<Customer | undefined> {
+  constructor(private readonly data: TenantDataSource) {
+    this.directory = new DirectoryRepository(data);
+  }
+
+  async findBySubject(tenantId: string, subject: string): Promise<ProfileRecord | undefined> {
     const { db, tableName } = await this.data(tenantId);
     const link = await db.send(
       new GetCommand({
@@ -28,7 +58,7 @@ export class CustomerRepository {
     return customerId ? this.get(tenantId, customerId) : undefined;
   }
 
-  async get(tenantId: string, customerId: string): Promise<Customer | undefined> {
+  async get(tenantId: string, customerId: string): Promise<ProfileRecord | undefined> {
     const { db, tableName } = await this.data(tenantId);
     const result = await db.send(
       new GetCommand({
@@ -37,12 +67,13 @@ export class CustomerRepository {
         ConsistentRead: true,
       }),
     );
-    return result.Item ? Customer.parse(result.Item) : undefined;
+    return result.Item ? profileRecord(result.Item) : undefined;
   }
 
   /**
-   * Creates profile and identity link atomically. Returns `false` if another request
-   * created the link first (concurrent first sign-in); nothing is written then.
+   * Creates profile, identity link and directory summary atomically. Returns `false` if
+   * another request created the link first (concurrent first sign-in); nothing is
+   * written then.
    */
   async create(tenantId: string, subject: string, customer: Customer): Promise<boolean> {
     const { db, tableName } = await this.data(tenantId);
@@ -71,8 +102,16 @@ export class CustomerRepository {
                   ...(customer.legacyAccounts
                     ? { legacyAccounts: new Set(customer.legacyAccounts) }
                     : {}),
+                  rev: 1,
+                  listed: true,
                 },
                 ConditionExpression: "attribute_not_exists(PK)",
+              },
+            },
+            {
+              Put: {
+                TableName: tableName,
+                Item: profileItem(tenantId, profileSummary(customer), 1),
               },
             },
           ],
@@ -85,24 +124,33 @@ export class CustomerRepository {
     }
   }
 
-  async update(tenantId: string, customerId: string, update: CustomerUpdate): Promise<Customer> {
+  async update(
+    tenantId: string,
+    customerId: string,
+    update: CustomerUpdate,
+  ): Promise<ProfileRecord> {
     const { db, tableName } = await this.data(tenantId);
     const fields = Object.entries(update).filter(([, value]) => value !== undefined);
+    const sets = [...fields.map(([name]) => `#${name} = :${name}`), "#listed = :true"];
     try {
       const result = await db.send(
         new UpdateCommand({
           TableName: tableName,
           Key: { PK: tenantKey(tenantId, "CUST", customerId), SK: "PROFILE" },
-          UpdateExpression: `SET ${fields.map(([name]) => `#${name} = :${name}`).join(", ")}`,
-          ExpressionAttributeNames: Object.fromEntries(fields.map(([name]) => [`#${name}`, name])),
-          ExpressionAttributeValues: Object.fromEntries(
-            fields.map(([name, value]) => [`:${name}`, value]),
-          ),
+          UpdateExpression: `SET ${sets.join(", ")} ADD #rev :one`,
+          ExpressionAttributeNames: {
+            ...Object.fromEntries(fields.map(([name]) => [`#${name}`, name])),
+            ...REVISED_NAMES,
+          },
+          ExpressionAttributeValues: {
+            ...Object.fromEntries(fields.map(([name, value]) => [`:${name}`, value])),
+            ...REVISED_VALUES,
+          },
           ConditionExpression: "attribute_exists(PK)",
           ReturnValues: "ALL_NEW",
         }),
       );
-      return Customer.parse(result.Attributes);
+      return profileRecord(result.Attributes ?? {});
     } catch (error) {
       if (error instanceof ConditionalCheckFailedException) {
         throw new Error(`Customer ${customerId} vanished during update`, { cause: error });
@@ -113,37 +161,54 @@ export class CustomerRepository {
 
   /**
    * Adds data from a legacy system: address and phone only where the profile has none
-   * yet, the legacy account to the set of accounts (idempotent).
+   * yet, the legacy account to the set of accounts (idempotent). Returns the profile.
    */
   async addLegacyData(
     tenantId: string,
     customerId: string,
     data: { address?: PostalAddress; phone?: string; legacyAccount: string },
-  ): Promise<void> {
+  ): Promise<ProfileRecord> {
     const { db, tableName } = await this.data(tenantId);
     const sets = [
       ...(data.address ? ["#address = if_not_exists(#address, :address)"] : []),
       ...(data.phone ? ["#phone = if_not_exists(#phone, :phone)"] : []),
+      "#listed = :true",
     ];
-    await db.send(
+    const result = await db.send(
       new UpdateCommand({
         TableName: tableName,
         Key: { PK: tenantKey(tenantId, "CUST", customerId), SK: "PROFILE" },
-        UpdateExpression: [
-          ...(sets.length ? [`SET ${sets.join(", ")}`] : []),
-          "ADD #legacyAccounts :account",
-        ].join(" "),
+        UpdateExpression: `SET ${sets.join(", ")} ADD #legacyAccounts :account, #rev :one`,
         // Aliases throughout: DynamoDB rejects reserved words in expressions.
         ExpressionAttributeNames: {
           "#legacyAccounts": "legacyAccounts",
           ...(data.address ? { "#address": "address" } : {}),
           ...(data.phone ? { "#phone": "phone" } : {}),
+          ...REVISED_NAMES,
         },
         ExpressionAttributeValues: {
           ":account": new Set([data.legacyAccount]),
           ...(data.address ? { ":address": data.address } : {}),
           ...(data.phone ? { ":phone": data.phone } : {}),
+          ...REVISED_VALUES,
         },
+        ConditionExpression: "attribute_exists(PK)",
+        ReturnValues: "ALL_NEW",
+      }),
+    );
+    return profileRecord(result.Attributes ?? {});
+  }
+
+  /** Notes that the directory has a summary of a profile from before phase 7 (backfill). */
+  async markListed(tenantId: string, customerId: string): Promise<void> {
+    const { db, tableName } = await this.data(tenantId);
+    await db.send(
+      new UpdateCommand({
+        TableName: tableName,
+        Key: { PK: tenantKey(tenantId, "CUST", customerId), SK: "PROFILE" },
+        UpdateExpression: "SET #listed = :true",
+        ExpressionAttributeNames: { "#listed": "listed" },
+        ExpressionAttributeValues: { ":true": true },
         ConditionExpression: "attribute_exists(PK)",
       }),
     );

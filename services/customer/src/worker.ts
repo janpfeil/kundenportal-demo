@@ -1,5 +1,6 @@
 import {
   AccountsLinked,
+  ContractChanged,
   EventBridgeEnvelope,
   LegacyAccountMigrated,
   MigratedAccountsRemoved,
@@ -14,7 +15,8 @@ export class UnprocessableEventError extends Error {
 
 /**
  * Worker of the customer domain, invoked asynchronously by EventBridge rules on the own
- * bus: `LegacyAccountMigrated` (create the migrated customer), `AccountsLinked` and
+ * bus: `LegacyAccountMigrated` (create the migrated customer), `AccountsLinked`,
+ * `ContractChanged` (contract summary in the customer directory) and
  * `MigratedAccountsRemoved` (delete the customers of removed accounts).
  * Like the other workers without a queue: two Lambda retries, then the DLQ; every
  * failure throws, the service is idempotent.
@@ -32,6 +34,11 @@ export function createWorker(service: CustomerService) {
         const parsed = LegacyAccountMigrated.detail.safeParse(detail);
         if (!parsed.success) throw new UnprocessableEventError(`Invalid ${detailType}`);
         return await service.onLegacyAccountMigrated(parsed.data);
+      }
+      if (source === ContractChanged.source && detailType === ContractChanged.detailType) {
+        const parsed = ContractChanged.detail.safeParse(detail);
+        if (!parsed.success) throw new UnprocessableEventError(`Invalid ${detailType}`);
+        return await service.onContractChanged(parsed.data);
       }
       if (source === AccountsLinked.source && detailType === AccountsLinked.detailType) {
         const parsed = AccountsLinked.detail.safeParse(detail);

@@ -4,6 +4,8 @@ import {
   BatchWriteCommand,
   DynamoDBDocumentClient,
   GetCommand,
+  PutCommand,
+  QueryCommand,
   TransactWriteCommand,
   UpdateCommand,
 } from "@aws-sdk/lib-dynamodb";
@@ -111,19 +113,56 @@ describe("customer worker", () => {
           createdAt: "2026-09-30T11:00:01.000Z",
         },
       });
-    dbMock.on(UpdateCommand).resolves({});
+    dbMock.on(UpdateCommand).resolves({
+      Attributes: {
+        customerId,
+        email: "anna.becker@example.org",
+        displayName: "Anna Becker",
+        locale: "de",
+        origin: "legacy-utility",
+        createdAt: "2026-09-30T11:00:01.000Z",
+        address,
+        legacyAccounts: new Set(["utility:V-1000123"]),
+        rev: 2,
+        listed: true,
+      },
+    });
+    dbMock.on(PutCommand).resolves({});
 
     await createWorker(service())(migrated());
 
     const update = dbMock.commandCalls(UpdateCommand)[0]?.args[0].input;
     expect(update?.UpdateExpression).toBe(
-      "SET #address = if_not_exists(#address, :address), #phone = if_not_exists(#phone, :phone) ADD #legacyAccounts :account",
+      "SET #address = if_not_exists(#address, :address), #phone = if_not_exists(#phone, :phone), #listed = :true ADD #legacyAccounts :account, #rev :one",
     );
+    expect(update?.ReturnValues).toBe("ALL_NEW");
+    // The directory's summary follows the completed profile.
+    expect(dbMock.commandCalls(PutCommand)[0]?.args[0].input.Item).toMatchObject({
+      PK: "TENANT#owner#CUSTOMERS",
+      SK: `CUST#${customerId}`,
+      address,
+      legacyAccounts: ["utility:V-1000123"],
+      rev: 2,
+    });
     expect(registered().eventId).toBe(deterministicUuid(customerId, "CustomerRegistered"));
+    expect(registered().occurredAt).toBe("2026-09-30T11:00:01.000Z");
   });
 
-  it("records a linked account", async () => {
-    dbMock.on(UpdateCommand).resolves({});
+  it("records a linked account and refreshes the directory's summary", async () => {
+    dbMock.on(UpdateCommand).resolves({
+      Attributes: {
+        customerId,
+        email: "anna.becker@example.org",
+        displayName: "Anna Becker",
+        locale: "de",
+        origin: "legacy-utility",
+        createdAt: "2026-09-30T11:00:00.000Z",
+        legacyAccounts: new Set(["utility:V-1000123", "telco:T/88-4711"]),
+        rev: 3,
+        listed: true,
+      },
+    });
+    dbMock.on(PutCommand).resolves({});
     await createWorker(service())({
       source: "kundenportal.migration",
       "detail-type": "AccountsLinked",
@@ -142,11 +181,23 @@ describe("customer worker", () => {
       },
     });
     const update = dbMock.commandCalls(UpdateCommand)[0]?.args[0].input;
-    expect(update?.ExpressionAttributeValues).toEqual({ ":account": new Set(["telco:T/88-4711"]) });
+    expect(update?.ExpressionAttributeValues).toEqual({
+      ":account": new Set(["telco:T/88-4711"]),
+      ":true": true,
+      ":one": 1,
+    });
+    expect(dbMock.commandCalls(PutCommand)[0]?.args[0].input.Item).toMatchObject({
+      SK: `CUST#${customerId}`,
+      legacyAccounts: ["telco:T/88-4711", "utility:V-1000123"],
+      rev: 3,
+    });
   });
 
-  it("deletes profile and identity link of removed accounts only, also when redelivered", async () => {
+  it("deletes profile, identity link and directory entries of removed accounts only, also when redelivered", async () => {
     dbMock.on(BatchWriteCommand).resolves({});
+    dbMock.on(QueryCommand).resolves({
+      Items: [{ PK: "TENANT#p4k7x2qa#CUSTOMERS", SK: `CUST#${customerId}#C#k-1` }],
+    });
     const removed = {
       source: "kundenportal.migration",
       "detail-type": "MigratedAccountsRemoved",
@@ -165,13 +216,22 @@ describe("customer worker", () => {
     const deletes = dbMock
       .commandCalls(BatchWriteCommand)
       .map((c) => c.args[0].input.RequestItems?.table?.map((r) => r.DeleteRequest?.Key));
-    const once = [
+    const directory = [
+      { PK: "TENANT#p4k7x2qa#CUSTOMERS", SK: `CUST#${customerId}#C#k-1` },
+      { PK: "TENANT#p4k7x2qa#CUSTOMERS", SK: `CUST#${customerId}` },
+    ];
+    const profile = [
       { PK: `TENANT#p4k7x2qa#CUST#${customerId}`, SK: "PROFILE" },
       { PK: `TENANT#p4k7x2qa#SUBJ#${SUB}`, SK: "CUSTOMER" },
     ];
-    expect(deletes).toEqual([once, once]);
-    // Nothing else is touched: no other customer, no other domain's items.
-    expect(dbMock.calls()).toHaveLength(2);
+    expect(deletes).toEqual([directory, profile, directory, profile]);
+    // Only this customer's contract summaries are looked up, nothing else is touched.
+    const query = dbMock.commandCalls(QueryCommand)[0]?.args[0].input;
+    expect(query?.ExpressionAttributeValues).toEqual({
+      ":pk": "TENANT#p4k7x2qa#CUSTOMERS",
+      ":prefix": `CUST#${customerId}#C#`,
+    });
+    expect(dbMock.calls()).toHaveLength(6);
   });
 
   it("rejects invalid and unknown events so they end in the DLQ", async () => {
@@ -238,9 +298,9 @@ describe("tenant isolation", () => {
       call.args[0].input.TransactItems?.map((item) => item.Put?.TableName),
     );
     expect(tables).toEqual([
-      [`kp-tenant-${A}`, `kp-tenant-${A}`],
-      [`kp-tenant-${B}`, `kp-tenant-${B}`],
-      [`kp-tenant-${A}`, `kp-tenant-${A}`],
+      [`kp-tenant-${A}`, `kp-tenant-${A}`, `kp-tenant-${A}`],
+      [`kp-tenant-${B}`, `kp-tenant-${B}`, `kp-tenant-${B}`],
+      [`kp-tenant-${A}`, `kp-tenant-${A}`, `kp-tenant-${A}`],
     ]);
     expect(tables.flat()).not.toContain("base-table");
     const keys = writes.map((call) => call.args[0].input.TransactItems?.[1]?.Put?.Item?.PK);
