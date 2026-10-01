@@ -5,7 +5,8 @@ import {
   groupsOf,
   zoneConfig,
 } from "@kundenportal/web-auth";
-import type { ApiResult } from "@kundenportal/web-auth";
+import { type ApiResult, apiFor } from "@kundenportal/web-auth";
+import type { components } from "@kundenportal/api-contract";
 import { type TenancySettings, parseSettings } from "./settings";
 
 /*
@@ -23,6 +24,8 @@ export interface PassSummary {
   tenantId: string;
   email: string;
   status: PassStatus;
+  /** When the pass was issued (redeemed); orders the table "newest first". */
+  createdAt?: string;
   validUntil: string;
   /** First sign-in of the pass holder; absent until then. */
   activatedAt?: string;
@@ -47,9 +50,12 @@ export function accessOf(session: Session): CockpitAccess {
   return "none";
 }
 
-/** Passes still running, which the owner may revoke. */
+/**
+ * Passes the owner may revoke from the table: running ones (as in the mockup). A pass still
+ * being set up is not offered; its tenant does not exist yet.
+ */
 export function isRevocable(status: PassStatus): boolean {
-  return status === "provisioning" || status === "active" || status === "quota-exceeded";
+  return status === "active" || status === "quota-exceeded";
 }
 
 /** Calls a tenancy endpoint with the session's access token, shaped like an openapi-fetch result. */
@@ -113,6 +119,20 @@ export async function fetchSettings(session: Session): Promise<TenancySettings |
   try {
     const { data, response } = await tenancyCall(session, "GET", "/tenancy/settings");
     return response.ok ? parseSettings(data) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** Key figures of the pass administration and the open invitations (GET /tenancy/overview). */
+export type PassOverview = components["schemas"]["PassOverview"];
+export type OpenInvitation = PassOverview["invitations"][number];
+
+/** GET /tenancy/overview (owner only); undefined on any error. */
+export async function fetchOverview(session: Session): Promise<PassOverview | undefined> {
+  try {
+    const { data, response } = await apiFor(session).GET("/tenancy/overview");
+    return response.ok ? data : undefined;
   } catch {
     return undefined;
   }

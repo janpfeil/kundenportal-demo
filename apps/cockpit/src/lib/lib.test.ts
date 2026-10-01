@@ -2,12 +2,14 @@ import { describe, expect, it } from "vitest";
 import { de } from "@/i18n/de";
 import { en } from "@/i18n/en";
 import { parseRedrive } from "./redrive";
-import { navigation, zonePath } from "./zone";
+import { cockpitNavigation, cockpitShortcuts, markCurrent, navigation, zonePath } from "./zone";
 
 /** An unsigned access token with the given Cognito groups (the navigation only reads it). */
 const session = (...groups: string[]) => ({
   accessToken: `e30.${Buffer.from(JSON.stringify({ "cognito:groups": groups })).toString("base64url")}.x`,
 });
+
+const navTexts = { ...de.frame, passStatus: "Demo-Pass" };
 
 describe("cockpit helpers", () => {
   it("accepts only known, well-formed corrections", () => {
@@ -20,7 +22,7 @@ describe("cockpit helpers", () => {
     expect(parseRedrive({ corrections: { street: "x" } })).toBeUndefined();
   });
 
-  it("lives under /cockpit and marks itself in the navigation", () => {
+  it("lives under /cockpit and keeps the portal navigation for visitors without access", () => {
     expect(zonePath("/api/bulk")).toBe("/cockpit/api/bulk");
     const texts = {
       nav: { home: "S", account: "K", mailbox: "P", contracts: "V", consumption: "B" },
@@ -32,6 +34,59 @@ describe("cockpit helpers", () => {
       false,
     );
     expect(navigation(texts as never)).toHaveLength(1);
+  });
+
+  it("gives the owner the mockup's sidebar: Migration and Verwaltung with counts and keys", () => {
+    const items = cockpitNavigation(navTexts, "owner", { clarifications: 14, deadLetters: 6 });
+    expect(items.map((item) => [item.label, item.href, item.group, item.sub ?? false])).toEqual([
+      ["Übersicht", "/cockpit", "Migration", false],
+      ["Klärfälle", "/cockpit#klaerfaelle", undefined, true],
+      ["DLQ", "/cockpit#dlq", undefined, true],
+      ["Ereignisse", "/cockpit#ereignisse", undefined, true],
+      ["Demo-Pässe", "/cockpit/paesse", "Verwaltung", false],
+      ["Einstellungen", "/cockpit/paesse#einstellungen", undefined, true],
+    ]);
+    expect(items.map((item) => item.icon)).toEqual([
+      "gauge",
+      "alert",
+      "inbox",
+      "clock",
+      "ticket",
+      "settings",
+    ]);
+    expect(items.find((item) => item.label === "Klärfälle")?.count).toBe(14);
+    expect(items.find((item) => item.label === "DLQ")?.count).toBe(6);
+    expect(items.filter((item) => item.kbd).map((item) => item.kbd)).toEqual(["g c", "g p"]);
+    expect(cockpitShortcuts("owner")).toEqual([
+      { keys: "g c", href: "/cockpit" },
+      { keys: "g p", href: "/cockpit/paesse" },
+    ]);
+  });
+
+  it("gives pass holders their cockpit and pass status, but no administration", () => {
+    const items = cockpitNavigation(navTexts, "pass", {});
+    expect(items.some((item) => item.href.startsWith("/cockpit/paesse"))).toBe(false);
+    expect(items.some((item) => item.group === "Verwaltung")).toBe(false);
+    expect(items.at(-1)).toMatchObject({
+      href: "/pass",
+      label: "Demo-Pass",
+      group: "Kundenportal",
+    });
+    expect(cockpitShortcuts("pass")).toEqual([{ keys: "g c", href: "/cockpit" }]);
+  });
+
+  it("marks the current page with or without the basePath, never the anchors", () => {
+    const items = cockpitNavigation(navTexts, "owner", {});
+    const current = (path: string) =>
+      markCurrent(items, path)
+        .filter((item) => item.active)
+        .map((item) => item.label);
+    expect(current("/")).toEqual(["Übersicht"]);
+    expect(current("/cockpit")).toEqual(["Übersicht"]);
+    expect(current("/paesse")).toEqual(["Demo-Pässe"]);
+    expect(current("/cockpit/paesse/")).toEqual(["Demo-Pässe"]);
+    expect(current("/suche")).toEqual([]);
+    expect(markCurrent(items, "/").some((item) => "currentOn" in item)).toBe(false);
   });
 
   it("has the same texts in both languages", () => {
