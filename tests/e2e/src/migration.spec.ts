@@ -59,7 +59,9 @@ async function resetDemo(page: Page) {
   const reset = page.getByTestId("demo-reset");
   await reset.getByRole("button", { name: "Demo zurücksetzen …" }).click();
   await reset.getByRole("button", { name: "Ja, zurücksetzen" }).click();
-  await expect(reset.getByRole("status")).toContainText("Zurückgesetzt");
+  // Removing the accounts takes a while, more so right after a deploy (cold functions);
+  // a failure shows as an alert, never as this status.
+  await expect(reset.getByRole("status")).toContainText("Zurückgesetzt", { timeout: 30_000 });
 }
 
 /** Signs a demo person in with the legacy password (first sign-in: lazy migration). */

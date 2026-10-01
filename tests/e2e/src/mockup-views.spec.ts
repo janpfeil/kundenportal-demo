@@ -77,29 +77,28 @@ test("the cockpit shows the key figures, searches behind '/' and jumps with 'g p
   await expect(main).toContainText("Aktualisiert sich alle 10 Sekunden");
   await page.waitForLoadState("networkidle");
 
-  // The sidebar's anchors bring their heading just below the sticky top bar.
+  // The sidebar's anchors bring their heading just below the sticky top bar — or, where the
+  // page ends too early to scroll that far, at least fully below it.
+  const position = (id: string) =>
+    page.evaluate(
+      `(() => { const bar = document.querySelector(".kp-topbar").getBoundingClientRect();` +
+        ` const top = document.querySelector("#${id} h2").getBoundingClientRect().top;` +
+        ` const end = document.documentElement.scrollHeight - window.innerHeight;` +
+        ` return { gap: Math.round(top - bar.bottom), atEnd: window.scrollY >= end - 1 }; })()`,
+    ) as Promise<{ gap: number; atEnd: boolean }>;
+  // A low window makes even the short page of a fresh owner scroll.
+  await page.setViewportSize({ width: 1280, height: 400 });
   for (const [entry, id] of [
     [/^DLQ/, "dlq"],
     [/^Ereignisse/, "ereignisse"],
   ] as const) {
     await page.locator(".kp-sidenav").getByRole("link", { name: entry }).click();
-    await expect
-      .poll(() =>
-        page.evaluate(
-          `(() => { const bar = document.querySelector(".kp-topbar").getBoundingClientRect();` +
-            ` const heading = document.querySelector("#${id} h2").getBoundingClientRect();` +
-            ` return Math.round(heading.top - bar.bottom); })()`,
-        ),
-      )
-      .toBeGreaterThanOrEqual(0);
-    const gap = Number(
-      await page.evaluate(
-        `(() => { const bar = document.querySelector(".kp-topbar").getBoundingClientRect();` +
-          ` return Math.round(document.querySelector("#${id} h2").getBoundingClientRect().top - bar.bottom); })()`,
-      ),
-    );
-    expect(gap, `heading of #${id} below the top bar`).toBeLessThanOrEqual(48);
+    await expect(page).toHaveURL(new RegExp(`#${id}$`));
+    await expect.poll(async () => (await position(id)).gap).toBeGreaterThanOrEqual(0);
+    const { gap, atEnd } = await position(id);
+    if (!atEnd) expect(gap, `heading of #${id} below the top bar`).toBeLessThanOrEqual(48);
   }
+  await page.setViewportSize({ width: 1280, height: 720 });
   await page.goto("/cockpit");
   await page.waitForLoadState("networkidle");
 
