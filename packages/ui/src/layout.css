@@ -283,6 +283,15 @@
   }
 }
 
+/* The cockpit's top bar also carries the search field and has seven areas (phase 7): its
+   navigation takes a row of its own up to wide screens ("Übersicht" preset). */
+@media (max-width: 1680px) {
+  :root[data-audience="cockpit"] .kp-nav {
+    order: 3;
+    flex-basis: 100%;
+  }
+}
+
 /* On phones the row wraps rather than scrolling entries out of sight (the bottom bar of
    "Warm" is a grid and keeps its own layout). */
 @media (max-width: 640px) {
