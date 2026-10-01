@@ -137,9 +137,11 @@ function CustomerShell({ globals }: { globals: Record<string, unknown> }) {
         { href: "#vertraege", label: t.nav.contracts, icon: "file" },
         { href: "#verbrauch", label: t.nav.consumption, icon: "chart", active: true },
         { href: "#pass", label: t.nav.pass, icon: "ticket" },
+        { href: "#cockpit", label: t.nav.cockpit, icon: "gauge" },
       ]}
       navLabel={t.nav.label}
       navTexts={t.nav}
+      languageLink={{ href: "#en", label: "English", hrefLang: "en" }}
       version="v0.5.0 · 1a2b3c4"
       user={{
         name: "Anna Becker",

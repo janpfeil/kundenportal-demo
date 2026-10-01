@@ -251,15 +251,33 @@
   margin-left: auto;
 }
 
-/* Icons in the top bar only where there is room for them. */
+/*
+ * The top bar never hides entries in its scroll row: first the icons go (as in the mockup
+ * from 1240 px), then the navigation takes a row of its own below brand and actions. The
+ * presets with larger type ("Vertrauen", "Warm") need both steps earlier; with six entries
+ * (pass holder) they overflowed the single row up to 1440 px.
+ */
 @media (max-width: 1240px) {
   .kp-nav .kp-nav-icon {
     display: none;
   }
 }
 
-@media (max-width: 720px) {
+@media (max-width: 1600px) {
+  :root:is([data-theme-preset="vertrauen"], [data-theme-preset="warm"]) .kp-nav .kp-nav-icon {
+    display: none;
+  }
+}
+
+@media (max-width: 1100px) {
   .kp-nav {
+    order: 3;
+    flex-basis: 100%;
+  }
+}
+
+@media (max-width: 1360px) {
+  :root:is([data-theme-preset="vertrauen"], [data-theme-preset="warm"]) .kp-nav {
     order: 3;
     flex-basis: 100%;
   }
