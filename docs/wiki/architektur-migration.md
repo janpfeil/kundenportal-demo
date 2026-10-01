@@ -157,6 +157,18 @@ Busses an den migration-Worker, der es ohne personenbezogene Daten (nur IDs,
 Altkonten, Sparten, Zähler) mit [TTL](glossar.md#dynamodb-ttl) von 7 Tagen
 ablegt. Die Seite lädt sich alle 10 Sekunden neu.
 
+**Kennzahlen und Suche (Phase 6).** `GET /migration/status` liefert
+zusätzlich je Altsystem `migratedToday` (übernommen oder verknüpft seit
+00:00 Uhr deutscher Zeit) und `trends`: offene Klärfälle und DLQ-Einträge am
+Ende der letzten sieben Tage (Sparklines), neue Klärfälle der letzten 24
+Stunden und die in dieser Zeit erfolgreich erneut verarbeiteten Datensätze
+(„−n nach Redrive“). Alles wird aus den Datensätzen berechnet, die das Cockpit
+ohnehin liest; dafür merkt sich ein Datensatz `failedAt` und `redrivenAt`.
+`GET /migration/search?q=` sucht ohne Index in denselben Datensätzen
+(Kundennummer, Name, Status, Problem) und in der Timeline (Ereignistyp,
+Kennungen); Mandanten findet die Cockpit-Seite des Inhabers zusätzlich in der
+Pass-Liste.
+
 ### Demo-Reset
 
 Der [Demo-Reset](glossar.md#demo-reset) (`POST /migration/reset`) entfernt

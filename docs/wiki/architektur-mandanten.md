@@ -210,7 +210,7 @@ dem Inhaber-Mandanten vorbehalten.
 |---|---|---|
 | Laufzeit | 48 Stunden (`PASS_HOURS`) ab dem Einlösen, mit der ersten Anmeldung erneut 48 Stunden ab dieser (einmal); kurze Test-Pässe behalten ihre Minuten | Zeitplan + täglicher Abgleich |
 | Erinnerung | nach 24 Stunden (`REMINDER_HOURS`) ohne Anmeldung, höchstens einmal | Erinnerungs-Zeitplan + täglicher Abgleich |
-| API-Aufrufe | 5.000 (`QUOTA_API_CALLS`) | `service-kit`-Router vor jeder Route eines Pass-Mandanten: atomares `ADD` auf `TENANT#<kennung>/QUOTA#api` der Base mit Bedingung, an der Grenze 429; Mandant nicht `active` → 403 (`quota-exceeded` → 429), Status 30 s gecacht (`TenantDirectory`). Die Tenancy-Routen selbst umgehen den Wächter, damit Statusseite und Cockpit erreichbar bleiben |
+| API-Aufrufe | 5.000 (`QUOTA_API_CALLS`) | `service-kit`-Router vor jeder Route eines Pass-Mandanten: atomares `ADD` auf `TENANT#<kennung>/QUOTA#api` der Base mit Bedingung, an der Grenze 429; dasselbe Update zählt seit Phase 6 auch das Tagesattribut `d<JJJJMMTT>` (deutscher Kalendertag) für „API-Aufrufe heute“ im Cockpit; Mandant nicht `active` → 403 (`quota-exceeded` → 429), Status 30 s gecacht (`TenantDirectory`). Die Tenancy-Routen selbst umgehen den Wächter, damit Statusseite und Cockpit erreichbar bleiben |
 | Domänen-Ereignisse | 1.000 | **eine** Regel „alle `kundenportal.*`-Ereignisse mit `detail.tenantId` Präfix `p`" an den Tenancy-Worker; der zählt `QUOTA#events`, das erste Ereignis über der Grenze setzt `quota-exceeded` → API 429 |
 | Uploads | 20 (`QUOTA_UPLOADS`), je ≤ 5 MB, nur JPEG/PNG/PDF | Documents vor jeder presignierten Upload-URL eines Pass-Mandanten: atomares `ADD` auf `TENANT#<kennung>/QUOTA#uploads` der Base mit Bedingung `used < 20`, an der Grenze 429 „Kontingent erschöpft" und **einmal** `QuotaExceeded` (Art `uploads`); die übrige Nutzung bleibt möglich. Größe (signierte Länge, Nachprüfung im Worker) und Typ prüft Documents wie bisher; der Inhaber zählt nie |
 | Gleichzeitige Instanzen | 1 je Pass | ein Mandant je Pass |
@@ -220,6 +220,15 @@ Bei Überschreitung erscheint `QuotaExceeded` (Quelle `kundenportal.tenancy`,
 auch wenn Documents es für die Uploads veröffentlicht); die Shell zeigt
 „Kontingent: … übrig · gültig bis …" aus `GET /api/tenancy/pass` auf der
 Seite `/pass` (Komponente `Meter` aus `packages/ui`).
+
+**Übersicht der Pass-Verwaltung (Phase 6).** `GET /tenancy/overview` (nur
+Inhaber) liefert die Kennzahlen der Seite `/cockpit/paesse`: aktive
+Pass-Mandanten und Obergrenze, offene Einladungen samt Liste, Pässe ohne
+erste Anmeldung, die Erinnerungsfrist und die API-Aufrufe der Pass-Mandanten
+je Tag (heute und die letzten sieben Tage). Einladungen liegen unter dem Hash
+ihres Tokens und sind so nicht auflistbar; deshalb schreibt das Anlegen
+zusätzlich einen Index-Eintrag `PLATFORM` / `INVITE#<id>` (E-Mail, Zeitpunkte,
+TTL wie die Einladung), den das Einlösen als eingelöst markiert.
 
 ## 6. Kosten und Obergrenze
 

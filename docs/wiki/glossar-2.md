@@ -271,3 +271,13 @@ Generator liest beide Dateien und erzeugt daraus **eine** Glossar-Seite.
 | Ansible | Playbook | Werkzeug, das Server per SSH nach einer Beschreibung einrichtet; die Pipelines der Altsysteme spielen damit Container und Webserver-Konfiguration aus | Puppet, Chef, Salt |
 | SQLite | node:sqlite | eingebettete Datenbank in einer Datei; jedes Altsystem hält je Mandant eine Datei | H2 oder Apache Derby (Java) |
 | Playwright | Ende-zu-Ende-Test, E2E | Werkzeug, das echte Browser fernsteuert; prüft die Journeys am laufenden Portal | Selenium, Cypress |
+
+## Oberflächen (Phase 6)
+
+| Begriff | Auch | Erklärung | Außerhalb von AWS |
+|---|---|---|---|
+| Standardlastprofil | SLP, Lastprofil H0, Heizgasprofil | typischer Verlauf des Verbrauchs über das Jahr (Strom im Winter etwas mehr, Gas fast nur in der Heizzeit); Versorger verteilen damit Jahres- oder Zwischenverbräuche auf Monate. Das Portal rechnet so aus wenigen Zählerständen Monatswerte | BDEW-Standardlastprofile, Gradtagzahlverfahren |
+| Sparkline | Mini-Verlaufslinie | sehr kleines Liniendiagramm ohne Achsen neben einer Kennzahl, das nur die Richtung zeigt (z. B. Klärfälle der letzten sieben Tage) | Excel-Sparklines, Grafana-Stat-Panel |
+| Kennzahl-Kachel | KPI-Kachel, Stat-Kachel | Karte mit einer großen Zahl, ihrer Bezeichnung und der Veränderung (z. B. „+3 seit gestern“) | Grafana-Stat-Panel, Dashboard-Widget |
+| Demo-Wert | Fake-Marker, simulierter Wert | Wert, den das Portal nur vorspielt, weil die echte Quelle fehlt (z. B. das Datenvolumen ohne Mobilfunknetz); trägt sichtbar den Marker „Demo-Wert“ und `data-fake="true"` | Platzhalterdaten, Mock |
+| Tastenkürzel | Shortcut, Tastenfolge | Taste oder Folge von Tasten für häufige Wege; im Cockpit `/` für die Suche, `g c` zur Übersicht, `g p` zu den Demo-Pässen | Gmail- und GitHub-Tastenkürzel |

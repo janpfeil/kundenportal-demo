@@ -166,7 +166,10 @@ den nötigen Scope. Die CDK-App liest ihn und erzeugt daraus
 | `listContracts`, `getContract`, `updateContract` | `GET /contracts`, `GET/PATCH /contracts/{id}` | `contracts.read` / `contracts.write` | contract |
 | `listMeterReadings`, `submitMeterReading` | `GET/POST /contracts/{id}/readings` | `readings.read` / `readings.write` | consumption |
 | `getDataUsage` | `GET /contracts/{id}/usage` | `readings.read` | consumption |
+| `getConsumptionHistory` (Phase 6) | `GET /contracts/{id}/consumption` | `readings.read` | consumption |
 | `listDocuments`, `createUploadUrl` | `GET /documents`, `POST /documents/upload-url` | `documents.read` / `documents.write` | documents |
+| `getMigrationStatus`, `searchMigration` (Phase 6) | `GET /migration/status`, `GET /migration/search?q=` | `migration.read` (Gruppe `owner` oder `pass`) | migration |
+| `getPassOverview` (Phase 6) | `GET /tenancy/overview` | `tenancy.admin` (zusätzlich Gruppe `owner`) | tenancy |
 | `createInvitation`, `listPasses`, `revokePass` | `POST /tenancy/invitations`, `GET /tenancy/passes`, `POST /tenancy/passes/{id}/revoke` | `tenancy.admin` (zusätzlich Gruppe `owner`) | tenancy |
 | `getOwnPass` | `GET /tenancy/pass` | `tenancy.read` | tenancy |
 | `getRedeemChallenge`, `redeemInvitation` | `GET /tenancy/challenge`, `POST /tenancy/redeem` | keiner (`security: []`, ohne Authorizer) | tenancy |
