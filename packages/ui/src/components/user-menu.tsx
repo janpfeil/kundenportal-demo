@@ -1,6 +1,7 @@
 "use client";
 
-import { type KeyboardEvent, useEffect, useId, useRef, useState } from "react";
+import { AppearanceItems, type AppearanceSettings } from "./appearance-menu.js";
+import { useMenu } from "./use-menu.js";
 
 export interface MenuLink {
   href: string;
@@ -17,6 +18,8 @@ export interface UserMenuProps {
   links?: readonly MenuLink[];
   /** Sign-out: a plain GET link (the shell accepts no form posts). */
   logout: MenuLink;
+  /** Adds the "Darstellung" section (theme preset and colour mode) above the sign-out. */
+  appearance?: AppearanceSettings | undefined;
 }
 
 /** Up to two initials from the name ("Anna Becker" → "AB"), else the address's first letter. */
@@ -32,66 +35,16 @@ export function initialsOf(name: string | undefined, email: string | undefined):
 
 /**
  * Signed-in user in the top bar: avatar with initials and name; the menu shows name and
- * address and holds account links and the sign-out. Menu-button pattern (WAI-ARIA):
- * Enter/Space/ArrowDown open it on the first entry, Escape closes it and returns focus,
- * a click outside closes it.
+ * address and holds account links, the appearance switch and the sign-out. Menu-button
+ * pattern (WAI-ARIA, see useMenu).
  */
-export function UserMenu({ name, email, label, links = [], logout }: UserMenuProps) {
-  const [open, setOpen] = useState(false);
-  const root = useRef<HTMLDivElement>(null);
-  const button = useRef<HTMLButtonElement>(null);
-  const menuId = useId();
+export function UserMenu({ name, email, label, links = [], logout, appearance }: UserMenuProps) {
+  const { open, root, menuId, onMenuKey, buttonProps } = useMenu();
   const display = name?.trim() || email || label;
-
-  useEffect(() => {
-    if (!open) return;
-    const outside = (event: MouseEvent) => {
-      if (!root.current?.contains(event.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", outside);
-    root.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus();
-    return () => document.removeEventListener("mousedown", outside);
-  }, [open]);
-
-  const items = () => [...(root.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? [])];
-
-  const onMenuKey = (event: KeyboardEvent<HTMLUListElement>) => {
-    const all = items();
-    const index = all.indexOf(document.activeElement as HTMLElement);
-    if (event.key === "Escape") {
-      event.preventDefault();
-      setOpen(false);
-      button.current?.focus();
-    } else if (event.key === "ArrowDown" || event.key === "ArrowUp") {
-      event.preventDefault();
-      const step = event.key === "ArrowDown" ? 1 : -1;
-      all[(index + step + all.length) % all.length]?.focus();
-    } else if (event.key === "Home" || event.key === "End") {
-      event.preventDefault();
-      (event.key === "Home" ? all[0] : all[all.length - 1])?.focus();
-    } else if (event.key === "Tab") {
-      setOpen(false);
-    }
-  };
 
   return (
     <div className="kp-user-menu" ref={root} data-testid="user-menu">
-      <button
-        ref={button}
-        type="button"
-        className="kp-user-button"
-        aria-haspopup="menu"
-        aria-expanded={open}
-        aria-controls={menuId}
-        aria-label={`${label}: ${display}`}
-        onClick={() => setOpen((value) => !value)}
-        onKeyDown={(event) => {
-          if (event.key === "ArrowDown" && !open) {
-            event.preventDefault();
-            setOpen(true);
-          }
-        }}
-      >
+      <button {...buttonProps} className="kp-user-button" aria-label={`${label}: ${display}`}>
         <span className="kp-avatar" aria-hidden="true">
           {initialsOf(name, email)}
         </span>
@@ -113,6 +66,12 @@ export function UserMenu({ name, email, label, links = [], logout }: UserMenuPro
               </a>
             </li>
           ))}
+          {appearance && (
+            <>
+              <li role="separator" className="kp-user-separator" />
+              <AppearanceItems {...appearance} />
+            </>
+          )}
           <li role="separator" className="kp-user-separator" />
           <li role="presentation">
             <a

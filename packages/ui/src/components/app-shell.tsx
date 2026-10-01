@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { AppearanceMenu, type AppearanceSettings } from "./appearance-menu.js";
 import { Footer } from "./footer.js";
 import { type LinkComponent, joinClasses } from "./link.js";
 import { UserMenu, type UserMenuProps } from "./user-menu.js";
@@ -25,6 +26,11 @@ export interface TopBarProps {
   authLink?: { href: string; label: string; variant?: "primary" | "secondary" };
   /** Signed-in user: avatar, name and a menu with the sign-out; replaces `authLink`. */
   user?: UserMenuProps | undefined;
+  /**
+   * Theme switch ("Darstellung"): inside the user menu when signed in, else a small menu
+   * button next to the language link.
+   */
+  appearance?: AppearanceSettings | undefined;
   /** Slot for the notification bell widget. */
   widget?: ReactNode;
   /** Deployed version, e.g. "v0.4.1 · 1a2b3c4"; shown next to the brand. */
@@ -41,6 +47,7 @@ export function TopBar({
   widget,
   version,
   user,
+  appearance,
   linkComponent: Link = "a",
 }: TopBarProps) {
   return (
@@ -53,6 +60,7 @@ export function TopBar({
           {version}
         </span>
       )}
+      {/* Placement (top bar, sidebar, bottom bar) and marker come from the theme (layout.css). */}
       <nav aria-label={navLabel} className="kp-nav">
         <ul>
           {nav.map((item) => (
@@ -68,6 +76,7 @@ export function TopBar({
         {widget}
         {languageLink && (
           <a
+            className="kp-language"
             href={languageLink.href}
             hrefLang={languageLink.hrefLang}
             lang={languageLink.hrefLang}
@@ -76,7 +85,8 @@ export function TopBar({
             {languageLink.label}
           </a>
         )}
-        {user && <UserMenu {...user} />}
+        {!user && appearance && <AppearanceMenu {...appearance} />}
+        {user && <UserMenu appearance={appearance} {...user} />}
         {!user && authLink && (
           <a
             href={authLink.href}
@@ -99,10 +109,14 @@ export interface AppShellProps extends TopBarProps {
   children: ReactNode;
 }
 
-/** Page frame of every zone: top bar, main content area and footer. */
+/**
+ * Page frame of every zone: top bar, main content area and footer. How it looks (colours,
+ * fonts, density, where the navigation sits) follows the theme attributes on <html>.
+ */
 export function AppShell({ footer, children, ...topBar }: AppShellProps) {
   return (
-    <div className="kp-shell">
+    // A lone entry ("Start" for signed-out visitors) never gets a sidebar or bottom bar.
+    <div className="kp-shell" data-nav-entries={topBar.nav.length > 1 ? "many" : "few"}>
       <TopBar {...topBar} />
       <main className="kp-main">{children}</main>
       {footer !== undefined && <Footer>{footer}</Footer>}

@@ -1,6 +1,33 @@
-import { withThemeByDataAttribute } from "@storybook/addon-themes";
 import type { Decorator, Preview } from "@storybook/react-vite";
+import { commonTexts } from "../src/i18n/index.js";
+import { isColorMode, themeAttributes } from "../src/theme-runtime.js";
+import { PRESETS, THEME_PRESETS, type ThemePreset, themesCss } from "../src/themes.js";
 import "../src/styles.css";
+import "../src/layout.css";
+
+// The build generates the theme tokens into dist/styles.css; Storybook takes them straight
+// from themes.ts, so dev server and static build show the same values.
+const themeStyle = document.createElement("style");
+themeStyle.dataset["source"] = "themes.ts";
+themeStyle.textContent = themesCss();
+document.head.prepend(themeStyle);
+
+const ALL_PRESETS: ThemePreset[] = [...THEME_PRESETS.kunde, ...THEME_PRESETS.cockpit];
+const isPreset = (value: unknown): value is ThemePreset =>
+  (ALL_PRESETS as unknown[]).includes(value);
+
+/**
+ * Theme from the toolbar: audience (from the preset), preset and colour mode as attributes on
+ * <html>, exactly as the portal sets them.
+ */
+const withTheme: Decorator = (Story, context) => {
+  const preset = isPreset(context.globals["preset"]) ? context.globals["preset"] : "klar";
+  const mode = isColorMode(context.globals["mode"]) ? context.globals["mode"] : "system";
+  const attributes = themeAttributes(PRESETS[preset].audience, { preset, mode });
+  for (const [name, value] of Object.entries(attributes))
+    document.documentElement.setAttribute(name, value);
+  return <Story />;
+};
 
 /** Sets the document language so screen readers and the a11y checks use the story's locale. */
 const withLocale: Decorator = (Story, context) => {
@@ -22,18 +49,34 @@ const preview: Preview = {
         dynamicTitle: true,
       },
     },
+    preset: {
+      description: "Theme preset (audience follows from it)",
+      toolbar: {
+        title: "Theme",
+        icon: "paintbrush",
+        items: ALL_PRESETS.map((preset) => ({
+          value: preset,
+          title: `${PRESETS[preset].audience === "kunde" ? "Endkunde" : "Cockpit"} · ${commonTexts.de.appearance.presets[preset]}`,
+        })),
+        dynamicTitle: true,
+      },
+    },
+    mode: {
+      description: "Colour mode; system follows prefers-color-scheme",
+      toolbar: {
+        title: "Mode",
+        icon: "contrast",
+        items: [
+          { value: "system", title: "System" },
+          { value: "light", title: "Hell" },
+          { value: "dark", title: "Dunkel" },
+        ],
+        dynamicTitle: true,
+      },
+    },
   },
-  initialGlobals: { locale: "de" },
-  decorators: [
-    withLocale,
-    // "system" follows the OS (prefers-color-scheme); light/dark force a theme via data-theme.
-    withThemeByDataAttribute({
-      themes: { system: "system", light: "light", dark: "dark" },
-      defaultTheme: "system",
-      attributeName: "data-theme",
-      parentSelector: "html",
-    }),
-  ],
+  initialGlobals: { locale: "de", preset: "klar", mode: "system" },
+  decorators: [withLocale, withTheme],
   parameters: {
     layout: "padded",
     a11y: { test: "error" },

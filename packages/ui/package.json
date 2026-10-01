@@ -14,6 +14,10 @@
       "types": "./dist/i18n/index.d.ts",
       "default": "./dist/i18n/index.js"
     },
+    "./theme": {
+      "types": "./dist/theme.d.ts",
+      "default": "./dist/theme.js"
+    },
     "./styles.css": "./dist/styles.css"
   },
   "files": [
@@ -23,7 +27,7 @@
     "*.css"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.build.json && node scripts/copy-css.mjs && pnpm build-storybook",
+    "build": "tsc -p tsconfig.build.json && node scripts/build-css.mjs && pnpm build-storybook",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src .storybook",
     "test": "vitest run",

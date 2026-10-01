@@ -21,6 +21,22 @@ export const de = {
     /** Visible text of the switch link, written in the target language. */
     switchTo: "English",
   },
+  appearance: {
+    /** Section of the user menu and name of the menu button for signed-out visitors. */
+    label: "Darstellung",
+    preset: "Stil",
+    colorMode: "Farbmodus",
+    modes: { light: "Hell", dark: "Dunkel", system: "System" },
+    presets: {
+      klar: "Klar",
+      vertrauen: "Vertrauen",
+      warm: "Warm",
+      klassisch: "Klassisch",
+      dicht: "Dicht",
+      uebersicht: "Übersicht",
+      kontrast: "Kontrast",
+    },
+  },
   footer: {
     text: "Demo-Projekt · Quellcode auf GitHub",
     href: "https://github.com/janpfeil/kundenportal-demo",

@@ -1,8 +1,10 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { userEvent, within } from "storybook/test";
 import { AppShell } from "../components/app-shell.js";
-import { Page } from "../components/page.js";
+import { Card, Page } from "../components/page.js";
 import { otherLocale } from "../i18n/index.js";
 import { portalNavigation } from "../navigation.js";
+import { PRESETS, type ThemePreset } from "../themes.js";
 import { storyTexts } from "./texts.js";
 
 interface Args {
@@ -12,6 +14,12 @@ interface Args {
   current: string;
 }
 
+/**
+ * The frame of every zone. The toolbar's "Theme" and "Mode" switch preset and colour mode;
+ * where the navigation sits (top bar, sidebar from 960 px, bottom bar on phones) follows the
+ * preset. The user menu (and, signed out, the "Darstellung" button) offers the presets of
+ * the audience the toolbar's preset belongs to.
+ */
 const meta: Meta<Args> = {
   title: "Layout/AppShell",
   args: { signedIn: false, withWidget: false, current: "/" },
@@ -24,6 +32,8 @@ const meta: Meta<Args> = {
   parameters: { layout: "fullscreen" },
   render: ({ signedIn, withWidget, current }, { globals }) => {
     const { locale, common: t, demo } = storyTexts(globals);
+    const preset = (globals["preset"] ?? "klar") as ThemePreset;
+    const audience = PRESETS[preset]?.audience ?? "kunde";
     // Real paths, so the current section is marked as in the portal; the links lead nowhere.
     const nav = portalNavigation(t, {
       signedIn,
@@ -43,6 +53,7 @@ const meta: Meta<Args> = {
           title: t.language.label,
         }}
         version="v0.4.1 · 1a2b3c4"
+        appearance={{ audience, texts: t.appearance }}
         {...(signedIn
           ? {
               user: {
@@ -57,7 +68,11 @@ const meta: Meta<Args> = {
         widget={withWidget ? <a href="#glocke">{demo.bell}</a> : undefined}
         footer={<a href={t.footer.href}>{t.footer.text}</a>}
       >
-        <Page title={signedIn ? demo.accountTitle : demo.heroTitle} lead={demo.lead} />
+        <Page title={signedIn ? demo.accountTitle : demo.heroTitle} lead={demo.lead}>
+          <Card title={demo.address}>
+            <p>{demo.addressText}</p>
+          </Card>
+        </Page>
       </AppShell>
     );
   },
@@ -77,7 +92,7 @@ export const WithNotificationWidget: Story = {
 };
 export const DarkMode: Story = {
   args: { signedIn: true, current: "/verbrauch" },
-  globals: { theme: "dark" },
+  globals: { mode: "dark" },
 };
 export const English: Story = {
   args: { signedIn: true, current: "/konto" },
@@ -86,4 +101,45 @@ export const English: Story = {
 export const Phone360: Story = {
   args: { signedIn: true, withWidget: true, current: "/vertraege" },
   globals: { viewport: { value: "phone360" } },
+};
+
+/** The user menu with its "Darstellung" section: presets of the audience and colour mode. */
+export const UserMenuOpen: Story = {
+  args: { signedIn: true, current: "/konto" },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole("button", { name: /Benutzermenü|User menu/ }));
+  },
+};
+
+/** Signed out: the appearance switch sits next to the language link. */
+export const AppearanceMenuSignedOut: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole("button", { name: /Darstellung|Appearance/ }));
+  },
+};
+
+/** Cockpit default "Dicht": sidebar navigation on wide screens. */
+export const CockpitDense: Story = {
+  args: { signedIn: true, current: "/cockpit/paesse" },
+  globals: { preset: "dicht" },
+};
+
+/** Cockpit "Kontrast" in dark mode: solid marker in the sidebar. */
+export const CockpitContrastDark: Story = {
+  args: { signedIn: true, current: "/cockpit" },
+  globals: { preset: "kontrast", mode: "dark" },
+};
+
+/** Customer "Klassisch": serif headings and a sidebar. */
+export const CustomerClassic: Story = {
+  args: { signedIn: true, current: "/vertraege" },
+  globals: { preset: "klassisch" },
+};
+
+/** Customer "Warm" on a phone: the navigation moves to a bar at the bottom. */
+export const CustomerWarmPhone: Story = {
+  args: { signedIn: true, current: "/verbrauch" },
+  globals: { preset: "warm", viewport: { value: "phone360" } },
 };

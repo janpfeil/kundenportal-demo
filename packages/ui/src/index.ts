@@ -1,5 +1,7 @@
 export { AppShell, TopBar } from "./components/app-shell.js";
 export { UserMenu, initialsOf } from "./components/user-menu.js";
+export { AppearanceItems, AppearanceMenu } from "./components/appearance-menu.js";
+export type { AppearanceSettings } from "./components/appearance-menu.js";
 export type { MenuLink, UserMenuProps } from "./components/user-menu.js";
 export type { AppShellProps, NavItem, TopBarProps } from "./components/app-shell.js";
 export { Button, ButtonLink } from "./components/button.js";
@@ -38,3 +40,15 @@ export {
 } from "./format.js";
 export { isCurrentSection, portalNavigation } from "./navigation.js";
 export type { PortalNavigationOptions } from "./navigation.js";
+export {
+  THEME_COOKIES,
+  THEME_INIT_PATH,
+  applyTheme,
+  currentTheme,
+  parseCookies,
+  readThemeChoice,
+  themeAttributes,
+} from "./theme-runtime.js";
+export type { ThemeAttributes, ThemeChoice } from "./theme-runtime.js";
+export { DEFAULT_PRESET, THEME_PRESETS } from "./themes.js";
+export type { Audience, ColorMode, ThemePreset } from "./themes.js";

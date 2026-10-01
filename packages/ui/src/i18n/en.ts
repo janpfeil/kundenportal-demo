@@ -22,6 +22,21 @@ export const en: CommonTexts = {
     label: "Language",
     switchTo: "Deutsch",
   },
+  appearance: {
+    label: "Appearance",
+    preset: "Style",
+    colorMode: "Colour mode",
+    modes: { light: "Light", dark: "Dark", system: "System" },
+    presets: {
+      klar: "Clear",
+      vertrauen: "Trust",
+      warm: "Warm",
+      klassisch: "Classic",
+      dicht: "Dense",
+      uebersicht: "Overview",
+      kontrast: "Contrast",
+    },
+  },
   footer: {
     text: "Demo project · source code on GitHub",
     href: "https://github.com/janpfeil/kundenportal-demo",
