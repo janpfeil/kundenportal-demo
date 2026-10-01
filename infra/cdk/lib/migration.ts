@@ -11,6 +11,7 @@ import type { ITopic } from "aws-cdk-lib/aws-sns";
 import { Queue, QueueEncryption } from "aws-cdk-lib/aws-sqs";
 import {
   AccountsLinked,
+  ContractChanged,
   LegacyAccountMigrated,
   MigratedAccountsRemoved,
 } from "@kundenportal/events";
@@ -80,6 +81,14 @@ export class Migration extends Construct {
         targets: [this.invoke(target, dlq)],
       });
     }
+
+    // Phase 7: the operator's customer list shows each customer's contracts in short.
+    new Rule(this, "ContractChangedToCustomer", {
+      eventBus: bus,
+      description: "ContractChanged → customer (contract summary in the customer directory)",
+      eventPattern: { source: [ContractChanged.source], detailType: [ContractChanged.detailType] },
+      targets: [this.invoke(customerWorker, customerDlq)],
+    });
 
     new Rule(this, "MigratedAccountsRemovedToCustomer", {
       eventBus: bus,

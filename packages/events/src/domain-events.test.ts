@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DataVolumeThresholdReached, MeterReadingSubmitted } from "./consumption.js";
-import { ContractChanged, InstallmentAdjusted } from "./contract.js";
+import { ContractChanged, InstallmentAdjusted, ProductChanged } from "./contract.js";
 import { deterministicUuid, EventBridgeEnvelope } from "./delivery.js";
 import { DocumentUploaded } from "./documents.js";
 import { EventSource } from "./envelope.js";
@@ -31,6 +31,41 @@ const snapshot = {
 
 const cases = [
   ["ContractChanged", ContractChanged, { changeType: "created", changes: [], contract: snapshot }],
+  [
+    "ContractChanged",
+    ContractChanged,
+    {
+      changeType: "updated",
+      changes: ["termination"],
+      initiatedBy: "operator",
+      reason: "Umzug ins Ausland",
+      contract: {
+        ...snapshot,
+        productId: "strom-klassik",
+        productVersion: 2,
+        termination: {
+          kind: "termination",
+          effectiveDate: "2027-04-02",
+          requestedAt: "2026-10-02T09:00:00.000Z",
+          by: "operator",
+        },
+      },
+    },
+  ],
+  [
+    "ProductChanged",
+    ProductChanged,
+    {
+      change: "priceVersion",
+      product: {
+        productId: "strom-klassik",
+        division: "electricity",
+        name: "Strom Klassik",
+        status: "active",
+        version: 2,
+      },
+    },
+  ],
   [
     "InstallmentAdjusted",
     InstallmentAdjusted,

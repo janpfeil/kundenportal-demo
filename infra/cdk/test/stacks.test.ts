@@ -244,8 +244,8 @@ describe("domain services", () => {
     // AccountsLinked), consumption 2, documents 2 (CustomerRegistered, S3 upload),
     // customer 2 (LegacyAccountMigrated, AccountsLinked), migration 1 (all events),
     // tenancy 1 (all events of pass tenants); MigratedAccountsRemoved (demo reset) to
-    // customer, contract, consumption and documents
-    expect(lambdaTargets).toHaveLength(16);
+    // customer, contract, consumption and documents; phase 7: ContractChanged to customer
+    expect(lambdaTargets).toHaveLength(17);
     for (const target of lambdaTargets) {
       expect(target.RetryPolicy).toEqual({
         MaximumRetryAttempts: 8,
@@ -268,8 +268,8 @@ describe("domain services", () => {
     expect(count(`${one("kundenportal.customer")} CustomerRegistered`)).toBe(4);
     // notification, contract
     expect(count(`${one("kundenportal.consumption")} MeterReadingSubmitted`)).toBe(2);
-    // notification, consumption (projection)
-    expect(count(`${one("kundenportal.contract")} ContractChanged`)).toBe(2);
+    // notification, consumption (projection), customer (directory summary, phase 7)
+    expect(count(`${one("kundenportal.contract")} ContractChanged`)).toBe(3);
     // customer, contract — from both publishers (identity: lazy, migration: bulk)
     const bothSources = JSON.stringify(["kundenportal.identity", "kundenportal.migration"]);
     expect(count(`${bothSources} LegacyAccountMigrated`)).toBe(2);

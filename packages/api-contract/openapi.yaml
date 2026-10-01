@@ -111,6 +111,34 @@ paths:
                     items: { $ref: "#/components/schemas/Contract" }
         "401": { $ref: "#/components/responses/Problem" }
         "403": { $ref: "#/components/responses/Problem" }
+    post:
+      operationId: concludeContract
+      summary: Conclude a contract for an active product of the catalogue
+      description: >-
+        The customer orders an option of a product with status `active`. Metered
+        divisions need the meter number and the meter reading at the start; the start
+        date lies between today and 90 days ahead (German dates). The contract can be
+        withdrawn within 14 days. Publishes `ContractChanged` (`created`, initiated by
+        the customer); the mailbox confirms it.
+      security:
+        - oidc: [kundenportal/contracts.write]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ContractOrder" }
+      responses:
+        "201":
+          description: The new contract
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Contract" }
+        "400": { $ref: "#/components/responses/Problem" }
+        "401": { $ref: "#/components/responses/Problem" }
+        "403": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+        "409": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/Problem" }
   /contracts/{contractId}:
     parameters:
       - $ref: "#/components/parameters/ContractId"
@@ -731,6 +759,455 @@ paths:
         "410": { $ref: "#/components/responses/Problem" }
         "429": { $ref: "#/components/responses/Problem" }
         "503": { $ref: "#/components/responses/Problem" }
+  /contracts/{contractId}/termination:
+    parameters:
+      - $ref: "#/components/parameters/ContractId"
+    post:
+      operationId: requestTermination
+      summary: Give notice to terminate the contract
+      description: >-
+        Ends the contract at `effectiveDate`, at the earliest at
+        `Contract.earliestTerminationDate`: the end of the minimum term, afterwards the
+        end of the month once the notice period has passed. Without a date, the earliest
+        one. The contract stays active until then; the notice can be taken back.
+        Publishes `ContractChanged` (`termination`).
+      security:
+        - oidc: [kundenportal/contracts.write]
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TerminationRequest" }
+      responses:
+        "200":
+          description: The contract with its pending termination
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Contract" }
+        "400": { $ref: "#/components/responses/Problem" }
+        "401": { $ref: "#/components/responses/Problem" }
+        "403": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+        "409": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/Problem" }
+    delete:
+      operationId: cancelTermination
+      summary: Take back a pending termination
+      description: Possible until the termination is effective. Publishes `ContractChanged` (`terminationCancelled`).
+      security:
+        - oidc: [kundenportal/contracts.write]
+      responses:
+        "200":
+          description: The contract running on
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Contract" }
+        "400": { $ref: "#/components/responses/Problem" }
+        "401": { $ref: "#/components/responses/Problem" }
+        "403": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+        "409": { $ref: "#/components/responses/Problem" }
+  /contracts/{contractId}/withdrawal:
+    parameters:
+      - $ref: "#/components/parameters/ContractId"
+    post:
+      operationId: withdrawContract
+      summary: Withdraw from a contract within 14 days of concluding it
+      description: >-
+        Only contracts the customer concluded in the portal, until
+        `Contract.withdrawableUntil`. Ends the contract at once. Publishes
+        `ContractChanged` (`withdrawal`).
+      security:
+        - oidc: [kundenportal/contracts.write]
+      responses:
+        "200":
+          description: The withdrawn contract
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Contract" }
+        "400": { $ref: "#/components/responses/Problem" }
+        "401": { $ref: "#/components/responses/Problem" }
+        "403": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+        "409": { $ref: "#/components/responses/Problem" }
+  /products:
+    get:
+      operationId: listProducts
+      summary: Products a customer may order (status `active`), per division
+      security:
+        - oidc: [kundenportal/contracts.read]
+      parameters:
+        - name: division
+          in: query
+          schema: { $ref: "#/components/schemas/Division" }
+      responses:
+        "200":
+          description: Orderable products
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/Product" }
+        "400": { $ref: "#/components/responses/Problem" }
+        "401": { $ref: "#/components/responses/Problem" }
+        "403": { $ref: "#/components/responses/Problem" }
+  /admin/overview:
+    get:
+      operationId: getOperatorOverview
+      summary: Key figures of the operator's cockpit (contracts, orders, terminations)
+      description: Operator only (Cognito group `owner`, or `pass` in the own pass tenant).
+      security:
+        - oidc: [kundenportal/admin.read]
+      responses:
+        "200":
+          description: Key figures of the caller's tenant
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OperatorOverview" }
+        "401": { $ref: "#/components/responses/Problem" }
+        "403": { $ref: "#/components/responses/Problem" }
+  /admin/customers:
+    get:
+      operationId: listCustomers
+      summary: Customers of the tenant with search, filters, sorting and pages
+      description: >-
+        Operator only. Reads the tenant's customer directory (one partition, no scan);
+        `q` matches name, e-mail, customer id, city and legacy account numbers.
+      security:
+        - oidc: [kundenportal/admin.read]
+      parameters:
+        - { name: q, in: query, schema: { type: string, maxLength: 60 } }
+        - name: origin
+          in: query
+          schema: { type: string, enum: [registration, legacy-utility, legacy-telco] }
+        - { name: division, in: query, schema: { $ref: "#/components/schemas/Division" } }
+        - name: contracts
+          in: query
+          description: Customers with at least one contract in this state
+          schema: { type: string, enum: [active, pending-termination, terminated, none] }
+        - name: sort
+          in: query
+          schema: { type: string, enum: [name, createdAt], default: createdAt }
+        - name: order
+          in: query
+          schema: { type: string, enum: [asc, desc], default: desc }
+        - {
+            name: limit,
+            in: query,
+            schema: { type: integer, minimum: 1, maximum: 100, default: 25 },
+          }
+        - { name: cursor, in: query, schema: { type: string } }
+      responses:
+        "200":
+          description: One page of customers
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CustomerPage" }
+        "400": { $ref: "#/components/responses/Problem" }
+        "401": { $ref: "#/components/responses/Problem" }
+        "403": { $ref: "#/components/responses/Problem" }
+  /admin/customers/{customerId}:
+    parameters:
+      - $ref: "#/components/parameters/CustomerId"
+    get:
+      operationId: getCustomerAsOperator
+      summary: One customer of the tenant with profile and contract summary
+      security:
+        - oidc: [kundenportal/admin.read]
+      responses:
+        "200":
+          description: Customer
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CustomerSummary" }
+        "400": { $ref: "#/components/responses/Problem" }
+        "401": { $ref: "#/components/responses/Problem" }
+        "403": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+  /admin/customers/{customerId}/notifications:
+    parameters:
+      - $ref: "#/components/parameters/CustomerId"
+    get:
+      operationId: listCustomerNotifications
+      summary: The customer's mailbox as the operator sees it (read only)
+      security:
+        - oidc: [kundenportal/admin.read]
+      responses:
+        "200":
+          description: Notifications, newest first
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/Notification" }
+        "400": { $ref: "#/components/responses/Problem" }
+        "401": { $ref: "#/components/responses/Problem" }
+        "403": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+  /admin/customers/{customerId}/documents:
+    parameters:
+      - $ref: "#/components/parameters/CustomerId"
+    get:
+      operationId: listCustomerDocuments
+      summary: The customer's documents as the operator sees them (metadata only)
+      security:
+        - oidc: [kundenportal/admin.read]
+      responses:
+        "200":
+          description: Documents, newest first
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/Document" }
+        "400": { $ref: "#/components/responses/Problem" }
+        "401": { $ref: "#/components/responses/Problem" }
+        "403": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+  /admin/contracts:
+    get:
+      operationId: listContractsAsOperator
+      summary: Contracts of the tenant with search, filters and pages
+      description: >-
+        Operator only. Reads the tenant's contract directory (one partition, no scan);
+        `q` matches contract id, meter number, tariff and product.
+      security:
+        - oidc: [kundenportal/admin.read]
+      parameters:
+        - { name: q, in: query, schema: { type: string, maxLength: 60 } }
+        - { name: division, in: query, schema: { $ref: "#/components/schemas/Division" } }
+        - name: status
+          in: query
+          schema: { type: string, enum: [active, pending-termination, terminated, blocked] }
+        - { name: productId, in: query, schema: { type: string } }
+        - { name: customerId, in: query, schema: { type: string } }
+        - name: endsBefore
+          in: query
+          description: Minimum term or pending termination ends on or before this date
+          schema: { type: string, format: date }
+        - name: sort
+          in: query
+          schema: { type: string, enum: [startDate, endDate, updatedAt], default: updatedAt }
+        - name: order
+          in: query
+          schema: { type: string, enum: [asc, desc], default: desc }
+        - {
+            name: limit,
+            in: query,
+            schema: { type: integer, minimum: 1, maximum: 100, default: 25 },
+          }
+        - { name: cursor, in: query, schema: { type: string } }
+      responses:
+        "200":
+          description: One page of contracts
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ContractPage" }
+        "400": { $ref: "#/components/responses/Problem" }
+        "401": { $ref: "#/components/responses/Problem" }
+        "403": { $ref: "#/components/responses/Problem" }
+  /admin/contracts/{contractId}:
+    parameters:
+      - $ref: "#/components/parameters/ContractId"
+    get:
+      operationId: getContractAsOperator
+      summary: One contract of the tenant with its history
+      security:
+        - oidc: [kundenportal/admin.read]
+      responses:
+        "200":
+          description: Contract and history, newest entry first
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [contract, history]
+                properties:
+                  contract: { $ref: "#/components/schemas/OperatorContract" }
+                  history:
+                    type: array
+                    items: { $ref: "#/components/schemas/ContractHistoryEntry" }
+        "400": { $ref: "#/components/responses/Problem" }
+        "401": { $ref: "#/components/responses/Problem" }
+        "403": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+  /admin/contracts/{contractId}/actions:
+    parameters:
+      - $ref: "#/components/parameters/ContractId"
+    post:
+      operationId: actOnContract
+      summary: The operator controls a contract (product, price, installment, termination, block)
+      description: >-
+        Every action needs a reason, is kept in the contract's history and publishes
+        `ContractChanged` (initiated by the operator) — the customer's mailbox tells
+        what changed and why.
+      security:
+        - oidc: [kundenportal/admin.write]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ContractAction" }
+      responses:
+        "200":
+          description: The changed contract
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OperatorContract" }
+        "400": { $ref: "#/components/responses/Problem" }
+        "401": { $ref: "#/components/responses/Problem" }
+        "403": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+        "409": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/Problem" }
+  /admin/contracts/{contractId}/readings:
+    parameters:
+      - $ref: "#/components/parameters/ContractId"
+    get:
+      operationId: listReadingsAsOperator
+      summary: Meter readings of a contract of the tenant, newest first
+      security:
+        - oidc: [kundenportal/admin.read]
+      responses:
+        "200":
+          description: Meter readings
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/MeterReading" }
+        "400": { $ref: "#/components/responses/Problem" }
+        "401": { $ref: "#/components/responses/Problem" }
+        "403": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+  /admin/products:
+    get:
+      operationId: listProductsAsOperator
+      summary: The tenant's product catalogue in every status, with contract counts
+      security:
+        - oidc: [kundenportal/admin.read]
+      responses:
+        "200":
+          description: Products
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/Product" }
+        "401": { $ref: "#/components/responses/Problem" }
+        "403": { $ref: "#/components/responses/Problem" }
+    post:
+      operationId: createProduct
+      summary: Create a product (status `draft`, price version 1)
+      security:
+        - oidc: [kundenportal/admin.write]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ProductInput" }
+      responses:
+        "201":
+          description: The new product
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Product" }
+        "400": { $ref: "#/components/responses/Problem" }
+        "401": { $ref: "#/components/responses/Problem" }
+        "403": { $ref: "#/components/responses/Problem" }
+        "409": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/Problem" }
+  /admin/products/{productId}:
+    parameters:
+      - $ref: "#/components/parameters/ProductId"
+    get:
+      operationId: getProductAsOperator
+      summary: One product with all price versions and contract counts
+      security:
+        - oidc: [kundenportal/admin.read]
+      responses:
+        "200":
+          description: Product
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Product" }
+        "400": { $ref: "#/components/responses/Problem" }
+        "401": { $ref: "#/components/responses/Problem" }
+        "403": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+    patch:
+      operationId: updateProduct
+      summary: Edit texts and terms, or move the status (draft → active → retiring → archived)
+      description: >-
+        Prices change only through a new price version. `archived` needs a product
+        without running contracts. Publishes `ProductChanged`.
+      security:
+        - oidc: [kundenportal/admin.write]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ProductUpdate" }
+      responses:
+        "200":
+          description: The changed product
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Product" }
+        "400": { $ref: "#/components/responses/Problem" }
+        "401": { $ref: "#/components/responses/Problem" }
+        "403": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+        "409": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/Problem" }
+  /admin/products/{productId}/versions:
+    parameters:
+      - $ref: "#/components/parameters/ProductId"
+    post:
+      operationId: createPriceVersion
+      summary: New prices for the product's options from a date on
+      description: >-
+        New contracts get the new version from `validFrom`; running contracts keep their
+        version until the operator moves them (`ContractAction` `applyPriceVersion`).
+        Publishes `ProductChanged` (`priceVersion`).
+      security:
+        - oidc: [kundenportal/admin.write]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PriceVersionInput" }
+      responses:
+        "201":
+          description: The product with its new current version
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Product" }
+        "400": { $ref: "#/components/responses/Problem" }
+        "401": { $ref: "#/components/responses/Problem" }
+        "403": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+        "409": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/Problem" }
 components:
   parameters:
     ContractId:
@@ -738,6 +1215,16 @@ components:
       in: path
       required: true
       schema: { type: string, format: uuid }
+    CustomerId:
+      name: customerId
+      in: path
+      required: true
+      schema: { type: string, minLength: 1, maxLength: 80 }
+    ProductId:
+      name: productId
+      in: path
+      required: true
+      schema: { type: string, pattern: "^[a-z0-9-]{2,40}$" }
   securitySchemes:
     oidc:
       type: http
@@ -851,8 +1338,357 @@ components:
         startDate: { type: string, format: date }
         minimumTermMonths: { type: integer, minimum: 1 }
         minimumTermEndDate: { type: string, format: date }
-        status: { type: string, enum: [active, terminated] }
+        status:
+          type: string
+          enum: [active, terminated]
+          description: "`terminated` once a termination took effect or after a withdrawal"
         updatedAt: { type: string, format: date-time }
+        productId: { type: string, description: Product of the catalogue (phase 7) }
+        productVersion: { type: integer, minimum: 1, description: Price version in use }
+        noticePeriodMonths: { type: integer, minimum: 0 }
+        earliestTerminationDate:
+          type: string
+          format: date
+          description: Earliest end a notice given today reaches
+        termination: { $ref: "#/components/schemas/ContractTermination" }
+        withdrawableUntil:
+          type: string
+          format: date
+          description: Last day of the withdrawal period (contracts concluded in the portal)
+        blocked:
+          type: boolean
+          description: Blocked by the operator; the customer cannot change it
+    ContractTermination:
+      type: object
+      required: [kind, effectiveDate, requestedAt, by]
+      properties:
+        kind: { type: string, enum: [termination, withdrawal] }
+        effectiveDate: { type: string, format: date }
+        requestedAt: { type: string, format: date-time }
+        by: { type: string, enum: [customer, operator] }
+        reason: { type: string, description: The operator's reason, if any }
+    ContractOrder:
+      type: object
+      required: [productId, optionId, startDate, consent]
+      additionalProperties: false
+      properties:
+        productId: { type: string, pattern: "^[a-z0-9-]{2,40}$" }
+        optionId: { type: string, minLength: 1, maxLength: 40 }
+        startDate: { type: string, format: date }
+        meterNumber:
+          { type: string, minLength: 4, maxLength: 30, description: Metered divisions only }
+        startReading:
+          { type: number, minimum: 0, maximum: 1000000000, description: Metered divisions only }
+        consent:
+          type: boolean
+          const: true
+          description: The customer accepts terms and price (demo, no legal text)
+    TerminationRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        effectiveDate:
+          type: string
+          format: date
+          description: Wished end; not before `earliestTerminationDate`
+    OperatorContract:
+      allOf:
+        - { $ref: "#/components/schemas/Contract" }
+        - type: object
+          required: [customerId]
+          properties:
+            customerId: { type: string }
+            customerName: { type: string }
+    ContractHistoryEntry:
+      type: object
+      required: [at, change, by]
+      properties:
+        at: { type: string, format: date-time }
+        change:
+          type: string
+          enum:
+            [
+              created,
+              installment,
+              tariffOption,
+              product,
+              priceVersion,
+              termination,
+              terminationCancelled,
+              withdrawal,
+              blocked,
+              unblocked,
+              taken-over,
+            ]
+        by: { type: string, enum: [customer, operator, system] }
+        reason: { type: string }
+        summary: { type: string, description: What changed, e.g. "Abschlag 87 € → 95 €" }
+    ContractAction:
+      oneOf:
+        - type: object
+          required: [type, reason, optionId]
+          additionalProperties: false
+          properties:
+            type: { type: string, const: changeOption }
+            optionId: { type: string }
+            reason: { $ref: "#/components/schemas/ActionReason" }
+        - type: object
+          required: [type, reason, productId, optionId]
+          additionalProperties: false
+          properties:
+            type: { type: string, const: changeProduct }
+            productId: { type: string }
+            optionId: { type: string }
+            reason: { $ref: "#/components/schemas/ActionReason" }
+        - type: object
+          required: [type, reason]
+          additionalProperties: false
+          properties:
+            type: { type: string, const: applyPriceVersion }
+            reason: { $ref: "#/components/schemas/ActionReason" }
+        - type: object
+          required: [type, reason, monthlyInstallmentCent]
+          additionalProperties: false
+          properties:
+            type: { type: string, const: setInstallment }
+            monthlyInstallmentCent: { type: integer, minimum: 100 }
+            reason: { $ref: "#/components/schemas/ActionReason" }
+        - type: object
+          required: [type, reason]
+          additionalProperties: false
+          properties:
+            type: { type: string, const: terminate }
+            effectiveDate:
+              type: string
+              format: date
+              description: The operator may also end earlier than the customer could; not in the past
+            reason: { $ref: "#/components/schemas/ActionReason" }
+        - type: object
+          required: [type, reason]
+          additionalProperties: false
+          properties:
+            type: { type: string, enum: [cancelTermination, block, unblock] }
+            reason: { $ref: "#/components/schemas/ActionReason" }
+    ActionReason:
+      type: string
+      minLength: 3
+      maxLength: 300
+      description: Shown in the history and to the customer
+    ContractSummary:
+      type: object
+      required:
+        [
+          contractId,
+          customerId,
+          division,
+          tariffName,
+          tariffOption,
+          monthlyInstallmentCent,
+          startDate,
+          minimumTermEndDate,
+          status,
+          updatedAt,
+        ]
+      properties:
+        contractId: { type: string, format: uuid }
+        customerId: { type: string }
+        customerName: { type: string }
+        division: { $ref: "#/components/schemas/Division" }
+        productId: { type: string }
+        productVersion: { type: integer }
+        tariffName: { type: string }
+        tariffOption: { type: string }
+        monthlyInstallmentCent: { type: integer }
+        meterNumber: { type: string }
+        startDate: { type: string, format: date }
+        minimumTermEndDate: { type: string, format: date }
+        status: { type: string, enum: [active, terminated] }
+        termination: { $ref: "#/components/schemas/ContractTermination" }
+        blocked: { type: boolean }
+        updatedAt: { type: string, format: date-time }
+    ContractPage:
+      type: object
+      required: [items, total]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/ContractSummary" }
+        total: { type: integer, description: Matches of the filters across all pages }
+        nextCursor: { type: string }
+    CustomerSummary:
+      type: object
+      required: [customerId, displayName, email, origin, createdAt, contracts, divisions]
+      properties:
+        customerId: { type: string }
+        displayName: { type: string }
+        email: { type: string, format: email }
+        origin: { type: string, enum: [registration, legacy-utility, legacy-telco] }
+        createdAt: { type: string, format: date-time }
+        locale: { $ref: "#/components/schemas/Locale" }
+        address: { $ref: "#/components/schemas/PostalAddress" }
+        phone: { type: string }
+        legacyAccounts: { type: array, items: { type: string } }
+        divisions:
+          type: array
+          description: Divisions with a running contract
+          items: { $ref: "#/components/schemas/Division" }
+        contracts:
+          type: object
+          required: [active, pendingTermination, terminated]
+          properties:
+            active: { type: integer }
+            pendingTermination: { type: integer }
+            terminated: { type: integer }
+    CustomerPage:
+      type: object
+      required: [items, total]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/CustomerSummary" }
+        total: { type: integer }
+        nextCursor: { type: string }
+    OperatorOverview:
+      type: object
+      required: [contracts, byDivision, orders, terminations, endingSoon, days]
+      properties:
+        contracts:
+          type: object
+          required: [active, pendingTermination, terminated, blocked]
+          properties:
+            active: { type: integer }
+            pendingTermination: { type: integer }
+            terminated: { type: integer }
+            blocked: { type: integer }
+        byDivision:
+          type: object
+          description: Running contracts per division
+          additionalProperties: { type: integer }
+        days:
+          type: array
+          description: Last seven German days, oldest first
+          minItems: 7
+          maxItems: 7
+          items: { type: string, format: date }
+        orders:
+          type: array
+          description: Contracts concluded in the portal per day
+          minItems: 7
+          maxItems: 7
+          items: { type: integer }
+        terminations:
+          type: array
+          description: Terminations and withdrawals received per day
+          minItems: 7
+          maxItems: 7
+          items: { type: integer }
+        endingSoon:
+          type: integer
+          description: Running contracts whose termination takes effect within 30 days
+    ProductStatus:
+      type: string
+      enum: [draft, active, retiring, archived]
+    ProductOption:
+      type: object
+      required: [optionId, label, monthlyPriceCent]
+      properties:
+        optionId: { type: string, pattern: "^[a-z0-9-]{1,40}$" }
+        label: { type: string, minLength: 1, maxLength: 60 }
+        monthlyPriceCent:
+          type: integer
+          minimum: 0
+          description: Base price (metered) or monthly price (internet, mobile)
+        workPriceCent: { type: number, minimum: 0, description: Per kWh or m³; metered only }
+        dataVolumeMb: { type: integer, minimum: 1, description: Mobile only }
+        bandwidthMbit: { type: integer, minimum: 1, description: Internet only }
+    PriceVersion:
+      type: object
+      required: [version, validFrom, createdAt, options]
+      properties:
+        version: { type: integer, minimum: 1 }
+        validFrom: { type: string, format: date }
+        createdAt: { type: string, format: date-time }
+        options:
+          type: array
+          items: { $ref: "#/components/schemas/ProductOption" }
+    Product:
+      type: object
+      required:
+        [
+          productId,
+          division,
+          name,
+          description,
+          status,
+          minimumTermMonths,
+          noticePeriodMonths,
+          version,
+          options,
+          updatedAt,
+        ]
+      properties:
+        productId: { type: string }
+        division: { $ref: "#/components/schemas/Division" }
+        name: { type: string }
+        description: { type: string }
+        status: { $ref: "#/components/schemas/ProductStatus" }
+        unit: { $ref: "#/components/schemas/MeterUnit" }
+        minimumTermMonths: { type: integer, minimum: 0 }
+        noticePeriodMonths: { type: integer, minimum: 0 }
+        version: { type: integer, minimum: 1, description: Current price version }
+        options:
+          type: array
+          description: Options with the prices of the current version
+          items: { $ref: "#/components/schemas/ProductOption" }
+        versions:
+          type: array
+          description: All price versions, newest first (operator only)
+          items: { $ref: "#/components/schemas/PriceVersion" }
+        contractCount:
+          type: object
+          description: Running contracts per price version (operator only)
+          additionalProperties: { type: integer }
+        updatedAt: { type: string, format: date-time }
+    ProductInput:
+      type: object
+      required:
+        [productId, division, name, description, minimumTermMonths, noticePeriodMonths, options]
+      additionalProperties: false
+      properties:
+        productId: { type: string, pattern: "^[a-z0-9-]{2,40}$" }
+        division: { $ref: "#/components/schemas/Division" }
+        name: { type: string, minLength: 2, maxLength: 60 }
+        description: { type: string, maxLength: 400 }
+        minimumTermMonths: { type: integer, minimum: 0, maximum: 36 }
+        noticePeriodMonths: { type: integer, minimum: 0, maximum: 12 }
+        validFrom: { type: string, format: date }
+        options:
+          type: array
+          minItems: 1
+          maxItems: 6
+          items: { $ref: "#/components/schemas/ProductOption" }
+    ProductUpdate:
+      type: object
+      minProperties: 1
+      additionalProperties: false
+      properties:
+        name: { type: string, minLength: 2, maxLength: 60 }
+        description: { type: string, maxLength: 400 }
+        minimumTermMonths: { type: integer, minimum: 0, maximum: 36 }
+        noticePeriodMonths: { type: integer, minimum: 0, maximum: 12 }
+        status: { $ref: "#/components/schemas/ProductStatus" }
+    PriceVersionInput:
+      type: object
+      required: [validFrom, options]
+      additionalProperties: false
+      properties:
+        validFrom: { type: string, format: date, description: Today or later }
+        options:
+          type: array
+          minItems: 1
+          maxItems: 6
+          description: Prices of every option of the product (same option ids)
+          items: { $ref: "#/components/schemas/ProductOption" }
     ContractUpdate:
       type: object
       minProperties: 1

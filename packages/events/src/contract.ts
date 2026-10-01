@@ -46,10 +46,42 @@ export const ContractSnapshot = z.object({
   status: z.enum(["active", "terminated"]),
   /** Increases with every change; consumers ignore snapshots older than the one they hold. */
   version: z.number().int().positive(),
+  /** Product of the catalogue the contract belongs to and its price version (phase 7). */
+  productId: z.string().min(1).optional(),
+  productVersion: z.number().int().positive().optional(),
+  /**
+   * A pending or effective end: a termination (`effectiveDate` in the future while
+   * pending) or a withdrawal (effective at once). Missing while the contract runs on.
+   */
+  termination: z
+    .object({
+      kind: z.enum(["termination", "withdrawal"]),
+      effectiveDate: IsoDate,
+      requestedAt: z.iso.datetime({ offset: true }),
+      by: z.enum(["customer", "operator"]),
+    })
+    .optional(),
+  /** Blocked by the operator: the customer can no longer change it. */
+  blocked: z.boolean().optional(),
 });
 export type ContractSnapshot = z.infer<typeof ContractSnapshot>;
 
-export const ContractChangeField = z.enum(["installment", "tariffOption"]);
+/** Who caused a contract change; missing on the system's own (registration, migration). */
+export const ContractInitiator = z.enum(["customer", "operator", "system"]);
+export type ContractInitiator = z.infer<typeof ContractInitiator>;
+
+export const ContractChangeField = z.enum([
+  "installment",
+  "tariffOption",
+  // Phase 7: product catalogue, termination, withdrawal and the operator's controls.
+  "product",
+  "priceVersion",
+  "termination",
+  "terminationCancelled",
+  "withdrawal",
+  "blocked",
+  "unblocked",
+]);
 export type ContractChangeField = z.infer<typeof ContractChangeField>;
 
 /**
@@ -65,13 +97,53 @@ export const ContractChanged = {
       /** What changed; empty for `created`. */
       changes: z.array(ContractChangeField),
       previous: z
-        .object({ monthlyInstallmentCent: Cents, tariffOption: z.string().min(1) })
+        .object({
+          monthlyInstallmentCent: Cents,
+          tariffOption: z.string().min(1),
+          tariffName: z.string().min(1).optional(),
+          productId: z.string().min(1).optional(),
+          productVersion: z.number().int().positive().optional(),
+        })
         .optional(),
       contract: ContractSnapshot,
+      /**
+       * Who caused it. `created` by the `customer` is an order from the catalogue (the
+       * mailbox confirms it); the demo contracts and migrated contracts come from the
+       * `system`. Missing on events from before phase 7.
+       */
+      initiatedBy: ContractInitiator.optional(),
+      /** The operator's reason, shown to the customer (no personal data of others). */
+      reason: z.string().min(1).max(300).optional(),
     }),
   ),
 } as const;
 export type ContractChangedDetail = z.infer<typeof ContractChanged.detail>;
+
+export const ProductStatus = z.enum(["draft", "active", "retiring", "archived"]);
+export type ProductStatus = z.infer<typeof ProductStatus>;
+
+/**
+ * The operator changed the product catalogue: created, edited, published, retired,
+ * archived or gave it a new price version. Informative (cockpit timeline); contracts
+ * change only through their own `ContractChanged`.
+ */
+export const ProductChanged = {
+  source: EventSource.contract,
+  detailType: "ProductChanged",
+  detail: eventDetailSchema(
+    z.object({
+      change: z.enum(["created", "updated", "status", "priceVersion"]),
+      product: z.object({
+        productId: z.string().min(1),
+        division: Division,
+        name: z.string().min(1),
+        status: ProductStatus,
+        version: z.number().int().positive(),
+      }),
+    }),
+  ),
+} as const;
+export type ProductChangedDetail = z.infer<typeof ProductChanged.detail>;
 
 /** The monthly installment was recalculated after a meter reading. */
 export const InstallmentAdjusted = {

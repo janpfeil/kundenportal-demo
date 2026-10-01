@@ -3,50 +3,19 @@ import {
   type ApiEvent,
   type ApiHandler,
   badRequest,
-  type Caller,
   callerFrom,
-  forbidden,
-  isPassTenant,
   json,
+  operatorFrom,
   router,
 } from "@kundenportal/service-kit";
 import type { BulkImport } from "./bulk.js";
 import type { Cockpit } from "./cockpit.js";
 import type { Linking } from "./links.js";
 
-/** Cognito group of the portal owner; only its members may use the migration cockpit. */
-export const OWNER_GROUP = "owner";
+export { OWNER_GROUP, PASS_GROUP, groupsOf } from "@kundenportal/service-kit";
 
-/**
- * Groups from the access token. The HTTP API's JWT authorizer passes array claims as a
- * string like `[owner other]`.
- */
-export function groupsOf(event: ApiEvent): string[] {
-  const claim = event.requestContext.authorizer?.jwt?.claims?.["cognito:groups"];
-  if (Array.isArray(claim)) return claim.map(String);
-  if (typeof claim !== "string") return [];
-  return claim
-    .replace(/^\[|\]$/g, "")
-    .split(/[\s,]+/)
-    .filter(Boolean);
-}
-
-/** Cognito group of a demo pass's holder: the cockpit of the own pass tenant. */
-export const PASS_GROUP = "pass";
-
-/**
- * The cockpit's operator: the owner, or a pass holder for the pass tenant of the token
- * (architektur-mandanten §3). The tenant always comes from the token, never the URL.
- */
-function owner(event: ApiEvent): Caller {
-  const caller = callerFrom(event);
-  const groups = groupsOf(event);
-  const passHolder = groups.includes(PASS_GROUP) && isPassTenant(caller.tenantId);
-  if (!groups.includes(OWNER_GROUP) && !passHolder) {
-    throw forbidden("Only the owner may do this");
-  }
-  return caller;
-}
+/** The cockpit's operator (owner, or a pass holder in the own pass tenant). */
+const owner = operatorFrom;
 
 function body(event: ApiEvent): unknown {
   if (!event.body) return {};
