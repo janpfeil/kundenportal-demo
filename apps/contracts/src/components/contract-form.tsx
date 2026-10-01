@@ -1,7 +1,7 @@
 "use client";
 
 import type { Contract, ContractUpdate, Problem } from "@kundenportal/api-contract";
-import { Button, Notice, NumberField, Select, formatEuro } from "@kundenportal/ui";
+import { Button, Notice, NumberField, formatEuro } from "@kundenportal/ui";
 import type { Locale } from "@kundenportal/ui/i18n";
 import { sendJson } from "@kundenportal/web-auth/browser";
 import { useRouter } from "next/navigation";
@@ -12,6 +12,7 @@ import {
   contractProblem,
   parseInstallmentEuros,
 } from "@/lib/contract-update";
+import { formatCent, formatWholeEuro, unitLabel } from "@/lib/format";
 import { fill } from "@kundenportal/ui/i18n";
 import { zonePath } from "@/lib/zone";
 
@@ -27,7 +28,8 @@ export interface ContractFormProps {
     | "installmentAdjustable"
     | "installmentMinCent"
     | "installmentMaxCent"
-  >;
+  > &
+    Partial<Pick<Contract, "workPriceCent" | "unit" | "monthlyPriceCent">>;
   locale: Locale;
   texts: ContractFormTexts;
   /** Visible names of the tariff options by id. */
@@ -49,7 +51,29 @@ const PROBLEM_TEXT: Record<ContractProblem, keyof ContractFormTexts> = {
   generic: "errorGeneric",
 };
 
-/** J6: change the monthly installment (metered contracts) and/or the tariff option. */
+/**
+ * The price of the contract's current option, as far as the API tells it: the unit price of
+ * a metered contract ("32 ct/kWh"), else the monthly price. Other options' prices are unknown.
+ */
+function currentPrice(
+  contract: ContractFormProps["contract"],
+  locale: Locale,
+  texts: ContractFormTexts,
+): string | undefined {
+  if (contract.workPriceCent !== undefined && contract.unit !== undefined)
+    return fill(texts.optionPrice, {
+      price: formatCent(contract.workPriceCent, locale),
+      unit: unitLabel(contract.unit),
+    });
+  if (!contract.installmentAdjustable && contract.monthlyPriceCent !== undefined)
+    return formatEuro(contract.monthlyPriceCent, locale);
+  return undefined;
+}
+
+/**
+ * J6: change the monthly installment (metered contracts, number field and slider in sync)
+ * and/or the tariff option (option cards).
+ */
 export function ContractForm({
   contract,
   locale,
@@ -68,11 +92,35 @@ export function ContractForm({
   const [busy, setBusy] = useState(false);
 
   const euro = (cents: number) => formatEuro(cents, locale);
+  const minEuro = Math.ceil((current.installmentMinCent ?? 100) / 100);
+  const maxEuro =
+    current.installmentMaxCent !== undefined
+      ? Math.floor(current.installmentMaxCent / 100)
+      : Math.max(minEuro, Math.ceil(current.monthlyInstallmentCent / 100) * 2);
+  const typed = Number(installment.trim().replace(",", "."));
+  // The slider follows the field; while the field holds no valid number it stays put.
+  const slider = Math.min(
+    maxEuro,
+    Math.max(
+      minEuro,
+      Number.isFinite(typed) && installment.trim() !== ""
+        ? Math.round(typed)
+        : current.monthlyInstallmentCent / 100,
+    ),
+  );
   const range = {
-    min: euro(current.installmentMinCent ?? 0),
-    max: euro(current.installmentMaxCent ?? 0),
+    min: formatWholeEuro(current.installmentMinCent ?? 0, locale),
+    max: formatWholeEuro(current.installmentMaxCent ?? 0, locale),
   };
   const label = (id: string) => optionLabels[id] ?? id;
+  const price = currentPrice(current, locale, texts);
+
+  function reset() {
+    setInstallment(String(current.monthlyInstallmentCent / 100));
+    setOption(current.tariffOption);
+    setFieldError(undefined);
+    setFeedback(undefined);
+  }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -150,40 +198,64 @@ export function ContractForm({
       data-testid="contract-installment-form"
     >
       {current.installmentAdjustable && (
-        <NumberField
-          id={installmentId}
-          label={texts.installment}
-          hint={fill(texts.installmentHint, range)}
-          error={fieldError}
-          unit="€"
-          name="installment"
-          inputMode="numeric"
-          step={1}
-          min={(current.installmentMinCent ?? 0) / 100}
-          max={
-            current.installmentMaxCent !== undefined ? current.installmentMaxCent / 100 : undefined
-          }
-          value={installment}
-          onChange={(event) => setInstallment(event.target.value)}
-          required
-        />
+        <>
+          <p className="kp-muted zone-small">{texts.intro}</p>
+          <div className="zone-installment">
+            <NumberField
+              id={installmentId}
+              label={texts.installment}
+              hint={fill(texts.installmentHint, range)}
+              error={fieldError}
+              unit="€"
+              name="installment"
+              inputMode="numeric"
+              step={1}
+              min={minEuro}
+              max={current.installmentMaxCent !== undefined ? maxEuro : undefined}
+              value={installment}
+              onChange={(event) => setInstallment(event.target.value)}
+              required
+            />
+            <input
+              type="range"
+              className="zone-range"
+              min={minEuro}
+              max={maxEuro}
+              step={1}
+              value={slider}
+              aria-label={texts.slider}
+              aria-valuetext={formatWholeEuro(slider * 100, locale)}
+              aria-controls={installmentId}
+              onChange={(event) => {
+                setInstallment(event.target.value);
+                setFieldError(undefined);
+              }}
+            />
+          </div>
+        </>
       )}
       {current.tariffOptions.length > 1 && (
-        <Select
-          label={texts.option}
-          name="tariffOption"
-          value={option}
-          onChange={(event) => setOption(event.target.value)}
-          options={current.tariffOptions.map((id) => ({ value: id, label: label(id) }))}
-        />
+        <fieldset className="zone-optcards">
+          <legend>{texts.option}</legend>
+          {current.tariffOptions.map((id) => (
+            <label key={id} className="zone-optcard">
+              <input
+                type="radio"
+                name="tariffOption"
+                value={id}
+                checked={option === id}
+                onChange={() => setOption(id)}
+              />
+              <b>{label(id)}</b>
+              {id === current.tariffOption && (
+                <small>{price ? `${texts.current} · ${price}` : texts.current}</small>
+              )}
+            </label>
+          ))}
+        </fieldset>
       )}
-      <div>
-        <Button type="submit" disabled={busy}>
-          {busy ? texts.busy : texts.submit}
-        </Button>
-      </div>
       {feedback && (
-        <Notice tone={feedback.tone}>
+        <Notice tone={feedback.tone} className="zone-feedback">
           <p>{feedback.text}</p>
           {feedback.login && (
             <p>
@@ -192,6 +264,14 @@ export function ContractForm({
           )}
         </Notice>
       )}
+      <div className="zone-buttons">
+        <Button type="submit" disabled={busy}>
+          {busy ? texts.busy : texts.submit}
+        </Button>
+        <Button variant="secondary" onClick={reset} disabled={busy}>
+          {texts.cancel}
+        </Button>
+      </div>
     </form>
   );
 }

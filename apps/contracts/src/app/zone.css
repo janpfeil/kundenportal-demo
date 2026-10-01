@@ -1,14 +1,136 @@
 /* Zone-specific styles; tokens, base styles and components come from @kundenportal/ui/styles.css. */
 
-.zone-section {
-  margin-top: 24px;
-}
-
 .zone-form {
   display: grid;
-  gap: 16px;
-  max-width: 32rem;
-  margin-top: 16px;
+  gap: var(--kp-space);
+  min-width: 0;
+}
+
+.zone-form .kp-field,
+.zone-form .kp-notice {
+  margin: 0;
+}
+
+.zone-small {
+  margin: 0;
+  font-size: var(--kp-small);
+}
+
+/* Tables sit inside a card: the card draws the frame. */
+.zone-table {
+  margin: 0;
+  border: 0;
+}
+
+/*
+ * Stacked rows on phones: inside a card the label column is narrow, so give it a minimum
+ * width and break labels at word boundaries (not mid-word); badges keep their width.
+ */
+@media (max-width: 599px) {
+  .zone-table td {
+    grid-template-columns: minmax(8.5rem, 2fr) minmax(0, 3fr);
+  }
+
+  .zone-table td::before {
+    overflow-wrap: normal;
+    hyphens: auto;
+  }
+
+  .zone-table td > * {
+    justify-self: start;
+  }
+}
+
+/* Division with its icon in the first column of the contract list. */
+.zone-division {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Second line of a table cell, e.g. the tariff option below the tariff. */
+.zone-sub {
+  display: block;
+  font-size: var(--kp-small);
+  color: var(--kp-muted);
+}
+
+.zone-gap-top {
+  margin-top: var(--kp-space);
+}
+
+/* Installment: number field and slider in sync. */
+.zone-installment {
+  display: grid;
+  gap: 4px;
+}
+
+.zone-range {
+  width: 100%;
+  height: 28px;
+  margin: 0;
+  accent-color: var(--kp-accent);
+}
+
+/* Tariff options as radio cards. */
+.zone-optcards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 140px), 1fr));
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.zone-optcards legend {
+  margin-bottom: 6px;
+  padding: 0;
+  font-weight: 600;
+}
+
+.zone-optcard {
+  position: relative;
+  display: grid;
+  gap: 2px;
+  padding: 12px 14px;
+  border: 1px solid var(--kp-border-strong);
+  border-radius: var(--kp-radius);
+  background: var(--kp-input-bg);
+  cursor: pointer;
+}
+
+.zone-optcard input {
+  position: absolute;
+  opacity: 0;
+}
+
+.zone-optcard:has(input:checked) {
+  border-color: var(--kp-accent);
+  box-shadow: inset 0 0 0 1px var(--kp-accent);
+  background: var(--kp-accent-soft);
+}
+
+.zone-optcard:has(input:focus-visible) {
+  outline: 3px solid var(--kp-focus);
+  outline-offset: 2px;
+}
+
+.zone-optcard small {
+  color: var(--kp-muted);
+  font-size: var(--kp-small);
+}
+
+@media (forced-colors: active) {
+  .zone-optcard:has(input:checked) {
+    outline: 3px solid Highlight;
+  }
+}
+
+.zone-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px var(--kp-space);
 }
 
 /* Long file names and ids must wrap on 360 px wide screens. */

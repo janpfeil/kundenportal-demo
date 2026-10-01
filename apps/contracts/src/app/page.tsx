@@ -1,13 +1,16 @@
 import type { Contract, Document } from "@kundenportal/api-contract";
 import {
-  Badge,
   ButtonLink,
   Card,
   type Column,
   DataTable,
   EmptyState,
+  Icon,
   Notice,
   Page,
+  Stack,
+  StatusBadge,
+  divisionIcon,
   formatDate,
   formatDateTime,
   formatEuro,
@@ -40,14 +43,24 @@ export default async function ContractsPage() {
       key: "division",
       header: t.overview.division,
       render: (contract) => (
-        <Link href={`/${contract.contractId}`}>{t.divisions[contract.division]}</Link>
+        <span className="zone-division">
+          <Icon name={divisionIcon(contract.division)} />
+          <Link href={`/${contract.contractId}`}>{t.divisions[contract.division]}</Link>
+        </span>
       ),
     },
     {
       key: "tariff",
       header: t.overview.tariff,
-      render: (contract) =>
-        `${contract.tariffName} · ${t.options[contract.tariffOption] ?? contract.tariffOption}`,
+      render: (contract) => (
+        // One element, so the stacked row on phones keeps tariff and option together.
+        <span>
+          {contract.tariffName}
+          <span className="zone-sub">
+            {t.options[contract.tariffOption] ?? contract.tariffOption}
+          </span>
+        </span>
+      ),
     },
     {
       key: "amount",
@@ -64,9 +77,9 @@ export default async function ContractsPage() {
       key: "status",
       header: t.overview.status,
       render: (contract) => (
-        <Badge tone={contract.status === "active" ? "success" : "neutral"}>
+        <StatusBadge tone={contract.status === "active" ? "ok" : "neutral"}>
           {t.status[contract.status]}
-        </Badge>
+        </StatusBadge>
       ),
     },
   ];
@@ -97,69 +110,76 @@ export default async function ContractsPage() {
       key: "status",
       header: t.documents.status,
       render: (doc) => (
-        <Badge
-          tone={
-            doc.status === "uploaded" ? "success" : doc.status === "rejected" ? "error" : "neutral"
-          }
+        <StatusBadge
+          tone={doc.status === "uploaded" ? "ok" : doc.status === "rejected" ? "err" : "info"}
         >
           {t.documents.statuses[doc.status] ?? doc.status}
-        </Badge>
+        </StatusBadge>
       ),
     },
   ];
 
   return (
-    <Page
-      title={t.title}
-      lead={t.overview.lead}
-      actions={
-        <ButtonLink href={zonePath()} variant="secondary" linkComponent={ZoneLink}>
-          {t.overview.refresh}
-        </ButtonLink>
-      }
-    >
-      {contracts.data ? (
-        <DataTable
-          data-testid="contracts"
-          caption={t.overview.caption}
-          columns={contractColumns}
-          rows={contracts.data.items}
-          rowKey={(contract) => contract.contractId}
-          empty={<EmptyState title={t.overview.empty}>{t.overview.emptyText}</EmptyState>}
-        />
-      ) : (
-        <Notice tone="error">{t.overview.error}</Notice>
-      )}
+    <Page title={t.title} lead={t.overview.lead}>
+      <Stack gap="large">
+        <Card>
+          {contracts.data ? (
+            <DataTable
+              data-testid="contracts"
+              caption={t.overview.caption}
+              columns={contractColumns}
+              rows={contracts.data.items}
+              rowKey={(contract) => contract.contractId}
+              className="zone-table"
+              empty={
+                <EmptyState
+                  title={t.overview.empty}
+                  action={
+                    <ButtonLink href={zonePath()} variant="secondary" linkComponent={ZoneLink}>
+                      {t.overview.refresh}
+                    </ButtonLink>
+                  }
+                >
+                  {t.overview.emptyText}
+                </EmptyState>
+              }
+            />
+          ) : (
+            <Notice tone="error">{t.overview.error}</Notice>
+          )}
+        </Card>
 
-      <Card title={t.documents.title} className="zone-section">
-        <p className="kp-muted">{t.documents.intro}</p>
-        {documents.data ? (
-          <DataTable
-            data-testid="documents"
-            caption={t.documents.caption}
-            columns={documentColumns}
-            rows={documents.data.items}
-            rowKey={(doc) => doc.documentId}
-            empty={
-              <p className="kp-muted" data-testid="documents">
-                {t.documents.empty}
-              </p>
-            }
+        <Card as="section" title={t.documents.title} icon="file">
+          <p className="kp-muted">{t.documents.intro}</p>
+          {documents.data ? (
+            <DataTable
+              data-testid="documents"
+              caption={t.documents.caption}
+              columns={documentColumns}
+              rows={documents.data.items}
+              rowKey={(doc) => doc.documentId}
+              className="zone-table"
+              empty={
+                <p className="kp-muted" data-testid="documents">
+                  {t.documents.empty}
+                </p>
+              }
+            />
+          ) : (
+            <Notice tone="error">{t.documents.error}</Notice>
+          )}
+          <UploadForm
+            texts={t.upload}
+            endpoint={zonePath("/api/documents/upload-url")}
+            loginHref={loginUrl(zonePath())}
+            categories={UPLOAD_CATEGORIES.map((value) => ({
+              value,
+              label: t.documents.categories[value] ?? value,
+            }))}
+            data-testid="document-upload"
           />
-        ) : (
-          <Notice tone="error">{t.documents.error}</Notice>
-        )}
-        <UploadForm
-          texts={t.upload}
-          endpoint={zonePath("/api/documents/upload-url")}
-          loginHref={loginUrl(zonePath())}
-          categories={UPLOAD_CATEGORIES.map((value) => ({
-            value,
-            label: t.documents.categories[value] ?? value,
-          }))}
-          data-testid="document-upload"
-        />
-      </Card>
+        </Card>
+      </Stack>
     </Page>
   );
 }

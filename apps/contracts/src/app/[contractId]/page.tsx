@@ -1,102 +1,26 @@
 import type { Contract } from "@kundenportal/api-contract";
 import {
-  Badge,
   ButtonLink,
   Card,
-  type Fact,
   Facts,
+  Icon,
   Notice,
   Page,
-  formatDataVolume,
-  formatDate,
-  formatEuro,
-  formatQuantity,
-  formatUnitPrice,
+  Split,
+  StatusBadge,
+  divisionIcon,
 } from "@kundenportal/ui";
-import type { Locale } from "@kundenportal/ui/i18n";
 import { apiFor, loginUrl } from "@kundenportal/web-auth";
 import { requireSession } from "@kundenportal/web-auth/pages";
 import { notFound } from "next/navigation";
 import { ContractForm } from "@/components/contract-form";
-import { type Dictionary, dictionary } from "@/i18n";
+import { dictionary } from "@/i18n";
 import { isContractId } from "@/lib/contract-update";
-import { fill } from "@kundenportal/ui/i18n";
+import { contractFacts } from "@/lib/facts";
 import { zonePath } from "@/lib/zone";
 import { ZoneLink } from "@/lib/zone-link";
 
 export const dynamic = "force-dynamic";
-
-function facts(contract: Contract, t: Dictionary, locale: Locale): Fact[] {
-  const euro = (cents: number) => formatEuro(cents, locale);
-  const unit = contract.unit === "m3" ? "m³" : contract.unit;
-  const items: (Fact | false)[] = [
-    {
-      term: t.detail.contractId,
-      description: <span className="zone-break">{contract.contractId}</span>,
-      id: "id",
-    },
-    { term: t.detail.division, description: t.divisions[contract.division] },
-    { term: t.detail.tariff, description: contract.tariffName },
-    {
-      term: t.detail.option,
-      description: t.options[contract.tariffOption] ?? contract.tariffOption,
-    },
-    {
-      term: contract.installmentAdjustable ? t.detail.installment : t.detail.monthlyPrice,
-      description: euro(contract.monthlyInstallmentCent),
-    },
-    contract.installmentAdjustable &&
-      contract.installmentMinCent !== undefined &&
-      contract.installmentMaxCent !== undefined && {
-        term: t.detail.range,
-        description: fill(t.detail.rangeValue, {
-          min: euro(contract.installmentMinCent),
-          max: euro(contract.installmentMaxCent),
-        }),
-      },
-    contract.installmentAdjustable && {
-      term: t.detail.basePrice,
-      description: euro(contract.monthlyPriceCent),
-    },
-    contract.workPriceCent !== undefined &&
-      unit !== undefined && {
-        term: t.detail.workPrice,
-        description: fill(t.detail.perUnit, {
-          price: formatUnitPrice(contract.workPriceCent, locale),
-          unit,
-        }),
-      },
-    contract.meterNumber !== undefined && {
-      term: t.detail.meter,
-      description: contract.meterNumber,
-    },
-    contract.estimatedAnnualConsumption !== undefined &&
-      contract.unit !== undefined && {
-        term: t.detail.annual,
-        description: formatQuantity(contract.estimatedAnnualConsumption, contract.unit, locale),
-      },
-    contract.dataVolumeMb !== undefined && {
-      term: t.detail.dataVolume,
-      description: formatDataVolume(contract.dataVolumeMb, locale),
-    },
-    { term: t.detail.start, description: formatDate(contract.startDate, locale) },
-    {
-      term: t.detail.term,
-      description: fill(t.detail.months, { count: contract.minimumTermMonths }),
-    },
-    { term: t.detail.termEnd, description: formatDate(contract.minimumTermEndDate, locale) },
-    {
-      term: t.detail.status,
-      description: (
-        <Badge tone={contract.status === "active" ? "success" : "neutral"}>
-          {t.status[contract.status]}
-        </Badge>
-      ),
-      id: "status",
-    },
-  ];
-  return items.filter((item): item is Fact => item !== false && item !== undefined);
-}
 
 export default async function ContractPage({
   params,
@@ -127,41 +51,62 @@ export default async function ContractPage({
   }
   if (!contract) {
     return (
-      <Page title={t.title} actions={back}>
+      <Page title={t.title} aside={back}>
         <Notice tone="error">{missing ? t.detail.notFound : t.detail.error}</Notice>
       </Page>
     );
   }
 
-  const title = `${t.divisions[contract.division]} · ${contract.tariffName}`;
   const changeable =
     contract.status === "active" &&
     (contract.installmentAdjustable || contract.tariffOptions.length > 1);
+  // The consumption zone opens the tab of this contract (`?vertrag=`).
+  const consumptionHref = `/verbrauch?vertrag=${encodeURIComponent(contract.contractId)}`;
   return (
-    <Page title={title} actions={back}>
-      <Card title={t.detail.facts} className="zone-section">
-        <Facts data-testid="contract" items={facts(contract, t, locale)} />
-        {contract.meterNumber !== undefined && (
-          <p>
-            <a href="/verbrauch">{t.detail.toConsumption}</a>
-          </p>
-        )}
-      </Card>
-      {changeable && (
-        <Card title={t.form.title} className="zone-section">
-          {contract.installmentAdjustable && <p className="kp-muted">{t.form.intro}</p>}
-          <ContractForm
-            contract={contract}
-            locale={locale}
-            texts={t.form}
-            optionLabels={t.options}
-            amountLabel={
-              contract.installmentAdjustable ? t.detail.installment : t.detail.monthlyPrice
-            }
-            loginHref={loginUrl(path)}
-          />
+    <Page eyebrow={t.title} title={t.divisions[contract.division]} aside={back}>
+      <Split>
+        <Card
+          as="section"
+          title={contract.tariffName}
+          icon={divisionIcon(contract.division)}
+          actions={
+            <StatusBadge tone={contract.status === "active" ? "ok" : "neutral"}>
+              {t.status[contract.status]}
+            </StatusBadge>
+          }
+        >
+          <Facts data-testid="contract" items={contractFacts(contract, t, locale)} />
+          {(contract.meterNumber !== undefined || contract.dataVolumeMb !== undefined) && (
+            <ButtonLink
+              href={consumptionHref}
+              variant="secondary"
+              linkComponent={ZoneLink}
+              className="zone-gap-top"
+            >
+              <Icon name="chart" />
+              {contract.meterNumber !== undefined ? t.detail.toConsumption : t.detail.toUsage}
+            </ButtonLink>
+          )}
         </Card>
-      )}
+        <Card as="section" title={t.form.title}>
+          {changeable ? (
+            <ContractForm
+              contract={contract}
+              locale={locale}
+              texts={t.form}
+              optionLabels={t.options}
+              amountLabel={
+                contract.installmentAdjustable ? t.detail.installment : t.detail.monthlyPrice
+              }
+              loginHref={loginUrl(path)}
+            />
+          ) : (
+            <p className="kp-muted">
+              {contract.status === "active" ? t.detail.fixed : t.detail.inactive}
+            </p>
+          )}
+        </Card>
+      </Split>
     </Page>
   );
 }

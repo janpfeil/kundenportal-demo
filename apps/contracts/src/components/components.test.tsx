@@ -2,7 +2,7 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { de } from "@/i18n/de";
-import { ContractForm } from "./contract-form";
+import { ContractForm, type ContractFormProps } from "./contract-form";
 import { UploadForm } from "./upload-form";
 
 const sendJson = vi.fn();
@@ -21,16 +21,22 @@ const contract = {
   installmentAdjustable: true,
   installmentMinCent: 6000,
   installmentMaxCent: 12000,
+  workPriceCent: 32,
+  unit: "kWh" as const,
+  monthlyPriceCent: 1200,
 };
 const plain = (text: string | null) => (text ?? "").replace(/[\u00a0\u202f]/g, " ");
 
 beforeEach(() => vi.clearAllMocks());
 afterEach(() => vi.unstubAllGlobals());
 
-function renderContractForm(overrides: Partial<typeof contract> = {}) {
+function renderContractForm(
+  overrides: Partial<typeof contract> = {},
+  base: ContractFormProps["contract"] = contract,
+) {
   render(
     <ContractForm
-      contract={{ ...contract, ...overrides }}
+      contract={{ ...base, ...overrides }}
       locale="de"
       texts={de.form}
       optionLabels={de.options}
@@ -53,9 +59,41 @@ describe("ContractForm (J6)", () => {
     expect(installment).toHaveValue(85);
     expect(installment).toHaveAccessibleDescription(/ganze Euro/);
     expect(plain(screen.getByText(/ganze Euro/).textContent)).toBe(
-      "Zwischen 60,00 € und 120,00 €, ganze Euro",
+      "Zwischen 60 € und 120 €, ganze Euro",
     );
-    expect(screen.getByRole("combobox", { name: "Tarifoption" })).toHaveValue("standard");
+    const options = screen.getByRole("group", { name: "Tarifoption" });
+    expect(within(options).getByRole("radio", { name: /Standard/ })).toBeChecked();
+    expect(within(options).getByRole("radio", { name: "Öko" })).not.toBeChecked();
+    // Only the current option's price is known to the portal.
+    expect(
+      within(options)
+        .getByRole("radio", { name: /Standard/ })
+        .closest("label"),
+    ).toHaveTextContent("aktuell · 32 ct/kWh");
+  });
+
+  it("keeps the slider and the number field in sync, within the range in whole euros", () => {
+    const { installment } = renderContractForm();
+    const slider = screen.getByRole("slider", { name: "Abschlag mit Schieberegler wählen" });
+    expect(slider).toHaveValue("85");
+    expect(slider).toHaveAttribute("min", "60");
+    expect(slider).toHaveAttribute("max", "120");
+    fireEvent.change(slider, { target: { value: "97" } });
+    expect(installment).toHaveValue(97);
+    fireEvent.change(installment, { target: { value: "70" } });
+    expect(slider).toHaveValue("70");
+    // Out of range the slider stays at its end; the field reports the error on submit.
+    fireEvent.change(installment, { target: { value: "500" } });
+    expect(slider).toHaveValue("120");
+  });
+
+  it("cancels back to the contract's values", () => {
+    const { installment } = renderContractForm();
+    fireEvent.change(installment, { target: { value: "99" } });
+    fireEvent.click(screen.getByRole("radio", { name: "Öko" }));
+    fireEvent.click(screen.getByRole("button", { name: "Abbrechen" }));
+    expect(installment).toHaveValue(85);
+    expect(screen.getByRole("radio", { name: /Standard/ })).toBeChecked();
   });
 
   it("validates the amount before sending", async () => {
@@ -64,7 +102,7 @@ describe("ContractForm (J6)", () => {
     fireEvent.click(submit);
     expect(installment).toBeInvalid();
     expect(plain(installment.closest(".kp-field")?.textContent ?? "")).toContain(
-      "Der Abschlag muss zwischen 60,00 € und 120,00 € liegen.",
+      "Der Abschlag muss zwischen 60 € und 120 € liegen.",
     );
     expect(sendJson).not.toHaveBeenCalled();
   });
@@ -84,7 +122,7 @@ describe("ContractForm (J6)", () => {
     });
     const { installment, submit } = renderContractForm();
     fireEvent.change(installment, { target: { value: "90" } });
-    fireEvent.change(screen.getByRole("combobox"), { target: { value: "oeko" } });
+    fireEvent.click(screen.getByRole("radio", { name: "Öko" }));
     fireEvent.click(submit);
     const status = await screen.findByRole("status");
     expect(plain(status.textContent)).toContain("Tarifoption Öko, Monatlicher Abschlag 90,00 €");
@@ -109,7 +147,7 @@ describe("ContractForm (J6)", () => {
     fireEvent.change(installment, { target: { value: "100" } });
     fireEvent.click(submit);
     expect(plain((await screen.findByRole("alert")).textContent)).toContain(
-      "zwischen 60,00 € und 120,00 €",
+      "zwischen 60 € und 120 €",
     );
 
     sendJson.mockResolvedValueOnce({ ok: false, status: 401 });
@@ -123,13 +161,22 @@ describe("ContractForm (J6)", () => {
   });
 
   it("offers only the tariff option for contracts with a fixed price", () => {
-    renderContractForm({
-      installmentAdjustable: false,
-      tariffOptions: ["10gb", "20gb"],
-      tariffOption: "10gb",
-    });
+    const { workPriceCent: _price, unit: _unit, ...mobile } = contract;
+    renderContractForm(
+      {
+        installmentAdjustable: false,
+        tariffOptions: ["10gb", "20gb"],
+        tariffOption: "10gb",
+        monthlyPriceCent: 1499,
+      },
+      mobile,
+    );
     expect(screen.queryByRole("spinbutton")).not.toBeInTheDocument();
-    expect(screen.getByRole("option", { name: "20 GB" })).toBeInTheDocument();
+    expect(screen.queryByRole("slider")).not.toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "20 GB" })).toBeInTheDocument();
+    expect(
+      plain(screen.getByRole("radio", { name: /10 GB/ }).closest("label")?.textContent ?? ""),
+    ).toBe("10 GBaktuell · 14,99 €");
   });
 });
 
