@@ -48,6 +48,15 @@ export class DocumentService {
   }
 
   /**
+   * The operator's view of a customer's documents, newest first. The key carries the
+   * operator's tenant, so a customer of another tenant has no documents here; the
+   * domain keeps no list of customers, so an unknown customer is an empty list too.
+   */
+  async listOf(operator: Caller, customerId: string): Promise<Document[]> {
+    return this.repository.list(operator.tenantId, customerId);
+  }
+
+  /**
    * Registers a pending document and returns a presigned PUT URL for exactly this file
    * (content type and size are signed), valid for five minutes. A demo pass pays one
    * upload of its quota per URL; at the limit the request fails with 429.
