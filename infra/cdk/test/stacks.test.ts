@@ -419,7 +419,11 @@ describe("edge", () => {
       (resource) =>
         JSON.stringify(resource.Properties.DistributionPaths ?? []).includes("/pass/einloesen*"),
     );
-    expect(deployment?.Properties.DistributionPaths).toEqual(["/", "/pass/einloesen*"]);
+    expect(deployment?.Properties.DistributionPaths).toEqual([
+      "/",
+      "/pass/einloesen*",
+      "/theme-init.js",
+    ]);
   });
 
   it("serves shell, static files and API under the portal domain", () => {

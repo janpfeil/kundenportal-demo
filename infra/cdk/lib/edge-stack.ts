@@ -205,7 +205,8 @@ export class EdgeStack extends Stack {
       // The shell's files carry new hashes on every build, so this runs on every deploy:
       // cached copies of the prerendered public pages must point at the new files.
       distribution,
-      distributionPaths: ["/", "/pass/einloesen*"],
+      // /theme-init.js sets the theme before the first paint; it changes with the shell.
+      distributionPaths: ["/", "/pass/einloesen*", "/theme-init.js"],
       memoryLimit: 256,
       logGroup: new LogGroup(this, "DeployStaticLogs", {
         retention: RetentionDays.THREE_DAYS,

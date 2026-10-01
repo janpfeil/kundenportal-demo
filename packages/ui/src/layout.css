@@ -213,9 +213,14 @@
     line-height: 1.2;
     text-align: center;
     white-space: normal;
-    /* Six entries on 360 px leave about 58 px each: hyphenate, else break the word. */
+    /* Five entries on 360 px leave about 70 px each: hyphenate, never break mid-word. */
     hyphens: auto;
-    overflow-wrap: anywhere;
+    overflow-wrap: normal;
+  }
+
+  /* The start page is reached through the brand; in the bar it only took the room. */
+  :root[data-nav="bottom"] .kp-shell[data-nav-entries="many"] .kp-nav li:has(> a[href="/"]) {
+    display: none;
   }
 }
 
