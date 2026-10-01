@@ -1,13 +1,19 @@
 # Demo-Pass — eigene Instanz je Besucher
 
-Stand: 2026-09-30 · Stufe 1 umgesetzt (Phase 4, Release v0.4.0) · Kennzeichnung: **[B]** belegt (offizielle Quelle), **[A]** Annahme/Schätzung, **[E]** Einschätzung.
+Stand: 2026-10-01 · Stufe 1 umgesetzt (Phase 4, Release v0.4.0) · Kennzeichnung: **[B]** belegt (offizielle Quelle), **[A]** Annahme/Schätzung, **[E]** Einschätzung.
 
 **Entscheidung (29.09.2026): Stufe 1 — Inhaber-Zugang und Einladungslinks.** Ein bezahlter Zugang ist optional für später denkbar, aber nicht geplant.
+
+**Entscheidung 01.10.2026: 48 Stunden statt 7 Tage.** Ein Pass gilt 48
+Stunden ab dem Einlösen; die erste Anmeldung des Inhabers startet die 48
+Stunden neu (einmal). Wer sich nach 24 Stunden noch nicht angemeldet hat,
+bekommt die Einladung mit neuem Einmal-Passwort noch einmal (höchstens
+einmal). Bis dahin galten 7 Tage ab dem Einlösen ohne Erinnerung.
 
 **Umgesetzt (30.09.2026):** Stufe 1 ist gebaut und live geprüft —
 Einladungslinks aus dem Cockpit, Einlösen mit [ALTCHA](glossar.md#altcha),
 eigener Mandant im Bridge-Modell in ≈ 10 s, Kontingente, Ablauf und
-Rückbau nach 7 Tagen, höchstens 3 gleichzeitige Pass-Mandanten. Wie es
+Rückbau nach damals 7 Tagen (seit 01.10.2026: 48 Stunden, siehe oben), höchstens 3 gleichzeitige Pass-Mandanten. Wie es
 gebaut ist, beschreibt [Architektur: Mandanten und Demo-Pass](architektur-mandanten.md).
 Diese Seite bleibt die Entscheidungsgrundlage; wo die Umsetzung vom
 ursprünglichen Vorschlag abweicht, ist das vermerkt.
@@ -18,8 +24,11 @@ Fachbegriffe sind in jedem Abschnitt beim ersten Vorkommen mit dem [Glossar](glo
 
 1. Der Inhaber kann die Demo **für sich selbst jederzeit** starten.
 2. Die **öffentliche Demoseite** ist für alle zugänglich.
-3. Ein Demo-Pass ist **7 Tage** nutzbar, auch mehrfach, solange das
-   Kontingent reicht; danach werden Instanz und Daten gelöscht.
+3. Ein Demo-Pass ist **48 Stunden** nutzbar, gezählt ab der ersten
+   Anmeldung (ohne Anmeldung ab dem Einlösen), auch mehrfach, solange das
+   Kontingent reicht; danach werden Instanz und Daten gelöscht. Wer sich
+   nach **24 Stunden** noch nicht angemeldet hat, wird einmal erinnert.
+   (Bis 01.10.2026: 7 Tage ohne Erinnerung.)
 4. **Jeder Besucher bekommt eine eigene Instanz** — Besucher stören sich
    gegenseitig nicht.
 5. **Spam- und Missbrauchsabwehr** ist Pflicht.
@@ -27,7 +36,7 @@ Fachbegriffe sind in jedem Abschnitt beim ersten Vorkommen mit dem [Glossar](glo
 ## 2. Ergebnis
 
 **Machbar** [E]. Alle Teile — Freischaltung, eigene Instanz, Kontingent,
-Ablauf nach 7 Tagen — lassen sich mit den ohnehin geplanten, kostenlosen
+Ablauf nach 48 Stunden, Erinnerung — lassen sich mit den ohnehin geplanten, kostenlosen
 AWS-Bausteinen (Lambda, DynamoDB, EventBridge Scheduler, SNS) bauen. Der
 Demo-Pass wird dabei selbst zu einem vorzeigbaren Stück SaaS-Architektur:
 Mandantenfähigkeit, Bereitstellung auf Knopfdruck, automatischer Rückbau.
@@ -38,7 +47,7 @@ Selbstbedienung: Sie halten Bots fern, ohne Besucher warten zu lassen.
 
 ## 3. Zwei Wege zum Demo-Pass
 
-Beide erzeugen dasselbe: einen **Demo-Pass** (7 Tage, Kontingent, eigene
+Beide erzeugen dasselbe: einen **Demo-Pass** (48 Stunden, Kontingent, eigene
 Instanz). Sie unterscheiden sich nur darin, wer ihn ausstellt.
 
 | Weg | Für wen | Wie | Kosten trägt |
@@ -58,19 +67,21 @@ Datenschutzerklärung.
 {"type": "timeline", "title": "Vom Einladungslink zur eigenen Instanz", "events": [
  ["Schritt 1", "Öffentliche Demoseite: Beschreibung, Architekturbild, Video — alles kostenlos, ohne Anmeldung"],
  ["Schritt 2", "Einladungslink öffnen: Bot-Prüfung (ALTCHA), der Link ist einmalig verwendbar"],
- ["Schritt 3", "Lambda stellt den Pass aus (7 Tage, Kontingent) und startet die eigene Instanz"],
- ["Schritt 4", "Statusseite „Ihre Instanz wird eingerichtet\" (gemessen ≈ 10 s), dann Login in das eigene Portal mit Demo-Personen"],
- ["Tag 1–7", "Beliebig oft nutzen; Anzeige „Kontingent: 83 % übrig · gültig bis …\"; Instanz schläft bei Nichtnutzung und wacht beim nächsten Besuch auf"],
- ["Tag 7", "Pass läuft ab; Instanz und alle Daten werden automatisch gelöscht (keine Bestätigungs-E-Mail)"]]}
+ ["Schritt 3", "Lambda stellt den Pass aus (48 Stunden, Kontingent) und startet die eigene Instanz"],
+ ["Schritt 4", "Statusseite „Ihre Instanz wird eingerichtet\" (gemessen ≈ 10 s), dann Login in das eigene Portal mit Demo-Personen; die erste Anmeldung startet die 48 Stunden neu"],
+ ["Nach 24 h", "Noch nicht angemeldet: Cognito schickt die Einladung mit neuem Einmal-Passwort noch einmal (höchstens einmal)"],
+ ["48 Stunden", "Beliebig oft nutzen; Anzeige „Kontingent: 83 % übrig · gültig bis …\"; Instanz schläft bei Nichtnutzung und wacht beim nächsten Besuch auf"],
+ ["Ende", "Pass läuft ab; Instanz und alle Daten werden automatisch gelöscht (keine Bestätigungs-E-Mail)"]]}
 ```
 
 Technisch: Die Ausstellung legt den Pass in DynamoDB an und veröffentlicht
 das Domänen-Event `DemoPassIssued`; daraufhin wird der Mandant
-eingerichtet, und EventBridge Scheduler plant den Ablauf in 7 Tagen.
+eingerichtet, und EventBridge Scheduler plant den Ablauf in 48 Stunden
+und die Erinnerung nach 24 Stunden.
 
 **Umsetzung:** So gebaut, mit zwei Abweichungen: Das System verschickt außer
-dem Einmal-Passwort von Cognito **keine** E-Mails (auch keine Bestätigung
-nach dem Löschen), und die Instanz „schläft" nicht eigens — geteilte
+dem Einmal-Passwort von Cognito und der einen Erinnerung **keine** E-Mails
+(auch keine Bestätigung nach dem Löschen), und die Instanz „schläft" nicht eigens — geteilte
 Lambdas kosten ohne Aufrufe ohnehin nichts. Details:
 [Architektur: Mandanten und Demo-Pass](architektur-mandanten.md) §4 und §7.
 
@@ -112,12 +123,12 @@ Silo bleibt als Option für den **Inhaber-Zugang** (eigener vollständiger
 Stack auf Knopfdruck zeigt „Infrastruktur als Code" am deutlichsten).
 
 Kontingent je Pass [A], als Vorschlag (umgesetzt wie unten, außer den
-E-Mails: nur das Einmal-Passwort —
+E-Mails: nur das Einmal-Passwort und höchstens eine Erinnerung —
 [Architektur: Mandanten und Demo-Pass](architektur-mandanten.md) §5):
 
 | Größe | Grenze | Begründung |
 |---|---|---|
-| Laufzeit | 7 Tage ab Ausstellung | Anforderung |
+| Laufzeit | 48 Stunden ab der ersten Anmeldung, ohne Anmeldung ab dem Einlösen (bis 01.10.2026: 7 Tage ab Ausstellung) | Anforderung |
 | API-Aufrufe | 5.000 | reicht für viele Durchläufe der 5-Minuten-Demo |
 | Domänen-Events | 1.000 | jede Aktion erzeugt 1–3 Events |
 | Uploads | 20 Dateien, je max. 5 MB, nur Bilder/PDF | Zählerfotos, Dokumente |
@@ -151,7 +162,7 @@ E-Mails: nur das Einmal-Passwort —
 - Die Betriebsarten Z1–Z3 ([Kostenfreier Betrieb](kostenfrei.md)) werden
   durch den Demo-Pass ersetzt: Die **gemeinsame Grundlage** (Seite, Login,
   SSR-Lambda, geteilte Lambdas, Cognito) läuft dauerhaft und kostenlos;
-  **Mandanten** entstehen nur mit einem Pass und verschwinden nach 7 Tagen.
+  **Mandanten** entstehen nur mit einem Pass und verschwinden nach 48 Stunden.
   Das ist die Z3-Idee („kostet nur, wenn jemand es nutzt"), sauber an einen
   Einladenden gebunden.
 - Kosten der **gemeinsamen** Cent-Dienste (API Gateway, EventBridge, S3)

@@ -206,7 +206,7 @@ Generator liest beide Dateien und erzeugt daraus **eine** Glossar-Seite.
 
 | Begriff | Auch | Erklärung | Außerhalb von AWS |
 |---|---|---|---|
-| Demo-Pass | Pass, Pass-Ablauf, Pass-Adresse, Pass-Inhaber, Pass-Verwaltung | im Demo: zeitlich begrenzte Berechtigung (7 Tage, Kontingent) für eine eigene Instanz; ausgestellt per Einladungslink oder für den Inhaber | Testlizenz, Trial |
+| Demo-Pass | Pass, Pass-Ablauf, Pass-Adresse, Pass-Inhaber, Pass-Verwaltung | im Demo: zeitlich begrenzte Berechtigung (48 Stunden ab der ersten Anmeldung, Kontingent) für eine eigene Instanz; ausgestellt per Einladungslink oder für den Inhaber | Testlizenz, Trial |
 | Inhaber-Zugang | Inhaber-Rolle, Verwaltungsbereich | Anmeldung des Projektinhabers mit Sonderrechten: Instanzen starten, Einladungslinks erzeugen | Admin-Rolle |
 | Einladungslink | Einladungslinks | persönlicher, einmal verwendbarer Link, der einen Demo-Pass ausstellt | Gutscheincode |
 | Cent-Dienst | Cent-Dienste | in diesem Wiki: AWS-Dienst ohne dauerhaftes Freikontingent, der bei Demo-Nutzung nur Bruchteile eines Cents kostet (API Gateway, EventBridge-Events, S3) | — |

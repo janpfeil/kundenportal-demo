@@ -1,13 +1,13 @@
 # Architektur: Mandanten und Demo-Pass
 
-Stand: 2026-09-30 · Beschreibt den **Ist-Stand** des Codes (Phase 4 abgeschlossen, Release v0.4.0, live geprüft am 30.09.2026; danach geschlossen: atomare Obergrenze, Upload-Kontingent, Einstellungen und Angebot im API, Hinweise an den Inhaber — noch nicht live geprüft). Ergänzt die [Architektur](architektur.md), [Zonen & Frontend](architektur-zonen.md) und [Altsysteme & Migration](architektur-migration.md); Anforderungen und Grundentscheidung (Bridge-Modell) stehen in [Demo-Pass](demo-pass.md). Kennzeichnung: **[B]** belegt, **[A]** Annahme, **[E]** Einschätzung.
+Stand: 2026-09-30 · Beschreibt den **Ist-Stand** des Codes (Phase 4 abgeschlossen, Release v0.4.0, live geprüft am 30.09.2026; danach geschlossen: atomare Obergrenze, Upload-Kontingent, Einstellungen und Angebot im API, Hinweise an den Inhaber — noch nicht live geprüft; 01.10.2026: Laufzeit 48 Stunden ab der ersten Anmeldung, Erinnerung nach 24 Stunden — noch nicht live geprüft). Ergänzt die [Architektur](architektur.md), [Zonen & Frontend](architektur-zonen.md) und [Altsysteme & Migration](architektur-migration.md); Anforderungen und Grundentscheidung (Bridge-Modell) stehen in [Demo-Pass](demo-pass.md). Kennzeichnung: **[B]** belegt, **[A]** Annahme, **[E]** Einschätzung.
 
 Fachbegriffe sind in jedem Abschnitt beim ersten Vorkommen mit dem [Glossar](glossar.md) verlinkt (Erklärung und Entsprechung außerhalb von AWS).
 
 ## Überblick
 
 Der Inhaber stellt **Einladungslinks** aus. Wer einen Link einlöst, erhält
-einen **Demo-Pass** (7 Tage, Kontingent) und damit einen eigenen
+einen **Demo-Pass** (48 Stunden, mit der ersten Anmeldung neu gezählt; Kontingent) und damit einen eigenen
 [Mandanten](glossar.md#mandant) im [Bridge-Modell](glossar.md#bridge-modell):
 Die Lambdas, das API und der Ereignisbus sind geteilt; Daten, Altsystem-
 Datenstand, Uploads und Konten gehören dem Mandanten allein. Nach Ablauf baut
@@ -27,9 +27,11 @@ Shell und Cockpit ([Zonen & Frontend](architektur-zonen.md) §8).
 {"type": "timeline", "title": "Lebenszyklus eines Mandanten", "events": [
  ["Einladung", "Inhaber erzeugt im Cockpit einen Link für eine E-Mail-Adresse (einmalig, 14 Tage)"],
  ["Einlösen", "Besucher öffnet den Link, löst das ALTCHA-Rätsel; Pass wird ausgestellt"],
- ["Einrichtung", "Tabelle, Altsystem-Datenstand, Konto des Pass-Inhabers, Ablauf-Zeitplan (gemessen ≈ 10 s)"],
- ["Tag 1–7", "Nutzung mit den Demo-Personen des Mandanten; Kontingent sichtbar"],
- ["Tag 7", "Einmal-Zeitplan oder täglicher Abgleich (03:30) meldet den Ablauf"],
+ ["Einrichtung", "Tabelle, Altsystem-Datenstand, Konto des Pass-Inhabers (Cognito schickt das Einmal-Passwort), Ablauf- und Erinnerungs-Zeitplan (gemessen ≈ 10 s)"],
+ ["Erste Anmeldung", "Die Shell meldet sie (POST /api/tenancy/pass/activate); ab jetzt gilt der Pass 48 Stunden"],
+ ["Nach 24 h ohne Anmeldung", "Erinnerungs-Zeitplan oder täglicher Abgleich: Cognito schickt die Einladung mit neuem Einmal-Passwort noch einmal (höchstens einmal)"],
+ ["48 h", "Nutzung mit den Demo-Personen des Mandanten; Kontingent sichtbar"],
+ ["Ende", "48 h nach der ersten Anmeldung, ohne Anmeldung 48 h nach dem Einlösen: Einmal-Zeitplan oder täglicher Abgleich (03:30) meldet den Ablauf"],
  ["Rückbau", "Tabelle, Altsystem-Daten, Uploads, Konten, Zeitplan, Plattform-Einträge (gemessen ≈ 10 s)"]]}
 ```
 
@@ -53,9 +55,9 @@ Mandanten, Kontingente) liegen ebenfalls dort, unter eigenen Präfixen
 | PK | SK | Inhalt |
 |---|---|---|
 | `INVITE#<sha256(token)>` | `META` | E-Mail, erstellt, gültig bis (TTL 14 Tage), eingelöst |
-| `PASS#<passId>` | `META` | Mandant, E-Mail, Status, ausgestellt, gültig bis; bleibt nach dem Rückbau 30 Tage als Nachweis, dann [TTL](glossar.md#dynamodb-ttl) |
+| `PASS#<passId>` | `META` | Mandant, E-Mail, Status, ausgestellt, erste Anmeldung (`activatedAt`), gültig bis; bleibt nach dem Rückbau 30 Tage als Nachweis, dann [TTL](glossar.md#dynamodb-ttl) |
 | `TENANT#<kennung>` | `QUOTA#<art>` | Zähler `used` (`api`, `events`, `uploads`) — der Router und Documents kennen nur den Mandanten, nicht den Pass; `uploads` trägt zusätzlich `exceededAt` (Merker: `QuotaExceeded` einmal gemeldet) |
-| `PLATFORM` | `TENANT#<kennung>` | Tabelle, Status (`provisioning`, `active`, `quota-exceeded`, `tearing-down`, `deleted`), Pass — Liste für Abgleich und Cockpit |
+| `PLATFORM` | `TENANT#<kennung>` | Tabelle, Status (`provisioning`, `active`, `quota-exceeded`, `tearing-down`, `deleted`), Pass, gültig bis, erste Anmeldung (`activatedAt`), Erinnerung verschickt (`reminderSentAt`) — Liste für Abgleich und Cockpit |
 | `PLATFORM` | `SETTINGS` | Einlösen offen/gesperrt ([Kill-Switch](glossar.md#kill-switch)) mit `closedAt`/`closedReason`, Obergrenze `maxTenants` (Vorgabe 3, höchstens 4), Zähler `activeTenants` (Mandanten, die nicht `deleted` sind) |
 | `EMAIL#<sha256(adresse)>` | `PASS` | ein Pass je E-Mail-Adresse |
 | `RATE#<sha256(ip)>` | `REDEEM` | Einlöseversuche je IP, TTL 1 h |
@@ -154,7 +156,7 @@ dem Inhaber-Mandanten vorbehalten.
   `security: []` und laufen damit **ohne** JWT-Authorizer.
 - **Angebot:** `GET /api/tenancy/offer` liefert Laufzeit, Kontingente,
   größte Upload-Größe und ob Einlösen gerade möglich ist
-  (`{passDays, quotas: {api, events, uploads}, uploadMaxBytes, redemptionOpen}`,
+  (`{passHours, quotas: {api, events, uploads}, uploadMaxBytes, redemptionOpen}`,
   aus Konfiguration und `PLATFORM/SETTINGS`). `redemptionOpen` ist falsch,
   solange der Kill-Switch sperrt oder alle Plätze belegt sind. Die Antwort
   ist für alle gleich und darf 60 s zwischengespeichert werden
@@ -206,12 +208,13 @@ dem Inhaber-Mandanten vorbehalten.
 
 | Größe | Grenze | Zählung |
 |---|---|---|
-| Laufzeit | 7 Tage | Zeitplan + täglicher Abgleich |
+| Laufzeit | 48 Stunden (`PASS_HOURS`) ab dem Einlösen, mit der ersten Anmeldung erneut 48 Stunden ab dieser (einmal); kurze Test-Pässe behalten ihre Minuten | Zeitplan + täglicher Abgleich |
+| Erinnerung | nach 24 Stunden (`REMINDER_HOURS`) ohne Anmeldung, höchstens einmal | Erinnerungs-Zeitplan + täglicher Abgleich |
 | API-Aufrufe | 5.000 (`QUOTA_API_CALLS`) | `service-kit`-Router vor jeder Route eines Pass-Mandanten: atomares `ADD` auf `TENANT#<kennung>/QUOTA#api` der Base mit Bedingung, an der Grenze 429; Mandant nicht `active` → 403 (`quota-exceeded` → 429), Status 30 s gecacht (`TenantDirectory`). Die Tenancy-Routen selbst umgehen den Wächter, damit Statusseite und Cockpit erreichbar bleiben |
 | Domänen-Ereignisse | 1.000 | **eine** Regel „alle `kundenportal.*`-Ereignisse mit `detail.tenantId` Präfix `p`" an den Tenancy-Worker; der zählt `QUOTA#events`, das erste Ereignis über der Grenze setzt `quota-exceeded` → API 429 |
 | Uploads | 20 (`QUOTA_UPLOADS`), je ≤ 5 MB, nur JPEG/PNG/PDF | Documents vor jeder presignierten Upload-URL eines Pass-Mandanten: atomares `ADD` auf `TENANT#<kennung>/QUOTA#uploads` der Base mit Bedingung `used < 20`, an der Grenze 429 „Kontingent erschöpft" und **einmal** `QuotaExceeded` (Art `uploads`); die übrige Nutzung bleibt möglich. Größe (signierte Länge, Nachprüfung im Worker) und Typ prüft Documents wie bisher; der Inhaber zählt nie |
 | Gleichzeitige Instanzen | 1 je Pass | ein Mandant je Pass |
-| E-Mails | 1 (Einmal-Passwort) | keine weiteren E-Mails an Pass-Inhaber |
+| E-Mails | 1 (Einmal-Passwort), höchstens 1 Erinnerung | die Erinnerung nur ohne Anmeldung nach 24 Stunden; sonst keine E-Mails an Pass-Inhaber |
 
 Bei Überschreitung erscheint `QuotaExceeded` (Quelle `kundenportal.tenancy`,
 auch wenn Documents es für die Uploads veröffentlicht); die Shell zeigt
@@ -223,7 +226,7 @@ Seite `/pass` (Komponente `Meter` aus `packages/ui`).
 | Baustein | Kosten | Begründung |
 |---|---|---|
 | Tabelle je Mandant, provisioned 5/5 | 0 $ | Always Free: 25 RCU/25 WCU je Konto und Region; Base 5/5 + 3 × 5/5 = 20, höchstens 5 + 4 × 5 = 25 [B] |
-| Einmal-Zeitplan je Pass | 0 $ | [EventBridge Scheduler](glossar.md#eventbridge-scheduler), wird nach dem Auslösen gelöscht |
+| Einmal-Zeitpläne je Pass (Ablauf, Erinnerung) | 0 $ | [EventBridge Scheduler](glossar.md#eventbridge-scheduler), wird nach dem Auslösen gelöscht |
 | STS AssumeRole | 0 $ | STS ist kostenlos [B] |
 | EventBridge Scheduler (Zeitpläne und täglicher Abgleich) | 0 $ | 14 Mio. Aufrufe/Monat frei [B] |
 | Cognito-Konten | 0 $ | 10.000 aktive Nutzer/Monat frei [B] |
@@ -241,12 +244,32 @@ Free Plan das Guthaben, danach kostete jede weitere Tabelle
 ## 7. Ablauf und Rückbau
 
 - **Zeitplan:** Die Einrichtung legt einen einmaligen Zeitplan
-  (`at(…)`, `ActionAfterCompletion: DELETE`, Ziel: Tenancy-Worker) in der Gruppe
-  `kundenportal-passes` an. Die Gruppe liegt im Base-Stack, damit eine Pause
-  (Abbau des App-Stacks) sie nicht löscht.
+  `pass-expiry-<kennung>` (`at(…)`, `ActionAfterCompletion: DELETE`, Ziel:
+  Tenancy-Worker, `{task: "expire"}`) in der Gruppe `kundenportal-passes`
+  an. Die Gruppe liegt im Base-Stack, damit eine Pause (Abbau des
+  App-Stacks) sie nicht löscht.
+- **Erste Anmeldung:** Nach jeder Anmeldung eines Pass-Inhabers ruft die
+  Shell `POST /api/tenancy/pass/activate` (höchstens 2 s, Fehler nur
+  protokolliert). Der erste Aufruf setzt `activatedAt` und `validUntil` =
+  jetzt + 48 h auf Mandant und Pass in einer bedingten Transaktion; spätere
+  Aufrufe ändern nichts, andere Rollen bekommen 204. Das API braucht dafür
+  keine Scheduler-Rechte: Löst der erste Zeitplan vor dem neuen Ende aus,
+  legt der Worker `pass-expiry-moved-<kennung>` zum neuen Ende an, statt
+  den Pass zu beenden.
+- **Erinnerung:** Bekam der Inhaber die Einladung von Cognito (nicht bei
+  kurzen Test-Pässen), legt die Einrichtung zusätzlich
+  `pass-reminder-<kennung>` 24 h nach dem Einlösen an (`{task: "remind"}`;
+  liegt der Zeitpunkt in der Vergangenheit oder nach dem Ende, entfällt
+  er). Der Worker prüft: Mandant `active`, keine erste Anmeldung, Cognito-
+  Status `FORCE_CHANGE_PASSWORD` (`AdminGetUser`). Dann setzt er bedingt
+  `reminderSentAt` (höchstens einmal) und lässt Cognito die Einladung mit
+  neuem Einmal-Passwort an dieselbe Adresse schicken (`AdminCreateUser`
+  mit `MessageAction: RESEND`); scheitert das, gibt er den Merker wieder
+  frei. Wer schon angemeldet ist (`CONFIRMED`), bekommt nichts.
 - **Täglicher Abgleich** (03:30 Europe/Berlin): Ein Lauf findet abgelaufene, hängende
   (Einrichtung > 10 min) und verwaiste Mandanten (z. B. Zeitplan während
-  einer Pause ins Leere gelaufen) und baut sie zurück.
+  einer Pause ins Leere gelaufen) und baut sie zurück. Er schickt auch
+  eine fällige Erinnerung, die kein Zeitplan verschickt hat.
 - **Ablauf:** Zeitplan, Abgleich oder Widerruf im Cockpit setzen den
   Mandanten auf `tearing-down` und veröffentlichen `DemoPassExpired`; dessen
   Handler baut zurück. Gemessen: ≈ 10 s nach Ablauf ist alles weg
@@ -255,7 +278,7 @@ Free Plan das Guthaben, danach kostete jede weitere Tabelle
 - **Rückbau** (idempotent, jeder Schritt überspringt Fehlendes): Cognito-
   Konten mit `custom:tenant_id` = Kennung löschen; Altsysteme
   `DELETE …/mandant` bzw. `…/tenant`; Upload-Präfix löschen; Tabelle
-  löschen; Zeitplan löschen; Plattform-Einträge auf „gelöscht" (Pass bleibt
+  löschen; alle Zeitpläne des Mandanten löschen; Plattform-Einträge auf „gelöscht" (Pass bleibt
   30 Tage als Nachweis, dann TTL) und dabei `activeTenants` genau einmal
   herunterzählen; `TenantDeleted`; Hinweis an den Inhaber.
 - **Vollabbau:** Pass-Mandanten entstehen zur Laufzeit; CloudFormation
@@ -286,7 +309,9 @@ Inhaber-Thema (SNS, `OWNER_TOPIC_ARN`, dasselbe Thema wie die Hinweise des
 Notification-Service) je eine kurze Nachricht, wenn ein Mandant nutzbar ist
 („Demo-Pass eingelöst: <E-Mail>, Mandant <kennung>, gültig bis …") und
 wenn er gelöscht ist („Demo-Pass beendet (abgelaufen|widerrufen): <E-Mail>,
-Mandant <kennung> gelöscht, <n> Konten, <m> Uploads"). Beide gehen genau
+Mandant <kennung> gelöscht, <n> Konten, <m> Uploads"), außerdem nach einer
+Erinnerung („Erinnerung an <E-Mail> verschickt: Mandant <kennung>, seit 24
+Stunden nicht angemeldet."). Alle gehen genau
 einmal hinaus (nur der Lauf, der den Status umstellt), nennen nie das
 Demo-Passwort oder einen Token, und ein Fehler beim Versand bricht
 Einrichtung oder Rückbau nicht ab.

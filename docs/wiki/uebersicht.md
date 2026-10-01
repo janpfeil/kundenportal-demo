@@ -73,7 +73,8 @@ austauschbar.
   Tabelle, eigene Ereignis-Regeln, eigener Altsystem-Datenstand; Start in
   Sekunden).
 - Zugang über **Einladungslinks** und den Inhaber-Zugang; Kontingent,
-  Ablauf nach 7 Tagen und Bot-Prüfung schützen vor Missbrauch. Details in
+  Ablauf nach 48 Stunden (ab der ersten Anmeldung, Erinnerung nach 24
+  Stunden ohne Anmeldung) und Bot-Prüfung schützen vor Missbrauch. Details in
   [Demo-Pass](demo-pass.md).
 - **Gebaut in Phase 4 (v0.4.0):** Ein eingelöster Link ergibt in ≈ 10 s
   einen eigenen Mandanten; nach Ablauf baut das System ihn in ≈ 10 s
