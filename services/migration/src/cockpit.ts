@@ -17,8 +17,10 @@ import {
   refString,
   type TimelineEntry,
 } from "./model.js";
+import { matchRecords, matchTimeline, SEARCH_TIMELINE_ENTRIES, searchQuery } from "./search.js";
+import { type MigrationTrends, migratedToday, migrationTrends } from "./trends.js";
 
-/** Cockpit view of one record (clarification case or dead letter). */
+/** Cockpit view of one record (clarification case, dead letter, search hit). */
 export interface RecordView {
   id: string;
   system: LegacySystem;
@@ -38,11 +40,21 @@ export interface MigrationStatus {
     /** Records in the legacy system; missing while it is unreachable. */
     total?: number;
     counts: Record<RecordStatus, number>;
+    /** Records migrated or linked since 00:00 German time. */
+    migratedToday: number;
   }[];
   clarifications: RecordView[];
   deadLetters: RecordView[];
   runs: MigrationRun[];
   timeline: TimelineEntry[];
+  trends: MigrationTrends;
+}
+
+/** `GET /migration/search` (`MigrationSearchResult` in the contract). */
+export interface MigrationSearchResult {
+  query: string;
+  accounts: RecordView[];
+  events: TimelineEntry[];
 }
 
 function view(record: MigrationRecord): RecordView {
@@ -104,6 +116,7 @@ export class Cockpit {
       legacyTotal(legacy, caller.tenantId, "utility"),
       legacyTotal(legacy, caller.tenantId, "telco"),
     ]);
+    const now = this.ctx.now();
     const systems = (["utility", "telco"] as const).map((system) => {
       const counts = Object.fromEntries(RecordStatus.options.map((s) => [s, 0])) as Record<
         RecordStatus,
@@ -113,7 +126,12 @@ export class Cockpit {
         if (record.account.system === system) counts[record.status]++;
       }
       const total = system === "utility" ? utilityTotal : telcoTotal;
-      return { system, ...(total === undefined ? {} : { total }), counts };
+      return {
+        system,
+        ...(total === undefined ? {} : { total }),
+        counts,
+        migratedToday: migratedToday(records, system, now),
+      };
     });
     const byUpdate = (a: RecordView, b: RecordView) => b.updatedAt.localeCompare(a.updatedAt);
     return {
@@ -128,6 +146,26 @@ export class Cockpit {
         .sort(byUpdate),
       runs,
       timeline,
+      trends: migrationTrends(records, now),
+    };
+  }
+
+  /**
+   * `GET /migration/search?q=`: accounts and timeline events of the caller's tenant that
+   * contain the query (any case), at most ten each, newest first. Reads what the status
+   * reads — one query of the records, the timeline with a larger page — no index, no scan.
+   */
+  async search(caller: Caller, q: string | undefined): Promise<MigrationSearchResult> {
+    const query = searchQuery(q);
+    const { repository } = this.ctx;
+    const [records, timeline] = await Promise.all([
+      repository.listRecords(caller.tenantId),
+      repository.listTimeline(caller.tenantId, SEARCH_TIMELINE_ENTRIES),
+    ]);
+    return {
+      query,
+      accounts: matchRecords(records, query).map(view),
+      events: matchTimeline(timeline, query),
     };
   }
 
@@ -150,11 +188,16 @@ export class Cockpit {
     const removed = await deadLetters.remove(caller.tenantId, account);
     if (!removed) log("warn", "Failed task not found in the DLQ; redriving anyway", { id });
     const merged = { ...record.corrections, ...corrections.data };
+    const now = this.ctx.now().toISOString();
     await repository.putRecord(caller.tenantId, {
       ...record,
       status: "queued",
       corrections: merged,
-      updatedAt: this.ctx.now().toISOString(),
+      updatedAt: now,
+      // The dead letter trend needs both ends of its stay in the queue; a record that
+      // failed before `failedAt` existed failed at its last update.
+      failedAt: record.failedAt ?? record.updatedAt,
+      redrivenAt: now,
     });
     await dispatcher.dispatch({
       tenantId: caller.tenantId,

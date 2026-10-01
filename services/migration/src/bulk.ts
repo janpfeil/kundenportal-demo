@@ -165,29 +165,49 @@ export class BulkImport {
       ...(task.corrections && Object.keys(task.corrections).length
         ? { corrections: task.corrections }
         : {}),
+      // History for the cockpit's trends: when it failed and when it was redriven.
+      ...(existing?.failedAt ? { failedAt: existing.failedAt } : {}),
+      ...(existing?.redrivenAt ? { redrivenAt: existing.redrivenAt } : {}),
     };
+    // A record that is still failed (Lambda's retry, a new run) keeps its first failure.
+    const failedSince =
+      existing?.status === "failed" ? (existing.failedAt ?? existing.updatedAt) : undefined;
     try {
-      await this.migrate(task, base);
+      await this.migrate(task, base, failedSince);
     } catch (error) {
       if (error instanceof RecordFailedError) throw error;
-      await this.fail(task, base, {
-        code: "unexpected",
-        message: error instanceof Error ? error.message : String(error),
-        fields: [],
-      });
+      await this.fail(
+        task,
+        base,
+        {
+          code: "unexpected",
+          message: error instanceof Error ? error.message : String(error),
+          fields: [],
+        },
+        failedSince,
+      );
     }
   }
 
-  private async migrate(task: RecordTask, base: MigrationRecord): Promise<void> {
+  private async migrate(
+    task: RecordTask,
+    base: MigrationRecord,
+    failedSince: string | undefined,
+  ): Promise<void> {
     const { repository, events } = this.ctx;
     const { tenantId, account, correlationId } = task;
     const mapped = await readRecord(await this.ctx.legacy(), tenantId, account, task.corrections);
     if (!mapped) {
-      return this.fail(task, base, {
-        code: "unexpected",
-        message: "Record no longer exists in the legacy system",
-        fields: [],
-      });
+      return this.fail(
+        task,
+        base,
+        {
+          code: "unexpected",
+          message: "Record no longer exists in the legacy system",
+          fields: [],
+        },
+        failedSince,
+      );
     }
     const named = { ...base, displayName: mapped.displayName, lastSignInAt: mapped.lastSignInAt };
     const problem = !mapped.ok
@@ -197,8 +217,14 @@ export class BulkImport {
       await repository.putRecord(tenantId, { ...named, status: "clarification", problem });
       return this.count(task, { clarification: 1 });
     }
-    if (!mapped.ok)
-      return this.fail(task, named, problem ?? { code: "unexpected", message: "", fields: [] });
+    if (!mapped.ok) {
+      return this.fail(
+        task,
+        named,
+        problem ?? { code: "unexpected", message: "", fields: [] },
+        failedSince,
+      );
+    }
 
     const provisioned = await this.ctx.accounts.provision(
       tenantId,
@@ -207,11 +233,12 @@ export class BulkImport {
       mapped.displayName,
     );
     if (!provisioned.ok) {
-      return this.fail(task, named, {
-        code: "identity-conflict",
-        message: provisioned.reason,
-        fields: ["email"],
-      });
+      return this.fail(
+        task,
+        named,
+        { code: "identity-conflict", message: provisioned.reason, fields: ["email"] },
+        failedSince,
+      );
     }
 
     const { subject } = provisioned;
@@ -265,9 +292,17 @@ export class BulkImport {
     task: RecordTask,
     record: MigrationRecord,
     problem: { code: MigrationFailureCode; message: string; fields: string[] },
+    /** When the record became failed if it already was (kept); otherwise it fails now. */
+    failedSince: string | undefined,
   ): Promise<never> {
     const { tenantId, account, correlationId } = task;
-    await this.ctx.repository.putRecord(tenantId, { ...record, status: "failed", problem });
+    const failedAt = failedSince ?? this.ctx.now().toISOString();
+    await this.ctx.repository.putRecord(tenantId, {
+      ...record,
+      status: "failed",
+      problem,
+      failedAt,
+    });
     await this.ctx.events.publish(MigrationRecordFailed, {
       eventId: deterministicUuid(
         tenantId,

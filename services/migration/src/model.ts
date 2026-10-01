@@ -62,6 +62,14 @@ export const MigrationRecord = z.object({
   corrections: Corrections.optional(),
   attempts: z.number().int().nonnegative().default(0),
   updatedAt: z.string(),
+  /**
+   * When the record last became `failed`; kept while it stays failed (retries) and as
+   * history after a redrive, set anew when it fails again after one. The cockpit's dead
+   * letter trend reads it.
+   */
+  failedAt: z.string().optional(),
+  /** When the operator last redrove the record out of the DLQ. */
+  redrivenAt: z.string().optional(),
 });
 export type MigrationRecord = z.infer<typeof MigrationRecord>;
 

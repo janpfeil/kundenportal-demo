@@ -91,6 +91,9 @@ export class Linking {
         updatedAt: occurredAt,
         ...(existing?.lastSignInAt ? { lastSignInAt: existing.lastSignInAt } : {}),
         ...(existing?.runId ? { runId: existing.runId } : {}),
+        // The cockpit's trends still count a redriven record that then migrated.
+        ...(existing?.failedAt ? { failedAt: existing.failedAt } : {}),
+        ...(existing?.redrivenAt ? { redrivenAt: existing.redrivenAt } : {}),
       },
       true,
     );

@@ -245,8 +245,11 @@ export class MemoryRepository {
   async addTimeline(_t: string, entry: TimelineEntry) {
     this.timeline.unshift(entry);
   }
-  async listTimeline() {
-    return this.timeline;
+  /** Page sizes the use cases asked the timeline for. */
+  timelineLimits: number[] = [];
+  async listTimeline(_t: string, limit = 50) {
+    this.timelineLimits.push(limit);
+    return this.timeline.slice(0, limit);
   }
 }
 

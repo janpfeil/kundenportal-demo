@@ -67,6 +67,9 @@ export function createHandler(bulk: BulkImport, linking: Linking, cockpit: Cockp
         await linking.confirm(callerFrom(event), body(event), event.requestContext.requestId),
       ),
     "GET /migration/status": async (event) => json(200, await cockpit.status(owner(event))),
+    // Same operators as the status; the tenant comes from the token, only `q` from the URL.
+    "GET /migration/search": async (event) =>
+      json(200, await cockpit.search(owner(event), event.queryStringParameters?.q)),
     "POST /migration/bulk": async (event) => {
       const caller = owner(event);
       const system = LegacySystem.safeParse((body(event) as { system?: unknown }).system);
