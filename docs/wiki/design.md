@@ -269,3 +269,24 @@ maschinenlesbar per `data-fake="true"`, für Screenreader beschriftet.
 |---|---|---|---|
 | Datenvolumen (verbraucht) | Übersicht (Mobilfunk-Karte), Verbrauch (Reiter Mobilfunk) | Es gibt kein Mobilfunknetz; das API rechnet ein Demo-Modell (`demoUsage`: 40 % am Monatsanfang, 100 % am Monatsende) | Nutzungsdaten aus einem Netz-/Abrechnungssystem (CDR-Import) |
 | „1 GB nachbuchen“ | Verbrauch (Reiter Mobilfunk) | keine Buchung von Zusatzvolumen im Vertragsdienst | Operation „Zusatzoption buchen“ im Vertragsdienst samt Abrechnung |
+
+### Abweichungen vom Mockup
+
+**[B]** Bewusst anders als im Mockup, jeweils mit Grund:
+
+- **Keine Daten dafür im API:** Vertragsnummer (die Detailseite zeigt den
+  ersten Block der Vertrags-ID), Preis je Tarifoption (nur die aktuelle Option
+  zeigt ihren Preis), „mit Foto“ an Zählerständen (Stand und Foto sind nicht
+  verknüpft), „gedrosselt auf 64 kbit/s“ beim Datenvolumen. Erfunden wird
+  davon nichts.
+- **Barrierefreiheit:** Rahmen des Suchfelds in der gedämpften Farbe (3:1),
+  der Schalter zeigt auch „aus“ mit gefülltem Knopf, Zähler der Bottom-Bar in
+  der Akzentfarbe statt Rot (Rot erreichte im Dunkelmodus nur 3,9:1).
+- **Cockpit:** Pass-Inhaber haben in der Seitenleiste zusätzlich „Demo-Pass“;
+  Problem-Badges zeigen deutsche Texte aus Code und Feldern (die technische
+  Meldung als Tooltip); auf Telefonen steht das Suchfeld auf der Seite statt
+  in der Kopfzeile.
+- **Postfach:** „Verbrauch ansehen“ an jeder Nachricht; die Benutzermenüs
+  haben keine Icons und keinen „n neu“-Zähler (die Glocke zeigt ihn).
+- **Kopfzeile:** bei wenig Platz bekommt die Navigation eine eigene Zeile,
+  statt Einträge wegzuscrollen.

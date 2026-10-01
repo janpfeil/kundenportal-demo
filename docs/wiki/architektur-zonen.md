@@ -393,6 +393,52 @@ Scrollen. Umschalten im Benutzermenü, danach `/pass/einloesen` geladen: Preset
 und Modus bleiben. Cockpit-Presets in Storybook (die Cockpit-Zone braucht eine
 Sitzung).
 
+## 13. Oberflächen wie im Mockup (Phase 6)
+
+Die Seiten folgen in Aufbau, Bausteinen und Inhalten dem
+[Mockup](https://janpfeil.github.io/kundenportal-demo/design/mockups.html);
+woher jede Zahl kommt, steht in der Lückenanalyse ([Design und Theme](design.md)).
+
+**Bausteine in `packages/ui`** (mit Stories „Charts“, „Dashboard“,
+„Navigation“ in Storybook): Icon-Satz als Inline-SVG (`Icon`, `IconCircle`,
+`divisionIcon`), `StatusBadge` mit Punkt, `Kpi`/`KpiGrid`, `ProgressRing`,
+`Sparkline`, `BarChart` mit Vorjahreslinie, schraffierten Schätzmonaten und
+Tabellenansicht, `MiniBars`, `Timeline`, `SearchField`, `KeyboardShortcuts`/
+`Kbd`, `Banner`, `Tabs`, `Switch`, `MessageList`, `LiveIndicator`,
+`FakeMarker` sowie die Raster `Grid`, `Split`, `CockpitGrid`, `Stack`.
+`NavItem` kennt Icon, Zähler, Tastenkürzel, Abschnitt und Unterpunkt; mit
+Abschnitten oder Kürzeln rendert die Kopfzeile eine eigene Seitenleiste
+(`.kp-sidenav`). Die Stylesheets sind auf sechs Dateien verteilt; der Build
+fügt sie zu einem `dist/styles.css` zusammen.
+
+| Seite | Zone | Neu in Phase 6 | Daten |
+|---|---|---|---|
+| `/` | Shell (vorgerendert) | Hero mit Illustration, fünf Sparten, drei Karten | statisch |
+| `/konto` | Shell | Datum und Begrüßung, Banner „Zählerstand fällig“, Vertragskarten mit Sparkline bzw. Datenvolumen, „Mein Konto“, Postfach-Vorschau, Verknüpfen | `/me`, `/me/links`, `/contracts`, `/contracts/{id}/consumption`, `/contracts/{id}/usage`, `/notifications` — je Abschnitt getrennt geladen, ein Fehler trifft nur seinen Abschnitt |
+| `/postfach?n=<id>` | Shell | Liste und geöffnete Nachricht nebeneinander | `/notifications` |
+| `/pass` | Shell | Ring der Restlaufzeit, Kontingent, Demo-Personen | `/tenancy/pass`, Laufzeit aus `/tenancy/offer` |
+| `/pass/einloesen` | Shell (vorgerendert) | Karte mit Laufzeit-Ring und Schritten | `/tenancy/offer` |
+| `/vertraege`, `/vertraege/<id>` | Verträge | Tabelle mit Sparten-Icons; Detail mit Fakten und „Vertrag ändern“ (Betrag mit Schieberegler, Optionskarten) | `/contracts`, `/contracts/{id}` |
+| `/verbrauch?vertrag=<id>` | Verbrauch | Reiter je Vertrag, Kennzahlen, Balkendiagramm 12 Monate, Erfassen mit Plausibilitätshinweis, Mobilfunk-Ring (Demo-Wert) | `/contracts`, `…/consumption`, `…/readings`, `…/usage` |
+| `/cockpit` | Cockpit | Ringe, Kennzahlen mit Sparklines, Läufe mit Fortschritt, Klärfälle (`?klaerfaelle=alle`), DLQ mit aufklappbarer Korrektur, Timeline mit Icons, Gefahrenkarte | `/migration/status` |
+| `/cockpit/suche?q=` | Cockpit | Treffer in Konten, Mandanten (Inhaber), Ereignissen | `/migration/search`, `/tenancy/passes` |
+| `/cockpit/paesse` | Cockpit | Kennzahlen, Pass-Tabelle mit Mini-Balken und offenen Einladungen, Einladung und Einstellungen nebeneinander | `/tenancy/overview`, `/tenancy/passes`, `/tenancy/settings` |
+
+**Cockpit-Rahmen:** Seitenleiste mit den Abschnitten „Migration“ (Übersicht,
+Klärfälle, DLQ, Ereignisse mit Zählern) und „Verwaltung“ (Demo-Pässe,
+Einstellungen; nur Inhaber), Suchfeld in der Kopfzeile, Glocke mit den neuen
+Klärfällen der letzten 24 Stunden. Tastenkürzel: `/` setzt den Fokus ins
+Suchfeld, `g c` öffnet die Übersicht, `g p` die Demo-Pässe; während der
+Eingabe in Feldern sind sie aus.
+
+**Kopfzeile:** Die Navigation verschwindet nie im Scrollbereich: zuerst
+fallen die Icons weg, dann bekommt sie eine eigene Zeile — bei den Presets
+mit größerer Schrift früher **[B: Storybook, Pass-Inhaber mit sechs
+Einträgen, 860–1680 px, alle Kunden-Presets ohne Überlauf, 01.10.2026]**.
+
+**Demo-Werte:** Was simuliert ist, trägt `FakeMarker` („Demo-Wert“,
+`data-fake="true"`); die Liste steht in [Design und Theme](design.md).
+
 ## Quellen
 
 - CloudFront OAC für Lambda Function URLs (Payload-Hash bei PUT/POST): https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/private-content-restricting-access-to-lambda.html
