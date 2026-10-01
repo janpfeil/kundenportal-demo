@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Design &amp; Theme · kundenportal-demo</title>
+<link rel="stylesheet" href="assets/report.css">
+<script src="assets/report.js"></script>
+</head>
+<body>
+<header class="topbar"><a class="brand" href="index.html">kundenportal-demo · Konzept</a><nav class="topnav"><a href="index.html">Übersicht</a><a href="machbarkeit-kosten.html">Machbarkeit &amp; Kosten</a><a href="fachkonzept.html">Fachkonzept</a><a href="demo-pass.html">Demo-Pass</a><a href="kostenfrei.html">Kostenfreier Betrieb</a><a href="anleitung-kontoinhaber.html">Anleitung Kontoinhaber</a><a href="anleitung-fundament.html">Anleitung Fundament</a><a href="anleitung-anwendung.html">Anleitung Anwendung</a><a href="anleitung-altsysteme.html">Anleitung Altsysteme</a><a href="nextjs-betrieb.html">Next.js-Betrieb</a><a href="architektur.html">Architektur</a><a href="architektur-zonen.html">Zonen &amp; Frontend</a><a href="architektur-migration.html">Altsysteme &amp; Migration</a><a href="architektur-mandanten.html">Mandanten &amp; Demo-Pass</a><a href="design.html" aria-current="page">Design &amp; Theme</a><a href="glossar.html">Glossar</a></nav>
+<button class="theme-toggle" type="button">Dunkel</button></header>
+<div class="layout"><nav class="toc" aria-label="Inhalt"><div class="toc-title">Inhalt</div><div>
+<ul>
+<li><a href="#ziel">Ziel</a></li>
+<li><a href="#zwei-zielgruppen">Zwei Zielgruppen</a></li>
+<li><a href="#die-varianten-im-mockup">Die Varianten im Mockup</a></li>
+<li><a href="#die-werkzeugleiste">Die Werkzeugleiste</a></li>
+<li><a href="#empfehlung-e">Empfehlung [E]</a></li>
+<li><a href="#entscheidung-des-inhabers">Entscheidung des Inhabers</a></li>
+</ul>
+</div>
+</nav><main><h1 id="design-und-theme-phase-5">Design und Theme (Phase 5)<a class="anchor" href="#design-und-theme-phase-5" title="Permanent link">#</a></h1>
+<p>Stand: 2026-10-01 · Entwurf zur Entscheidung · Kennzeichnung: <strong>[E]</strong> Einschätzung.</p>
+<p><strong>Mockup:</strong> <a href="https://janpfeil.github.io/kundenportal-demo/design/mockups.html">https://janpfeil.github.io/kundenportal-demo/design/mockups.html</a>
+(eine einzelne <a class="term" href="glossar.html#html" title="Auszeichnungssprache für Webseiten; JS = JavaScript">HTML</a>-Datei, <code>docs/design/mockups.html</code>; läuft auch lokal per
+Doppelklick, ohne <a class="term" href="glossar.html#build" title="Übersetzen und Paketieren des Quellcodes zu auslieferbaren Dateien (Artefakten)">Build</a> und ohne Internet).</p>
+<h2 id="ziel">Ziel<a class="anchor" href="#ziel" title="Permanent link">#</a></h2>
+<p>Phase 5 legt das Aussehen des Portals fest. Heute gibt es genau ein Theme:
+die <a class="term" href="glossar.html#design-token" title="benannte Gestaltungswerte (Farben, Abstände, Schriften) als CSS-Variablen, hier --kp- mit Werten für hell und dunkel">Design-Tokens</a> <code>--kp-*</code> in <code>packages/ui/src/styles.css</code> (grüner Akzent
+<code>#0b6e4f</code>, Systemschrift, hell und dunkel nach Betriebssystem). Das Mockup
+zeigt echte Seiten des Portals mit erfundenen Daten in mehreren Varianten.
+Der Inhaber wählt je Zielgruppe eine Variante; ihre Werte wandern danach als
+<a class="term" href="glossar.html#token" title="digitaler Ausweis, den ein Identitätsdienst ausstellt und den eine App bei jedem API-Aufruf mitschickt">Tokens</a> in die <a class="term" href="glossar.html#component-library" title="gemeinsames Paket wiederverwendbarer UI-Bausteine (Buttons, Formulare, Layouts), das alle Micro-Frontends nutzen und so ein einheitliches Aussehen sichern">Component Library</a>. Am Code der Seiten ändert sich dafür wenig,
+weil alle Komponenten ihre Farben, Abstände und Schriften aus den Tokens
+lesen.</p>
+<h2 id="zwei-zielgruppen">Zwei Zielgruppen<a class="anchor" href="#zwei-zielgruppen" title="Permanent link">#</a></h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Zielgruppe</th>
+<th>Seiten</th>
+<th>Was sie braucht</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Endkunden eines Mehrsparten-<a class="term" href="glossar.html#multi-sparten-versorger" title="Unternehmen, das mehrere Versorgungs- und Kommunikationsprodukte anbietet (Strom, Gas, Wasser, Wärme, Internet, Mobilfunk) – typisch für Stadtwerke">Versorgers</a> (Strom, Gas, Wasser, Internet, Mobilfunk)</td>
+<td><code>/</code>, <code>/konto</code>, <code>/postfach</code>, <code>/vertraege</code>, <code>/verbrauch</code>, <code>/pass</code></td>
+<td>ruhig, vertrauenswürdig, freundlich; gut lesbar nach <a class="term" href="glossar.html#wcag" title="Richtlinien des W3C für barrierefreie Webinhalte; Stufe AA verlangt u. a. ein Kontrastverhältnis von 4,5:1 für Text und 3:1 für Bedienelemente">WCAG 2.2</a> AA (<a class="term" href="glossar.html#kontrastverhältnis" title="Verhältnis der relativen Helligkeit von Vorder- und Hintergrundfarbe, von 1:1 bis 21:1; das Design-Mockup berechnet es live je Variante">Kontrastverhältnis</a> mindestens 4,5:1 für Text); große Touch-Ziele (44 px); klare Hierarchie; zuerst für das Smartphone gedacht</td>
+</tr>
+<tr>
+<td>Inhaber im <a class="term" href="glossar.html#migrations-cockpit" title="im Demo geplantes Micro-Frontend, das den Fortschritt der Kontenübernahme, Ereignisse und DLQ-Fälle live zeigt">Migrations-Cockpit</a> (Power-User)</td>
+<td><code>/cockpit</code>, <code>/cockpit/paesse</code></td>
+<td>dicht und schnell erfassbar; per Tastatur bedienbar; Tabellen, Kennzahlen, <a class="term" href="glossar.html#timeline" title="zeitliche Liste von Ereignissen in der Oberfläche">Timeline</a>, Status-Badges; Seitenleiste; ein guter Dunkelmodus für lange Sitzungen</td>
+</tr>
+</tbody>
+</table></div>
+<p>Beide Zielgruppen nutzen dieselben <a class="term" href="glossar.html#token" title="digitaler Ausweis, den ein Identitätsdienst ausstellt und den eine App bei jedem API-Aufruf mitschickt">Token</a>-Namen und dieselbe <a class="term" href="glossar.html#component-library" title="gemeinsames Paket wiederverwendbarer UI-Bausteine (Buttons, Formulare, Layouts), das alle Micro-Frontends nutzen und so ein einheitliches Aussehen sichern">Component
+Library</a>; sie unterscheiden sich nur in den Werten.</p>
+<h2 id="die-varianten-im-mockup">Die Varianten im Mockup<a class="anchor" href="#die-varianten-im-mockup" title="Permanent link">#</a></h2>
+<p>Jede Variante ist ein <strong>Preset</strong>: es setzt mehrere Parameter auf einmal
+(Farbe, Schrift, Dichte, Ecken, Schatten, Rahmen, Navigation). Jede Variante
+funktioniert hell und dunkel; im Dunkelmodus wird der Akzent automatisch so
+weit aufgehellt, dass er 4,5:1 erreicht.</p>
+<p><strong>Endkunden</strong></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Preset</th>
+<th>Absicht</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Vertrauen</td>
+<td>ruhiges Blau, kühle Grautöne, Karten mit feinem Schatten, Top-Bar. Seriös, ohne kühl zu wirken.</td>
+</tr>
+<tr>
+<td>Warm</td>
+<td>Terrakotta, warme Neutraltöne, gerundete Schrift, große Radien, viel Luft; mobil eine Bottom-Nav. Nahbar, für Familien und ältere Kunden.</td>
+</tr>
+<tr>
+<td>Klar</td>
+<td>monochrom mit dem grünen Bestandsakzent, fast keine Radien, Linien statt Schatten. Sachlich und sehr ruhig; am nächsten am heutigen Stand.</td>
+</tr>
+<tr>
+<td>Klassisch</td>
+<td>Petrol, Serifen-Überschriften, Seitenleiste. Wirkt wie ein etabliertes <a class="term" href="glossar.html#stadtwerk" title="kommunaler Versorger">Stadtwerk</a>.</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Cockpit</strong></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Preset</th>
+<th>Absicht</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Dicht</td>
+<td>kompakt, 14 px, Seitenleiste mit Sektionen und Tastaturkürzeln, Linien statt Schatten. Viele Zeilen auf einen Blick.</td>
+</tr>
+<tr>
+<td>Übersicht</td>
+<td>Karten mit Schatten, Top-Bar, mehr Weißraum. Für den Überblick und für Vorführungen.</td>
+</tr>
+<tr>
+<td>Kontrast</td>
+<td>dunkel zuerst, aufgehellter Cyan-Akzent, kräftigere Ränder. Für lange Sitzungen und große Bildschirme.</td>
+</tr>
+</tbody>
+</table></div>
+<p>Gezeigte Seiten: Startseite (öffentlich), Übersicht mit Konto und geöffnetem
+Benutzermenü, Verträge mit Änderungsformular, Verbrauch mit Monatsdiagramm,
+Postfach, <a class="term" href="glossar.html#demo-pass" title="im Demo: zeitlich begrenzte Berechtigung (48 Stunden ab der ersten Anmeldung, Kontingent) für eine eigene Instanz; ausgestellt per Einladungslink oder für den Inhaber">Demo-Pass</a> mit <a class="term" href="glossar.html#free-tier" title="Sammelbegriff für kostenlose Nutzungsmengen bei AWS">Kontingenten</a>; im Cockpit die Übersicht (Fortschritt
+<a class="term" href="glossar.html#multi-sparten-versorger" title="Unternehmen, das mehrere Versorgungs- und Kommunikationsprodukte anbietet (Strom, Gas, Wasser, Wärme, Internet, Mobilfunk) – typisch für Stadtwerke">Versorger</a>/Telko, <a class="term" href="glossar.html#klärfall" title="Altdatensatz, der ohne Rückfrage nicht übernommen werden kann (z. B. ohne oder mit ungültiger E-Mail-Adresse); steht im Cockpit, nicht in der DLQ">Klärfälle</a>, <a class="term" href="glossar.html#dlq" title="Ablage für Nachrichten, die nach mehreren Versuchen nicht verarbeitet werden konnten, zur Analyse und Nachverarbeitung">Dead-Letter-Queue</a> mit <a class="term" href="glossar.html#redrive" title="Zurückführen von Nachrichten aus der DLQ in die Ursprungs-Queue, nachdem der Fehler behoben ist">Redrive</a>, <a class="term" href="glossar.html#event" title="Nachricht, dass etwas passiert ist (z. B. „Zählerstand erfasst&quot;); Empfänger reagieren darauf, ohne dass der Absender sie kennt">Ereignis</a>-<a class="term" href="glossar.html#timeline" title="zeitliche Liste von Ereignissen in der Oberfläche">Timeline</a>)
+und die Demo-Pässe (Tabelle, Einladung, Einstellungen). Kopfzeile mit Marke,
+Versions-Chip, Navigation, Glocke mit Zähler und Benutzermenü sowie Fußzeile
+sind überall gleich aufgebaut.</p>
+<h2 id="die-werkzeugleiste">Die Werkzeugleiste<a class="anchor" href="#die-werkzeugleiste" title="Permanent link">#</a></h2>
+<p>Die Leiste links (auf schmalen Bildschirmen oben) lässt sich einklappen und
+ist vollständig per Tastatur bedienbar.</p>
+<ol>
+<li><strong>Zielgruppe und Screen</strong> wählen; „Mobil-Rahmen" zeigt die Seite in
+   375 px Breite mit dem echten mobilen Layout.</li>
+<li><strong>Preset</strong> wählen. Danach lassen sich einzelne Parameter übersteuern:
+   Farbmodus (Hell, Dunkel, System), Akzentfarbe (frei oder aus acht
+   Vorschlägen), Neutralton (kühl, neutral, warm), Schrift, Grundgröße
+   (14–18 px), Zeilenhöhe, Typo-Skala, Dichte, Eckenradius (0–20 px),
+   Schatten, Kartenrahmen, Navigation (Top-Bar, Seitenleiste, Bottom-Nav)
+   und deren Markierung.</li>
+<li>Die <strong><a class="term" href="glossar.html#kontrastverhältnis" title="Verhältnis der relativen Helligkeit von Vorder- und Hintergrundfarbe, von 1:1 bis 21:1; das Design-Mockup berechnet es live je Variante">Kontrastprüfung</a></strong> zeigt live die Kontrastverhältnisse für Text,
+   Sekundärtext, Links, Button-Text und Akzent gegen die Seite, jeweils mit
+   „<a class="term" href="glossar.html#wcag" title="Richtlinien des W3C für barrierefreie Webinhalte; Stufe AA verlangt u. a. ein Kontrastverhältnis von 4,5:1 für Text und 3:1 für Bedienelemente">AA</a> ✓" oder „AA ✗". So fällt eine Akzentfarbe, die nicht lesbar ist,
+   sofort auf.</li>
+<li><strong>Parameter kopieren</strong> legt die Einstellung als JSON und als fertigen
+   CSS-Block (<code>:root</code> hell, Dunkelmodus per <code>prefers-color-scheme</code>) in die
+   Zwischenablage; der Block lässt sich so in <code>packages/ui/src/styles.css</code>
+   übernehmen. <strong>Link kopieren</strong> teilt die Variante: alle Abweichungen
+   vom Preset stehen im Link hinter dem <code>#</code>.</li>
+</ol>
+<p>Die Mockups sind klickbar: Navigation, Benutzermenü (Escape schließt),
+Reiter im Verbrauch, der Schalter „Einlösen" und die <a class="term" href="glossar.html#redrive" title="Zurückführen von Nachrichten aus der DLQ in die Ursprungs-Queue, nachdem der Fehler behoben ist">Redrive</a>-Zeile reagieren.
+Das Ende der Seite erklärt jedes <a class="term" href="glossar.html#token" title="digitaler Ausweis, den ein Identitätsdienst ausstellt und den eine App bei jedem API-Aufruf mitschickt">Token</a> und enthält eine Empfehlung.</p>
+<h2 id="empfehlung-e">Empfehlung [E]<a class="anchor" href="#empfehlung-e" title="Permanent link">#</a></h2>
+<ul>
+<li><strong>Endkunden: „Vertrauen"</strong>, ergänzt um die Bottom-Nav aus „Warm" auf dem
+  Smartphone. „Warm" ist die Alternative, wenn die Marke nahbarer wirken
+  soll; „Klar", wenn der grüne Bestandsakzent bleiben soll.</li>
+<li><strong>Cockpit: „Dicht"</strong>, im Dunkelmodus mit den Werten von „Kontrast".</li>
+</ul>
+<h2 id="entscheidung-des-inhabers">Entscheidung des Inhabers<a class="anchor" href="#entscheidung-des-inhabers" title="Permanent link">#</a></h2>
+<p>Offen sind vier Fragen, je mit einem Satz zu beantworten:</p>
+<ol>
+<li>Welches Preset für die Endkunden (oder welcher geteilte Link)?</li>
+<li>Welches Preset für das Cockpit, und soll es dunkel starten?</li>
+<li>Bleibt der grüne Akzent <code>#0b6e4f</code> als Marke, oder wechselt sie?</li>
+<li>Mobil: Bottom-Nav oder Menü-Knopf?</li>
+</ol>
+<p>Danach überträgt Phase 5 die gewählten Werte in die <a class="term" href="glossar.html#token" title="digitaler Ausweis, den ein Identitätsdienst ausstellt und den eine App bei jedem API-Aufruf mitschickt">Tokens</a>, ergänzt die neuen
+Tokens aus der Legende und prüft <a class="term" href="glossar.html#storybook" title="Werkzeug, das jede Komponente der Component Library isoliert darstellt und dokumentiert; als statische Seite veröffentlicht">Storybook</a> und die Seiten in beiden Modi.</p></main></div>
+<footer class="site"><a href="../wiki/design.md">Markdown-Quelle</a> · Generiert 2026-10-01 10:04 aus <code>docs/wiki</code> mit <code>scripts/build_reports.py</code></footer>
+</body>
+</html>

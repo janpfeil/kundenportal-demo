@@ -30,6 +30,7 @@ PAGES = [
     ("architektur-zonen", "architektur-zonen", "Zonen & Frontend", "Multi-Zones, Schreibweg aus dem Browser, Laufzeit-Widget, Component Library"),
     ("architektur-migration", "architektur-migration", "Altsysteme & Migration", "Lazy Migration, Bulk-Import mit DLQ, Dubletten und Account-Linking, Migrations-Cockpit"),
     ("architektur-mandanten", "architektur-mandanten", "Mandanten & Demo-Pass", "Einladung, Pass, eigener Mandant je Besucher, Isolation per Token Vending, Kontingente, Ablauf und Rückbau"),
+    ("design", "design", "Design & Theme", "Phase 5: zwei Zielgruppen, Theme-Varianten, Mockup mit Werkzeugleiste und Kontrastprüfung"),
 ]
 SKIP_TAGS = {"a", "h1", "h2", "h3", "h4", "h5", "h6", "code", "pre", "svg", "figure", "script", "style", "summary", "th"}
 URL_RE = re.compile(r'(?<![(<"\'=])\bhttps?://[^\s<>()\]]*[^\s<>()\].,;:!?\'"»“”]')

@@ -201,6 +201,8 @@ Generator liest beide Dateien und erzeugt daraus **eine** Glossar-Seite.
 | E-Mail | E-Mails | elektronische Post; SNS verschickt bis 1.000 E-Mails im Monat kostenlos | — |
 | SMS | SMS-Versand | Kurznachricht ans Handy; bei SNS vergleichsweise teuer | — |
 | Timeline | Event-Timeline | zeitliche Liste von Ereignissen in der Oberfläche | — |
+| WCAG | WCAG 2.2, AA | Richtlinien des W3C für barrierefreie Webinhalte; Stufe AA verlangt u. a. ein Kontrastverhältnis von 4,5:1 für Text und 3:1 für Bedienelemente – https://www.w3.org/TR/WCAG22/ | BITV 2.0, EN 301 549 |
+| Kontrastverhältnis | Kontrastprüfung | Verhältnis der relativen Helligkeit von Vorder- und Hintergrundfarbe, von 1:1 bis 21:1; das Design-Mockup berechnet es live je Variante | WebAIM Contrast Checker, Browser-Entwicklerwerkzeuge |
 
 ## Demo-Pass und Mandanten
 
