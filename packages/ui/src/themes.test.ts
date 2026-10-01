@@ -38,6 +38,15 @@ const PAIRS: [label: string, fg: Token, bg: Token, min: number][] = [
   ["text / warning-bg", "--kp-text", "--kp-warning-bg", 4.5],
   ["text / info-bg", "--kp-text", "--kp-info-bg", 4.5],
   ["text / success-bg", "--kp-text", "--kp-success-bg", 4.5],
+  // Status badges and the "Demo-Wert" marker: status text on its own tinted background.
+  ["success text / success-bg", "--kp-success-text", "--kp-success-bg", 4.5],
+  ["warning text / warning-bg", "--kp-warning-text", "--kp-warning-bg", 4.5],
+  ["error text / error-bg", "--kp-error-text", "--kp-error-bg", 4.5],
+  ["info text / info-bg", "--kp-info-text", "--kp-info-bg", 4.5],
+  // Previews and times in unread messages.
+  ["muted / unread", "--kp-muted", "--kp-unread", 4.5],
+  // Counters in the bottom bar.
+  ["counter / accent", "--kp-accent-contrast", "--kp-accent", 4.5],
   ["focus ring / page", "--kp-focus", "--kp-bg", 3],
   ["focus ring / surface", "--kp-focus", "--kp-surface", 3],
   ["accent / page", "--kp-accent", "--kp-bg", 3],

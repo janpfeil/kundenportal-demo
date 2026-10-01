@@ -116,7 +116,7 @@ Das Ende der Seite erklärt jedes Token und enthält eine Empfehlung.
 | Teil | Ort | Aufgabe |
 |---|---|---|
 | Presets und Tokens | `packages/ui/src/themes.ts` | einzige Quelle: die Parameter aller sieben Presets aus dem Mockup und die Rechnung daraus (`themeTokens`), dieselben Formeln wie im Mockup |
-| Stylesheet | `scripts/build-css.mjs` → `dist/styles.css` | der UI-Build schreibt `themesCss()` vor die handgeschriebenen Stile (`src/styles.css`, `src/layout.css`); Storybook holt die Tokens direkt aus `themes.ts` |
+| Stylesheet | `scripts/build-css.mjs` → `dist/styles.css` | der UI-Build schreibt `themesCss()` vor die handgeschriebenen Stile (`src/styles.css`, `page.css`, `widgets.css`, `charts.css`, `layout.css`, `menus.css`, in dieser Reihenfolge); Storybook holt die Tokens direkt aus `themes.ts` |
 | Auswahl | `packages/ui/src/theme-runtime.ts` | Attribute an `<html>` (`data-audience`, `data-theme-preset`, `data-color-mode`, abgeleitet `data-nav`, `data-nav-marker`), Cookies `kp_theme_kunde`, `kp_theme_cockpit`, `kp_color_mode`, Prüfung der Werte, `applyTheme` für den Umschalter |
 | Init-Skript | `/theme-init.js` (Shell) | setzt auf vorgerenderten Seiten die Attribute aus den Cookies vor dem ersten Zeichnen |
 | Umschalter | `AppearanceItems` im `UserMenu`, `AppearanceMenu` für Abgemeldete | `menuitemradio` mit `aria-checked`; Wahl wirkt sofort und gilt in allen Zonen |
@@ -150,7 +150,9 @@ die Kontrastverhältnisse aus den Token-Werten (WCAG 2.x, relative Luminanz)
 und verlangt mindestens 4,5:1 für Text / Fläche und Seite, Sekundärtext,
 Links, aktiven Navigationseintrag, Button-Text auf Akzent, Text im
 Eingabefeld, Statustexte und Text auf Statusflächen sowie 3:1 für Fokusring,
-Akzent und Feldrahmen. **[B]** 14 Kombinationen aus Preset und Modus mit je 25 Paaren, alle bestanden. Weitere
+Akzent und Feldrahmen. Seit Phase 6 kommen Statustext auf eigener Statusfläche
+(Status-Badges, Marker „Demo-Wert“), Sekundärtext auf ungelesenen Nachrichten und
+Zähler auf Akzent hinzu. **[B]** 14 Kombinationen aus Preset und Modus mit je 31 Paaren, alle bestanden. Weitere
 Tests prüfen Cookies, Init-Skript, Umschalter und dass Kundenseiten
 Bedienelemente von mindestens 44 px haben.
 
