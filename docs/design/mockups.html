@@ -1204,7 +1204,7 @@ details.tv summary { cursor: pointer; color: var(--kp-accent-text); font-size: v
     cockpit: [["cockpit", "Übersicht", "/cockpit"], ["paesse", "Demo-Pässe", "/cockpit/paesse"]],
   };
   const NAV = {
-    kunde: [{ go: "start", label: "Start", icon: "home", sub: false, sideOnly: true }, { go: "konto", label: "Mein Konto", short: "Konto", icon: "user" }, { go: "postfach", label: "Postfach", icon: "mail", cnt: 2 },
+    kunde: [{ go: "start", label: "Start", icon: "home", sub: false, sideOnly: true }, { go: "konto", label: "Mein Konto", short: "Konto", icon: "user", menuOnly: true }, { go: "postfach", label: "Postfach", icon: "mail", cnt: 2 },
       { go: "vertraege", label: "Verträge", icon: "file" }, { go: "verbrauch", label: "Verbrauch", icon: "chart" }, { go: "pass", label: "Demo-Pass", short: "Pass", icon: "ticket" }],
     cockpit: [{ grp: "Migration" }, { go: "cockpit", label: "Übersicht", icon: "gauge", kbd: "g c" }, { go: "cockpit", to: "c-klaer", label: "Klärfälle", icon: "alert", cnt: 14, sub: true },
       { go: "cockpit", to: "c-dlq", label: "DLQ", short: "DLQ", icon: "inbox", cnt: 6, sub: true }, { go: "cockpit", to: "c-tl", label: "Ereignisse", icon: "clock", sub: true },
@@ -1253,7 +1253,7 @@ details.tv summary { cursor: pointer; color: var(--kp-accent-text); font-size: v
     const app = $("#app-" + aud);
     for (const ul of $$("[data-nav-list]", app)) {
       const kind = ul.dataset.navList;
-      ul.innerHTML = NAV[aud].filter((n) => (kind === "side" ? true : !n.grp && !n.sub && !n.sideOnly)).map((n) => {
+      ul.innerHTML = NAV[aud].filter((n) => !n.menuOnly && (kind === "side" ? true : !n.grp && !n.sub && !n.sideOnly)).map((n) => {
         if (n.grp) return `<li class="grp" role="presentation">${n.grp}</li>`;
         const label = kind === "bottom" ? n.short || n.label : n.label;
         const cnt = n.cnt ? `<span class="cnt" aria-label="${n.cnt} offen">${n.cnt}</span>` : "";
@@ -1305,7 +1305,7 @@ details.tv summary { cursor: pointer; color: var(--kp-accent-text); font-size: v
     $("#pass-rows").innerHTML = PASSES.map(([mail, tenant, [cls, st], first, last, q, until]) => {
       const bar = (lab, v) => `<span>${lab} ${v}<i class="meter thin${v >= 100 ? " err" : v >= 80 ? " warn" : ""}" role="meter" aria-label="${lab} ${v} %" aria-valuenow="${v}" aria-valuemin="0" aria-valuemax="100" style="display:block"><i style="width:${v}%"></i></i></span>`;
       const active = cls === "ok" || cls === "err";
-      return `<tr><td>${mail}</td><td class="mono">${tenant}</td><td><span class="st ${cls}">${st}</span></td><td class="tn small${first === "noch nicht" ? " muted" : ""}">${first}</td><td class="tn small">${last}</td><td><div class="minibars">${bar("API", q[0])}${bar("Ev.", q[1])}${bar("Up.", q[2])}</div></td><td class="tn small">${until}</td><td class="num">${active ? '<button class="btn btn-danger btn-sm" type="button" aria-label="Pass von ${mail} widerrufen …" title="Widerrufen …">${icon("x")}</button>' : ""}</td></tr>`;
+      return `<tr><td>${mail}</td><td class="mono">${tenant}</td><td><span class="st ${cls}">${st}</span></td><td class="tn small${first === "noch nicht" ? " muted" : ""}">${first}</td><td class="tn small">${last}</td><td><div class="minibars">${bar("API", q[0])}${bar("Ev.", q[1])}${bar("Up.", q[2])}</div></td><td class="tn small">${until}</td><td class="num">${active ? `<button class="btn btn-danger btn-sm" type="button" aria-label="Pass von ${mail} widerrufen …" title="Widerrufen …">${icon("x")}</button>` : ""}</td></tr>`;
     }).join("");
   }
 
