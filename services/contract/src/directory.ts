@@ -36,6 +36,7 @@ export const DirectoryEntry = z.object({
   blocked: z.boolean().optional(),
   orderedAt: z.iso.datetime({ offset: true }).optional(),
   updatedAt: z.iso.datetime({ offset: true }),
+  testAccount: z.boolean().optional(),
 });
 export type DirectoryEntry = z.infer<typeof DirectoryEntry>;
 
@@ -55,6 +56,7 @@ export function toEntry(record: ContractRecord): DirectoryEntry {
     updatedAt: record.updatedAt,
   };
   if (record.customerName) entry.customerName = record.customerName;
+  if (record.testAccount) entry.testAccount = true;
   if (record.meterNumber) entry.meterNumber = record.meterNumber;
   if (record.termination) entry.termination = record.termination;
   if (record.blocked) entry.blocked = true;
@@ -155,7 +157,7 @@ export function contractPage(entries: DirectoryEntry[], query: ContractQuery, no
   const compare = (a: { k: string; id: string }, b: { k: string; id: string }) =>
     direction * (a.k < b.k ? -1 : a.k > b.k ? 1 : a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
   const sorted = entries
-    .filter((entry) => matches(entry, query, today))
+    .filter((entry) => !entry.testAccount && matches(entry, query, today))
     .map((entry) => ({ entry, k: sortKey(entry, query.sort), id: entry.contractId }))
     .sort(compare);
   let start = 0;
@@ -197,7 +199,7 @@ export function overview(entries: DirectoryEntry[], now: Date) {
   >;
   const soon = addDays(today, ENDING_SOON_DAYS);
   let endingSoon = 0;
-  for (const entry of entries) {
+  for (const entry of entries.filter((item) => !item.testAccount)) {
     if (entry.blocked) contracts.blocked += 1;
     if (entryStatus(entry, today) === "terminated") {
       contracts.terminated += 1;

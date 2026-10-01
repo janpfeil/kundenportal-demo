@@ -41,7 +41,12 @@ const linkKey = (tenantId: string, subject: string) => ({
 export interface CustomerLink {
   customerId: string;
   customerName?: string;
+  /** A throw-away E2E account (see `isTestAccount`). */
+  testAccount?: boolean;
 }
+
+/** E2E runs register at the reserved, undeliverable domain `.invalid` (RFC 2606). */
+export const isTestAccount = (email: string) => /\.invalid$/i.test(email);
 
 /**
  * Items of the contract domain in the single table (architektur.md):
@@ -61,6 +66,7 @@ export class ContractRepository {
     subject: string,
     customerId: string,
     customerName?: string,
+    testAccount = false,
   ): Promise<void> {
     const { db, tableName } = await this.data(tenantId);
     await db.send(
@@ -70,6 +76,7 @@ export class ContractRepository {
           ...linkKey(tenantId, subject),
           customerId,
           ...(customerName ? { customerName } : {}),
+          ...(testAccount ? { testAccount: true } : {}),
         },
       }),
     );
@@ -85,6 +92,7 @@ export class ContractRepository {
     return {
       customerId: item.customerId,
       ...(typeof item.customerName === "string" ? { customerName: item.customerName } : {}),
+      ...(item.testAccount === true ? { testAccount: true } : {}),
     };
   }
 

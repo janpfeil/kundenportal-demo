@@ -159,6 +159,17 @@ describe("selectPage", () => {
   const select = (params: Record<string, string> = {}) =>
     selectPage(customers, parseCustomerQuery(params));
 
+  it("leaves the E2E runs' throw-away accounts at the reserved .invalid domain out", () => {
+    const test = summarize(
+      profile({ customerId: "c-9", email: "e2e-1@kundenportal.invalid" }),
+      [],
+      TODAY,
+    );
+    const page = selectPage([...customers, test], parseCustomerQuery({}));
+    expect(ids(page)).not.toContain("c-9");
+    expect(page.total).toBe(customers.length);
+  });
+
   it("sorts newest first by default and counts all matches", () => {
     const page = select();
     expect(ids(page)).toEqual(["c-4", "c-2", "c-3", "c-1"]);

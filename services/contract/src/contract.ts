@@ -37,6 +37,11 @@ export const ContractRecord = z.object({
   customerId: z.string().min(1),
   /** Display name of the customer when the contract was written (operator lists). */
   customerName: z.string().optional(),
+  /**
+   * Belongs to a throw-away account of the E2E runs (reserved domain `.invalid`); kept out
+   * of the operator's lists and figures.
+   */
+  testAccount: z.boolean().optional(),
   division: Division,
   tariffName: z.string(),
   tariffOption: z.string(),

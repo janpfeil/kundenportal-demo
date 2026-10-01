@@ -225,6 +225,7 @@ export function orderedContract(input: {
   contractId: string;
   customerId: string;
   customerName?: string | undefined;
+  testAccount?: boolean | undefined;
   product: ProductRecord;
   version: PriceVersion;
   option: ProductOption;
@@ -238,6 +239,7 @@ export function orderedContract(input: {
     contractId: input.contractId,
     customerId: input.customerId,
     ...withName(input.customerName),
+    ...(input.testAccount ? { testAccount: true } : {}),
     division: product.division,
     tariffName: product.name,
     tariffOption: option.optionId,

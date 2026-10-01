@@ -15,7 +15,7 @@ import { type ContractRecord, isMetered, optionOf } from "./contract.js";
 import { euros } from "./history.js";
 import { demoContracts, legacyContracts } from "./origins.js";
 import type { ContractEvents } from "./publisher.js";
-import type { ContractRepository } from "./repository.js";
+import { type ContractRepository, isTestAccount } from "./repository.js";
 import { estimateAnnualConsumption, recommendedInstallment } from "./tariffs.js";
 import { ContractWriter } from "./writer.js";
 
@@ -50,12 +50,15 @@ export class ContractIntake {
   async onCustomerRegistered(event: CustomerRegisteredDetail): Promise<void> {
     const { tenantId, eventId, occurredAt, payload } = event;
     const { subject, customerId, displayName } = payload;
-    await this.repository.linkSubject(tenantId, subject, customerId, displayName);
+    const testAccount = isTestAccount(payload.email);
+    await this.repository.linkSubject(tenantId, subject, customerId, displayName, testAccount);
     if (payload.origin !== "registration") {
       // Contracts of legacy customers arrive with their migration (phase 3).
       return;
     }
-    const records = demoContracts(customerId, eventId, occurredAt, displayName);
+    const records = demoContracts(customerId, eventId, occurredAt, displayName).map((record) =>
+      testAccount ? { ...record, testAccount: true } : record,
+    );
     await this.writer.create(
       tenantId,
       records.map((record) => ({

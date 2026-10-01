@@ -206,8 +206,12 @@ function matches(summary: CustomerSummary, query: CustomerQuery): boolean {
   ].some((text) => text?.toLocaleLowerCase("de").includes(q));
 }
 
+/** E2E runs register throw-away accounts at the reserved domain `.invalid` (RFC 2606). */
+export const isTestAccount = (email: string) => /\.invalid$/i.test(email);
+
 /**
- * Filters, sorts and pages the directory in memory. The cursor holds the position after
+ * Filters, sorts and pages the directory in memory; the E2E runs' throw-away accounts stay
+ * out of the operator's list. The cursor holds the position after
  * the last item (keyset), so customers added in between neither repeat nor skip others.
  */
 export function selectPage(
@@ -220,7 +224,7 @@ export function selectPage(
     id: summary.customerId,
   });
   const sorted = summaries
-    .filter((summary) => matches(summary, query))
+    .filter((summary) => !isTestAccount(summary.email) && matches(summary, query))
     .sort((a, b) => direction * compare(keyOf(a), keyOf(b), query.sort));
   const after = query.cursor ? decodeCursor(query.cursor, query) : undefined;
   const start = after

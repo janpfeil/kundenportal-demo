@@ -63,6 +63,21 @@ beforeEach(() => {
 });
 
 describe("CustomerRegistered", () => {
+  it("marks the contracts of an E2E account at the reserved .invalid domain", async () => {
+    const test = {
+      ...registered,
+      payload: { ...registered.payload, email: "e2e-1@kundenportal.invalid" },
+    };
+    await worker(customerRegistered(test));
+    expect(f.table.get("TENANT#owner#SUBJ#sub-1", "CONTRACTS")).toMatchObject({
+      testAccount: true,
+    });
+    expect(f.table.get(...electricityKey)).toMatchObject({ testAccount: true });
+    for (const item of f.table.partition("TENANT#owner#CONTRACTS")) {
+      expect(item).toMatchObject({ testAccount: true });
+    }
+  });
+
   it("links the identity, creates demo contracts with directory entries and publishes created", async () => {
     await expect(worker(customerRegistered())).resolves.toBeUndefined();
     expect(f.table.get("TENANT#owner#SUBJ#sub-1", "CONTRACTS")).toEqual({

@@ -99,6 +99,12 @@ describe("contract directory", () => {
     expect(page({ q: "nothing" })).toEqual({ items: [], total: 0 });
   });
 
+  it("leaves the E2E runs' throw-away accounts out of the list and the figures", () => {
+    const test = entry({ testAccount: true });
+    expect(ids(page({}, [test, running]))).toEqual([running.contractId]);
+    expect(overview([test], now).contracts.active).toBe(0);
+  });
+
   it("filters contracts ending by a date (termination, else minimum term)", () => {
     expect(ids(page({ endsBefore: "2026-10-31", order: "asc" }))).toEqual([
       pending.contractId,

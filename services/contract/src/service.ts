@@ -145,6 +145,7 @@ export class ContractService {
       contractId: deterministicUuid(caller.tenantId, link.customerId, correlationId, "order"),
       customerId: link.customerId,
       customerName: link.customerName ?? caller.name,
+      ...(link.testAccount ? { testAccount: true } : {}),
       product,
       version,
       option,
