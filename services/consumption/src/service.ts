@@ -18,6 +18,7 @@ import {
   type ContractProjection,
   type DataUsage,
   demoUsage,
+  hasEnded,
   type MeterReading,
   type NewReading,
   readingId,
@@ -54,9 +55,21 @@ export class ConsumptionService {
   }
 
   /**
+   * The operator's view of a contract's readings, newest first. The contract must be known
+   * in the operator's tenant (own projection, the key carries the tenant), else 404.
+   */
+  async readingsOf(operator: Caller, contractId: string): Promise<MeterReading[]> {
+    const contract = await this.repository.contract(operator.tenantId, contractId);
+    if (!contract) throw notFound("Contract not found");
+    return this.repository.readings(operator.tenantId, contract.contractId);
+  }
+
+  /**
    * Stores a plausible reading and publishes `MeterReadingSubmitted`. Plausible means: the
    * contract has a meter, the date is not in the future (German time) and neither value
-   * nor date are below the latest reading.
+   * nor date are below the latest reading. A terminated contract takes no more readings;
+   * one with a termination takes readings up to its last day — also the final reading
+   * entered a few days after the end.
    */
   async submitReading(
     caller: Caller,
@@ -66,9 +79,16 @@ export class ConsumptionService {
   ): Promise<MeterReading> {
     const contract = await this.ownContract(caller, contractId);
     if (!contract.meterNumber || !contract.unit) throw unprocessable("The contract has no meter");
-    if (contract.status !== "active") throw unprocessable("The contract is not active");
+    if (contract.status !== "active" || contract.termination?.kind === "withdrawal") {
+      throw unprocessable("The contract is not active");
+    }
     const now = this.clock.now();
     if (input.readAt > todayInGermany(now)) throw unprocessable("The date is in the future");
+    if (contract.termination && input.readAt > contract.termination.effectiveDate) {
+      throw unprocessable(
+        `The date is after the end of the contract on ${contract.termination.effectiveDate}`,
+      );
+    }
     const [latest] = await this.repository.readings(caller.tenantId, contractId, 1);
     if (latest && input.readAt < latest.readAt) {
       throw unprocessable(`The date is before the latest reading of ${latest.readAt}`);
@@ -172,9 +192,11 @@ export class ConsumptionService {
   }
 
   /**
-   * `ContractChanged`: keeps the own projection (owner, meter, annual estimate, data volume)
-   * and the list of mobile contracts for the daily check; a new metered contract brings
-   * its start reading as the first entry of the history.
+   * `ContractChanged`: keeps the own projection (owner, meter, annual estimate, data volume,
+   * start and end) and the list of mobile contracts for the daily check; a new metered
+   * contract — from the system or ordered by the customer — brings its start reading as
+   * the first entry of the history. A terminated or withdrawn contract leaves the check's
+   * list; one with a pending termination stays on it until its last day.
    */
   async onContractChanged(event: ContractChangedDetail): Promise<void> {
     const { tenantId, payload } = event;
@@ -185,6 +207,7 @@ export class ConsumptionService {
       division: snapshot.division,
       status: snapshot.status,
       version: snapshot.version,
+      startDate: snapshot.startDate,
     };
     if (snapshot.meterNumber) projection.meterNumber = snapshot.meterNumber;
     if (snapshot.unit) projection.unit = snapshot.unit;
@@ -192,14 +215,23 @@ export class ConsumptionService {
       projection.estimatedAnnualConsumption = snapshot.estimatedAnnualConsumption;
     }
     if (snapshot.dataVolumeMb) projection.dataVolumeMb = snapshot.dataVolumeMb;
+    if (snapshot.termination) {
+      projection.termination = {
+        kind: snapshot.termination.kind,
+        effectiveDate: snapshot.termination.effectiveDate,
+      };
+    }
 
     if (await this.repository.saveContract(tenantId, projection)) {
-      if (projection.dataVolumeMb && projection.status === "active") {
+      const today = todayInGermany(this.clock.now());
+      if (projection.dataVolumeMb && !hasEnded(projection, today)) {
         await this.repository.watch({
           tenantId,
           contractId: projection.contractId,
           customerId: projection.customerId,
           dataVolumeMb: projection.dataVolumeMb,
+          startsOn: snapshot.startDate,
+          ...(projection.termination ? { endsOn: projection.termination.effectiveDate } : {}),
         });
       } else if (snapshot.division === "mobile") {
         await this.repository.unwatch(tenantId, projection.contractId);
@@ -227,17 +259,25 @@ export class ConsumptionService {
    *
    * The watch list is a platform item in the base table; each contract is read through
    * the data of its own tenant. Contracts of a pass that is not active are skipped, those
-   * of a deleted tenant leave the list.
+   * of a deleted tenant leave the list. A contract is checked from its first day; after
+   * the last day of its termination it leaves the list (the contract domain publishes no
+   * event when that day passes).
    */
   async checkDataVolumes(): Promise<{ checked: number; notified: number; failed: number }> {
     const now = this.clock.now();
     const at = now.toISOString();
+    const today = todayInGermany(now);
     let checked = 0;
     let notified = 0;
     let failed = 0;
     for await (const watched of this.repository.watched()) {
       checked += 1;
       try {
+        if (watched.endsOn && watched.endsOn < today) {
+          await this.repository.unwatch(watched.tenantId, watched.contractId);
+          continue;
+        }
+        if (watched.startsOn && watched.startsOn > today) continue;
         const status = await this.tenants.status(watched.tenantId);
         if (status !== "active") {
           if (status === undefined || status === "deleted") {

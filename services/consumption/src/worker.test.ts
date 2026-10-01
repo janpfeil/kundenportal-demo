@@ -131,6 +131,7 @@ describe("ContractChanged", () => {
       unit: "kWh",
       estimatedAnnualConsumption: 2800,
       status: "active",
+      startDate: "2026-04-03",
       version: 1,
     });
     expect(projection?.ConditionExpression).toBe("attribute_not_exists(PK) OR #version < :version");
@@ -159,6 +160,7 @@ describe("ContractChanged", () => {
       contractId: mobileId,
       customerId: "c-1",
       dataVolumeMb: 20480,
+      startsOn: "2026-04-03",
     });
   });
 
@@ -226,6 +228,51 @@ describe("scheduled data volume check", () => {
       .map((call) => JSON.parse(call.args[0].input.Entries?.[0]?.Detail ?? "{}").eventId);
     expect(ids).toHaveLength(2);
     expect(ids[0]).toBe(ids[1]);
+  });
+
+  it("skips a contract before its first day and checks it on its last day", async () => {
+    const watched = {
+      tenantId: "owner",
+      contractId: mobileId,
+      customerId: "c-1",
+      dataVolumeMb: 20480,
+    };
+    dbMock.on(QueryCommand).resolves({
+      Items: [
+        { ...watched, startsOn: "2026-10-01" },
+        { ...watched, contractId: electricityId, endsOn: "2026-09-30" },
+      ],
+    });
+    await worker(SCHEDULED_CHECK);
+    const warned = ebMock
+      .commandCalls(PutEventsCommand)
+      .map(
+        (call) => JSON.parse(call.args[0].input.Entries?.[0]?.Detail ?? "{}").payload.contractId,
+      );
+    expect(warned).toEqual([electricityId]);
+    expect(dbMock.commandCalls(DeleteCommand)).toHaveLength(0);
+  });
+
+  it("drops a contract from the list once the last day of its termination has passed", async () => {
+    // 1 October 00:30 in Germany: 30 September was the last day.
+    now = new Date("2026-09-30T22:30:00.000Z");
+    dbMock.on(QueryCommand).resolves({
+      Items: [
+        {
+          tenantId: "owner",
+          contractId: mobileId,
+          customerId: "c-1",
+          dataVolumeMb: 20480,
+          endsOn: "2026-09-30",
+        },
+      ],
+    });
+    await worker(SCHEDULED_CHECK);
+    expect(ebMock.commandCalls(PutEventsCommand)).toHaveLength(0);
+    expect(dbMock.commandCalls(DeleteCommand)[0]?.args[0].input.Key).toEqual({
+      PK: WATCH_PK,
+      SK: `TENANT#owner#CONTRACT#${mobileId}`,
+    });
   });
 });
 

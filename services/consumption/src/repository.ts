@@ -26,6 +26,10 @@ export interface WatchedContract {
   contractId: string;
   customerId: string;
   dataVolumeMb: number;
+  /** First day of the contract; the check skips it before (orders with a later start). */
+  startsOn?: string;
+  /** Last day of a pending termination; the check drops it after that day. */
+  endsOn?: string;
 }
 
 const contractPk = (tenantId: string, contractId: string) =>

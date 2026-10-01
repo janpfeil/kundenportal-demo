@@ -17,8 +17,20 @@ export const ContractProjection = z.object({
   dataVolumeMb: z.number().int().positive().optional(),
   status: z.enum(["active", "terminated"]),
   version: z.number().int().positive(),
+  /** Missing on projections stored before phase 7. */
+  startDate: IsoDate.optional(),
+  /** A pending or effective end (phase 7): termination on a date, or withdrawal at once. */
+  termination: z
+    .object({ kind: z.enum(["termination", "withdrawal"]), effectiveDate: IsoDate })
+    .optional(),
 });
 export type ContractProjection = z.infer<typeof ContractProjection>;
+
+/** Whether the contract no longer runs: terminated, withdrawn, or its last day has passed. */
+export function hasEnded(contract: ContractProjection, today: string): boolean {
+  if (contract.status === "terminated" || contract.termination?.kind === "withdrawal") return true;
+  return contract.termination !== undefined && contract.termination.effectiveDate < today;
+}
 
 /** A meter reading; mirrors `MeterReading` in the OpenAPI contract. */
 export const MeterReading = z.object({
