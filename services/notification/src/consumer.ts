@@ -74,6 +74,16 @@ const NOTE_RULES: NoteRule<Detail>[] = [
   rule({ event: AccountsLinked, kind: "info", text: accountsLinkedText }),
 ];
 
+/**
+ * Whether a new customer is worth a mail to the owner: only people who register themselves
+ * on the main portal. Accounts the migration takes over arrive in bulk, pass tenants have
+ * their own hint ("Demo-Pass eingelöst"), and the E2E runs register throw-away users at the
+ * reserved, undeliverable top-level domain `.invalid` (RFC 2606) — none of these is news.
+ */
+export function worthAHint(tenantId: string, origin: string, email: string): boolean {
+  return tenantId === "owner" && origin === "registration" && !/\.invalid$/i.test(email);
+}
+
 export function createConsumer(mailbox: Mailbox, ownerHints: OwnerHints) {
   async function customerRegistered(detail: unknown): Promise<void> {
     const parsed = CustomerRegistered.detail.safeParse(detail);
@@ -92,7 +102,7 @@ export function createConsumer(mailbox: Mailbox, ownerHints: OwnerHints) {
       createdAt: occurredAt,
       read: false,
     });
-    if (created) {
+    if (created && worthAHint(tenantId, payload.origin, payload.email)) {
       await ownerHints.send(
         "Kundenportal: neue Registrierung",
         `Mandant ${tenantId}: Kunde ${payload.customerId} hat sich registriert (${occurredAt}).`,

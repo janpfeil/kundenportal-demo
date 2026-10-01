@@ -297,6 +297,25 @@ describe("notification consumer", () => {
     );
   });
 
+  it.each([
+    ["a migrated customer", { origin: "legacy-telco" }, "owner"],
+    [
+      "a test user at the reserved .invalid domain",
+      { email: "e2e-1@kundenportal.invalid" },
+      "owner",
+    ],
+    ["a customer of a pass tenant", {}, "p4k7x2qa"],
+  ])("welcomes %s without a mail to the owner", async (_, change, tenantId) => {
+    const quiet = { ...detail, tenantId, payload: { ...detail.payload, ...change } };
+    const result = await consumer(event(record("m-1", registered(quiet))));
+
+    expect(result.batchItemFailures).toEqual([]);
+    expect(dbMock.commandCalls(PutCommand)[2]?.args[0].input.Item).toMatchObject({
+      kind: "welcome",
+    });
+    expect(snsMock.commandCalls(PublishCommand)).toHaveLength(0);
+  });
+
   it("welcomes a migrated customer with a note about the takeover", async () => {
     const migrated = {
       ...detail,

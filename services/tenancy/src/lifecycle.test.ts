@@ -10,11 +10,15 @@ const MINUTE = 60_000;
 const HOUR = 60 * MINUTE;
 
 /** A redeemed pass whose DemoPassIssued event has not been handled yet. */
-async function issuedPass(t: ReturnType<typeof testContext>, email = "visitor@example.org") {
+async function issuedPass(
+  t: ReturnType<typeof testContext>,
+  email = "visitor@example.org",
+  validMinutes?: number,
+) {
   const passes = new Passes(t.ctx);
   const { link } = await passes.invite(
     { tenantId: "owner", subject: "owner-sub" },
-    { email },
+    validMinutes === undefined ? { email } : { email, validMinutes },
     "corr",
   );
   await passes.redeem(link.split("#")[1] ?? "", "corr");
@@ -88,6 +92,17 @@ describe("provisioning", () => {
     expect(s.calls).toHaveLength(5);
     expect(s.types().filter((type) => type === "TenantProvisioned")).toHaveLength(1);
     expect(s.hints).toHaveLength(1);
+  });
+
+  it("sends no hints for a short test pass (E2E runs several per run)", async () => {
+    const s = setup();
+    const { tenantId, passId, event } = await issuedPass(s, "e2e-pass@example.org", 5);
+    await s.worker(event);
+    expect(s.repository.tenants.get(tenantId)?.status).toBe("active");
+    await endPass(s.ctx, tenantId, passId, "expired", "test");
+    await s.worker(expiredEvent(s));
+    expect(s.repository.tenants.get(tenantId)?.status).toBe("deleted");
+    expect(s.hints).toEqual([]);
   });
 
   it("tells the owner about the end without secrets, and survives a failing hint", async () => {

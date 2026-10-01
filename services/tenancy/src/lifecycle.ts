@@ -121,12 +121,15 @@ export async function provisionTenant(
     },
   });
   // Only the run that moved the tenant to `active` gets here, so the hint goes out once.
-  await hintOwner(
-    ctx,
-    "Demo-Pass eingelöst",
-    `Demo-Pass eingelöst: ${tenant.email}, Mandant ${tenantId}, gültig bis ` +
-      `${berlinTime.format(new Date(tenant.validUntil))} (Europe/Berlin).`,
-  );
+  // Short test passes (E2E, several per run) are no news for the owner.
+  if (!tenant.shortLived) {
+    await hintOwner(
+      ctx,
+      "Demo-Pass eingelöst",
+      `Demo-Pass eingelöst: ${tenant.email}, Mandant ${tenantId}, gültig bis ` +
+        `${berlinTime.format(new Date(tenant.validUntil))} (Europe/Berlin).`,
+    );
+  }
 }
 
 /**
@@ -323,13 +326,15 @@ export async function teardownTenant(
           }),
         );
       const reason = END_REASON[pass?.endReason ?? "expired"];
-      await hintOwner(
-        ctx,
-        "Demo-Pass beendet",
-        `Demo-Pass beendet (${reason}): ${tenant.email}, Mandant ${tenantId} gelöscht, ` +
-          `${deletedAccounts} ${deletedAccounts === 1 ? "Konto" : "Konten"}, ` +
-          `${deletedUploads} ${deletedUploads === 1 ? "Upload" : "Uploads"}.`,
-      );
+      if (!tenant.shortLived) {
+        await hintOwner(
+          ctx,
+          "Demo-Pass beendet",
+          `Demo-Pass beendet (${reason}): ${tenant.email}, Mandant ${tenantId} gelöscht, ` +
+            `${deletedAccounts} ${deletedAccounts === 1 ? "Konto" : "Konten"}, ` +
+            `${deletedUploads} ${deletedUploads === 1 ? "Upload" : "Uploads"}.`,
+        );
+      }
     }
   }
   log("info", "Tenant torn down", { tenantId, deletedAccounts, deletedUploads });
