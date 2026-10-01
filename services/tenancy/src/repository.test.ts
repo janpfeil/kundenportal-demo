@@ -71,6 +71,11 @@ describe("tenancy repository", () => {
       ConditionExpression: "attribute_not_exists(activeTenants) OR activeTenants < :max",
       ExpressionAttributeValues: { ":one": 1, ":max": 3 },
     });
+    // The invitation leaves the overview's index in the same transaction.
+    expect(items[5]).toEqual({
+      Delete: { TableName: "base", Key: { PK: "PLATFORM", SK: "INVITE#inv-1" } },
+    });
+    expect(items).toHaveLength(6);
   });
 
   it("maps cancelled transactions to the failed condition", async () => {
@@ -92,7 +97,7 @@ describe("tenancy repository", () => {
     await expect(repository.issuePass("h", NOW, pass, tenant, 3)).rejects.toThrow("cancelled");
   });
 
-  it("stores invitations with a TTL at their expiry", async () => {
+  it("stores invitations and their index entry with a TTL at their expiry", async () => {
     dbMock.on(PutCommand).resolves({});
     await repository.putInvitation("hash", {
       invitationId: "inv-1",
@@ -101,9 +106,85 @@ describe("tenancy repository", () => {
       expiresAt: "2026-10-14T12:00:00.000Z",
       createdBy: "owner",
     });
-    expect(dbMock.commandCalls(PutCommand)[0]?.args[0].input.Item).toMatchObject({
-      PK: "INVITE#hash",
+    const puts = dbMock.commandCalls(PutCommand).map((call) => call.args[0].input);
+    expect(puts).toHaveLength(2);
+    expect(puts[0]).toMatchObject({
+      Item: { PK: "INVITE#hash", ttl: Date.parse("2026-10-14T12:00:00.000Z") / 1000 },
+      ConditionExpression: "attribute_not_exists(PK)",
+    });
+    // Only what the overview shows: no token hash, no creator.
+    expect(puts[1]?.Item).toEqual({
+      PK: "PLATFORM",
+      SK: "INVITE#inv-1",
+      invitationId: "inv-1",
+      email: "visitor@example.org",
+      createdAt: NOW.toISOString(),
+      expiresAt: "2026-10-14T12:00:00.000Z",
+      shortLived: false,
       ttl: Date.parse("2026-10-14T12:00:00.000Z") / 1000,
+    });
+  });
+
+  it("writes no index entry when the invitation cannot be stored", async () => {
+    dbMock.on(PutCommand).rejectsOnce(failed());
+    await expect(
+      repository.putInvitation("hash", {
+        invitationId: "inv-1",
+        email: "visitor@example.org",
+        createdAt: NOW.toISOString(),
+        expiresAt: "2026-10-14T12:00:00.000Z",
+        createdBy: "owner",
+      }),
+    ).rejects.toThrow();
+    expect(dbMock.commandCalls(PutCommand)).toHaveLength(1);
+  });
+
+  it("lists open invitations across pages, newest first, without expired ones", async () => {
+    const entry = (id: string, createdAt: string, expiresAt: string) => ({
+      PK: "PLATFORM",
+      SK: `INVITE#${id}`,
+      invitationId: id,
+      email: `${id}@example.org`,
+      createdAt,
+      expiresAt,
+      shortLived: false,
+      ttl: 1,
+    });
+    dbMock
+      .on(QueryCommand)
+      .resolvesOnce({
+        Items: [
+          entry("old", "2026-09-10T12:00:00.000Z", "2026-09-24T12:00:00.000Z"),
+          entry("a", "2026-09-20T12:00:00.000Z", "2026-10-04T12:00:00.000Z"),
+        ],
+        LastEvaluatedKey: { PK: "PLATFORM", SK: "INVITE#a" },
+      })
+      .resolvesOnce({
+        Items: [entry("b", "2026-09-29T12:00:00.000Z", "2026-10-13T12:00:00.000Z")],
+      });
+
+    const open = await repository.listOpenInvitations(NOW);
+
+    expect(open.map((i) => i.invitationId)).toEqual(["b", "a"]);
+    expect(open[0]).not.toHaveProperty("PK");
+    const queries = dbMock.commandCalls(QueryCommand).map((call) => call.args[0].input);
+    expect(queries[0]).toMatchObject({
+      KeyConditionExpression: "PK = :pk AND begins_with(SK, :prefix)",
+      ExpressionAttributeValues: { ":pk": "PLATFORM", ":prefix": "INVITE#" },
+    });
+    expect(queries[1]?.ExclusiveStartKey).toEqual({ PK: "PLATFORM", SK: "INVITE#a" });
+  });
+
+  it("reads the API calls of the asked German days from the API counter", async () => {
+    dbMock.on(GetCommand).resolves({ Item: { d20260929: 4, d20260930: 11 } });
+    expect(
+      await repository.getApiCalls("p4k7x2qa", ["2026-09-28", "2026-09-29", "2026-09-30"]),
+    ).toEqual({ "2026-09-28": 0, "2026-09-29": 4, "2026-09-30": 11 });
+    expect(dbMock.commandCalls(GetCommand)[0]?.args[0].input).toEqual({
+      TableName: "base",
+      Key: { PK: "TENANT#p4k7x2qa", SK: "QUOTA#api" },
+      ProjectionExpression: "#d0, #d1, #d2",
+      ExpressionAttributeNames: { "#d0": "d20260928", "#d1": "d20260929", "#d2": "d20260930" },
     });
   });
 

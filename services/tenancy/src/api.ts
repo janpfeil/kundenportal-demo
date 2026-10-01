@@ -64,6 +64,10 @@ export function createApi(passes: Passes, settings: PlatformSettings): ApiHandle
         owner(event);
         return json(200, { passes: await passes.list() });
       },
+      "GET /tenancy/overview": async (event) => {
+        owner(event);
+        return json(200, await passes.overview());
+      },
       "POST /tenancy/passes/{passId}/revoke": async (event) => {
         owner(event);
         const passId = event.pathParameters?.passId;

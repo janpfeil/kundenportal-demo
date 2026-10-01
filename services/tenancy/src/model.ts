@@ -47,6 +47,21 @@ export const Invitation = z.object({
 });
 export type Invitation = z.infer<typeof Invitation>;
 
+/**
+ * `PLATFORM` / `INVITE#<invitationId>` — index entry of an invitation that is not
+ * redeemed yet, for the pass overview: the invitation itself can only be found by the
+ * hash of its token. Written with the invitation, deleted by the redeem, gone by TTL at
+ * the expiry. Holds no token and no hash.
+ */
+export const InvitationIndexEntry = z.object({
+  invitationId: z.string().min(1),
+  email: z.email(),
+  createdAt: isoDate,
+  expiresAt: isoDate,
+  shortLived: z.boolean(),
+});
+export type InvitationIndexEntry = z.infer<typeof InvitationIndexEntry>;
+
 /** `PASS#<passId>` / `META`. */
 export const Pass = z.object({
   passId: z.string().min(1),

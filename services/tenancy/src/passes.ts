@@ -3,6 +3,7 @@ import { type Caller, HttpError, notFound } from "@kundenportal/service-kit";
 import { z } from "zod";
 import { type TenancyContext, tableNameOf } from "./context.js";
 import { activatePass, endPass } from "./lifecycle.js";
+import { type PassOverview, passOverview } from "./overview.js";
 import {
   addDays,
   addHours,
@@ -123,6 +124,11 @@ export class Passes {
         quota: tenant.status === "deleted" ? undefined : await this.usage(tenant.tenantId),
       })),
     );
+  }
+
+  /** Key figures and open invitations of the owner's administration (see `passOverview`). */
+  overview(): Promise<PassOverview> {
+    return passOverview(this.ctx);
   }
 
   /** The owner ends a pass early; the teardown follows asynchronously. */

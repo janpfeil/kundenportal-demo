@@ -3,29 +3,24 @@ import {
   TransactionCanceledException,
 } from "@aws-sdk/client-dynamodb";
 import {
-  DeleteCommand,
   GetCommand,
   PutCommand,
   QueryCommand,
   TransactWriteCommand,
   UpdateCommand,
 } from "@aws-sdk/lib-dynamodb";
-import { QuotaKind } from "@kundenportal/events";
-import { Invitation, Pass, PlatformTenant, type TenantStatus, epochSeconds } from "./model.js";
+import { inviteIndexKey, inviteKey } from "./invitation-repository.js";
+import { epochSeconds, Pass, PlatformTenant, type TenantStatus } from "./model.js";
 import { sha256 } from "./secrets.js";
-import { SETTINGS_KEY, SettingsRepository } from "./settings-repository.js";
+import { SETTINGS_KEY } from "./settings-repository.js";
+import { UsageRepository } from "./usage-repository.js";
 
 export type IssueResult = "issued" | "invitation-gone" | "email-taken" | "tenants-full";
 
 const PLATFORM = "PLATFORM";
-const inviteKey = (tokenHash: string) => ({ PK: `INVITE#${tokenHash}`, SK: "META" });
 const passKey = (passId: string) => ({ PK: `PASS#${passId}`, SK: "META" });
 const tenantKey = (tenantId: string) => ({ PK: PLATFORM, SK: `TENANT#${tenantId}` });
 const emailKey = (email: string) => ({ PK: `EMAIL#${sha256(email.toLowerCase())}`, SK: "PASS" });
-const quotaKey = (tenantId: string, kind: QuotaKind) => ({
-  PK: `TENANT#${tenantId}`,
-  SK: `QUOTA#${kind}`,
-});
 
 const isConditionFailure = (error: unknown) => error instanceof ConditionalCheckFailedException;
 const cancellationCodes = (error: TransactionCanceledException) =>
@@ -35,41 +30,34 @@ const cancellationCodes = (error: TransactionCanceledException) =>
  * Platform items of the tenancy domain in the base table (architektur-mandanten §1):
  * - `INVITE#<sha256(token)>` / `META` — invitation, TTL 14 days
  * - `PASS#<passId>` / `META` — the pass, kept 30 days after the teardown (TTL)
+ * - `PLATFORM` / `INVITE#<invitationId>` — index of the invitations not redeemed yet
+ *   (pass overview), TTL at their expiry
  * - `PLATFORM` / `TENANT#<id>` — every pass tenant with its status (reconcile, cockpit)
  * - `PLATFORM` / `SETTINGS` — kill switch, cap of concurrent pass tenants (`maxTenants`)
  *   and the counter of tenants that are not deleted (`activeTenants`)
  * - `EMAIL#<sha256(email)>` / `PASS` — one pass per address
- * - `TENANT#<id>` / `QUOTA#<kind>` — counters (`used`)
+ * - `TENANT#<id>` / `QUOTA#<kind>` — counters (`used`); the API counter also holds
+ *   `lastActiveAt` and the calls per German day `d<YYYYMMDD>` (service-kit quota guard)
  * - `RATE#<sha256(ip)>` / `REDEEM` — redeem attempts per address and hour (TTL)
  * - `ALTCHA#<sha256(signature)>` / `USED` — solved challenges, against replays (TTL)
+ *
+ * Settings, invitations and quota counters have their own base classes
+ * (`SettingsRepository`, `InvitationRepository`, `UsageRepository`) to keep each file
+ * small; this class adds passes, tenants, the redeem and the rate limits.
  */
-export class TenancyRepository extends SettingsRepository {
-  async putInvitation(tokenHash: string, invitation: Invitation): Promise<void> {
-    await this.db.send(
-      new PutCommand({
-        TableName: this.table,
-        Item: {
-          ...inviteKey(tokenHash),
-          ...invitation,
-          ttl: epochSeconds(new Date(invitation.expiresAt)),
-        },
-        ConditionExpression: "attribute_not_exists(PK)",
-      }),
-    );
-  }
-
-  async getInvitation(tokenHash: string): Promise<Invitation | undefined> {
-    const result = await this.db.send(
-      new GetCommand({ TableName: this.table, Key: inviteKey(tokenHash), ConsistentRead: true }),
-    );
-    return result.Item ? Invitation.parse(result.Item) : undefined;
-  }
-
+export class TenancyRepository extends UsageRepository {
   /**
    * Redeems the invitation exactly once and creates pass, platform tenant and the
    * address lock in one transaction, so a race never yields two passes. The same
    * transaction adds one to `activeTenants` only while it is below `maxTenants`, so two
    * simultaneous redeems cannot exceed the cap either.
+   *
+   * It also deletes the invitation's index entry, so the overview never counts a
+   * redeemed invitation as open — six of the 100 items a transaction may hold, and one
+   * more item (2 write units) on a redeem that already writes five. Deleting rather than
+   * marking it costs the same, needs no condition (an invitation from before the index
+   * has no entry; an unconditional update would create a stub of one, a conditional one
+   * would cancel the redeem) and keeps the index to the open invitations.
    */
   async issuePass(
     tokenHash: string,
@@ -122,6 +110,8 @@ export class TenancyRepository extends SettingsRepository {
                 ExpressionAttributeValues: { ":one": 1, ":max": maxTenants },
               },
             },
+            // Last, so the cancellation reasons above keep their positions.
+            { Delete: { TableName: this.table, Key: inviteIndexKey(pass.invitationId) } },
           ],
         }),
       );
@@ -455,57 +445,6 @@ export class TenancyRepository extends SettingsRepository {
     } catch (error) {
       if (isConditionFailure(error)) return false;
       throw error;
-    }
-  }
-
-  async getQuotaUsage(tenantId: string): Promise<Record<QuotaKind, number>> {
-    const result = await this.db.send(
-      new QueryCommand({
-        TableName: this.table,
-        KeyConditionExpression: "PK = :pk AND begins_with(SK, :prefix)",
-        ExpressionAttributeValues: { ":pk": `TENANT#${tenantId}`, ":prefix": "QUOTA#" },
-      }),
-    );
-    const usage: Record<QuotaKind, number> = { api: 0, events: 0, uploads: 0 };
-    for (const item of result.Items ?? []) {
-      const kind = QuotaKind.safeParse(String(item.SK).slice("QUOTA#".length));
-      if (kind.success) usage[kind.data] = Number(item.used ?? 0);
-    }
-    return usage;
-  }
-
-  /**
-   * Last API call of the tenant: the API quota guard (service-kit) records `lastActiveAt`
-   * with the counter; undefined before the first call.
-   */
-  async getLastActivity(tenantId: string): Promise<string | undefined> {
-    const result = await this.db.send(
-      new GetCommand({ TableName: this.table, Key: quotaKey(tenantId, "api") }),
-    );
-    const value = result.Item?.lastActiveAt;
-    return typeof value === "string" ? value : undefined;
-  }
-
-  /** Adds one to a counter and returns the new value. */
-  async addUsage(tenantId: string, kind: QuotaKind): Promise<number> {
-    const result = await this.db.send(
-      new UpdateCommand({
-        TableName: this.table,
-        Key: quotaKey(tenantId, kind),
-        UpdateExpression: "ADD used :one",
-        ExpressionAttributeValues: { ":one": 1 },
-        ReturnValues: "UPDATED_NEW",
-      }),
-    );
-    return Number(result.Attributes?.used ?? 0);
-  }
-
-  /** Removes the counters of a torn-down tenant. */
-  async deleteUsage(tenantId: string): Promise<void> {
-    for (const kind of QuotaKind.options) {
-      await this.db.send(
-        new DeleteCommand({ TableName: this.table, Key: quotaKey(tenantId, kind) }),
-      );
     }
   }
 }

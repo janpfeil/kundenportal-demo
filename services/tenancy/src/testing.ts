@@ -3,6 +3,7 @@ import type { z } from "zod";
 import type { Repository, TenancyContext } from "./context.js";
 import {
   type Invitation,
+  type InvitationIndexEntry,
   OWNER_CLOSED_REASON,
   type Pass,
   type PlatformTenant,
@@ -25,13 +26,35 @@ export class MemoryRepository implements Repository {
   attempts = new Map<string, number>();
   challenges = new Set<string>();
   usage = new Map<string, number>();
+  /** `PLATFORM` / `INVITE#<invitationId>` entries by invitation id. */
+  invitationIndex = new Map<string, InvitationIndexEntry>();
+  /** API calls per `tenantId|YYYY-MM-DD` (the quota guard's day counters). */
+  apiDays = new Map<string, number>();
 
   async putInvitation(hash: string, invitation: Invitation) {
     if (this.invitations.has(hash)) throw new Error("exists");
     this.invitations.set(hash, structuredClone(invitation));
+    this.invitationIndex.set(invitation.invitationId, {
+      invitationId: invitation.invitationId,
+      email: invitation.email,
+      createdAt: invitation.createdAt,
+      expiresAt: invitation.expiresAt,
+      shortLived: invitation.shortLived === true,
+    });
   }
   async getInvitation(hash: string) {
     return structuredClone(this.invitations.get(hash));
+  }
+  async listOpenInvitations(now: Date) {
+    return [...this.invitationIndex.values()]
+      .filter((entry) => Date.parse(entry.expiresAt) > now.getTime())
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+      .map((entry) => structuredClone(entry));
+  }
+  async getApiCalls(tenantId: string, dates: string[]) {
+    return Object.fromEntries(
+      dates.map((date) => [date, this.apiDays.get(`${tenantId}|${date}`) ?? 0]),
+    );
   }
   /** All conditions checked and all items written without an await: one transaction. */
   async issuePass(hash: string, now: Date, pass: Pass, tenant: PlatformTenant, maxTenants: number) {
@@ -45,6 +68,7 @@ export class MemoryRepository implements Repository {
     this.settings.activeTenants = (active ?? 0) + 1;
     invitation.redeemedAt = now.toISOString();
     invitation.passId = pass.passId;
+    this.invitationIndex.delete(pass.invitationId);
     this.passes.set(pass.passId, structuredClone(pass));
     this.tenants.set(tenant.tenantId, structuredClone(tenant));
     this.emails.add(pass.email);
@@ -182,8 +206,10 @@ export class MemoryRepository implements Repository {
     return used;
   }
   async deleteUsage(tenantId: string) {
-    for (const key of [...this.usage.keys()]) {
-      if (key.startsWith(`${tenantId}|`)) this.usage.delete(key);
+    for (const map of [this.usage, this.apiDays]) {
+      for (const key of [...map.keys()]) {
+        if (key.startsWith(`${tenantId}|`)) map.delete(key);
+      }
     }
   }
 }
