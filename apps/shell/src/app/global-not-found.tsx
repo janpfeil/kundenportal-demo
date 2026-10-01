@@ -1,5 +1,6 @@
 import { AppShell, ButtonLink, Page } from "@kundenportal/ui";
 import { commonTexts } from "@kundenportal/ui/i18n";
+import { THEME_INIT_PATH, themeAttributes } from "@kundenportal/ui/theme";
 import type { Metadata } from "next";
 import "@kundenportal/ui/styles.css";
 import "./globals.css";
@@ -12,17 +13,22 @@ export const metadata: Metadata = {
 /**
  * 404 for every path no route matches. The shell has two root layouts (public pages
  * prerendered, signed-in area per request), so there is no single layout to wrap a 404 in;
- * this page is complete on its own, prerendered and bilingual.
+ * this page is complete on its own, prerendered and bilingual. Like the public pages it gets
+ * the visitor's theme from `/theme-init.js`.
  */
 export default function GlobalNotFound() {
   const t = commonTexts.de;
   return (
-    <html lang="de">
+    <html lang="de" {...themeAttributes("kunde")} suppressHydrationWarning>
+      <head>
+        <script src={THEME_INIT_PATH} />
+      </head>
       <body>
         <AppShell
           brand={{ href: "/", label: t.brand }}
           nav={[{ href: "/", label: t.nav.home }]}
           navLabel={t.nav.label}
+          appearance={{ audience: "kunde", texts: t.appearance }}
           version={process.env.NEXT_PUBLIC_APP_VERSION}
           footer={<a href={t.footer.href}>{t.footer.text}</a>}
         >

@@ -65,6 +65,7 @@ export function ShellFrame({ state, children }: ShellFrameProps) {
         roles,
       })}
       navLabel={t.nav.label}
+      appearance={{ audience: "kunde", texts: t.appearance }}
       // Plain GET links for language and sign-in/out: the shell accepts no form posts
       // (CloudFront OAC to Lambda).
       languageLink={{

@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import { readThemeChoice, themeAttributes } from "@kundenportal/ui/theme";
 import { rolesOf } from "@kundenportal/web-auth";
+import { cookies } from "next/headers";
 import type { ReactNode } from "react";
 import { ShellFrame } from "@/components/shell-frame";
 import { dictionary } from "@/i18n";
@@ -19,11 +21,13 @@ export const metadata: Metadata = {
  * public pages have their own, prerendered root layout (`(public)/layout.tsx`).
  */
 export default async function AppLayout({ children }: { children: ReactNode }) {
-  const [{ locale }, session] = await Promise.all([dictionary(), readSession()]);
+  const [{ locale }, session, jar] = await Promise.all([dictionary(), readSession(), cookies()]);
+  // The theme from the cookies, set on the server: right from the first byte, no init script.
+  const theme = readThemeChoice("kunde", (name) => jar.get(name)?.value);
   // Pass status and cockpit links from the token's groups; no extra API call.
   const roles = rolesOf(session?.accessToken);
   return (
-    <html lang={locale}>
+    <html lang={locale} {...themeAttributes("kunde", theme)}>
       <head>
         {/* Runtime widget, published by the edge; loaded at runtime so it can change on its own. */}
         <script type="module" src="/widgets/bell.js" async />

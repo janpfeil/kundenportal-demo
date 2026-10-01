@@ -45,6 +45,7 @@ export const proxy = createCspProxy({
 });
 
 export const config = {
-  // Everything except files that are never HTML (hashed assets, the widget, the icon).
-  matcher: ["/((?!_next/static|_next/image|widgets/|favicon.ico).*)"],
+  // Everything except files that are never HTML (hashed assets, the widget, the theme init
+  // script, the icon).
+  matcher: ["/((?!_next/static|_next/image|widgets/|theme-init\\.js|favicon.ico).*)"],
 };
