@@ -47,6 +47,7 @@ jobs:
           mkdir -p _site
           cp -R docs/reports/. _site/
           cp -R packages/ui/storybook-static _site/storybook
+          cp -R docs/design _site/design
       - uses: actions/configure-pages@v6
       - uses: actions/upload-pages-artifact@v5
         with:
