@@ -21,22 +21,24 @@ export function callbackUrl(): string {
 }
 
 /**
- * Where to send the browser after the local session is cleared: the provider's standard
- * end-session endpoint if it has one, otherwise a configured logout URL in Cognito's form
- * (`client_id` + `logout_uri`), otherwise straight back to the start page.
+ * Where to send the browser after the local session is cleared: a configured logout URL in
+ * Cognito's form (`client_id` + `logout_uri`) first — Cognito lists its `/logout` as
+ * `end_session_endpoint`, but ignores `post_logout_redirect_uri` there and sends the browser
+ * to a login page that answers "invalid request" — otherwise the provider's standard
+ * end-session endpoint, otherwise straight back to the start page.
  */
 export async function logoutUrl(): Promise<string> {
   const settings = config();
   const home = new URL("/", settings.appUrl).href;
-  const configuration = await oidc();
-  if (configuration.serverMetadata().end_session_endpoint) {
-    return client.buildEndSessionUrl(configuration, { post_logout_redirect_uri: home }).href;
-  }
   if (settings.logoutUrl) {
     const url = new URL(settings.logoutUrl);
     url.searchParams.set("client_id", settings.clientId);
     url.searchParams.set("logout_uri", home);
     return url.href;
+  }
+  const configuration = await oidc();
+  if (configuration.serverMetadata().end_session_endpoint) {
+    return client.buildEndSessionUrl(configuration, { post_logout_redirect_uri: home }).href;
   }
   return home;
 }
