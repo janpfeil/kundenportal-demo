@@ -93,10 +93,12 @@ Ohne Sitzung leitet eine Zone zur Shell-Anmeldung weiter und kommt danach
 Body** (POST, PUT, PATCH) signiert CloudFront den Inhalt nicht selbst;
 der Absender muss den SHA-256 des Bodys im Header `x-amz-content-sha256`
 mitschicken [B: https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/private-content-restricting-access-to-lambda.html].
-Ein gewöhnliches HTML-Formular kann das nicht. **[B: live, 02.10.2026]** Ein
-`DELETE` mit Body erreicht die Zone so nicht (Rücknahme einer Kündigung schlug
-fehl); der Browser schreibt deshalb nur per POST/PATCH, die Zone ruft die API
-dann auch mit `DELETE` auf (`/vertraege/api/contracts/<id>/termination/cancel`).
+Ein gewöhnliches HTML-Formular kann das nicht. **[B: live, 02.10.2026]** Die
+Rücknahme einer Kündigung per `DELETE` mit Body vom Browser an die Zone schlug
+live fehl, per POST an die Zone geht sie (E2E J11). **[E]** Ursache ist
+vermutlich, dass die Inhaltssignatur nur für POST/PUT greift. Der Browser
+schreibt deshalb nur per POST/PATCH; die Zone ruft die API dann auch mit
+`DELETE` auf (`/vertraege/api/contracts/<id>/termination/cancel`).
 
 **Lösung:** Alle schreibenden Aufrufe aus dem Browser laufen über
 `sendJson(method, url, body)` aus `@kundenportal/web-auth/browser`. Die
