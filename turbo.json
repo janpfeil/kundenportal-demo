@@ -5,6 +5,30 @@
       "dependsOn": ["^build"],
       "outputs": ["dist/**", ".next/**", "!.next/cache/**", "cdk.out/**"]
     },
+    "@kundenportal/shell#build": {
+      "dependsOn": ["^build"],
+      "outputs": [".next/**", "!.next/cache/**"],
+      "env": ["GITHUB_SHA"]
+    },
+    "@kundenportal/zone-contracts#build": {
+      "dependsOn": ["^build"],
+      "outputs": [".next/**", "!.next/cache/**"],
+      "env": ["GITHUB_SHA"]
+    },
+    "@kundenportal/zone-consumption#build": {
+      "dependsOn": ["^build"],
+      "outputs": [".next/**", "!.next/cache/**"],
+      "env": ["GITHUB_SHA"]
+    },
+    "@kundenportal/zone-cockpit#build": {
+      "dependsOn": ["^build"],
+      "outputs": [".next/**", "!.next/cache/**"],
+      "env": ["GITHUB_SHA"]
+    },
+    "build-storybook": {
+      "dependsOn": ["build"],
+      "outputs": ["storybook-static/**"]
+    },
     "lint": {
       "dependsOn": ["^build"]
     },

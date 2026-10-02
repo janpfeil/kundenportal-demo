@@ -27,7 +27,7 @@
     "*.css"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.build.json && node scripts/build-css.mjs && pnpm build-storybook",
+    "build": "tsc -p tsconfig.build.json && node scripts/build-css.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src .storybook",
     "test": "vitest run",

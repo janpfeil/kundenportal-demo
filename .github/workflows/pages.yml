@@ -39,9 +39,9 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      # The package build compiles the library and builds its Storybook (storybook-static).
+      # Builds the library, then its static Storybook (storybook-static).
       - name: Build Storybook
-        run: pnpm turbo run build --filter=@kundenportal/ui
+        run: pnpm turbo run build-storybook --filter=@kundenportal/ui
       - name: Assemble site
         run: |
           mkdir -p _site

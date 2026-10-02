@@ -25,6 +25,16 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # Turbo's task cache and Next.js' build cache. App builds hash GITHUB_SHA (the version in
+      # every page), so they run once per commit; a warm Next.js cache makes them about twice
+      # as fast. CI on develop fills the cache the deployment of the same commit restores.
+      - uses: actions/cache@v6
+        with:
+          path: |
+            .turbo/cache
+            apps/*/.next/cache
+          key: build-${{ runner.os }}-${{ github.sha }}
+          restore-keys: build-${{ runner.os }}-
       - run: pnpm format:check
       - run: pnpm lint
       - run: pnpm typecheck
@@ -33,3 +43,10 @@ jobs:
       # Already part of the build; listed separately so a broken CDK app is obvious.
       - name: CDK synth
         run: pnpm turbo run build --filter=@kundenportal/infra-cdk
+      # Large entries (apps, CDK assembly) change with every commit; keep them out of the saved cache.
+      - name: Trim the build cache
+        if: always()
+        run: |
+          find .turbo/cache -name '*.tar.zst' -size +20M 2>/dev/null | while read -r entry; do
+            rm -f "$entry" "${entry%.tar.zst}"-*.json
+          done

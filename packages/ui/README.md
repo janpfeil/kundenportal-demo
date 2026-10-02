@@ -40,12 +40,12 @@ import "@kundenportal/ui/styles.css";
 
 ## Scripts
 
-| Script                 | Does                                                                                     |
-| ---------------------- | ---------------------------------------------------------------------------------------- |
-| `pnpm build`           | `tsc` to `dist` (ESM + `.d.ts`), writes `styles.css` (themes + styles), builds Storybook |
-| `pnpm test`            | Vitest with jsdom and Testing Library                                                    |
-| `pnpm storybook`       | Storybook dev server on port 6006                                                        |
-| `pnpm build-storybook` | Static Storybook only                                                                    |
+| Script                 | Does                                                                                |
+| ---------------------- | ----------------------------------------------------------------------------------- |
+| `pnpm build`           | `tsc` to `dist` (ESM + `.d.ts`), writes `styles.css` (themes + styles)              |
+| `pnpm test`            | Vitest with jsdom and Testing Library                                               |
+| `pnpm storybook`       | Storybook dev server on port 6006                                                   |
+| `pnpm build-storybook` | Static Storybook in `storybook-static` (GitHub Pages; not part of the deploy build) |
 
 ## Storybook
 
