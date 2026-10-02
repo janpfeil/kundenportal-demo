@@ -263,6 +263,16 @@ mit dem Mandanten — mit einer begründeten Ausnahme (`SCHEDULE#DATAVOLUME`):
   schreibt jedes Ereignis in die Zeitleiste des Migrations-Cockpits, rund 600
   Einträge hätten sie überdeckt. Pass-Mandanten brauchen den Abgleich nicht —
   Pässe leben 48 Stunden, alle heutigen entstanden nach Phase 7.
+- **Verwaiste Kunden aufräumen:** E2E-Läufe löschen am Ende ihre
+  Cognito-Nutzer, die Daten der Domänen bleiben; Migrationsläufe, die dasselbe
+  Altkonto mehrfach übernehmen, entgehen zudem dem Demo-Reset (er kennt je
+  Altkonto nur die letzte Identität). Am 02.10.2026 hatten 370 von 375 Kunden
+  keinen Cognito-Nutzer mehr. `scripts/remove-orphaned-customers.py` findet
+  Kundenverknüpfungen ohne Nutzer im User Pool (nie Kunden, auf die noch eine
+  lebende Identität zeigt) und meldet sie in `MigratedAccountsRemoved` — so
+  löscht jede Domäne ihre eigenen Daten wie beim Demo-Reset. Ohne `--apply`
+  nur Probelauf; 2 Identitäten je Ereignis, 15 s Abstand (rund 13 Einträge je
+  Kunde, innerhalb der 5 Schreibeinheiten).
 - **Status einer Kündigung** wird beim Lesen berechnet (`terminated`, sobald
   der Termin vorbei ist); es gibt kein eigenes Ereignis zum Stichtag.
 
