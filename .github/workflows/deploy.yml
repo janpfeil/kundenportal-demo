@@ -52,13 +52,13 @@ jobs:
           RESERVED_CONCURRENCY: ${{ vars.RESERVED_CONCURRENCY || '2' }}
         shell: bash # with pipefail, so a failure behind tee fails the step
         run: ./scripts/deploy.sh | tee deploy.log
-      # Large entries (apps, CDK assembly) change with every commit; keep them out of the saved cache.
+      # App and CDK entries (10 to 500 MB) change with every commit, and the restored cache
+      # only grows: keep the large ones and anything older than two weeks out of the save.
       - name: Trim the build cache
         if: always()
         run: |
-          find .turbo/cache -name '*.tar.zst' -size +20M 2>/dev/null | while read -r entry; do
-            rm -f "$entry" "${entry%.tar.zst}"-*.json
-          done
+          find .turbo/cache -name '*.tar.zst' \( -size +5M -o -mtime +14 \) 2>/dev/null |
+            while read -r entry; do rm -f "$entry" "${entry%.tar.zst}"-*.json; done
       - name: Summary
         run: |
           {
