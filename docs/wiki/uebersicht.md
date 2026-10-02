@@ -1,5 +1,7 @@
 # kundenportal-demo — Konzept für ein AWS-Fullstack-Referenzprojekt
 
+> **Live-Demo ausprobieren:** [kundenportal-demo.rypox.com](https://kundenportal-demo.rypox.com/) — Konto anlegen und das Portal mit Beispielverträgen, Zählerständen und Postfach erleben (Demodaten, keine echten Kosten).
+
 Stand: 2026-10-02 · Phase 1 (Fundament und Durchstich) abgeschlossen: live unter https://kundenportal-demo.rypox.com, Release v0.1.0 · Phase 2 (Zonen und Component Library) abgeschlossen, Release v0.2.0; Storybook: https://janpfeil.github.io/kundenportal-demo/storybook/ · Phase 3 (Altsysteme und Migration) abgeschlossen, Release v0.3.0 · Phase 4 (Mandanten und Demo-Pass) abgeschlossen, Release v0.4.4 (zuvor v0.4.0–v0.4.3) · Phase 5 (Design und Theme) abgeschlossen, Release v0.5.0 · Phase 6 (Oberflächen wie im Mockup) abgeschlossen, Release v0.6.2 (zuvor v0.6.0) · Phase 7 (Betreiber-Cockpit, Produkte und Verträge) abgeschlossen, Release v0.7.1 (zuvor v0.7.0)
 
 Fachbegriffe sind in jedem Abschnitt beim ersten Vorkommen mit dem [Glossar](glossar.md) verlinkt (Erklärung und Entsprechung außerhalb von AWS).

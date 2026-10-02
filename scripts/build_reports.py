@@ -251,7 +251,9 @@ def build():
         if out == "index":
             cards = "".join(f'<a class="card" href="{o}.html"><h3>{html.escape(t)}</h3><p>{html.escape(d)}</p></a>'
                             for s, o, t, d in PAGES if o != "index" and s in texts)
-            body = re.sub(r"(</h1>)", r"\1" + f'<div class="cards">{cards}</div>', body, count=1)
+            # A notice right below the title (blockquote, e.g. the link to the live demo) stays on top.
+            body = re.sub(r"(</h1>\s*(?:<blockquote>.*?</blockquote>)?)", lambda m: m.group(1) + f'<div class="cards">{cards}</div>',
+                          body, count=1, flags=re.S)
         (OUT / f"{out}.html").write_text(page_html(title, out, body, md.toc, f"{src}.md"), encoding="utf-8")
         built.append(out)
     names = {o: t for _, o, t, _ in PAGES}
