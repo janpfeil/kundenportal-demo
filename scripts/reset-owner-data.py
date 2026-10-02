@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """Resets the owner tenant's demo data: deletes every item of the tenant, then empties the DLQs.
 
 Removes all items whose partition key starts with `TENANT#owner#` (customers, contracts,
@@ -13,8 +14,8 @@ write units a second (the table has 5), so it takes about half an hour for ~8,00
 Run it in a terminal of its own while nobody uses the portal, and only after the workers
 stopped retrying (no DynamoDB throttling for a few minutes).
 
-    AWS_PROFILE=kundenportal python3 scripts/reset-owner-data.py          # dry run
-    AWS_PROFILE=kundenportal python3 scripts/reset-owner-data.py --apply  # reset
+    AWS_PROFILE=kundenportal scripts/reset-owner-data.py          # dry run
+    AWS_PROFILE=kundenportal scripts/reset-owner-data.py --apply  # reset
 
 Needs boto3. Reads the table name from SSM.
 """

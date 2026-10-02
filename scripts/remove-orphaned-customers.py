@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """Removes the data of portal customers whose sign-in identity no longer exists (owner tenant).
 
 E2E runs delete their Cognito users at the end, but every domain keeps the customer's data
@@ -9,8 +10,8 @@ announces the identities in `MigratedAccountsRemoved` — the event the demo res
 so each domain deletes its own data. Small batches, spaced, so the deletes stay within
 the table's 5 write units.
 
-    AWS_PROFILE=kundenportal python3 scripts/remove-orphaned-customers.py          # dry run
-    AWS_PROFILE=kundenportal python3 scripts/remove-orphaned-customers.py --apply  # remove
+    AWS_PROFILE=kundenportal scripts/remove-orphaned-customers.py          # dry run
+    AWS_PROFILE=kundenportal scripts/remove-orphaned-customers.py --apply  # remove
 
 Needs boto3. Reads the table name and user pool from the SSM parameters.
 """
