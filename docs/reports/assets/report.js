@@ -5,13 +5,23 @@
     if (saved) root.setAttribute("data-theme", saved);
   } catch (e) {}
 
+  var ICON = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" ' +
+    'stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">';
+  var SUN = ICON + '<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2' +
+    'M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></svg>';
+  var MOON = ICON + '<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg>';
+
   document.addEventListener("DOMContentLoaded", function () {
     var btn = document.querySelector(".theme-toggle");
     if (btn) {
       var label = function () {
         var dark = root.getAttribute("data-theme") === "dark" ||
           (!root.getAttribute("data-theme") && window.matchMedia("(prefers-color-scheme: dark)").matches);
-        btn.textContent = dark ? "Hell" : "Dunkel";
+        // The icon shows what a click switches to: the moon in light mode, the sun in dark.
+        var next = dark ? "Helles Design" : "Dunkles Design";
+        btn.innerHTML = dark ? SUN : MOON;
+        btn.setAttribute("aria-label", next);
+        btn.title = next;
         return dark;
       };
       label();

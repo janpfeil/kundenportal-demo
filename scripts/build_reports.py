@@ -68,7 +68,8 @@ def load_glossary():
         desc = re.sub(r"\s*[–-]\s*$", "", URL_RE.sub("", desc)).strip()
         terms.append({"name": name, "also": also, "desc": desc, "alt": alt if alt not in ("—", "-") else "",
                       "urls": urls, "cat": cat, "pages": [],
-                      "aliases": sorted(aliases, key=len, reverse=True)})
+                      # Longest first; equal lengths alphabetically, so every build links the same.
+                      "aliases": sorted(aliases, key=lambda a: (-len(a), a))})
     return terms
 
 
@@ -176,7 +177,7 @@ def page_html(title, slug_out, body, toc, source_md):
 </head>
 <body>
 <header class="topbar"><a class="brand" href="index.html">kundenportal-demo · Konzept</a><nav class="topnav">{nav}</nav>
-<button class="theme-toggle" type="button">Dunkel</button></header>
+<button class="theme-toggle" type="button" aria-label="Dunkles Design" title="Dunkles Design"></button></header>
 <div class="layout">{toc_html}<main>{body}</main></div>
 <footer class="site">{src}Generiert {now} aus <code>docs/wiki</code> mit <code>scripts/build_reports.py</code></footer>
 </body>
