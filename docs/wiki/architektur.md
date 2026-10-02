@@ -45,20 +45,13 @@ Wie der Kontoinhaber das Ganze aufbaut, steht in der
 {"type": "flow", "title": "Anfrage- und Ereignisfluss (Stand Phase 2)", "gap": 30,
  "layers": [
   {"title": "Nutzer", "nodes": [["Browser", "nur Cookies, keine Tokens"]]},
-  {"title": "Rand", "accent": true, "nodes": [["CloudFront", "eine Domain, TLS-Zertifikat aus us-east-1"]]},
-  {"title": "Einstieg", "nodes": [["Shell und Zonen", "Next.js standalone, Function URLs mit OAC"], ["S3", "/_next/static/*, /widgets/*"], ["API Gateway", "HTTP API /api/*, JWT, Scopes, 10/20"], ["Upload-Bucket", "Presigned PUT"]]},
-  {"title": "Dienste", "accent": true, "nodes": [["Cognito", "Managed Login, Pre-Token-Lambda"], ["customer", "GET/PATCH /me"], ["contract, consumption, documents", "API-Funktion + Worker je Service"], ["notification-API", "GET/PATCH /notifications"]]},
-  {"title": "Ereignisse", "nodes": [["EventBridge", "Bus kundenportal, Standard-Bus (S3), Scheduler"]]},
-  {"title": "Wirkung", "accent": true, "nodes": [["Worker (direkt)", "Retry-Policy, DLQ, Alarm"], ["SQS → notification", "Postfach, Hinweis an den Inhaber"], ["DynamoDB", "eine Tabelle, provisioned 5/5"]]}
+  {"title": "Rand", "accent": true, "nodes": [["CloudFront", "eine Domain, TLS-Zertifikat aus us-east-1", "cloudfront"]]},
+  {"title": "Einstieg", "nodes": [["Shell und Zonen", "Next.js standalone, Function URLs mit OAC", "lambda"], ["S3", "/_next/static/*, /widgets/*", "s3"], ["API Gateway", "HTTP API /api/*, JWT, Scopes, 10/20", "apigateway"], ["Upload-Bucket", "Presigned PUT", "s3"]]},
+  {"title": "Dienste", "accent": true, "nodes": [["Cognito", "Managed Login, Pre-Token-Lambda", "cognito"], ["customer", "GET/PATCH /me", "lambda"], ["contract, consumption, documents", "API-Funktion + Worker je Service", "lambda"], ["notification-API", "GET/PATCH /notifications", "lambda"]]},
+  {"title": "Ereignisse", "nodes": [["EventBridge", "Bus kundenportal, Standard-Bus (S3), Scheduler", "eventbridge"]]},
+  {"title": "Wirkung", "accent": true, "nodes": [["Worker (direkt)", "Retry-Policy, DLQ, Alarm", "lambda"], ["SQS → notification", "Postfach, Hinweis an den Inhaber", "sqs"], ["DynamoDB", "eine Tabelle, provisioned 5/5", "dynamodb"]]}
  ],
- "edges": [["Browser", "CloudFront"], ["Browser", "Cognito"], ["Browser", "Upload-Bucket"],
-           ["CloudFront", "Shell und Zonen"], ["CloudFront", "S3"], ["CloudFront", "API Gateway"],
-           ["Shell und Zonen", "Cognito"], ["Shell und Zonen", "API Gateway"],
-           ["API Gateway", "customer"], ["API Gateway", "contract, consumption, documents"], ["API Gateway", "notification-API"],
-           ["Upload-Bucket", "EventBridge"],
-           ["customer", "EventBridge"], ["contract, consumption, documents", "EventBridge"],
-           ["EventBridge", "Worker (direkt)"], ["EventBridge", "SQS → notification"],
-           ["notification-API", "DynamoDB"]]}
+ "edges": [["Browser", "CloudFront"], ["Browser", "Cognito"], ["Browser", "Upload-Bucket"], ["CloudFront", "Shell und Zonen"], ["CloudFront", "S3"], ["CloudFront", "API Gateway"], ["Shell und Zonen", "Cognito"], ["Shell und Zonen", "API Gateway"], ["API Gateway", "customer"], ["API Gateway", "contract, consumption, documents"], ["API Gateway", "notification-API"], ["Upload-Bucket", "EventBridge"], ["customer", "EventBridge"], ["contract, consumption, documents", "EventBridge"], ["EventBridge", "Worker (direkt)"], ["EventBridge", "SQS → notification"], ["notification-API", "DynamoDB"]]}
 ```
 
 Ablauf in Worten (Kern aus Phase 1): Der Browser spricht nur mit **CloudFront** unter
@@ -411,7 +404,257 @@ Leeren des Buckets beim Löschen, regionsübergreifende Werte zwischen den zwei
 Stacks). Sie laufen nur beim Deploy bzw. Abbau und haben keine Reserved
 Concurrency [E].
 
-## 7a. Stacks und Lebensdauer
+## 7a. Stacks und Lebensdauer (Deployment)
+
+```chart
+{
+ "type": "deployment",
+ "title": "Deployment: logische Komponenten auf der AWS-Infrastruktur (Stand v0.7.1)",
+ "subtitle": "Je Rahmen ein Stack (bzw. das Terraform-Fundament), je Karte ein AWS-Dienst mit dem, was darauf läuft. Pass-Mandanten bekommen zur Laufzeit eigene Tabellen, keine eigenen Stacks.",
+ "source": "Quelle: synthetisierte CDK-Templates und infra/terraform; Icons: AWS Architecture Icons (Paket vom 31.07.2026)",
+ "groups": [
+  {
+   "title": "KundenportalEdge · eu-central-1 · dauerhaft",
+   "subtitle": "Einziger Eingang unter kundenportal-demo.rypox.com; zeigt nach jedem App-Deploy auf die neuen Ursprünge.",
+   "cols": 3,
+   "nodes": [
+    {
+     "icon": "cloudfront",
+     "name": "CloudFront-Distribution",
+     "sub": "TLS aus us-east-1, OAC zu den Function URLs",
+     "accent": true,
+     "items": [
+      "/ und /auth/* → Shell",
+      "/vertraege/*, /verbrauch/*, /cockpit/* → Zonen",
+      "/api/* → HTTP API",
+      "/_next/static/*, /widgets/* → S3",
+      "cacht nur öffentliche Seiten (s-maxage=300)"
+     ]
+    },
+    {
+     "icon": "s3",
+     "name": "S3-Bucket für statische Dateien",
+     "sub": "privat, nur CloudFront liest",
+     "items": [
+      "Next.js-Assets von Shell und Zonen",
+      "Laufzeit-Widget „Glocke“"
+     ]
+    },
+    {
+     "icon": "lambda",
+     "name": "Lambda (Bereitstellung)",
+     "sub": "CDK BucketDeployment",
+     "items": [
+      "kopiert die Assets und invalidiert /, /pass/einloesen, /theme-init.js"
+     ]
+    }
+   ]
+  },
+  {
+   "title": "KundenportalApp · eu-central-1 · wird bei einer Pause abgebaut",
+   "subtitle": "Alle Rechenlast; jede Funktion Node.js 24, arm64, reservierte Nebenläufigkeit, Logs 3 Tage.",
+   "cols": 3,
+   "nodes": [
+    {
+     "icon": "lambda",
+     "name": "Lambda: Shell und Zonen",
+     "sub": "Next.js standalone, Lambda Web Adapter, Function URL",
+     "accent": true,
+     "items": [
+      "Shell (Start, Konto, Postfach, Anmeldung)",
+      "Zone /vertraege (Verträge, Bestellung, Kündigung)",
+      "Zone /verbrauch (Zählerstände, Verlauf)",
+      "Zone /cockpit (Betreiber, Migration, Pässe)"
+     ]
+    },
+    {
+     "icon": "apigateway",
+     "name": "API Gateway (HTTP API)",
+     "sub": "JWT-Authorizer mit Cognito, Scopes je Route, 10/20 Drosselung",
+     "items": [
+      "50 Routen aus dem OpenAPI-Vertrag",
+      "8 Integrationen auf die API-Funktionen"
+     ]
+    },
+    {
+     "icon": "lambda",
+     "name": "Lambda: API-Funktionen",
+     "sub": "eine je Dienst",
+     "items": [
+      "customer (/me)",
+      "contract (Verträge, Bestellung, Produkte, Betreiber)",
+      "consumption (Zählerstände, Datenvolumen)",
+      "documents (Liste, Upload-URL)",
+      "notification (Postfach)",
+      "migration (Status, Bulk, Redrive, Reset)",
+      "tenancy (Einladungen, Pässe) und tenancy-public (Einlösen, ALTCHA)"
+     ]
+    },
+    {
+     "icon": "eventbridge",
+     "name": "EventBridge",
+     "sub": "eigener Bus kundenportal, 27 Regeln, Standard-Bus für S3",
+     "items": [
+      "Domänenereignisse (CustomerRegistered, ContractChanged …)",
+      "Regeln → Worker direkt (Retry, DLQ) bzw. → SQS"
+     ]
+    },
+    {
+     "icon": "lambda",
+     "name": "Lambda: Worker",
+     "sub": "asynchron, je eine DLQ",
+     "items": [
+      "contract-, consumption-, documents-Worker",
+      "customer-Worker (Migration), migration-Worker und -Prozessor",
+      "tenancy-Worker (Aufbau, Ablauf, Rückbau von Pässen)",
+      "notification-Konsument (aus SQS)"
+     ]
+    },
+    {
+     "icon": "sqs",
+     "name": "SQS",
+     "sub": "9 Queues",
+     "items": [
+      "notification-Queue (60 s Sichtbarkeit, 4 Tage)",
+      "8 Dead-Letter-Queues der Worker"
+     ]
+    },
+    {
+     "icon": "eventbridge",
+     "name": "EventBridge Scheduler",
+     "sub": "2 Zeitpläne",
+     "items": [
+      "täglich 07:00: Datenvolumen ≥ 80 %",
+      "täglich 03:30: Abgleich der Pass-Mandanten"
+     ]
+    },
+    {
+     "icon": "cloudwatch",
+     "name": "CloudWatch",
+     "sub": "7 Alarme, Log-Gruppen",
+     "items": [
+      "Alarm je DLQ → Hinweis-Topic"
+     ]
+    },
+    {
+     "icon": "ssm",
+     "name": "Systems Manager Parameter Store",
+     "sub": "9 Parameter /kundenportal/app/…",
+     "items": [
+      "Ursprünge für Edge (Function URLs, API)"
+     ]
+    }
+   ]
+  },
+  {
+   "title": "KundenportalBase · eu-central-1 · dauerhaft",
+   "subtitle": "Zustand: Nutzer, Daten, Uploads und Pass-Mandanten überleben jeden App-Abbau.",
+   "cols": 3,
+   "nodes": [
+    {
+     "icon": "cognito",
+     "name": "Cognito User Pool (Essentials)",
+     "sub": "Managed Login v2 mit Branding, Präfix-Domain",
+     "accent": true,
+     "items": [
+      "App-Client der Shell (Code + PKCE, Secret)",
+      "Ressourcenserver mit den API-Scopes",
+      "Gruppen owner und pass"
+     ]
+    },
+    {
+     "icon": "lambda",
+     "name": "Lambda: Cognito-Trigger",
+     "items": [
+      "Migrate User (Lazy Migration aus Altsystemen)",
+      "Pre Token Generation (tenant_id, origin, locale ins Access Token)",
+      "Post Authentication (meldet ein übernommenes Altkonto nach der ersten Anmeldung)",
+      "Pass-Mandanten-Aufräumer (Custom Resource)"
+     ]
+    },
+    {
+     "icon": "dynamodb",
+     "name": "DynamoDB",
+     "sub": "eine Tabelle, provisioned 5/5",
+     "accent": true,
+     "items": [
+      "alle Dienste des Inhaber-Mandanten (Single Table)",
+      "Pass-Mandanten: je eine eigene Tabelle zur Laufzeit"
+     ]
+    },
+    {
+     "icon": "s3",
+     "name": "S3-Upload-Bucket",
+     "sub": "privat, TLS, 7 Tage Aufbewahrung",
+     "items": [
+      "Dokumente der Kunden (Presigned PUT)"
+     ]
+    },
+    {
+     "icon": "sns",
+     "name": "SNS-Topic „Hinweise an den Inhaber“",
+     "items": [
+      "neue Registrierungen, DLQ-Alarme, Pass-Ereignisse"
+     ]
+    },
+    {
+     "icon": "ssm",
+     "name": "Parameter Store, Scheduler-Gruppe",
+     "sub": "10 Parameter /kundenportal/base/…",
+     "items": [
+      "Werte für App und Edge",
+      "Gruppe kundenportal-passes (Ablauf je Pass)"
+     ]
+    }
+   ]
+  },
+  {
+   "title": "KundenportalCertificate · us-east-1 · dauerhaft",
+   "cols": 3,
+   "nodes": [
+    {
+     "icon": "acm",
+     "name": "Certificate Manager",
+     "items": [
+      "TLS-Zertifikat für kundenportal-demo.rypox.com (CloudFront)"
+     ]
+    }
+   ]
+  },
+  {
+   "title": "Fundament (Terraform) · Konto-weit · dauerhaft",
+   "subtitle": "Vom Kontoinhaber einmal angelegt; CDK baut darauf auf.",
+   "cols": 3,
+   "nodes": [
+    {
+     "icon": "iam",
+     "name": "IAM",
+     "sub": "OIDC-Anbieter für GitHub und GitLab",
+     "items": [
+      "Deploy-Rolle für GitHub Actions",
+      "Rolle für die GitLab-Pipeline der Altsysteme"
+     ]
+    },
+    {
+     "icon": "budgets",
+     "name": "AWS Budgets",
+     "sub": "mit SNS-Topic",
+     "items": [
+      "Kostenschutz: Warnung per E-Mail"
+     ]
+    },
+    {
+     "icon": "ssm",
+     "name": "Parameter Store",
+     "items": [
+      "Zugänge der Altsysteme (/kundenportal/legacy/…: URLs, API-Schlüssel, Keycloak-Client)"
+     ]
+    }
+   ]
+  }
+ ]
+}
+```
 
 | Stack | Region | Inhalt | Lebensdauer |
 |---|---|---|---|

@@ -44,14 +44,12 @@ des Portals.
 {"type": "flow", "title": "Übernahme eines Altkontos (J2, J3, J7)", "gap": 30,
  "layers": [
   {"title": "Auslöser", "nodes": [["Erste Anmeldung", "Cognito kennt die Adresse nicht"], ["Bulk-Import", "Inhaber im Cockpit"]]},
-  {"title": "Identität", "accent": true, "nodes": [["Migrate User", "prüft Passwort beim Altsystem"], ["Post Authentication", "kennt jetzt die sub"]]},
-  {"title": "Migration", "nodes": [["migration-Worker", "liest Export, sucht Dubletten"], ["Record-Processor", "legt Konto ohne Passwort an"]]},
-  {"title": "Ereignisse", "accent": true, "nodes": [["EventBridge", "LegacyAccountMigrated, DuplicateCandidateFound, AccountsLinked, PasswordResetRequired, MigrationRecordFailed"]]},
-  {"title": "Wirkung", "nodes": [["customer, contract", "Profil und Altverträge"], ["notification", "Reset-Aufforderung, Verknüpfungsangebot"], ["Migrations-DLQ", "Redrive aus dem Cockpit"]]}
+  {"title": "Identität", "accent": true, "nodes": [["Migrate User", "prüft Passwort beim Altsystem", "cognito"], ["Post Authentication", "kennt jetzt die sub", "cognito"]]},
+  {"title": "Migration", "nodes": [["migration-Worker", "liest Export, sucht Dubletten", "lambda"], ["Record-Processor", "legt Konto ohne Passwort an", "lambda"]]},
+  {"title": "Ereignisse", "accent": true, "nodes": [["EventBridge", "LegacyAccountMigrated, DuplicateCandidateFound, AccountsLinked, PasswordResetRequired, MigrationRecordFailed", "eventbridge"]]},
+  {"title": "Wirkung", "nodes": [["customer, contract", "Profil und Altverträge", "lambda"], ["notification", "Reset-Aufforderung, Verknüpfungsangebot", "lambda"], ["Migrations-DLQ", "Redrive aus dem Cockpit", "sqs"]]}
  ],
- "edges": [["Erste Anmeldung", "Migrate User"], ["Migrate User", "Post Authentication"], ["Post Authentication", "EventBridge"],
-           ["Bulk-Import", "migration-Worker"], ["migration-Worker", "Record-Processor"], ["Record-Processor", "EventBridge"], ["Record-Processor", "Migrations-DLQ"],
-           ["EventBridge", "customer, contract"], ["EventBridge", "notification"], ["EventBridge", "migration-Worker"]]}
+ "edges": [["Erste Anmeldung", "Migrate User"], ["Migrate User", "Post Authentication"], ["Post Authentication", "EventBridge"], ["Bulk-Import", "migration-Worker"], ["migration-Worker", "Record-Processor"], ["Record-Processor", "EventBridge"], ["Record-Processor", "Migrations-DLQ"], ["EventBridge", "customer, contract"], ["EventBridge", "notification"], ["EventBridge", "migration-Worker"]]}
 ```
 
 ## 1. Lazy Migration (J2)

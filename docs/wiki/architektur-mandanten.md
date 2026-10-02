@@ -105,9 +105,9 @@ dem Inhaber-Mandanten vorbehalten.
 {"type": "flow", "title": "Zugriff einer geteilten Lambda auf Mandantendaten", "gap": 30,
  "layers": [
   {"title": "Mandant", "nodes": [["Token oder Ereignis", "tenant_id aus dem geprüften JWT bzw. detail.tenantId"]]},
-  {"title": "Token Vending", "accent": true, "nodes": [["sts:AssumeRole", "Rolle aus der Base, Sitzungs-Tag tenant, 15 min, gecacht je Mandant"]]},
-  {"title": "Client", "nodes": [["DynamoDB, S3", "Clients mit diesen Anmeldedaten"]]},
-  {"title": "IAM", "accent": true, "nodes": [["Richtlinie", "nur table/kp-tenant-${aws:PrincipalTag/tenant} und uploads/${aws:PrincipalTag/tenant}/*"]]}
+  {"title": "Token Vending", "accent": true, "nodes": [["sts:AssumeRole", "Rolle aus der Base, Sitzungs-Tag tenant, 15 min, gecacht je Mandant", "iam"]]},
+  {"title": "Client", "nodes": [["DynamoDB, S3", "Clients mit diesen Anmeldedaten", "dynamodb"]]},
+  {"title": "IAM", "accent": true, "nodes": [["Richtlinie", "nur table/kp-tenant-${aws:PrincipalTag/tenant} und uploads/${aws:PrincipalTag/tenant}/*", "iam"]]}
  ],
  "edges": [["Token oder Ereignis", "sts:AssumeRole"], ["sts:AssumeRole", "DynamoDB, S3"], ["DynamoDB, S3", "Richtlinie"]]}
 ```

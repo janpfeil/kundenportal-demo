@@ -2,6 +2,7 @@
 import html
 import json
 import math
+import re
 
 W = 1000
 FS = 14
@@ -18,9 +19,12 @@ def tw(text, size=FS):
 
 
 def wrap(text, max_px, size=FS):
-    words, lines, cur = str(text).split(), [], ""
+    words, lines, cur = [], [], ""
+    for w in str(text).split():
+        # Words too long for the line break after their hyphens ("Migrations-" / "Lambda").
+        words.extend(re.split(r"(?<=-)(?=.)", w) if tw(w, size) > max_px and "-" in w else [w])
     for w in words:
-        cand = (cur + " " + w).strip()
+        cand = cur + w if cur.endswith("-") else (cur + " " + w).strip()
         if tw(cand, size) <= max_px or not cur:
             cur = cand
         else:
@@ -43,6 +47,15 @@ def fmt(v, unit=""):
 def text(x, y, s, cls="t-ink2", size=FS, anchor="start", weight=None):
     w = f' font-weight="{weight}"' if weight else ""
     return f'<text x="{x:.1f}" y="{y:.1f}" class="{cls}" font-size="{size}" text-anchor="{anchor}"{w}>{esc(s)}</text>'
+
+
+ICON = 22  # Kantenlänge der AWS-Icons in Diagrammen
+
+
+def icon(name, x, y, size=ICON):
+    """Offizielles AWS Architecture Icon (assets/aws/<name>.svg, Paket vom 31.07.2026)."""
+    return (f'<image href="assets/aws/{esc(name)}.svg" x="{x:.1f}" y="{y:.1f}" width="{size}" '
+            f'height="{size}"><title>{esc(name)}</title></image>')
 
 
 def bar_path(x, y, w, h, r=4):
@@ -269,15 +282,22 @@ def flow(spec):
         y = 32
         for node in layer["nodes"]:
             name, sub = (node, "") if isinstance(node, str) else (node[0], node[1])
-            nl = wrap(name, bw - 20, 13)
+            ic = node[2] if not isinstance(node, str) and len(node) > 2 else None
+            pad = 10 + (ICON + 8 if ic else 0)
+            nl = wrap(name, bw - pad - 10, 13)
+            # Only the name sits next to the icon; the description below takes the full width.
             sl = wrap(sub, bw - 20, 12) if sub else []
-            h = 16 + len(nl) * 19 + len(sl) * 17
+            # Baseline of the first description line: below the name and, with an icon, below it.
+            so = max(21 + len(nl) * 19, 8 + ICON + 14 if ic else 0)
+            h = so + (len(sl) - 1) * 17 + 10 if sl else max(16 + len(nl) * 19, ICON + 16 if ic else 0)
             cls = "box-accent" if layer.get("accent") else "box"
             body.append(f'<rect class="{cls}" x="{x:.1f}" y="{y}" width="{bw:.1f}" height="{h}" rx="6"/>')
+            if ic:
+                body.append(icon(ic, x + 9, y + 8))
             for k, ln in enumerate(nl):
-                body.append(text(x + 10, y + 21 + k * 19, ln, "t-ink", 13, weight=600))
+                body.append(text(x + pad, y + 21 + k * 19, ln, "t-ink", 13, weight=600))
             for k, ln in enumerate(sl):
-                body.append(text(x + 10, y + 21 + len(nl) * 19 + k * 17, ln, "t-ink2", 12))
+                body.append(text(x + 10, y + so + k * 17, ln, "t-ink2", 12))
             pos[name] = (x, y, bw, h)
             y += h + 12
         maxy = max(maxy, y)
@@ -293,6 +313,55 @@ def flow(spec):
         body.append(f'<path class="edge" marker-end="url(#ah)" d="M{x1:.1f},{y1:.1f} C{mx:.1f},{y1:.1f} {mx:.1f},{y2:.1f} {x2 - 2:.1f},{y2:.1f}"/>')
     rows = [[l["title"], (n if isinstance(n, str) else f"{n[0]} ({n[1]})")] for l in layers for n in l["nodes"]]
     return svg_wrap(maxy + 4, "".join(body), spec.get("title", "")), table_view(["Schicht", "Komponente"], rows)
+
+
+def deployment(spec):
+    """Deployment-Diagramm: je Gruppe (Stack) ein Band, darin Infrastruktur-Karten mit AWS-Icon und
+    den logischen Komponenten, die darauf laufen."""
+    groups, gap, body, y, rows = spec["groups"], 12, [], 0, []
+    for g in groups:
+        cols = g.get("cols", 3)
+        cw = (W - 24 - gap * (cols - 1)) / cols
+        top = y
+        body.append(text(14, y + 22, g["title"], "t-ink", 14, weight=700))
+        hy = y + 22
+        if g.get("subtitle"):
+            for k, ln in enumerate(wrap(g["subtitle"], W - 28, 12)):
+                hy += 17
+                body.append(text(14, hy, ln, "t-muted", 12))
+        y = hy + 12
+        cards = []
+        for node in g["nodes"]:
+            nl = wrap(node["name"], cw - ICON - 30, 13)
+            sl = wrap(node["sub"], cw - ICON - 30, 12) if node.get("sub") else []
+            head = max(ICON + 8, 10 + len(nl) * 18 + len(sl) * 16)
+            items = [wrap("• " + it, cw - 34, 12) for it in node.get("items", [])]
+            h = 10 + head + sum(len(i) * 16 for i in items) + (8 if items else 0)
+            cards.append((node, nl, sl, head, items, h))
+            rows.extend([g["title"], f'{node["name"]}', it] for it in node.get("items", []) or [""])
+        for r0 in range(0, len(cards), cols):
+            line = cards[r0:r0 + cols]
+            rh = max(c[5] for c in line)
+            for ci, (node, nl, sl, head, items, _) in enumerate(line):
+                x = 12 + ci * (cw + gap)
+                cls = "box-accent" if node.get("accent") else "box"
+                body.append(f'<rect class="{cls}" x="{x:.1f}" y="{y:.1f}" width="{cw:.1f}" height="{rh}" rx="6"/>')
+                body.append(icon(node["icon"], x + 10, y + 10))
+                tx = x + ICON + 20
+                for k, ln in enumerate(nl):
+                    body.append(text(tx, y + 24 + k * 18, ln, "t-ink", 13, weight=600))
+                for k, ln in enumerate(sl):
+                    body.append(text(tx, y + 24 + len(nl) * 18 + k * 16, ln, "t-muted", 12))
+                iy = y + 10 + head + 4
+                for it in items:
+                    for k, ln in enumerate(it):
+                        body.append(text(x + 14 + (8 if k else 0), iy + 12, ln, "t-ink2", 12))
+                        iy += 16
+            y += rh + gap
+        body.insert(0, f'<rect class="group" x="2" y="{top + 2:.1f}" width="{W - 4}" height="{y - top + 2:.1f}" rx="10"/>')
+        y += 14
+    return svg_wrap(y, "".join(body), spec.get("title", "")), table_view(
+        ["Stack", "Infrastruktur", "Komponente"], rows)
 
 
 def risk(spec):
@@ -334,7 +403,7 @@ def risk(spec):
 
 
 KINDS = {"hbar": hbar, "columns": columns, "line": line, "matrix": matrix, "scatter": scatter,
-         "timeline": timeline, "flow": flow, "risk": risk}
+         "timeline": timeline, "flow": flow, "risk": risk, "deployment": deployment}
 
 
 def render(raw):

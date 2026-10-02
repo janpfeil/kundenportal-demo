@@ -29,12 +29,11 @@ Edge-Stack lesen sie beide.
 {"type": "flow", "title": "Zonen: eine Domain, mehrere Next.js-Apps", "gap": 40,
  "layers": [
   {"title": "Nutzer", "nodes": [["Browser", "Session-Cookie, <kp-bell>"]]},
-  {"title": "Rand", "accent": true, "nodes": [["CloudFront", "eine Lambda-OAC für alle Zonen"]]},
-  {"title": "Zonen", "nodes": [["Shell-Lambda", "/ — Anmeldung, Konto, Postfach"], ["Zone Verträge", "/vertraege/*"], ["Zone Verbrauch", "/verbrauch/*"], ["S3 (Assets)", "/_next/static/*, /widgets/*"]]},
-  {"title": "Dienste", "accent": true, "nodes": [["HTTP API", "/api/* mit Access Token aus der Sitzung"]]}
+  {"title": "Rand", "accent": true, "nodes": [["CloudFront", "eine Lambda-OAC für alle Zonen", "cloudfront"]]},
+  {"title": "Zonen", "nodes": [["Shell-Lambda", "/ — Anmeldung, Konto, Postfach", "lambda"], ["Zone Verträge", "/vertraege/*", "lambda"], ["Zone Verbrauch", "/verbrauch/*", "lambda"], ["S3 (Assets)", "/_next/static/*, /widgets/*", "s3"]]},
+  {"title": "Dienste", "accent": true, "nodes": [["HTTP API", "/api/* mit Access Token aus der Sitzung", "apigateway"]]}
  ],
- "edges": [["Browser", "CloudFront"], ["CloudFront", "Shell-Lambda"], ["CloudFront", "Zone Verträge"], ["CloudFront", "Zone Verbrauch"], ["CloudFront", "S3 (Assets)"],
-           ["Shell-Lambda", "HTTP API"], ["Zone Verträge", "HTTP API"], ["Zone Verbrauch", "HTTP API"]]}
+ "edges": [["Browser", "CloudFront"], ["CloudFront", "Shell-Lambda"], ["CloudFront", "Zone Verträge"], ["CloudFront", "Zone Verbrauch"], ["CloudFront", "S3 (Assets)"], ["Shell-Lambda", "HTTP API"], ["Zone Verträge", "HTTP API"], ["Zone Verbrauch", "HTTP API"]]}
 ```
 
 Ein Wechsel zwischen Zonen ist ein **voller Seitenwechsel** (gewöhnlicher

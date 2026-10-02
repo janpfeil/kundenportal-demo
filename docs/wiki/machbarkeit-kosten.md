@@ -47,16 +47,13 @@ Datenfluss von links nach rechts; alle Bausteine nutzungsbasiert, ohne VPC.
 ```chart
 {"type": "flow", "title": "Zielarchitektur Consumer-Portal-Demo", "gap": 56,
  "layers": [
-  {"title": "Nutzer & Identität", "nodes": [["Browser", "Shell + Micro-Frontends"], ["Cognito", "User Pool, Managed Login"], ["Altsysteme (eigener Server)", "Versorger-REST, Telko per Keycloak"]]},
-  {"title": "Edge", "accent": true, "nodes": [["CloudFront", "ein Einstiegspunkt, CloudFront Functions"], ["identity-Lambda", "Cognito-Trigger, Migrate User"], ["Migrations-Lambda", "Bulk-Import, Abgleich, Dubletten"]]},
-  {"title": "Anwendung", "nodes": [["Next.js-Shell (SSR-Lambda)", "Standalone-Server + Lambda Web Adapter, Assets auf S3"], ["S3", "statische Zonen, Uploads, CDK-Artefakte"], ["API Gateway (HTTP API)", "JWT-Authorizer, Throttling"]]},
-  {"title": "Services & Daten", "accent": true, "nodes": [["Lambda (REST)", "OpenAPI-Vertrag"], ["DynamoDB", "Single-Table, Streams"], ["EventBridge", "Domänen-Events"]]},
-  {"title": "Konsumenten", "nodes": [["SQS + Lambda", "Workflows, DLQ, Redrive"], ["SNS", "E-Mail, In-App-Feed, Kill-Switch"]]}
+  {"title": "Nutzer & Identität", "nodes": [["Browser", "Shell + Micro-Frontends"], ["Cognito", "User Pool, Managed Login", "cognito"], ["Altsysteme (eigener Server)", "Versorger-REST, Telko per Keycloak"]]},
+  {"title": "Edge", "accent": true, "nodes": [["CloudFront", "ein Einstiegspunkt, CloudFront Functions", "cloudfront"], ["identity-Lambda", "Cognito-Trigger, Migrate User", "lambda"], ["Migrations-Lambda", "Bulk-Import, Abgleich, Dubletten", "lambda"]]},
+  {"title": "Anwendung", "nodes": [["Next.js-Shell (SSR-Lambda)", "Standalone-Server + Lambda Web Adapter, Assets auf S3", "lambda"], ["S3", "statische Zonen, Uploads, CDK-Artefakte", "s3"], ["API Gateway (HTTP API)", "JWT-Authorizer, Throttling", "apigateway"]]},
+  {"title": "Services & Daten", "accent": true, "nodes": [["Lambda (REST)", "OpenAPI-Vertrag", "lambda"], ["DynamoDB", "Single-Table, Streams", "dynamodb"], ["EventBridge", "Domänen-Events", "eventbridge"]]},
+  {"title": "Konsumenten", "nodes": [["SQS + Lambda", "Workflows, DLQ, Redrive", "sqs"], ["SNS", "E-Mail, In-App-Feed, Kill-Switch", "sns"]]}
  ],
- "edges": [["Browser", "CloudFront"], ["Cognito", "identity-Lambda"], ["Altsysteme (eigener Server)", "identity-Lambda"], ["Altsysteme (eigener Server)", "Migrations-Lambda"],
-           ["CloudFront", "Next.js-Shell (SSR-Lambda)"], ["CloudFront", "S3"], ["CloudFront", "API Gateway (HTTP API)"],
-           ["API Gateway (HTTP API)", "Lambda (REST)"], ["Next.js-Shell (SSR-Lambda)", "Lambda (REST)"],
-           ["DynamoDB", "SQS + Lambda"], ["EventBridge", "SQS + Lambda"], ["EventBridge", "SNS"]]}
+ "edges": [["Browser", "CloudFront"], ["Cognito", "identity-Lambda"], ["Altsysteme (eigener Server)", "identity-Lambda"], ["Altsysteme (eigener Server)", "Migrations-Lambda"], ["CloudFront", "Next.js-Shell (SSR-Lambda)"], ["CloudFront", "S3"], ["CloudFront", "API Gateway (HTTP API)"], ["API Gateway (HTTP API)", "Lambda (REST)"], ["Next.js-Shell (SSR-Lambda)", "Lambda (REST)"], ["DynamoDB", "SQS + Lambda"], ["EventBridge", "SQS + Lambda"], ["EventBridge", "SNS"]]}
 ```
 
 Ablauf in Worten: Der Browser spricht nur mit CloudFront. CloudFront

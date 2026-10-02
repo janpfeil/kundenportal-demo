@@ -142,11 +142,11 @@ enthält `tenantId`, `occurredAt`, `correlationId` [E].
 ```chart
 {"type": "flow", "title": "Beispiel: Zählerstand erfassen (J4)", "gap": 60,
  "layers": [
-  {"title": "Oberfläche", "nodes": [["Zone Verbrauch", "Foto + Zählerstand"]]},
-  {"title": "Eingang", "accent": true, "nodes": [["API Gateway", "JWT prüfen, Mandant bestimmen"], ["S3 (Presigned URL)", "Foto"]]},
-  {"title": "Service", "nodes": [["consumption", "speichert Stand"]]},
-  {"title": "Ereignis", "accent": true, "nodes": [["EventBridge", "MeterReadingSubmitted"]]},
-  {"title": "Reaktion", "nodes": [["contract (direkt)", "Abschlag neu"], ["SQS → notification", "Postfach, Glocke"]]}
+  {"title": "Oberfläche", "nodes": [["Zone Verbrauch", "Foto + Zählerstand", "lambda"]]},
+  {"title": "Eingang", "accent": true, "nodes": [["API Gateway", "JWT prüfen, Mandant bestimmen", "apigateway"], ["S3 (Presigned URL)", "Foto", "s3"]]},
+  {"title": "Service", "nodes": [["consumption", "speichert Stand", "lambda"]]},
+  {"title": "Ereignis", "accent": true, "nodes": [["EventBridge", "MeterReadingSubmitted", "eventbridge"]]},
+  {"title": "Reaktion", "nodes": [["contract (direkt)", "Abschlag neu", "lambda"], ["SQS → notification", "Postfach, Glocke", "sqs"]]}
  ],
  "edges": [["Zone Verbrauch", "API Gateway"], ["Zone Verbrauch", "S3 (Presigned URL)"], ["API Gateway", "consumption"], ["consumption", "EventBridge"], ["EventBridge", "contract (direkt)"], ["EventBridge", "SQS → notification"]]}
 ```
