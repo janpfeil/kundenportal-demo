@@ -1,6 +1,6 @@
 import { Icon } from "@kundenportal/ui";
 import { fill, otherLocale } from "@kundenportal/ui/i18n";
-import { readThemeChoice, themeAttributes } from "@kundenportal/ui/theme";
+import { APP_ICONS, readThemeChoice, themeAttributes } from "@kundenportal/ui/theme";
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import type { ReactNode } from "react";
@@ -22,7 +22,11 @@ import "./operator.css";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t, common } = await dictionary();
-  return { title: `${t.operator.appTitle} · ${common.brand} (Demo)`, robots: { index: false } };
+  return {
+    title: `${t.operator.appTitle} · ${common.brand} (Demo)`,
+    robots: { index: false },
+    ...APP_ICONS,
+  };
 }
 
 const REPORTS_URL = "https://janpfeil.github.io/kundenportal-demo/";

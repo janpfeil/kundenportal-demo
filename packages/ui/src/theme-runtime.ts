@@ -192,3 +192,22 @@ export function themeInitScript(): string {
 })();
 `;
 }
+
+/**
+ * Icons and manifest of the portal (served by the shell for every zone, see
+ * `apps/shell/src/app/manifest.ts`): the brand mark in the default customer preset. Zones
+ * with their own base path spread this into their Next.js metadata.
+ */
+export const APP_ICONS: {
+  icons: { icon: { url: string; sizes?: string; type?: string }[]; apple: string };
+  manifest: string;
+} = {
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "48x48" },
+      { url: "/icon.svg", type: "image/svg+xml" },
+    ],
+    apple: "/apple-icon.png",
+  },
+  manifest: "/manifest.webmanifest",
+};

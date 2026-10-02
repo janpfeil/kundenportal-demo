@@ -1,6 +1,6 @@
 import { AppShell } from "@kundenportal/ui";
 import { otherLocale } from "@kundenportal/ui/i18n";
-import { readThemeChoice, themeAttributes } from "@kundenportal/ui/theme";
+import { APP_ICONS, readThemeChoice, themeAttributes } from "@kundenportal/ui/theme";
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import type { ReactNode } from "react";
@@ -14,7 +14,11 @@ import "./zone.css";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t, common } = await dictionary();
-  return { title: `${t.title} · ${common.brand} (Demo)`, robots: { index: false } };
+  return {
+    title: `${t.title} · ${common.brand} (Demo)`,
+    robots: { index: false },
+    ...APP_ICONS,
+  };
 }
 
 export default async function ZoneLayout({ children }: { children: ReactNode }) {
