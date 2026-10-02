@@ -35,7 +35,7 @@
 </ul>
 </div>
 </nav><main><h1 id="architektur-ist-stand-des-portals">Architektur — Ist-Stand des Portals<a class="anchor" href="#architektur-ist-stand-des-portals" title="Permanent link">#</a></h1>
-<p>Stand: 2026-09-30 · Beschreibt den <strong>Ist-Stand</strong> des Codes (Phase 1 bis 4 abgeschlossen, Release v0.4.0), nicht die Zielarchitektur. Kennzeichnung: <strong>[B]</strong> belegt (offizielle Quelle oder Messung), <strong>[A]</strong> Annahme, <strong>[E]</strong> Einschätzung.</p>
+<p>Stand: 2026-10-02 · Beschreibt den <strong>Ist-Stand</strong> des Codes (Phase 1 bis 7 abgeschlossen, Release v0.7.0, dazu der Nachtrag zur Anmeldeseite), nicht die Zielarchitektur. Kennzeichnung: <strong>[B]</strong> belegt (offizielle Quelle oder Messung), <strong>[A]</strong> Annahme, <strong>[E]</strong> Einschätzung.</p>
 <p>Fachbegriffe sind in jedem Abschnitt beim ersten Vorkommen mit dem <a href="glossar.html">Glossar</a> verlinkt (Erklärung und Entsprechung außerhalb von <a class="term" href="glossar.html#aws" title="Cloud-Plattform von Amazon mit über 200 Diensten (Rechenleistung, Datenbanken, Netzwerk, Messaging …), abgerechnet nach Nutzung">AWS</a>).</p>
 <p>Die Zielarchitektur steht in <a href="machbarkeit-kosten.html">Machbarkeit &amp; Kosten</a>;
 diese Seite zeigt, was davon tatsächlich gebaut ist:</p>
@@ -56,6 +56,17 @@ diese Seite zeigt, was davon tatsächlich gebaut ist:</p>
   eigenem <a class="term" href="glossar.html#mandant" title="abgeschotteter Bereich eines Kunden in einer gemeinsam betriebenen Anwendung; im Demo je Demo-Pass ein Mandant">Mandanten</a> je Besucher im <a class="term" href="glossar.html#bridge-modell" title="Mandantenmodell: Rechenleistung geteilt, Daten und Ereignisse je Mandant getrennt">Bridge-Modell</a>, Isolation per <a class="term" href="glossar.html#token" title="digitaler Ausweis, den ein Identitätsdienst ausstellt und den eine App bei jedem API-Aufruf mitschickt">Token</a>
   Vending, <a class="term" href="glossar.html#free-tier" title="Sammelbegriff für kostenlose Nutzungsmengen bei AWS">Kontingente</a>, automatischer Ablauf und <a class="term" href="glossar.html#teardown" title="vollständiges Entfernen aller Demo-Ressourcen per cdk destroy und terraform destroy">Rückbau</a> (Abschnitt 11,
   <a href="architektur-mandanten.html">Architektur: Mandanten und Demo-Pass</a>).</li>
+<li><strong>Phase 5 (abgeschlossen, v0.5.0):</strong> Design und Themes — zwei Zielgruppen
+  (Kunde, Betreiber), Presets mit Hell/Dunkel, die der <a class="term" href="glossar.html#server" title="Rechner oder Prozess, der Anfragen beantwortet">Server</a> aus <a class="term" href="glossar.html#cookie" title="kleine Datei, die der Browser bei jeder Anfrage mitschickt; httpOnly heißt: für JavaScript unsichtbar und damit vor XSS geschützt">Cookies</a>
+  rendert (<a href="design.html">Design &amp; Theme</a>, <a href="architektur-zonen.html">Zonen und Frontend</a> §12).</li>
+<li><strong>Phase 6 (abgeschlossen, v0.6.2):</strong> alle Oberflächen wie im Mockup, das
+  Cockpit mit Migrationsstand und Demo-Pässen, Verbrauchsverlauf
+  (<a href="architektur-zonen.html">Zonen und Frontend</a> §13).</li>
+<li><strong>Phase 7 (abgeschlossen, v0.7.0):</strong> <a class="term" href="glossar.html#betreiber-cockpit" title="Arbeitsplatz des Betreibers: Kunden, Verträge, Produkte, Migration; im Demo der Inhaber, im Pass-Mandanten der Pass-Inhaber">Betreiber-Cockpit</a> mit Kunden-, Vertrags-
+  und Produktlisten, Produktkatalog mit <a class="term" href="glossar.html#preisversion" title="Preise eines Produkts ab einem Stichtag; neue Verträge bekommen die gültige Version, laufende behalten ihre, bis der Betreiber sie umstellt">Preisversionen</a>, Vertragsabschluss,
+  Kündigung und <a class="term" href="glossar.html#widerruf" title="Rücktritt von einem online geschlossenen Vertrag innerhalb von 14 Tagen; im Demo sofort wirksam">Widerruf</a> durch Kunden (Abschnitte 4–6,
+  <a href="architektur-zonen.html">Zonen und Frontend</a> §14); Nachtrag: Anmeldeseite im
+  Aussehen des Portals (Abschnitt 2).</li>
 </ul>
 <p>Wie der Kontoinhaber das Ganze aufbaut, steht in der
 <a href="anleitung-fundament.html">Anleitung Fundament</a> und der
@@ -117,13 +128,22 @@ Outputs: <code>PortalUrl</code> und <code>DistributionDomain</code> (Ziel des <a
   <code>sendJson</code>), und jede schreibende Route prüft Herkunft und Sitzung.
   Einzelheiten: <a href="architektur-zonen.html">Architektur: Zonen und Frontend</a> §4.</li>
 <li><strong>Abmelden:</strong> Cookie löschen, dann Cognitos <code>/logout</code> mit <code>client_id</code> und
-  <code>logout_uri</code> (Cognito hat keinen Standard-<code>end_session_endpoint</code>).</li>
+  <code>logout_uri</code>. Cognito führt <code>/logout</code> inzwischen als <code>end_session_endpoint</code>,
+  versteht dort aber <code>post_logout_redirect_uri</code> nicht (Fehlerseite
+  „Ungültige Anforderung“); die konfigurierte Logout-<a class="term" href="glossar.html#url" title="Internetadresse einer Seite oder eines API-Endpunkts">URL</a> hat deshalb Vorrang
+  (seit 02.10.2026).</li>
+<li><strong>Aussehen der Anmeldeseite (Phase 7, Nachtrag):</strong> <a class="term" href="glossar.html#managed-login" title="von Cognito gehostete Login-, Registrierungs- und Passwort-Seiten samt OAuth2-/OIDC-Endpunkten; erreichbar unter einer Präfix-Domain (&lt;präfix&gt;.auth.&lt;region&gt;.amazoncognito.com) oder">Managed Login</a> trägt Farben
+  und Ecken des Presets „klar“ in Hell und Dunkel (folgt der
+  Systemeinstellung), das App-Icon als Favicon und die Marke über dem Formular.
+  <a class="term" href="glossar.html#cdk" title="Infrastruktur als Programmcode (TypeScript, Java, Python …): man schreibt Klassen wie new Table(...), CDK erzeugt daraus CloudFormation-Vorlagen und legt die Ressourcen an">CDK</a> leitet das Branding beim Synthetisieren aus den Theme-Tokens von
+  <code>packages/ui</code> und den Icon-Dateien der Shell ab
+  (<code>infra/cdk/lib/login-branding.ts</code>); Texte und Sprache bleiben Cognitos.</li>
 </ul>
 <p><strong>Sprache der Anmeldeseiten:</strong> Die Shell übergibt an <code>/oauth2/authorize</code>
 <code>lang</code> (Cognito) und <code>ui_locales</code> (<a class="term" href="glossar.html#openid-connect" title="Identitätsschicht auf OAuth2: liefert zusätzlich ein ID-Token mit Nutzerangaben; auch für die Anmeldung von GitHub Actions bei AWS genutzt">OIDC</a>-Standard) mit <code>de</code> oder <code>en</code>. Laut
 <a class="term" href="glossar.html#aws" title="Cloud-Plattform von Amazon mit über 200 Diensten (Rechenleistung, Datenbanken, Netzwerk, Messaging …), abgerechnet nach Nutzung">AWS</a>-Dokumentation gilt [B, ebenda]:</p>
 <ul>
-<li><a class="term" href="glossar.html#managed-login" title="von Cognito gehostete Login-, Registrierungs- und Passwort-Seiten samt OAuth2-/OIDC-Endpunkten; erreichbar unter einer Präfix-Domain (&lt;präfix&gt;.auth.&lt;region&gt;.amazoncognito.com) oder">Managed Login</a> ist standardmäßig englisch; der Parameter <strong><code>lang</code></strong> im
+<li>Managed Login ist standardmäßig englisch; der Parameter <strong><code>lang</code></strong> im
   Anmeldelink wählt die Sprache. Verfügbar sind u. a. <code>de</code> und <code>en</code> (außerdem
   es, fr, id, nl, it, ja, ko, pt-BR, zh-CN, zh-TW).</li>
 <li>Cognito merkt sich die Wahl in einem Cookie <code>lang</code>; sie gilt, bis der
@@ -175,9 +195,10 @@ ausstellen. Der Mandant kommt <strong>nie</strong> aus der <a class="term" href=
 den nötigen <a class="term" href="glossar.html#resource-server" title="in Cognito die Beschreibung einer API mit eigenen Scopes (Berechtigungen wie kundenportal/profile.read); das Access Token trägt die gewährten Scopes, der JWT-Authorizer verlangt si">Scope</a>. Die <a class="term" href="glossar.html#cdk" title="Infrastruktur als Programmcode (TypeScript, Java, Python …): man schreibt Klassen wie new Table(...), CDK erzeugt daraus CloudFormation-Vorlagen und legt die Ressourcen an">CDK</a>-App liest ihn und erzeugt daraus</p>
 <ul>
 <li>den <a href="glossar.html#resource-server">Resource Server</a> <code>kundenportal</code> mit
-  14 Scopes, je Bereich <code>.read</code> und <code>.write</code>: <code>profile</code>, <code>notifications</code>
+  16 Scopes, je Bereich <code>.read</code> und <code>.write</code>: <code>profile</code>, <code>notifications</code>
   (Phase 1), <code>contracts</code>, <code>readings</code>, <code>documents</code> (Phase 2), <code>migration</code>
-  (Phase 3) sowie <code>tenancy.read</code> und <code>tenancy.admin</code> (Phase 4);</li>
+  (Phase 3), <code>tenancy.read</code> und <code>tenancy.admin</code> (Phase 4) sowie <code>admin</code>
+  (Betreiber, Phase 7);</li>
 <li>je Route einen Eintrag im <a class="term" href="glossar.html#http-api" title="schlanke, günstige Variante des API Gateway (≈ 1 $/Mio. Aufrufe) mit eingebautem JWT-Authorizer; im Demo gewählt">HTTP API</a> mit
   <a href="glossar.html#jwt-authorizer">JWT-Authorizer</a> (Aussteller = <a class="term" href="glossar.html#user-pool" title="Nutzerverzeichnis in Cognito mit eigenen Nutzern, Gruppen, App-Clients und Triggern; zugleich OIDC-Aussteller">User Pool</a>,
   Zielgruppe = <a class="term" href="glossar.html#client-id" title="öffentliche Kennung einer Anwendung bei einem Identitätsdienst wie Cognito oder Keycloak (nicht geheim, im Gegensatz zum Client Secret)">Client-ID</a>) und den verlangten Scopes.</li>
@@ -211,6 +232,24 @@ den nötigen <a class="term" href="glossar.html#resource-server" title="in Cogni
 <td>contract</td>
 </tr>
 <tr>
+<td><code>concludeContract</code>, <code>requestTermination</code>, <code>cancelTermination</code>, <code>withdrawContract</code>, <code>listProducts</code> (Phase 7)</td>
+<td><code>POST /contracts</code>, <code>POST/DELETE /contracts/{id}/termination</code>, <code>POST /contracts/{id}/withdrawal</code>, <code>GET /products</code></td>
+<td><code>contracts.write</code> / <code>contracts.read</code></td>
+<td>contract</td>
+</tr>
+<tr>
+<td>Betreiber (Phase 7): <code>getOperatorOverview</code>, <code>listContractsAsOperator</code>, <code>getContractAsOperator</code>, <code>actOnContract</code>, <code>listProductsAsOperator</code>, <code>createProduct</code>, <code>getProductAsOperator</code>, <code>updateProduct</code>, <code>createPriceVersion</code></td>
+<td><code>GET /admin/overview</code>, <code>GET /admin/contracts[/{id}]</code>, <code>POST /admin/contracts/{id}/actions</code>, <code>GET/POST /admin/products</code>, <code>GET/PATCH /admin/products/{id}</code>, <code>POST /admin/products/{id}/versions</code></td>
+<td><code>admin.read</code> / <code>admin.write</code> (Gruppe <code>owner</code>, oder <code>pass</code> im eigenen <a class="term" href="glossar.html#mandant" title="abgeschotteter Bereich eines Kunden in einer gemeinsam betriebenen Anwendung; im Demo je Demo-Pass ein Mandant">Mandanten</a>)</td>
+<td>contract</td>
+</tr>
+<tr>
+<td>Betreiber (Phase 7): <code>listCustomers</code>, <code>getCustomerAsOperator</code>, <code>listCustomerNotifications</code>, <code>listCustomerDocuments</code>, <code>listReadingsAsOperator</code></td>
+<td><code>GET /admin/customers[/{id}]</code>, <code>…/{id}/notifications</code>, <code>…/{id}/documents</code>, <code>GET /admin/contracts/{id}/readings</code></td>
+<td><code>admin.read</code></td>
+<td>customer, notification, documents, consumption</td>
+</tr>
+<tr>
 <td><code>listMeterReadings</code>, <code>submitMeterReading</code></td>
 <td><code>GET/POST /contracts/{id}/readings</code></td>
 <td><code>readings.read</code> / <code>readings.write</code></td>
@@ -223,10 +262,28 @@ den nötigen <a class="term" href="glossar.html#resource-server" title="in Cogni
 <td>consumption</td>
 </tr>
 <tr>
+<td><code>getConsumptionHistory</code> (Phase 6)</td>
+<td><code>GET /contracts/{id}/consumption</code></td>
+<td><code>readings.read</code></td>
+<td>consumption</td>
+</tr>
+<tr>
 <td><code>listDocuments</code>, <code>createUploadUrl</code></td>
 <td><code>GET /documents</code>, <code>POST /documents/upload-url</code></td>
 <td><code>documents.read</code> / <code>documents.write</code></td>
 <td>documents</td>
+</tr>
+<tr>
+<td><code>getMigrationStatus</code>, <code>searchMigration</code> (Phase 6)</td>
+<td><code>GET /migration/status</code>, <code>GET /migration/search?q=</code></td>
+<td><code>migration.read</code> (Gruppe <code>owner</code> oder <code>pass</code>)</td>
+<td>migration</td>
+</tr>
+<tr>
+<td><code>getPassOverview</code> (Phase 6)</td>
+<td><code>GET /tenancy/overview</code></td>
+<td><code>tenancy.admin</code> (zusätzlich Gruppe <code>owner</code>)</td>
+<td>tenancy</td>
 </tr>
 <tr>
 <td><code>createInvitation</code>, <code>listPasses</code>, <code>revokePass</code></td>
@@ -271,7 +328,7 @@ mit dem <a class="term" href="glossar.html#mandant" title="abgeschotteter Bereic
 <td><code>TENANT#&lt;t&gt;#CUST#&lt;c&gt;</code></td>
 <td><code>PROFILE</code></td>
 <td>customer</td>
-<td>Profil (<a class="term" href="glossar.html#e-mail" title="elektronische Post; SNS verschickt bis 1.000 E-Mails im Monat kostenlos">E-Mail</a>, Anzeigename, Sprache, Herkunft)</td>
+<td>Profil (<a class="term" href="glossar.html#e-mail" title="elektronische Post; SNS verschickt bis 1.000 E-Mails im Monat kostenlos">E-Mail</a>, Anzeigename, Sprache, Herkunft); Merker <code>listed</code> (im Kundenverzeichnis) und <code>announced</code> (<code>CustomerRegistered</code> erreichte alle Dienste)</td>
 </tr>
 <tr>
 <td><code>TENANT#&lt;t&gt;#SUBJ#&lt;sub&gt;</code></td>
@@ -351,6 +408,36 @@ mit dem <a class="term" href="glossar.html#mandant" title="abgeschotteter Bereic
 <td>documents</td>
 <td>Projektion aus <code>CustomerRegistered</code></td>
 </tr>
+<tr>
+<td><code>TENANT#&lt;t&gt;#CUSTOMERS</code></td>
+<td><code>CUST#&lt;c&gt;</code></td>
+<td>customer</td>
+<td>Kundenverzeichnis des Betreibers (Phase 7): Profilzusammenfassung mit <code>rev</code></td>
+</tr>
+<tr>
+<td><code>TENANT#&lt;t&gt;#CUSTOMERS</code></td>
+<td><code>CUST#&lt;c&gt;#C#&lt;contractId&gt;</code></td>
+<td>customer</td>
+<td>je Vertrag Sparte, Status, Kündigung, Sperre — aus <code>ContractChanged</code>, Versionsschutz</td>
+</tr>
+<tr>
+<td><code>TENANT#&lt;t&gt;#CONTRACTS</code></td>
+<td><code>CONTRACT#&lt;contractId&gt;</code></td>
+<td>contract</td>
+<td>Vertragsverzeichnis des Betreibers (Phase 7), in derselben Transaktion wie der Vertrag</td>
+</tr>
+<tr>
+<td><code>TENANT#&lt;t&gt;#CUST#&lt;c&gt;</code></td>
+<td><code>HISTORY#&lt;contractId&gt;#&lt;version&gt;</code></td>
+<td>contract</td>
+<td>Verlauf eines Vertrags (wer, wann, Begründung, Zusammenfassung)</td>
+</tr>
+<tr>
+<td><code>TENANT#&lt;t&gt;#PRODUCTS</code></td>
+<td><code>PRODUCT#&lt;productId&gt;</code></td>
+<td>contract</td>
+<td>Produktkatalog mit allen <a class="term" href="glossar.html#preisversion" title="Preise eines Produkts ab einem Stichtag; neue Verträge bekommen die gültige Version, laufende behalten ihre, bis der Betreiber sie umstellt">Preisversionen</a>; Startbestand beim ersten Lesen</td>
+</tr>
 </tbody>
 </table></div>
 <ul>
@@ -365,9 +452,23 @@ mit dem <a class="term" href="glossar.html#mandant" title="abgeschotteter Bereic
 <li><strong>Ausnahme <code>SCHEDULE#DATAVOLUME</code>:</strong> der einzige Partition Key ohne
   Mandanten-Präfix, weil der tägliche Lauf mandantenübergreifend alle
   Mobilfunkverträge besucht. Der Mandant steht dort vorne im Sort Key.</li>
-<li>Profil und Verknüpfung entstehen in <strong>einer</strong> Transaktion mit Bedingung;
+<li>
+<p>Profil und Verknüpfung entstehen in <strong>einer</strong> Transaktion mit Bedingung;
   bei zwei gleichzeitigen Erstaufrufen gewinnt einer, der andere liest
-  dessen Ergebnis.</li>
+  dessen Ergebnis.</p>
+</li>
+<li>
+<p><strong>Listen des Betreibers ohne Index (Phase 7):</strong> Kunden- und Vertragsliste
+  lesen je <strong>eine</strong> Partition ihres Verzeichnisses und filtern, sortieren und
+  blättern im Dienst (Cursor = Position nach dem letzten Eintrag). Ein
+  <a href="glossar.html#single-table-design">GSI</a> bekäme eigene Kapazität und sprengte die 25 freien
+  Einheiten; bis zu einigen Tausend Einträgen je Mandant reicht das. Einträge
+  von vor Phase 7 kommen beim nächsten Lesen bzw. bei der nächsten Änderung
+  hinzu. Testkonten der <a class="term" href="glossar.html#playwright" title="Werkzeug, das echte Browser fernsteuert; prüft die Journeys am laufenden Portal">E2E</a>-Läufe (reservierte <a class="term" href="glossar.html#domain" title="Internet-Adresse wie beispiel.de; wird bei einem Registrar für ca. 10–15 €/Jahr registriert">Domain</a> <code>.invalid</code>) bleiben
+  draußen.</p>
+</li>
+<li><strong>Status einer Kündigung</strong> wird beim Lesen berechnet (<code>terminated</code>, sobald
+  der Termin vorbei ist); es gibt kein eigenes Ereignis zum Stichtag.</li>
 </ul>
 <p>Der Abgleich mit dem geplanten Datenmodell steht im
 <a href="fachkonzept.html">Fachkonzept</a> §7.1.</p>
@@ -383,6 +484,14 @@ mit dem <a class="term" href="glossar.html#mandant" title="abgeschotteter Bereic
 <li><strong><a class="term" href="glossar.html#idempotenz" title="Eigenschaft einer Verarbeitung, bei mehrfacher Ausführung dasselbe Ergebnis zu liefern wie bei einfacher; nötig, weil Ereignisse doppelt zugestellt werden können">Idempotenz</a>:</strong> Die Postfach-ID enthält die <code>eventId</code>; ein zweites Mal
   zugestellte <a class="term" href="glossar.html#event" title="Nachricht, dass etwas passiert ist (z. B. „Zählerstand erfasst&quot;); Empfänger reagieren darauf, ohne dass der Absender sie kennt">Ereignisse</a> treffen auf denselben Eintrag (bedingtes Schreiben)
   und lösen keinen zweiten Inhaber-Hinweis aus.</li>
+<li><strong>Wiederholte Anmeldung (seit v0.7.1):</strong> Profile von vor dem Merker
+  <code>announced</code> (der Vertrags-, Verbrauchs- und Dokumentdienst kamen am 30.09.
+  nach den ersten Registrierungen) melden sich beim nächsten <code>/me</code> einmal mit
+  <code>CustomerRegistered</code> erneut. Wer die Identität schon kennt, aktualisiert nur
+  seine Zuordnung: keine zweiten Demo-Verträge, keine zweite
+  Willkommensnachricht. Vertrags- und Postfach-Dienst schreiben die Zuordnung
+  deshalb zuletzt, damit eine <a class="term" href="glossar.html#retry" title="erneuter Verarbeitungsversuch nach einem Fehler">Wiederholung</a> nach einem Fehler das Fehlende
+  nachholt.</li>
 <li><strong><a href="glossar.html#partial-batch-response">Partial Batch Response</a>:</strong> Stapel bis
   10 Nachrichten; nur fehlgeschlagene werden zurückgemeldet und erneut
   zugestellt.</li>
@@ -417,7 +526,7 @@ Cent; Ereignisse werden vor dem Veröffentlichen gegen die Schemas aus
 </tr>
 <tr>
 <td><code>consumption</code></td>
-<td>Zählerstände mit <strong>Plausibilitätsprüfung</strong> (Vertrag aktiv und mit Zähler, Datum nicht in der Zukunft, weder Datum noch Wert unter dem letzten Stand); Datenvolumen für Mobilfunk (Demo-Werte: 40 % am Monatsanfang, linear bis 100 %)</td>
+<td>Zählerstände mit <strong>Plausibilitätsprüfung</strong> (Vertrag aktiv und mit Zähler, Datum nicht in der Zukunft, weder Datum noch Wert unter dem letzten Stand); Datenvolumen für Mobilfunk (<a class="term" href="glossar.html#demo-wert" title="Wert, den das Portal nur vorspielt, weil die echte Quelle fehlt (z. B. das Datenvolumen ohne Mobilfunknetz); trägt sichtbar den Marker „Demo-Wert“ und data-fake=&quot;true&quot;">Demo-Werte</a>: 40 % am Monatsanfang, linear bis 100 %)</td>
 <td><code>CustomerRegistered</code>, <code>ContractChanged</code> → eigene Projektionen; täglicher <a href="glossar.html#eventbridge-scheduler">EventBridge Scheduler</a> <strong>07:00 Europe/Berlin</strong> → bei <strong>80 %</strong> <code>DataVolumeThresholdReached</code>, höchstens einmal je Vertrag und Monat</td>
 </tr>
 <tr>
@@ -444,7 +553,7 @@ Cent; Ereignisse werden vor dem Veröffentlichen gegen die Schemas aus
 <td>customer</td>
 <td>notification</td>
 <td>Regel → SQS</td>
-<td>Willkommensnachricht, Hinweis an den Inhaber</td>
+<td>Willkommensnachricht; Hinweis an den Inhaber nur bei einer Selbstregistrierung im Inhaber-<a class="term" href="glossar.html#mandant" title="abgeschotteter Bereich eines Kunden in einer gemeinsam betriebenen Anwendung; im Demo je Demo-Pass ein Mandant">Mandanten</a> — nicht für übernommene <a class="term" href="glossar.html#altkonto" title="Kundenkonto im Altsystem des Versorgers oder der Telko, das ins neue Portal übernommen wird (nicht zu verwechseln mit einem alten AWS-Konto)">Altkonten</a>, <a class="term" href="glossar.html#demo-pass" title="im Demo: zeitlich begrenzte Berechtigung (48 Stunden ab der ersten Anmeldung, Kontingent) für eine eigene Instanz; ausgestellt per Einladungslink oder für den Inhaber">Pass</a>-Mandanten oder <a class="term" href="glossar.html#playwright" title="Werkzeug, das echte Browser fernsteuert; prüft die Journeys am laufenden Portal">E2E</a>-Testbenutzer an der reservierten <a class="term" href="glossar.html#domain" title="Internet-Adresse wie beispiel.de; wird bei einem Registrar für ca. 10–15 €/Jahr registriert">Domain</a> <code>.invalid</code> (seit v0.6.1)</td>
 </tr>
 <tr>
 <td><code>CustomerRegistered</code></td>
@@ -492,7 +601,7 @@ Cent; Ereignisse werden vor dem Veröffentlichen gegen die Schemas aus
 <td>Zeitplan 07:00</td>
 <td><a class="term" href="glossar.html#eventbridge-scheduler" title="zeitgesteuertes Auslösen von Zielen (einmalig oder wiederkehrend); 14 Mio. Aufrufe/Monat frei">Scheduler</a></td>
 <td>consumption</td>
-<td>direkt (2 <a class="term" href="glossar.html#retry" title="erneuter Verarbeitungsversuch nach einem Fehler">Wiederholungen</a>, DLQ)</td>
+<td>direkt (2 Wiederholungen, DLQ)</td>
 <td>Datenvolumen aller Mobilfunkverträge prüfen</td>
 </tr>
 <tr>
@@ -567,7 +676,7 @@ Uploads eine Pause der Anwendung überstehen:</p>
 <ul>
 <li><a href="glossar.html#block-public-access">Block Public Access</a>, <a href="glossar.html#sse-s3">SSE-S3</a>,
   nur <a class="term" href="glossar.html#https" title="verschlüsseltes Web-Protokoll; HTTP ohne Verschlüsselung">HTTPS</a>; Objekte gehören dem Bucket-Besitzer.</li>
-<li><a href="glossar.html#cors">CORS</a> erlaubt nur <code>PUT</code> von der Portal-<a class="term" href="glossar.html#domain" title="Internet-Adresse wie beispiel.de; wird bei einem Registrar für ca. 10–15 €/Jahr registriert">Domain</a> und — für
+<li><a href="glossar.html#cors">CORS</a> erlaubt nur <code>PUT</code> von der Portal-Domain und — für
   die lokale Entwicklung — von <code>&lt;http://localhost:3000</code>&gt;.</li>
 <li>Eine <a href="glossar.html#lifecycle-regel">Lifecycle-Regel</a> löscht jede Datei nach
   <strong>7 Tagen</strong>.</li>
@@ -931,7 +1040,7 @@ beschreibt die eigene Seite
 geteilte <a class="term" href="glossar.html#lambda" title="führt eine einzelne Funktion (z. B. einen HTTP-Handler) bei Bedarf aus; Abrechnung pro Aufruf und Laufzeit, skaliert automatisch von 0 auf viele Instanzen">Lambdas</a>, <a class="term" href="glossar.html#api" title="Programmierschnittstelle, über die Programme miteinander sprechen">API</a> und Bus; eigene Tabelle <code>kp-tenant-&lt;kennung&gt;</code>,
 eigener <a class="term" href="glossar.html#legacy-system" title="bestehendes Altsystem mit Kundendaten, das abgelöst werden soll; im Demo simuliert">Altsystem</a>-Datenstand, eigenes <a class="term" href="glossar.html#upload" title="Hochladen einer Datei vom Browser zum Server bzw. nach S3">Upload</a>-Präfix und eigene Konten.</p>
 <ul>
-<li><strong>Service <code>tenancy</code>:</strong> API für den Inhaber (Einladungen, Pässe, Widerruf)
+<li><strong>Service <code>tenancy</code>:</strong> API für den Inhaber (Einladungen, Pässe, <a class="term" href="glossar.html#widerruf" title="Rücktritt von einem online geschlossenen Vertrag innerhalb von 14 Tagen; im Demo sofort wirksam">Widerruf</a>)
   und den <a class="term" href="glossar.html#demo-pass" title="im Demo: zeitlich begrenzte Berechtigung (48 Stunden ab der ersten Anmeldung, Kontingent) für eine eigene Instanz; ausgestellt per Einladungslink oder für den Inhaber">Pass-Inhaber</a> (eigener Pass), öffentliche Einlöse-Funktion ohne
   <a class="term" href="glossar.html#jwt-authorizer" title="Prüfschritt im API Gateway, der Signatur, Aussteller und Zielgruppe eines JWT prüft, bevor die Lambda aufgerufen wird">Authorizer</a>, Worker für Einrichtung (<code>DemoPassIssued</code>), Ablauf per
   einmaligem <a href="glossar.html#eventbridge-scheduler">EventBridge Scheduler</a>-Zeitplan,
@@ -983,6 +1092,6 @@ Seiten in <a class="term" href="glossar.html#shell" title="Rahmenanwendung, die 
 <li>EventBridge, Wiederholungen und DLQ am Regelziel: <a href="https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-rule-dlq.html">https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-rule-dlq.html</a></li>
 <li>S3-Ereignisse über EventBridge: <a href="https://docs.aws.amazon.com/AmazonS3/latest/userguide/EventBridge.html">https://docs.aws.amazon.com/AmazonS3/latest/userguide/EventBridge.html</a></li>
 </ul></main></div>
-<footer class="site"><a href="../wiki/architektur.md">Markdown-Quelle</a> · Generiert 2026-10-01 12:29 aus <code>docs/wiki</code> mit <code>scripts/build_reports.py</code></footer>
+<footer class="site"><a href="../wiki/architektur.md">Markdown-Quelle</a> · Generiert 2026-10-02 16:40 aus <code>docs/wiki</code> mit <code>scripts/build_reports.py</code></footer>
 </body>
 </html>

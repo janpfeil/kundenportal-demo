@@ -191,6 +191,17 @@ Läufe, <a class="term" href="glossar.html#klärfall" title="Altdatensatz, der o
 Busses an den migration-Worker, der es ohne personenbezogene Daten (nur IDs,
 <a class="term" href="glossar.html#altkonto" title="Kundenkonto im Altsystem des Versorgers oder der Telko, das ins neue Portal übernommen wird (nicht zu verwechseln mit einem alten AWS-Konto)">Altkonten</a>, <a class="term" href="glossar.html#sparte" title="Produktbereich eines Versorgers, z. B. Strom, Gas, Mobilfunk; im Demo zentraler Begriff des Datenmodells">Sparten</a>, Zähler) mit <a href="glossar.html#dynamodb-ttl">TTL</a> von 7 Tagen
 ablegt. Die Seite lädt sich alle 10 Sekunden neu.</p>
+<p><strong>Kennzahlen und Suche (Phase 6).</strong> <code>GET /migration/status</code> liefert
+zusätzlich je Altsystem <code>migratedToday</code> (übernommen oder verknüpft seit
+00:00 Uhr deutscher Zeit) und <code>trends</code>: offene Klärfälle und DLQ-Einträge am
+Ende der letzten sieben Tage (<a class="term" href="glossar.html#sparkline" title="sehr kleines Liniendiagramm ohne Achsen neben einer Kennzahl, das nur die Richtung zeigt (z. B. Klärfälle der letzten sieben Tage)">Sparklines</a>), neue Klärfälle der letzten 24
+Stunden und die in dieser Zeit erfolgreich erneut verarbeiteten Datensätze
+(„−n nach Redrive“). Alles wird aus den Datensätzen berechnet, die das Cockpit
+ohnehin liest; dafür merkt sich ein Datensatz <code>failedAt</code> und <code>redrivenAt</code>.
+<code>GET /migration/search?q=</code> sucht ohne Index in denselben Datensätzen
+(Kundennummer, Name, Status, Problem) und in der <a class="term" href="glossar.html#timeline" title="zeitliche Liste von Ereignissen in der Oberfläche">Timeline</a> (Ereignistyp,
+Kennungen); <a class="term" href="glossar.html#mandant" title="abgeschotteter Bereich eines Kunden in einer gemeinsam betriebenen Anwendung; im Demo je Demo-Pass ein Mandant">Mandanten</a> findet die Cockpit-Seite des Inhabers zusätzlich in der
+<a class="term" href="glossar.html#demo-pass" title="im Demo: zeitlich begrenzte Berechtigung (48 Stunden ab der ersten Anmeldung, Kontingent) für eine eigene Instanz; ausgestellt per Einladungslink oder für den Inhaber">Pass</a>-Liste.</p>
 <h3 id="demo-reset">Demo-Reset<a class="anchor" href="#demo-reset" title="Permanent link">#</a></h3>
 <p>Der <a href="glossar.html#demo-reset">Demo-Reset</a> (<code>POST /migration/reset</code>) entfernt
 die von der Migration angelegten Konten (nie das eigene) samt ihrer
@@ -205,7 +216,7 @@ bzw. die neue Projektion als „älter" verwürfen [E].</p>
 <ol>
 <li>Er sammelt die Identitäten aus seinen Datensätzen (<code>REC#…</code> mit <code>sub</code>,
    ohne die des Aufrufers) und löscht deren <a class="term" href="glossar.html#amazon-cognito" title="AWS-Identitätsdienst für Registrierung, Login, MFA und Benutzerverwaltung; im Demo der Portal-Login (Entscheidung 29.09.2026), angelegt per CDK">Cognito</a>-Konten.</li>
-<li>Er leert die <a class="term" href="glossar.html#timeline" title="zeitliche Liste von Ereignissen in der Oberfläche">Timeline</a> des <a class="term" href="glossar.html#mandant" title="abgeschotteter Bereich eines Kunden in einer gemeinsam betriebenen Anwendung; im Demo je Demo-Pass ein Mandant">Mandanten</a> (sonst erst per <a class="term" href="glossar.html#dynamodb-ttl" title="Attribut ttl mit Ablaufzeitpunkt; DynamoDB löscht solche Einträge selbst und kostenlos (hier die Cockpit-Timeline nach 7 Tagen)">TTL</a> nach 7 Tagen).</li>
+<li>Er leert die Timeline des Mandanten (sonst erst per <a class="term" href="glossar.html#dynamodb-ttl" title="Attribut ttl mit Ablaufzeitpunkt; DynamoDB löscht solche Einträge selbst und kostenlos (hier die Cockpit-Timeline nach 7 Tagen)">TTL</a> nach 7 Tagen).</li>
 <li>Er veröffentlicht <code>MigratedAccountsRemoved</code> mit <code>reason: "demo-reset"</code>
    und je Konto <code>subject</code> und <code>customerId</code>
    (<code>customerIdFor(tenantId, subject)</code>) — in Schüben zu höchstens 100
@@ -223,7 +234,7 @@ bzw. die neue Projektion als „älter" verwürfen [E].</p>
    Identitäten also noch.</li>
 </ol>
 <p>Jeder Bereich löscht seine Daten selbst, im Mandanten des Ereignisses und
-über <code>tenantData</code> (<a class="term" href="glossar.html#demo-pass" title="im Demo: zeitlich begrenzte Berechtigung (48 Stunden ab der ersten Anmeldung, Kontingent) für eine eigene Instanz; ausgestellt per Einladungslink oder für den Inhaber">Pass</a>-Mandant: eigene Tabelle, Vending-Anmeldedaten):</p>
+über <code>tenantData</code> (Pass-Mandant: eigene Tabelle, Vending-Anmeldedaten):</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -308,6 +319,6 @@ Abfrage (einige Dutzend Einträge im Demo); ein Index hätte eigene Kapazität
 aus den 25 freien Einheiten gebraucht [E]. <a class="term" href="glossar.html#bulk-import" title="Übernahme vieler Konten auf einmal; bei Cognito per CSV-Import oder AdminCreateUser, im Demo ohne Passwörter (Nutzer müssen zurücksetzen); Hash-Import (u. a. bcrypt) ist noch nicht">Bulk-Import</a> und Reset schreiben in
 Schüben; bei 5 <a class="term" href="glossar.html#wcu" title="Schreib-Kapazitätseinheit von DynamoDB: 1 Schreibvorgang pro Sekunde bis 1 KB">WCU</a> drosselt <a class="term" href="glossar.html#dynamodb" title="vollständig verwaltete NoSQL-Datenbank (Schlüssel-Wert/Dokument) mit Antwortzeiten im Millisekundenbereich, ohne Server und ohne Verbindungs-Pool">DynamoDB</a> kurz, die <a class="term" href="glossar.html#sdk" title="Software Development Kit: Bibliothek für den Zugriff auf einen Dienst (z. B. AWS SDK)">SDK</a>-<a class="term" href="glossar.html#retry" title="erneuter Verarbeitungsversuch nach einem Fehler">Wiederholungen</a> bzw. die
 Wiederholung unverarbeiteter Löschungen fangen das ab [E].</p></main></div>
-<footer class="site"><a href="../wiki/architektur-migration.md">Markdown-Quelle</a> · Generiert 2026-10-01 12:29 aus <code>docs/wiki</code> mit <code>scripts/build_reports.py</code></footer>
+<footer class="site"><a href="../wiki/architektur-migration.md">Markdown-Quelle</a> · Generiert 2026-10-02 16:40 aus <code>docs/wiki</code> mit <code>scripts/build_reports.py</code></footer>
 </body>
 </html>

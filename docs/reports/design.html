@@ -20,6 +20,14 @@
 <li><a href="#entscheidung-des-inhabers">Entscheidung des Inhabers</a></li>
 <li><a href="#wie-die-themes-gebaut-sind">Wie die Themes gebaut sind</a></li>
 <li><a href="#kontrastprüfung">Kontrastprüfung</a></li>
+<li><a href="#phase-6-oberflächen-wie-im-mockup">Phase 6: Oberflächen wie im Mockup</a><ul>
+<li><a href="#lückenanalyse-mockup-api">Lückenanalyse: Mockup ↔ API</a></li>
+<li><a href="#neue-und-erweiterte-operationen">Neue und erweiterte Operationen</a></li>
+<li><a href="#gefakte-elemente">Gefakte Elemente</a></li>
+<li><a href="#abweichungen-vom-mockup">Abweichungen vom Mockup</a></li>
+<li><a href="#prüfung">Prüfung</a></li>
+</ul>
+</li>
 </ul>
 </div>
 </nav><main><h1 id="design-und-theme-phase-5">Design und Theme (Phase 5)<a class="anchor" href="#design-und-theme-phase-5" title="Permanent link">#</a></h1>
@@ -191,7 +199,7 @@ ich zwischen den Themes umschalten können.“ (01.10.2026)</p>
 <tr>
 <td>Stylesheet</td>
 <td><code>scripts/build-css.mjs</code> → <code>dist/styles.css</code></td>
-<td>der <a class="term" href="glossar.html#ui" title="Benutzeroberfläche">UI</a>-<a class="term" href="glossar.html#build" title="Übersetzen und Paketieren des Quellcodes zu auslieferbaren Dateien (Artefakten)">Build</a> schreibt <code>themesCss()</code> vor die handgeschriebenen Stile (<code>src/styles.css</code>, <code>src/layout.css</code>); <a class="term" href="glossar.html#storybook" title="Werkzeug, das jede Komponente der Component Library isoliert darstellt und dokumentiert; als statische Seite veröffentlicht">Storybook</a> holt die Tokens direkt aus <code>themes.ts</code></td>
+<td>der <a class="term" href="glossar.html#ui" title="Benutzeroberfläche">UI</a>-<a class="term" href="glossar.html#build" title="Übersetzen und Paketieren des Quellcodes zu auslieferbaren Dateien (Artefakten)">Build</a> schreibt <code>themesCss()</code> vor die handgeschriebenen Stile (<code>src/styles.css</code>, <code>page.css</code>, <code>widgets.css</code>, <code>charts.css</code>, <code>layout.css</code>, <code>menus.css</code>, in dieser Reihenfolge); <a class="term" href="glossar.html#storybook" title="Werkzeug, das jede Komponente der Component Library isoliert darstellt und dokumentiert; als statische Seite veröffentlicht">Storybook</a> holt die Tokens direkt aus <code>themes.ts</code></td>
 </tr>
 <tr>
 <td>Auswahl</td>
@@ -235,12 +243,401 @@ die Kontrastverhältnisse aus den <a class="term" href="glossar.html#token" titl
 und verlangt mindestens 4,5:1 für Text / Fläche und Seite, Sekundärtext,
 Links, aktiven Navigationseintrag, Button-Text auf Akzent, Text im
 Eingabefeld, Statustexte und Text auf Statusflächen sowie 3:1 für Fokusring,
-Akzent und Feldrahmen. <strong>[B]</strong> 14 Kombinationen aus Preset und Modus mit je 25 Paaren, alle bestanden. Weitere
+Akzent und Feldrahmen. Seit Phase 6 kommen Statustext auf eigener Statusfläche
+(Status-Badges, Marker „<a class="term" href="glossar.html#demo-wert" title="Wert, den das Portal nur vorspielt, weil die echte Quelle fehlt (z. B. das Datenvolumen ohne Mobilfunknetz); trägt sichtbar den Marker „Demo-Wert“ und data-fake=&quot;true&quot;">Demo-Wert</a>“), Sekundärtext auf ungelesenen Nachrichten und
+Zähler auf Akzent hinzu. <strong>[B]</strong> 14 Kombinationen aus Preset und Modus mit je 31 Paaren, alle bestanden. Weitere
 Tests prüfen <a class="term" href="glossar.html#cookie" title="kleine Datei, die der Browser bei jeder Anfrage mitschickt; httpOnly heißt: für JavaScript unsichtbar und damit vor XSS geschützt">Cookies</a>, Init-Skript, Umschalter und dass Kundenseiten
 Bedienelemente von mindestens 44 px haben.</p>
 <p><strong>[E]</strong> „Kontrast“ ist im Mockup „dunkel zuerst“; hier folgt auch dieses
 Preset dem gewählten Farbmodus (Standard System), damit der Modus überall
-dieselbe Bedeutung hat.</p></main></div>
-<footer class="site"><a href="../wiki/design.md">Markdown-Quelle</a> · Generiert 2026-10-01 12:29 aus <code>docs/wiki</code> mit <code>scripts/build_reports.py</code></footer>
+dieselbe Bedeutung hat.</p>
+<h2 id="phase-6-oberflächen-wie-im-mockup">Phase 6: Oberflächen wie im Mockup<a class="anchor" href="#phase-6-oberflächen-wie-im-mockup" title="Permanent link">#</a></h2>
+<p>Stand: 2026-10-01 · abgeschlossen, Release v0.6.0. Ziel: Cockpit, Demo-Pässe und die
+Endkunden-Ansichten zeigen <strong>denselben Aufbau, dieselben Bausteine und
+dieselben Inhalte</strong> wie das Mockup — mit echten Daten aus dem <a class="term" href="glossar.html#api" title="Programmierschnittstelle, über die Programme miteinander sprechen">API</a>. Was nicht
+in vertretbarer Zeit echt umsetzbar ist, zeigt einen plausiblen Wert mit dem
+Marker „<a class="term" href="glossar.html#demo-wert" title="Wert, den das Portal nur vorspielt, weil die echte Quelle fehlt (z. B. das Datenvolumen ohne Mobilfunknetz); trägt sichtbar den Marker „Demo-Wert“ und data-fake=&quot;true&quot;">Demo-Wert</a>“ (siehe <a href="#gefakte-elemente">Gefakte Elemente</a>).</p>
+<h3 id="lückenanalyse-mockup-api">Lückenanalyse: Mockup ↔ API<a class="anchor" href="#lückenanalyse-mockup-api" title="Permanent link">#</a></h3>
+<p><strong>[B]</strong> Erhoben am Code von v0.5.0 (<code>packages/api-contract/openapi.yaml</code>,
+Services, Seiten). „vorhanden“ heißt: die Daten liefert schon eine
+Operation, es fehlt nur die Darstellung.</p>
+<p><strong><a class="term" href="glossar.html#migrations-cockpit" title="im Demo geplantes Micro-Frontend, das den Fortschritt der Kontenübernahme, Ereignisse und DLQ-Fälle live zeigt">Migrations-Cockpit</a> (<code>/cockpit</code>)</strong></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Baustein im Mockup</th>
+<th>Daten heute</th>
+<th>Lücke</th>
+<th>Lösung in Phase 6</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Kopf: Titel, Unterzeile, „Aktualisiert alle 10 Sekunden · hh:mm:ss“, „Aktualisieren“</td>
+<td>Seite lädt alle 10 s neu (<code>AutoRefresh</code>)</td>
+<td>Zeitstempel</td>
+<td>Zeit des Seitenaufbaus (<a class="term" href="glossar.html#server" title="Rechner oder Prozess, der Anfragen beantwortet">Server</a>), keine API nötig</td>
+</tr>
+<tr>
+<td>Fortschrittsringe <a class="term" href="glossar.html#multi-sparten-versorger" title="Unternehmen, das mehrere Versorgungs- und Kommunikationsprodukte anbietet (Strom, Gas, Wasser, Wärme, Internet, Mobilfunk) – typisch für Stadtwerke">Versorger</a>/Telko: Anteil, übernommen / gesamt</td>
+<td><code>GET /migration/status</code> → <code>systems[].counts</code>, <code>total</code></td>
+<td>—</td>
+<td>vorhanden</td>
+</tr>
+<tr>
+<td>„+n heute“ je <a class="term" href="glossar.html#legacy-system" title="bestehendes Altsystem mit Kundendaten, das abgelöst werden soll; im Demo simuliert">Altsystem</a></td>
+<td>—</td>
+<td>Zähler fehlt</td>
+<td><code>systems[].migratedToday</code>: Datensätze <code>migrated</code>/<code>linked</code> mit <code>updatedAt</code> seit 00:00 Uhr deutscher Zeit</td>
+</tr>
+<tr>
+<td>Kachel „Offene <a class="term" href="glossar.html#klärfall" title="Altdatensatz, der ohne Rückfrage nicht übernommen werden kann (z. B. ohne oder mit ungültiger E-Mail-Adresse); steht im Cockpit, nicht in der DLQ">Klärfälle</a>“: Zahl, „+n seit gestern“, <a class="term" href="glossar.html#sparkline" title="sehr kleines Liniendiagramm ohne Achsen neben einer Kennzahl, das nur die Richtung zeigt (z. B. Klärfälle der letzten sieben Tage)">Sparkline</a> 7 Tage</td>
+<td>Zahl aus <code>clarifications</code></td>
+<td>Veränderung, Verlauf</td>
+<td><code>trends.newClarifications</code> (Klärfälle der letzten 24 h) und <code>trends.clarifications[7]</code> (offene Fälle am Ende jedes Tages), berechnet aus den Datensätzen</td>
+</tr>
+<tr>
+<td>Kachel „<a class="term" href="glossar.html#dlq" title="Ablage für Nachrichten, die nach mehreren Versuchen nicht verarbeitet werden konnten, zur Analyse und Nachverarbeitung">Dead-Letter-Queue</a>“: Zahl, „−n nach <a class="term" href="glossar.html#redrive" title="Zurückführen von Nachrichten aus der DLQ in die Ursprungs-Queue, nachdem der Fehler behoben ist">Redrive</a>“, Sparkline</td>
+<td>Zahl aus <code>deadLetters</code></td>
+<td>Redrive-Zähler, Verlauf</td>
+<td>Datensatz merkt sich <code>failedAt</code> und <code>redrivenAt</code>; <code>trends.redriven</code> (letzte 24 h) und <code>trends.deadLetters[7]</code></td>
+</tr>
+<tr>
+<td><a class="term" href="glossar.html#bulk-import" title="Übernahme vieler Konten auf einmal; bei Cognito per CSV-Import oder AdminCreateUser, im Demo ohne Passwörter (Nutzer müssen zurücksetzen); Hash-Import (u. a. bcrypt) ist noch nicht">Bulk-Import</a>: Knöpfe je Altsystem, Läufe mit Status-Badge, Fortschrittsbalken, Zählern</td>
+<td><code>runs[]</code> mit <code>dispatched</code>, <code>processed</code>, <code>counts</code></td>
+<td>—</td>
+<td>vorhanden</td>
+</tr>
+<tr>
+<td><a class="term" href="glossar.html#klärfall" title="Altdatensatz, der ohne Rückfrage nicht übernommen werden kann (z. B. ohne oder mit ungültiger E-Mail-Adresse); steht im Cockpit, nicht in der DLQ">Klärfälle</a>-Tabelle (Konto, Name + <a class="term" href="glossar.html#legacy-system" title="bestehendes Altsystem mit Kundendaten, das abgelöst werden soll; im Demo simuliert">Altsystem</a>, Problem-Badge, Stand), „Alle anzeigen“</td>
+<td><code>clarifications[]</code></td>
+<td>—</td>
+<td>vorhanden; die Seite zeigt fünf, „Alle anzeigen“ alle</td>
+</tr>
+<tr>
+<td><a class="term" href="glossar.html#event" title="Nachricht, dass etwas passiert ist (z. B. „Zählerstand erfasst&quot;); Empfänger reagieren darauf, ohne dass der Absender sie kennt">Ereignis</a>-<a class="term" href="glossar.html#timeline" title="zeitliche Liste von Ereignissen in der Oberfläche">Timeline</a> mit Icon, deutschem Text, Code, Kennungen, „7 Tage“</td>
+<td><code>timeline[]</code> (<code>detailType</code>, <code>summary</code>, <a class="term" href="glossar.html#dynamodb-ttl" title="Attribut ttl mit Ablaufzeitpunkt; DynamoDB löscht solche Einträge selbst und kostenlos (hier die Cockpit-Timeline nach 7 Tagen)">TTL</a> 7 Tage)</td>
+<td>—</td>
+<td>vorhanden; Icon und Text je <code>detailType</code> in der <a class="term" href="glossar.html#ui" title="Benutzeroberfläche">Oberfläche</a></td>
+</tr>
+<tr>
+<td><a class="term" href="glossar.html#dlq" title="Ablage für Nachrichten, die nach mehreren Versuchen nicht verarbeitet werden konnten, zur Analyse und Nachverarbeitung">DLQ</a> mit <a class="term" href="glossar.html#redrive" title="Zurückführen von Nachrichten aus der DLQ in die Ursprungs-Queue, nachdem der Fehler behoben ist">Redrive</a></td>
+<td><code>deadLetters[]</code>, <code>POST /migration/dlq/{id}/redrive</code></td>
+<td>—</td>
+<td>vorhanden, aufklappbare Korrekturzeile</td>
+</tr>
+<tr>
+<td>„<a class="term" href="glossar.html#demo-reset" title="Cockpit-Funktion des Inhabers: entfernt die von der Migration angelegten Konten samt ihrer Portaldaten (per Ereignis MigratedAccountsRemoved in jedem Bereich), Migrationsstände, Ti">Demo zurücksetzen</a>“</td>
+<td><code>POST /migration/reset</code></td>
+<td>—</td>
+<td>vorhanden, als Gefahrenkarte</td>
+</tr>
+<tr>
+<td>Suchfeld „Konto, <a class="term" href="glossar.html#mandant" title="abgeschotteter Bereich eines Kunden in einer gemeinsam betriebenen Anwendung; im Demo je Demo-Pass ein Mandant">Mandant</a>, Ereignis …“ mit <code>/</code></td>
+<td>—</td>
+<td>Suche fehlt</td>
+<td><strong>neu</strong> <code>GET /migration/search?q=</code> (Konten und Ereignisse des eigenen Mandanten); Mandanten sucht die Cockpit-Seite des Inhabers zusätzlich in <code>GET /tenancy/passes</code></td>
+</tr>
+<tr>
+<td>Seitenleiste mit Abschnitten, Zählern, <a class="term" href="glossar.html#tastenkürzel" title="Taste oder Folge von Tasten für häufige Wege; im Cockpit / für die Suche, g c zur Übersicht, g p zu den Demo-Pässen">Tastenkürzeln</a> <code>g c</code>, <code>g p</code></td>
+<td>Zähler aus <code>/migration/status</code></td>
+<td>—</td>
+<td>Oberfläche (<code>packages/ui</code>)</td>
+</tr>
+<tr>
+<td>Glocke „n neue <a class="term" href="glossar.html#klärfall" title="Altdatensatz, der ohne Rückfrage nicht übernommen werden kann (z. B. ohne oder mit ungültiger E-Mail-Adresse); steht im Cockpit, nicht in der DLQ">Klärfälle</a>“</td>
+<td>—</td>
+<td>Zähler</td>
+<td><code>trends.newClarifications</code></td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Demo-Pässe (<code>/cockpit/paesse</code>)</strong></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Baustein im Mockup</th>
+<th>Daten heute</th>
+<th>Lücke</th>
+<th>Lösung in Phase 6</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>„Aktive <a class="term" href="glossar.html#demo-pass" title="im Demo: zeitlich begrenzte Berechtigung (48 Stunden ab der ersten Anmeldung, Kontingent) für eine eigene Instanz; ausgestellt per Einladungslink oder für den Inhaber">Pass</a>-Mandanten n / max“ mit Balken</td>
+<td><code>GET /tenancy/settings</code> (<code>activeTenants</code>, <code>maxTenants</code>)</td>
+<td>—</td>
+<td>vorhanden</td>
+</tr>
+<tr>
+<td>„Offene Einladungen“ (gültig 14 Tage)</td>
+<td>—</td>
+<td>Einladungen sind nur über den <a class="term" href="glossar.html#token" title="digitaler Ausweis, den ein Identitätsdienst ausstellt und den eine App bei jedem API-Aufruf mitschickt">Token</a>-<a class="term" href="glossar.html#passwort-hash" title="Einweg-verschlüsselte Form eines Passworts; alte Systeme nutzen oft schwache Verfahren (MD5, SHA-1), die bei der Migration einen Passwort-Reset erzwingen">Hash</a> auffindbar</td>
+<td><strong>neu</strong> <code>GET /tenancy/overview</code>: Index-Eintrag <code>PLATFORM</code> / <code>INVITE#&lt;id&gt;</code> je Einladung (beim Anlegen geschrieben, beim Einlösen gelöscht, TTL wie die Einladung)</td>
+</tr>
+<tr>
+<td>„Nie angemeldet“ mit „Erinnerung nach 24 Std.“</td>
+<td><code>PassSummary.activatedAt</code></td>
+<td>Zahl, Erinnerungsfrist</td>
+<td><code>overview.neverSignedIn</code>, <code>overview.reminderHours</code></td>
+</tr>
+<tr>
+<td>„<a class="term" href="glossar.html#api" title="Programmierschnittstelle, über die Programme miteinander sprechen">API</a>-Aufrufe heute“ mit <a class="term" href="glossar.html#sparkline" title="sehr kleines Liniendiagramm ohne Achsen neben einer Kennzahl, das nur die Richtung zeigt (z. B. Klärfälle der letzten sieben Tage)">Sparkline</a></td>
+<td>nur Gesamtzähler <code>QUOTA#api.used</code></td>
+<td>Tageszähler</td>
+<td><a class="term" href="glossar.html#free-tier" title="Sammelbegriff für kostenlose Nutzungsmengen bei AWS">Kontingent</a>-Wächter zählt im <strong>selben Update</strong> zusätzlich das Tagesattribut <code>d&lt;JJJJMMTT&gt;</code> (keine zusätzliche Schreibkapazität); <code>overview.apiCalls.today</code> und <code>.days[7]</code> über alle Pass-Mandanten</td>
+</tr>
+<tr>
+<td>Tabelle: <a class="term" href="glossar.html#e-mail" title="elektronische Post; SNS verschickt bis 1.000 E-Mails im Monat kostenlos">E-Mail</a>, Mandant, Status-Badge, Erste Anmeldung, Letzte Aktivität, Kontingent als Mini-Balken, Gültig bis, <a class="term" href="glossar.html#widerruf" title="Rücktritt von einem online geschlossenen Vertrag innerhalb von 14 Tagen; im Demo sofort wirksam">Widerrufen</a></td>
+<td><code>GET /tenancy/passes</code> (<code>activatedAt</code>, <code>lastActiveAt</code>, <code>quota</code>)</td>
+<td>offene Einladungen als Zeilen</td>
+<td><code>overview.invitations[]</code></td>
+</tr>
+<tr>
+<td>Karten „Einladung erstellen“ und „Einstellungen“</td>
+<td><code>POST /tenancy/invitations</code>, <code>GET/PUT /tenancy/settings</code></td>
+<td>—</td>
+<td>vorhanden</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Endkunden-Ansichten</strong></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Baustein im Mockup</th>
+<th>Daten heute</th>
+<th>Lücke</th>
+<th>Lösung in Phase 6</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Übersicht: Datum, „Guten Tag, …“</td>
+<td><code>GET /me</code> (<code>displayName</code>)</td>
+<td>—</td>
+<td>vorhanden</td>
+</tr>
+<tr>
+<td>Hinweis-Banner „Zählerstand Strom fällig … bis TT.MM.“</td>
+<td>—</td>
+<td>Fälligkeit</td>
+<td><strong>neu</strong> <code>GET /contracts/{id}/consumption</code> → <code>nextReadingDue</code>, <code>readingDue</code> (vierteljährliche Ablesung: letzter Stand + 3 Monate; überfällig → heute + 14 Tage)</td>
+</tr>
+<tr>
+<td>Vertragskarten: <a class="term" href="glossar.html#sparte" title="Produktbereich eines Versorgers, z. B. Strom, Gas, Mobilfunk; im Demo zentraler Begriff des Datenmodells">Sparten</a>-Icon, Betrag, Status, „Details“</td>
+<td><code>GET /contracts</code></td>
+<td>—</td>
+<td>vorhanden</td>
+</tr>
+<tr>
+<td>Sparkline (Strom) bzw. „Geschätzt n <a class="term" href="glossar.html#kwh" title="Kilowattstunde (Strom, Gas) bzw. Kubikmeter (Gas, Wasser) – Verbrauchseinheiten">kWh</a> im Jahr“</td>
+<td><code>estimatedAnnualConsumption</code></td>
+<td>Monatswerte</td>
+<td><code>consumption.months[]</code></td>
+</tr>
+<tr>
+<td>Datenvolumen-Balken (Mobilfunk)</td>
+<td><code>GET /contracts/{id}/usage</code> (Demo-Modell im API)</td>
+<td>kein Mobilfunknetz</td>
+<td>vorhanden, als Demo-Wert markiert</td>
+</tr>
+<tr>
+<td>Karte „Mein Konto“</td>
+<td><code>GET /me</code></td>
+<td>—</td>
+<td>vorhanden</td>
+</tr>
+<tr>
+<td>Karte „Postfach“ mit Vorschau und „n neu“</td>
+<td><code>GET /notifications</code></td>
+<td>—</td>
+<td>vorhanden</td>
+</tr>
+<tr>
+<td>„Weitere Kundenkonten“ (Verknüpfen)</td>
+<td><code>GET /me/links</code>, <code>POST /me/links</code></td>
+<td>—</td>
+<td>vorhanden</td>
+</tr>
+<tr>
+<td>Verträge: Tabelle mit Icons, Detailkarte, „Vertrag ändern“ mit Schieberegler und Optionskarten</td>
+<td><code>GET/PATCH /contracts/{id}</code></td>
+<td>—</td>
+<td>vorhanden</td>
+</tr>
+<tr>
+<td>Verbrauch: Reiter je Vertrag</td>
+<td><code>GET /contracts</code></td>
+<td>—</td>
+<td>vorhanden</td>
+</tr>
+<tr>
+<td>Kennzahlen: Letzter Stand; Letzte 12 Monate mit Veränderung zum Vorjahr; Ø pro Monat mit Kosten</td>
+<td>Zählerstände, <code>workPriceCent</code></td>
+<td>Aggregation</td>
+<td><code>consumption.total</code>, <code>.previousTotal</code>, <code>.changePercent</code>, <code>.averagePerMonth</code>; Kosten = Ø × Arbeitspreis in der Oberfläche</td>
+</tr>
+<tr>
+<td>Balkendiagramm 12 Monate mit Vorjahreslinie, „Als Tabelle anzeigen“</td>
+<td>—</td>
+<td>Monatswerte</td>
+<td><code>consumption.months[]</code> mit <code>value</code>, <code>previousYear</code> und <code>basis</code> (siehe unten)</td>
+</tr>
+<tr>
+<td>„Zählerstand erfassen“ mit Plausibilitätsmeldung</td>
+<td><code>POST …/readings</code> (422 bei kleinerem Wert/Datum)</td>
+<td>erwarteter Bereich</td>
+<td><code>consumption.plausibleRange</code> für heute; die Oberfläche warnt vorab, der Server bleibt maßgeblich</td>
+</tr>
+<tr>
+<td>Mobilfunk-Reiter: Ring Datenvolumen, „1 <a class="term" href="glossar.html#gb" title="Gigabyte / Terabyte (1 TB = 1.000 GB)">GB</a> nachbuchen“</td>
+<td>Demo-Nutzung</td>
+<td>keine Buchung</td>
+<td>Ring mit Demo-Wert; „1 GB nachbuchen“ als markierter Demo-Knopf</td>
+</tr>
+<tr>
+<td>Postfach: Liste (ungelesen hervorgehoben, Zeit, Vorschau) und geöffnete Nachricht</td>
+<td><code>GET /notifications</code>, <code>PATCH /notifications/{id}</code> (gelesen)</td>
+<td>—</td>
+<td>vorhanden; Auswahl per <code>?n=&lt;id&gt;</code></td>
+</tr>
+<tr>
+<td>Demo-Pass: Ring Restlaufzeit, Status, Kontingent, <a class="term" href="glossar.html#demo-person" title="im Demo vorbereitete fiktive Kundinnen und Kunden mit festgelegter Geschichte (z. B. Anna Becker: Altkundin, Lazy Migration)">Demo-Personen</a>, Passwort</td>
+<td><code>GET /tenancy/pass</code></td>
+<td>—</td>
+<td>vorhanden</td>
+</tr>
+<tr>
+<td>Start: Hero mit Illustration, fünf <a class="term" href="glossar.html#sparte" title="Produktbereich eines Versorgers, z. B. Strom, Gas, Mobilfunk; im Demo zentraler Begriff des Datenmodells">Sparten</a>, drei Karten</td>
+<td>statische Texte</td>
+<td>—</td>
+<td>Oberfläche</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Wie die Monatswerte entstehen.</strong> Ein Zählerstand misst nur die Summe
+zwischen zwei Ablesungen. Der Verbrauchsdienst verteilt jede Spanne zwischen
+zwei Ständen tageweise nach einem <strong><a class="term" href="glossar.html#standardlastprofil" title="typischer Verlauf des Verbrauchs über das Jahr (Strom im Winter etwas mehr, Gas fast nur in der Heizzeit); Versorger verteilen damit Jahres- oder Zwischenverbräuche auf Monate. Das">Standardlastprofil</a></strong> der Sparte (Strom:
+Haushaltsprofil H0, Gas: Heizprofil, Wasser: fast gleichmäßig) auf die Monate
+— so wie Versorger Jahresverbräuche abgrenzen. Monate, die kein Paar von
+Ständen abdeckt (z. B. nach dem letzten Stand), schätzt er aus dem
+geschätzten Jahresverbrauch des Vertrags mit demselben Profil und kennzeichnet
+sie mit <code>basis: "estimate"</code>; die Oberfläche zeigt sie heller und mit
+Legende „geschätzt“. Das ist eine echte Berechnung, kein Demo-Wert. Den
+Jahresverbrauch für die Schätzung nimmt der Verbrauchsdienst in dieser
+Reihenfolge: hochgerechnet aus den eigenen Zählerständen (wenn zwei Stände
+mindestens 30 Tage auseinanderliegen, mit demselben Profil gewichtet), sonst
+der Schätzwert des Vertrags aus <code>ContractChanged</code>
+(<code>ContractSnapshot.estimatedAnnualConsumption</code>, neu und optional), sonst ein
+Standardwert je Sparte (Strom 2.500 kWh, Gas 1.200 m³, Wasser 100 m³).
+<strong>[E]</strong> Solange nur geschätzte Monate vorliegen, ist die Veränderung zum
+Vorjahr 0 %; einen Wert wie „−4,1 %“ im Mockup gibt es erst mit Ständen aus
+zwei Jahren.</p>
+<h3 id="neue-und-erweiterte-operationen">Neue und erweiterte Operationen<a class="anchor" href="#neue-und-erweiterte-operationen" title="Permanent link">#</a></h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Operation</th>
+<th>Scope</th>
+<th>Service (CDK)</th>
+<th>Zweck</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GET /migration/status</code> (erweitert)</td>
+<td><code>migration.read</code></td>
+<td><code>migration.api</code></td>
+<td><code>systems[].migratedToday</code>, <code>trends</code></td>
+</tr>
+<tr>
+<td><code>GET /migration/search?q=</code> — <code>searchMigration</code></td>
+<td><code>migration.read</code></td>
+<td><code>migration.api</code></td>
+<td>Konten und Ereignisse des eigenen Mandanten</td>
+</tr>
+<tr>
+<td><code>GET /tenancy/overview</code> — <code>getPassOverview</code></td>
+<td><code>tenancy.admin</code></td>
+<td><code>tenancy.api</code></td>
+<td>Kennzahlen und offene Einladungen der Pass-Verwaltung</td>
+</tr>
+<tr>
+<td><code>GET /contracts/{id}/consumption</code> — <code>getConsumptionHistory</code></td>
+<td><code>readings.read</code></td>
+<td><code>domains.consumptionApi</code></td>
+<td>Monatswerte, Kennzahlen, Fälligkeit, Plausibilität</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Kosten:</strong> keine neuen Bausteine; vier Routen im bestehenden <a class="term" href="glossar.html#http-api" title="schlanke, günstige Variante des API Gateway (≈ 1 $/Mio. Aufrufe) mit eingebautem JWT-Authorizer; im Demo gewählt">HTTP API</a>. Der
+Tageszähler der API-Aufrufe steckt im bestehenden Update des
+Kontingent-Wächters, der Einladungs-Index ist ein zweiter Schreibvorgang nur
+beim Anlegen einer Einladung (beim Einlösen ein Löschen in der bestehenden
+Transaktion). <a class="term" href="glossar.html#dynamodb" title="vollständig verwaltete NoSQL-Datenbank (Schlüssel-Wert/Dokument) mit Antwortzeiten im Millisekundenbereich, ohne Server und ohne Verbindungs-Pool">DynamoDB</a> bleibt bei 5/5.</p>
+<h3 id="gefakte-elemente">Gefakte Elemente<a class="anchor" href="#gefakte-elemente" title="Permanent link">#</a></h3>
+<p>Einheitlicher Marker: Baustein <code>FakeMarker</code> in <code>packages/ui</code> — kleines
+Abzeichen „Demo-Wert“ mit Tooltip „simuliert — noch nicht aus dem System“,
+maschinenlesbar per <code>data-fake="true"</code>, für Screenreader beschriftet.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Element</th>
+<th>Wo</th>
+<th>Grund</th>
+<th>Was für eine echte Umsetzung fehlt</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Datenvolumen (verbraucht)</td>
+<td>Übersicht (Mobilfunk-Karte), Verbrauch (Reiter Mobilfunk)</td>
+<td>Es gibt kein Mobilfunknetz; das API rechnet ein Demo-Modell (<code>demoUsage</code>: 40 % am Monatsanfang, 100 % am Monatsende)</td>
+<td>Nutzungsdaten aus einem Netz-/Abrechnungssystem (CDR-Import)</td>
+</tr>
+<tr>
+<td>„1 <a class="term" href="glossar.html#gb" title="Gigabyte / Terabyte (1 TB = 1.000 GB)">GB</a> nachbuchen“</td>
+<td>Verbrauch (Reiter Mobilfunk)</td>
+<td>keine Buchung von Zusatzvolumen im Vertragsdienst</td>
+<td>Operation „Zusatzoption buchen“ im Vertragsdienst samt Abrechnung</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="abweichungen-vom-mockup">Abweichungen vom Mockup<a class="anchor" href="#abweichungen-vom-mockup" title="Permanent link">#</a></h3>
+<p><strong>[B]</strong> Bewusst anders als im Mockup, jeweils mit Grund:</p>
+<ul>
+<li><strong>Keine Daten dafür im API:</strong> Vertragsnummer (die Detailseite zeigt den
+  ersten Block der Vertrags-ID), Preis je Tarifoption (nur die aktuelle Option
+  zeigt ihren Preis), „mit Foto“ an Zählerständen (Stand und Foto sind nicht
+  verknüpft), „gedrosselt auf 64 kbit/s“ beim Datenvolumen. Erfunden wird
+  davon nichts.</li>
+<li><strong>Barrierefreiheit:</strong> Rahmen des Suchfelds in der gedämpften Farbe (3:1),
+  der Schalter zeigt auch „aus“ mit gefülltem Knopf, Zähler der Bottom-Bar in
+  der Akzentfarbe statt Rot (Rot erreichte im Dunkelmodus nur 3,9:1).</li>
+<li><strong>Cockpit:</strong> Pass-Inhaber haben in der Seitenleiste zusätzlich „Demo-Pass“;
+  Problem-Badges zeigen deutsche Texte aus Code und Feldern (die technische
+  Meldung als Tooltip); auf Telefonen steht das Suchfeld auf der Seite statt
+  in der Kopfzeile.</li>
+<li><strong>Postfach:</strong> „Verbrauch ansehen“ an jeder Nachricht; die Benutzermenüs
+  haben keine Icons und keinen „n neu“-Zähler (die Glocke zeigt ihn).</li>
+<li><strong>Kopfzeile:</strong> bei wenig Platz bekommt die Navigation eine eigene Zeile,
+  statt Einträge wegzuscrollen.</li>
+</ul>
+<h3 id="prüfung">Prüfung<a class="anchor" href="#prüfung" title="Permanent link">#</a></h3>
+<p><strong>[B]</strong> Live am 01.10.2026 (v0.6.0): <a class="term" href="glossar.html#playwright" title="Werkzeug, das echte Browser fernsteuert; prüft die Journeys am laufenden Portal">E2E</a> 29/29, davon drei neue <a class="term" href="glossar.html#customer-journey" title="Weg eines Kunden durch das Portal: Registrierung → Onboarding → angemeldeter Bereich">Journeys</a> für
+die Bausteine (Konto-Karten, Diagramm mit Tabelle, Demo-Werte,
+Cockpit-Kennzahlen, Suche mit <code>/</code>, Kürzel <code>g p</code>). Der Screenshot-Lauf
+(<code>E2E_SCREENS=1</code>, <a class="term" href="glossar.html#workflow" title="allgemein: automatisierter Ablauf mehrerer Schritte; bei GitHub: eine Pipeline-Datei">Workflow</a>-Schalter <code>screens</code>) fotografiert jeden Bildschirm
+in „Klar“ bzw. „Dicht“ hell und dunkel bei Desktop-Breite und 375 px sowie
+Stichproben der übrigen Presets (55 Bilder im Report) und schlägt fehl, wenn
+eine Seite seitwärts scrollt oder ein Navigationseintrag verdeckt ist. Er fand
+zwei Fehler, die behoben sind: die Telefon-Navigation schnitt „Verbrauch“ ab,
+und die Vertragskarten zeigten die Options-ID „standard“. Kontraste prüfen die
+Unit-Tests aller Presets × Modi (31 Paare, darunter der Demo-Wert-Marker).
+<strong>Kosten:</strong> keine neuen Ressourcentypen (<a class="term" href="glossar.html#cdk" title="Infrastruktur als Programmcode (TypeScript, Java, Python …): man schreibt Klassen wie new Table(...), CDK erzeugt daraus CloudFormation-Vorlagen und legt die Ressourcen an">CDK</a>-Tests), drei Routen im
+bestehenden HTTP API, DynamoDB weiter 5/5; den Budgetstand selbst konnte ich
+ohne lokale <a class="term" href="glossar.html#aws" title="Cloud-Plattform von Amazon mit über 200 Diensten (Rechenleistung, Datenbanken, Netzwerk, Messaging …), abgerechnet nach Nutzung">AWS</a>-Sitzung nicht ablesen.</p></main></div>
+<footer class="site"><a href="../wiki/design.md">Markdown-Quelle</a> · Generiert 2026-10-02 16:40 aus <code>docs/wiki</code> mit <code>scripts/build_reports.py</code></footer>
 </body>
 </html>

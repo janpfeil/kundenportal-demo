@@ -1,6 +1,6 @@
 # Architektur: Zonen und Frontend
 
-Stand: 2026-09-30 · Beschreibt den **Ist-Stand** des Codes (Phase 2 abgeschlossen; Seiten für Mandanten und Demo-Pass aus Phase 4 in Abschnitt 8; gemeinsame Bausteine, Content Security Policy und cachebare Startseite in Abschnitt 9–11), nicht die Zielarchitektur. Kennzeichnung: **[B]** belegt (offizielle Quelle oder Messung), **[A]** Annahme, **[E]** Einschätzung.
+Stand: 2026-10-02 · Beschreibt den **Ist-Stand** des Codes (Phase 2 abgeschlossen; Seiten für Mandanten und Demo-Pass aus Phase 4 in Abschnitt 8; gemeinsame Bausteine, Content Security Policy und cachebare Startseite in Abschnitt 9–11; Themes aus Phase 5, Oberflächen aus Phase 6 und Betreiber-Cockpit aus Phase 7 in Abschnitt 12–14), nicht die Zielarchitektur. Kennzeichnung: **[B]** belegt (offizielle Quelle oder Messung), **[A]** Annahme, **[E]** Einschätzung.
 
 Fachbegriffe sind in jedem Abschnitt beim ersten Vorkommen mit dem [Glossar](glossar.md) verlinkt (Erklärung und Entsprechung außerhalb von AWS).
 

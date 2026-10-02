@@ -1,6 +1,6 @@
 # Architektur — Ist-Stand des Portals
 
-Stand: 2026-09-30 · Beschreibt den **Ist-Stand** des Codes (Phase 1 bis 4 abgeschlossen, Release v0.4.0), nicht die Zielarchitektur. Kennzeichnung: **[B]** belegt (offizielle Quelle oder Messung), **[A]** Annahme, **[E]** Einschätzung.
+Stand: 2026-10-02 · Beschreibt den **Ist-Stand** des Codes (Phase 1 bis 7 abgeschlossen, Release v0.7.0, dazu der Nachtrag zur Anmeldeseite), nicht die Zielarchitektur. Kennzeichnung: **[B]** belegt (offizielle Quelle oder Messung), **[A]** Annahme, **[E]** Einschätzung.
 
 Fachbegriffe sind in jedem Abschnitt beim ersten Vorkommen mit dem [Glossar](glossar.md) verlinkt (Erklärung und Entsprechung außerhalb von AWS).
 
@@ -23,6 +23,17 @@ diese Seite zeigt, was davon tatsächlich gebaut ist:
   eigenem Mandanten je Besucher im Bridge-Modell, Isolation per Token
   Vending, Kontingente, automatischer Ablauf und Rückbau (Abschnitt 11,
   [Architektur: Mandanten und Demo-Pass](architektur-mandanten.md)).
+- **Phase 5 (abgeschlossen, v0.5.0):** Design und Themes — zwei Zielgruppen
+  (Kunde, Betreiber), Presets mit Hell/Dunkel, die der Server aus Cookies
+  rendert ([Design & Theme](design.md), [Zonen und Frontend](architektur-zonen.md) §12).
+- **Phase 6 (abgeschlossen, v0.6.2):** alle Oberflächen wie im Mockup, das
+  Cockpit mit Migrationsstand und Demo-Pässen, Verbrauchsverlauf
+  ([Zonen und Frontend](architektur-zonen.md) §13).
+- **Phase 7 (abgeschlossen, v0.7.0):** Betreiber-Cockpit mit Kunden-, Vertrags-
+  und Produktlisten, Produktkatalog mit Preisversionen, Vertragsabschluss,
+  Kündigung und Widerruf durch Kunden (Abschnitte 4–6,
+  [Zonen und Frontend](architektur-zonen.md) §14); Nachtrag: Anmeldeseite im
+  Aussehen des Portals (Abschnitt 2).
 
 Wie der Kontoinhaber das Ganze aufbaut, steht in der
 [Anleitung Fundament](anleitung-fundament.md) und der
@@ -56,12 +67,7 @@ aus einem privaten **S3**-Bucket, `/api/*` an das **API Gateway**, alles
 andere an die **Shell** — den Next.js-Server in einer Lambda mit dem
 [Lambda Web Adapter](glossar.md#lambda-web-adapter) und Response Streaming.
 Die Shell leitet zur Anmeldung an **Cognito** (Managed Login) weiter und ruft
-die API serverseitig mit dem Access Token auf. Die Anmeldeseite trägt das
-Aussehen des Portals (seit Phase 7, Nachtrag): Farben und Ecken des Presets
-„klar“ in Hell und Dunkel (folgt der Systemeinstellung), App-Icon als Favicon
-und Marke über dem Formular. CDK leitet das Branding beim Synthetisieren aus
-den Theme-Tokens von `packages/ui` und den Icon-Dateien der Shell ab
-(`infra/cdk/lib/login-branding.ts`). Der Dienst **customer** legt
+die API serverseitig mit dem Access Token auf. Der Dienst **customer** legt
 beim ersten Aufruf von `GET /me` das Profil an und veröffentlicht
 `CustomerRegistered` auf dem eigenen EventBridge-Bus. Eine Regel legt das
 Ereignis in eine SQS-Queue; der **notification-Konsument** schreibt daraus eine
@@ -114,7 +120,16 @@ Die Shell ist ein [BFF](glossar.md#bff): Tokens verlassen den Server nie.
   `sendJson`), und jede schreibende Route prüft Herkunft und Sitzung.
   Einzelheiten: [Architektur: Zonen und Frontend](architektur-zonen.md) §4.
 - **Abmelden:** Cookie löschen, dann Cognitos `/logout` mit `client_id` und
-  `logout_uri` (Cognito hat keinen Standard-`end_session_endpoint`).
+  `logout_uri`. Cognito führt `/logout` inzwischen als `end_session_endpoint`,
+  versteht dort aber `post_logout_redirect_uri` nicht (Fehlerseite
+  „Ungültige Anforderung“); die konfigurierte Logout-URL hat deshalb Vorrang
+  (seit 02.10.2026).
+- **Aussehen der Anmeldeseite (Phase 7, Nachtrag):** Managed Login trägt Farben
+  und Ecken des Presets „klar“ in Hell und Dunkel (folgt der
+  Systemeinstellung), das App-Icon als Favicon und die Marke über dem Formular.
+  CDK leitet das Branding beim Synthetisieren aus den Theme-Tokens von
+  `packages/ui` und den Icon-Dateien der Shell ab
+  (`infra/cdk/lib/login-branding.ts`); Texte und Sprache bleiben Cognitos.
 
 **Sprache der Anmeldeseiten:** Die Shell übergibt an `/oauth2/authorize`
 `lang` (Cognito) und `ui_locales` (OIDC-Standard) mit `de` oder `en`. Laut

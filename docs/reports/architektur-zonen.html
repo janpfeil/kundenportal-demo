@@ -24,13 +24,15 @@
 <li><a href="#10-content-security-policy">10. Content Security Policy</a></li>
 <li><a href="#11-cachebare-startseite">11. Cachebare Startseite</a></li>
 <li><a href="#12-themes-phase-5">12. Themes (Phase 5)</a></li>
+<li><a href="#13-oberflächen-wie-im-mockup-phase-6">13. Oberflächen wie im Mockup (Phase 6)</a></li>
+<li><a href="#14-betreiber-cockpit-und-vertragsverwaltung-phase-7">14. Betreiber-Cockpit und Vertragsverwaltung (Phase 7)</a></li>
 <li><a href="#quellen">Quellen</a></li>
 </ul>
 </div>
 </nav><main><h1 id="architektur-zonen-und-frontend">Architektur: Zonen und Frontend<a class="anchor" href="#architektur-zonen-und-frontend" title="Permanent link">#</a></h1>
-<p>Stand: 2026-09-30 · Beschreibt den <strong>Ist-Stand</strong> des Codes (Phase 2 abgeschlossen; Seiten für <a class="term" href="glossar.html#mandant" title="abgeschotteter Bereich eines Kunden in einer gemeinsam betriebenen Anwendung; im Demo je Demo-Pass ein Mandant">Mandanten</a> und <a class="term" href="glossar.html#demo-pass" title="im Demo: zeitlich begrenzte Berechtigung (48 Stunden ab der ersten Anmeldung, Kontingent) für eine eigene Instanz; ausgestellt per Einladungslink oder für den Inhaber">Demo-Pass</a> aus Phase 4 in Abschnitt 8; gemeinsame Bausteine, <a class="term" href="glossar.html#csp" title="HTTP-Header, mit dem die Seite dem Browser sagt, woher Skripte, Styles, Verbindungen, Formularziele und Worker kommen dürfen; alles andere blockiert der Browser. Im Demo setzt der ">Content Security Policy</a> und cachebare Startseite in Abschnitt 9–11), nicht die Zielarchitektur. Kennzeichnung: <strong>[B]</strong> belegt (offizielle Quelle oder Messung), <strong>[A]</strong> Annahme, <strong>[E]</strong> Einschätzung.</p>
+<p>Stand: 2026-10-02 · Beschreibt den <strong>Ist-Stand</strong> des Codes (Phase 2 abgeschlossen; Seiten für <a class="term" href="glossar.html#mandant" title="abgeschotteter Bereich eines Kunden in einer gemeinsam betriebenen Anwendung; im Demo je Demo-Pass ein Mandant">Mandanten</a> und <a class="term" href="glossar.html#demo-pass" title="im Demo: zeitlich begrenzte Berechtigung (48 Stunden ab der ersten Anmeldung, Kontingent) für eine eigene Instanz; ausgestellt per Einladungslink oder für den Inhaber">Demo-Pass</a> aus Phase 4 in Abschnitt 8; gemeinsame Bausteine, <a class="term" href="glossar.html#csp" title="HTTP-Header, mit dem die Seite dem Browser sagt, woher Skripte, Styles, Verbindungen, Formularziele und Worker kommen dürfen; alles andere blockiert der Browser. Im Demo setzt der ">Content Security Policy</a> und cachebare Startseite in Abschnitt 9–11; Themes aus Phase 5, <a class="term" href="glossar.html#ui" title="Benutzeroberfläche">Oberflächen</a> aus Phase 6 und <a class="term" href="glossar.html#betreiber-cockpit" title="Arbeitsplatz des Betreibers: Kunden, Verträge, Produkte, Migration; im Demo der Inhaber, im Pass-Mandanten der Pass-Inhaber">Betreiber-Cockpit</a> aus Phase 7 in Abschnitt 12–14), nicht die Zielarchitektur. Kennzeichnung: <strong>[B]</strong> belegt (offizielle Quelle oder Messung), <strong>[A]</strong> Annahme, <strong>[E]</strong> Einschätzung.</p>
 <p>Fachbegriffe sind in jedem Abschnitt beim ersten Vorkommen mit dem <a href="glossar.html">Glossar</a> verlinkt (Erklärung und Entsprechung außerhalb von <a class="term" href="glossar.html#aws" title="Cloud-Plattform von Amazon mit über 200 Diensten (Rechenleistung, Datenbanken, Netzwerk, Messaging …), abgerechnet nach Nutzung">AWS</a>).</p>
-<p>Diese Seite ergänzt die <a href="architektur.html">Architektur</a> um die <a class="term" href="glossar.html#ui" title="Benutzeroberfläche">Oberfläche</a>:
+<p>Diese Seite ergänzt die <a href="architektur.html">Architektur</a> um die Oberfläche:
 wie das Portal in mehrere <a class="term" href="glossar.html#nextjs" title="React-Framework (von Vercel) mit Routing, Server-Rendering, API-Routen und Build-Optimierung">Next.js</a>-Apps zerfällt, wie der <a class="term" href="glossar.html#browser" title="Programm zum Anzeigen von Webseiten; „Browser-App&quot; = Anwendung, die im Browser läuft">Browser</a> schreibt,
 wie das <a class="term" href="glossar.html#laufzeit-integration" title="Einbinden eines Bausteins erst im laufenden Browser statt beim Build">Laufzeit-Widget</a> „Glocke" eingebunden ist und was die <a class="term" href="glossar.html#component-library" title="gemeinsames Paket wiederverwendbarer UI-Bausteine (Buttons, Formulare, Layouts), das alle Micro-Frontends nutzen und so ein einheitliches Aussehen sichern">Component
 Library</a> liefert. Warum <a href="glossar.html#multi-zones">Multi-Zones</a> statt <a class="term" href="glossar.html#module-federation" title="Mechanismus (Webpack/Rspack), mit dem ein Bundle zur Laufzeit Module aus einem anderen, separat deployten Build lädt">Module
@@ -179,8 +181,13 @@ dieselben Werkzeuge:</p>
 Body</strong> (POST, PUT, <a class="term" href="glossar.html#http-methoden" title="Arten von REST-Aufrufen: lesen (GET), anlegen (POST), teilweise ändern (PATCH), ersetzen (PUT), löschen (DELETE)">PATCH</a>) signiert CloudFront den Inhalt nicht selbst;
 der Absender muss den SHA-256 des Bodys im Header <code>x-amz-content-sha256</code>
 mitschicken [B: <a href="https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/private-content-restricting-access-to-lambda.html">https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/private-content-restricting-access-to-lambda.html</a>].
-Ein gewöhnliches <a class="term" href="glossar.html#html" title="Auszeichnungssprache für Webseiten; JS = JavaScript">HTML</a>-Formular kann das nicht.</p>
-<p><strong>Lösung:</strong> Alle schreibenden Aufrufe aus dem <a class="term" href="glossar.html#browser" title="Programm zum Anzeigen von Webseiten; „Browser-App&quot; = Anwendung, die im Browser läuft">Browser</a> laufen über
+Ein gewöhnliches <a class="term" href="glossar.html#html" title="Auszeichnungssprache für Webseiten; JS = JavaScript">HTML</a>-Formular kann das nicht. <strong>[B: live, 02.10.2026]</strong> Die
+Rücknahme einer Kündigung per <code>DELETE</code> mit Body vom <a class="term" href="glossar.html#browser" title="Programm zum Anzeigen von Webseiten; „Browser-App&quot; = Anwendung, die im Browser läuft">Browser</a> an die <a class="term" href="glossar.html#multi-zones" title="Next.js-Ansatz, mehrere Next.js-Apps unter einer Domain zu betreiben, aufgeteilt nach Pfaden">Zone</a> schlug
+live fehl, per POST an die Zone geht sie (<a class="term" href="glossar.html#playwright" title="Werkzeug, das echte Browser fernsteuert; prüft die Journeys am laufenden Portal">E2E</a> J11). <strong>[E]</strong> Ursache ist
+vermutlich, dass die Inhaltssignatur nur für POST/PUT greift. Der Browser
+schreibt deshalb nur per POST/PATCH; die Zone ruft die <a class="term" href="glossar.html#api" title="Programmierschnittstelle, über die Programme miteinander sprechen">API</a> dann auch mit
+<code>DELETE</code> auf (<code>/vertraege/api/contracts/&lt;id&gt;/termination/cancel</code>).</p>
+<p><strong>Lösung:</strong> Alle schreibenden Aufrufe aus dem Browser laufen über
 <code>sendJson(method, url, body)</code> aus <code>@kundenportal/web-auth/browser</code>. Die
 Funktion serialisiert den Body, berechnet den
 <a href="glossar.html#payload-hash">Payload-Hash</a> mit <a href="glossar.html#webcrypto">WebCrypto</a>
@@ -391,7 +398,7 @@ ohne <a class="term" href="glossar.html#s3" title="Objektspeicher für Dateien b
 <td>Cockpit</td>
 <td>Seite</td>
 <td>Gruppe <code>owner</code></td>
-<td>Einladungen erzeugen (Link wird genau einmal angezeigt), Pässe mit Status, erster Anmeldung des Pass-Inhabers, letzter Aktivität (letzter <a class="term" href="glossar.html#api" title="Programmierschnittstelle, über die Programme miteinander sprechen">API</a>-Aufruf im <a class="term" href="glossar.html#mandant" title="abgeschotteter Bereich eines Kunden in einer gemeinsam betriebenen Anwendung; im Demo je Demo-Pass ein Mandant">Mandanten</a>), Kontingent und Ablauf, Widerruf</td>
+<td>Einladungen erzeugen (Link wird genau einmal angezeigt), Pässe mit Status, erster Anmeldung des Pass-Inhabers, letzter Aktivität (letzter <a class="term" href="glossar.html#api" title="Programmierschnittstelle, über die Programme miteinander sprechen">API</a>-Aufruf im <a class="term" href="glossar.html#mandant" title="abgeschotteter Bereich eines Kunden in einer gemeinsam betriebenen Anwendung; im Demo je Demo-Pass ein Mandant">Mandanten</a>), Kontingent und Ablauf, <a class="term" href="glossar.html#widerruf" title="Rücktritt von einem online geschlossenen Vertrag innerhalb von 14 Tagen; im Demo sofort wirksam">Widerruf</a></td>
 </tr>
 <tr>
 <td><code>/cockpit/api/invitations</code></td>
@@ -728,6 +735,171 @@ Beginn des Body (kein Aufblitzen), keine CSP-Verletzung, kein waagerechtes
 Scrollen. Umschalten im Benutzermenü, danach <code>/pass/einloesen</code> geladen: Preset
 und Modus bleiben. Cockpit-Presets in <a class="term" href="glossar.html#storybook" title="Werkzeug, das jede Komponente der Component Library isoliert darstellt und dokumentiert; als statische Seite veröffentlicht">Storybook</a> (die Cockpit-Zone braucht eine
 Sitzung).</p>
+<h2 id="13-oberflächen-wie-im-mockup-phase-6">13. Oberflächen wie im Mockup (Phase 6)<a class="anchor" href="#13-oberflächen-wie-im-mockup-phase-6" title="Permanent link">#</a></h2>
+<p>Die Seiten folgen in Aufbau, Bausteinen und Inhalten dem
+<a href="https://janpfeil.github.io/kundenportal-demo/design/mockups.html">Mockup</a>;
+woher jede Zahl kommt, steht in der Lückenanalyse (<a href="design.html">Design und Theme</a>).</p>
+<p><strong>Bausteine in <code>packages/ui</code></strong> (mit Stories „Charts“, „Dashboard“,
+„Navigation“ in <a class="term" href="glossar.html#storybook" title="Werkzeug, das jede Komponente der Component Library isoliert darstellt und dokumentiert; als statische Seite veröffentlicht">Storybook</a>): Icon-Satz als Inline-SVG (<code>Icon</code>, <code>IconCircle</code>,
+<code>divisionIcon</code>), <code>StatusBadge</code> mit Punkt, <code>Kpi</code>/<code>KpiGrid</code>, <code>ProgressRing</code>,
+<code>Sparkline</code>, <code>BarChart</code> mit Vorjahreslinie, schraffierten Schätzmonaten und
+Tabellenansicht, <code>MiniBars</code>, <code>Timeline</code>, <code>SearchField</code>, <code>KeyboardShortcuts</code>/
+<code>Kbd</code>, <code>Banner</code>, <code>Tabs</code>, <code>Switch</code>, <code>MessageList</code>, <code>LiveIndicator</code>,
+<code>FakeMarker</code> sowie die Raster <code>Grid</code>, <code>Split</code>, <code>CockpitGrid</code>, <code>Stack</code>.
+<code>NavItem</code> kennt Icon, Zähler, <a class="term" href="glossar.html#tastenkürzel" title="Taste oder Folge von Tasten für häufige Wege; im Cockpit / für die Suche, g c zur Übersicht, g p zu den Demo-Pässen">Tastenkürzel</a>, Abschnitt und Unterpunkt; mit
+Abschnitten oder Kürzeln rendert die Kopfzeile eine eigene Seitenleiste
+(<code>.kp-sidenav</code>). Die Stylesheets sind auf sechs Dateien verteilt; der <a class="term" href="glossar.html#build" title="Übersetzen und Paketieren des Quellcodes zu auslieferbaren Dateien (Artefakten)">Build</a>
+fügt sie zu einem <code>dist/styles.css</code> zusammen.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Seite</th>
+<th>Zone</th>
+<th>Neu in Phase 6</th>
+<th>Daten</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/</code></td>
+<td><a class="term" href="glossar.html#shell" title="Rahmenanwendung, die Navigation, Login und Layout stellt und die Micro-Frontends einbindet">Shell</a> (<a class="term" href="glossar.html#prerendering" title="Next.js erzeugt eine Seite schon beim Build als fertiges HTML, wenn sie weder Cookies noch Header liest; die Seite ist dann für alle Besucher gleich und kann im CDN liegen">vorgerendert</a>)</td>
+<td>Hero mit Illustration, fünf <a class="term" href="glossar.html#sparte" title="Produktbereich eines Versorgers, z. B. Strom, Gas, Mobilfunk; im Demo zentraler Begriff des Datenmodells">Sparten</a>, drei Karten</td>
+<td>statisch</td>
+</tr>
+<tr>
+<td><code>/konto</code></td>
+<td>Shell</td>
+<td>Datum und Begrüßung, Banner „Zählerstand fällig“, Vertragskarten mit <a class="term" href="glossar.html#sparkline" title="sehr kleines Liniendiagramm ohne Achsen neben einer Kennzahl, das nur die Richtung zeigt (z. B. Klärfälle der letzten sieben Tage)">Sparkline</a> bzw. Datenvolumen, „Mein Konto“, Postfach-Vorschau, Verknüpfen</td>
+<td><code>/me</code>, <code>/me/links</code>, <code>/contracts</code>, <code>/contracts/{id}/consumption</code>, <code>/contracts/{id}/usage</code>, <code>/notifications</code> — je Abschnitt getrennt geladen, ein Fehler trifft nur seinen Abschnitt</td>
+</tr>
+<tr>
+<td><code>/postfach?n=&lt;id&gt;</code></td>
+<td>Shell</td>
+<td>Liste und geöffnete Nachricht nebeneinander</td>
+<td><code>/notifications</code></td>
+</tr>
+<tr>
+<td><code>/pass</code></td>
+<td>Shell</td>
+<td>Ring der Restlaufzeit, <a class="term" href="glossar.html#free-tier" title="Sammelbegriff für kostenlose Nutzungsmengen bei AWS">Kontingent</a>, <a class="term" href="glossar.html#demo-person" title="im Demo vorbereitete fiktive Kundinnen und Kunden mit festgelegter Geschichte (z. B. Anna Becker: Altkundin, Lazy Migration)">Demo-Personen</a></td>
+<td><code>/tenancy/pass</code>, Laufzeit aus <code>/tenancy/offer</code></td>
+</tr>
+<tr>
+<td><code>/pass/einloesen</code></td>
+<td>Shell (vorgerendert)</td>
+<td>Karte mit Laufzeit-Ring und Schritten</td>
+<td><code>/tenancy/offer</code></td>
+</tr>
+<tr>
+<td><code>/vertraege</code>, <code>/vertraege/&lt;id&gt;</code></td>
+<td>Verträge</td>
+<td>Tabelle mit Sparten-Icons; Detail mit Fakten und „Vertrag ändern“ (Betrag mit Schieberegler, Optionskarten)</td>
+<td><code>/contracts</code>, <code>/contracts/{id}</code></td>
+</tr>
+<tr>
+<td><code>/verbrauch?vertrag=&lt;id&gt;</code></td>
+<td>Verbrauch</td>
+<td>Reiter je Vertrag, Kennzahlen, Balkendiagramm 12 Monate, Erfassen mit Plausibilitätshinweis, Mobilfunk-Ring (<a class="term" href="glossar.html#demo-wert" title="Wert, den das Portal nur vorspielt, weil die echte Quelle fehlt (z. B. das Datenvolumen ohne Mobilfunknetz); trägt sichtbar den Marker „Demo-Wert“ und data-fake=&quot;true&quot;">Demo-Wert</a>)</td>
+<td><code>/contracts</code>, <code>…/consumption</code>, <code>…/readings</code>, <code>…/usage</code></td>
+</tr>
+<tr>
+<td><code>/cockpit</code></td>
+<td>Cockpit</td>
+<td>Ringe, Kennzahlen mit Sparklines, Läufe mit Fortschritt, <a class="term" href="glossar.html#klärfall" title="Altdatensatz, der ohne Rückfrage nicht übernommen werden kann (z. B. ohne oder mit ungültiger E-Mail-Adresse); steht im Cockpit, nicht in der DLQ">Klärfälle</a> (<code>?klaerfaelle=alle</code>), <a class="term" href="glossar.html#dlq" title="Ablage für Nachrichten, die nach mehreren Versuchen nicht verarbeitet werden konnten, zur Analyse und Nachverarbeitung">DLQ</a> mit aufklappbarer Korrektur, <a class="term" href="glossar.html#timeline" title="zeitliche Liste von Ereignissen in der Oberfläche">Timeline</a> mit Icons, Gefahrenkarte</td>
+<td><code>/migration/status</code></td>
+</tr>
+<tr>
+<td><code>/cockpit/suche?q=</code></td>
+<td>Cockpit</td>
+<td>Treffer in Konten, <a class="term" href="glossar.html#mandant" title="abgeschotteter Bereich eines Kunden in einer gemeinsam betriebenen Anwendung; im Demo je Demo-Pass ein Mandant">Mandanten</a> (Inhaber), <a class="term" href="glossar.html#event" title="Nachricht, dass etwas passiert ist (z. B. „Zählerstand erfasst&quot;); Empfänger reagieren darauf, ohne dass der Absender sie kennt">Ereignissen</a></td>
+<td><code>/migration/search</code>, <code>/tenancy/passes</code></td>
+</tr>
+<tr>
+<td><code>/cockpit/paesse</code></td>
+<td>Cockpit</td>
+<td>Kennzahlen, <a class="term" href="glossar.html#demo-pass" title="im Demo: zeitlich begrenzte Berechtigung (48 Stunden ab der ersten Anmeldung, Kontingent) für eine eigene Instanz; ausgestellt per Einladungslink oder für den Inhaber">Pass</a>-Tabelle mit Mini-Balken und offenen Einladungen, Einladung und Einstellungen nebeneinander</td>
+<td><code>/tenancy/overview</code>, <code>/tenancy/passes</code>, <code>/tenancy/settings</code></td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Cockpit-Rahmen:</strong> Seitenleiste mit den Abschnitten „Migration“ (Übersicht,
+Klärfälle, DLQ, Ereignisse mit Zählern) und „Verwaltung“ (Demo-Pässe,
+Einstellungen; nur Inhaber) und „<a class="term" href="glossar.html#kundenportal" title="Web-Anwendung, in der Endkunden ihre Verträge, Rechnungen und Daten selbst verwalten (Self-Service)">Kundenportal</a>“ (Zum Kundenportal → <code>/konto</code>,
+bei Pass-Inhabern zusätzlich „Demo-Pass“), Suchfeld in der Kopfzeile, Glocke
+mit den neuen Klärfällen der letzten 24 Stunden. Ein Link auf die schon offene
+Seite (z. B. „Übersicht“ bei <code>/cockpit#klaerfaelle</code>) führt nach oben und
+entfernt den Anker — <a class="term" href="glossar.html#nextjs" title="React-Framework (von Vercel) mit Routing, Server-Rendering, API-Routen und Build-Optimierung">Next.js</a> selbst würde dabei nicht scrollen. Tastenkürzel: <code>/</code> setzt den Fokus ins
+Suchfeld, <code>g c</code> öffnet die Übersicht, <code>g p</code> die Demo-Pässe; während der
+Eingabe in Feldern sind sie aus.</p>
+<p><strong>Kopfzeile:</strong> Die Navigation verschwindet nie im Scrollbereich: zuerst
+fallen die Icons weg, dann bekommt sie eine eigene Zeile — bei den Presets
+mit größerer Schrift früher <strong>[B: Storybook, Pass-Inhaber mit sechs
+Einträgen, 860–1680 px, alle Kunden-Presets ohne Überlauf, 01.10.2026]</strong>.</p>
+<p><strong>Demo-Werte:</strong> Was simuliert ist, trägt <code>FakeMarker</code> („Demo-Wert“,
+<code>data-fake="true"</code>); die Liste steht in <a href="design.html">Design und Theme</a>.</p>
+<h2 id="14-betreiber-cockpit-und-vertragsverwaltung-phase-7">14. Betreiber-Cockpit und Vertragsverwaltung (Phase 7)<a class="anchor" href="#14-betreiber-cockpit-und-vertragsverwaltung-phase-7" title="Permanent link">#</a></h2>
+<p>Das Cockpit ist der Arbeitsplatz des Betreibers; die Migration ist ein
+Bereich davon (<a href="fachkonzept.html">Fachkonzept</a> §5.1).</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Seite</th>
+<th>Zone</th>
+<th>Inhalt</th>
+<th>Daten</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/cockpit</code></td>
+<td>Cockpit</td>
+<td>Übersicht: Kunden, aktive Verträge, offene Kündigungen, Abschlüsse und Kündigungen der letzten 7 Tage, Verträge je <a class="term" href="glossar.html#sparte" title="Produktbereich eines Versorgers, z. B. Strom, Gas, Mobilfunk; im Demo zentraler Begriff des Datenmodells">Sparte</a>, Kurzstatus Migration, neueste Verträge</td>
+<td><code>/admin/overview</code>, <code>/admin/customers</code>, <code>/admin/contracts</code>, <code>/migration/status</code></td>
+</tr>
+<tr>
+<td><code>/cockpit/kunden</code>, <code>/cockpit/kunden/&lt;id&gt;</code></td>
+<td>Cockpit</td>
+<td>Liste mit Suche, Herkunft, Sparte, Vertragsstatus, Sortierung, Seiten; Detail mit Reitern Verträge, Zählerstände, Dokumente, Postfach</td>
+<td><code>/admin/customers…</code>, <code>/admin/contracts?customerId=</code>, <code>…/readings</code></td>
+</tr>
+<tr>
+<td><code>/cockpit/vertraege</code>, <code>/cockpit/vertraege/&lt;id&gt;</code></td>
+<td>Cockpit</td>
+<td>Liste mit Filtern; Detail mit Aktionen (Option/Produkt wechseln, <a class="term" href="glossar.html#preisversion" title="Preise eines Produkts ab einem Stichtag; neue Verträge bekommen die gültige Version, laufende behalten ihre, bis der Betreiber sie umstellt">Preisversion</a> übernehmen, <a class="term" href="glossar.html#abschlag" title="monatliche Vorauszahlung auf die Energie-Jahresrechnung; wird nach neuem Zählerstand angepasst">Abschlag</a> festsetzen, kündigen, Kündigung zurücknehmen, sperren) und Verlauf</td>
+<td><code>/admin/contracts…</code>, <code>POST …/actions</code></td>
+</tr>
+<tr>
+<td><code>/cockpit/produkte</code>, <code>/neu</code>, <code>/&lt;id&gt;</code></td>
+<td>Cockpit</td>
+<td>Katalog, Anlegen, Status (Freigeben, Auslaufen lassen, Archivieren), Texte, Preisversionen</td>
+<td><code>/admin/products…</code></td>
+</tr>
+<tr>
+<td><code>/cockpit/migration</code></td>
+<td>Cockpit</td>
+<td>bisheriges <a class="term" href="glossar.html#migrations-cockpit" title="im Demo geplantes Micro-Frontend, das den Fortschritt der Kontenübernahme, Ereignisse und DLQ-Fälle live zeigt">Migrations-Cockpit</a> (bis Phase 6 unter <code>/cockpit</code>)</td>
+<td><code>/migration/status</code></td>
+</tr>
+<tr>
+<td><code>/vertraege/neu</code>, <code>/vertraege/neu/&lt;productId&gt;</code></td>
+<td>Verträge</td>
+<td>Produktkatalog, Bestellung mit Zustimmung und Bestätigung</td>
+<td><code>/products</code>, <code>POST /contracts</code></td>
+</tr>
+<tr>
+<td><code>/vertraege/&lt;id&gt;</code></td>
+<td>Verträge</td>
+<td>zusätzlich Kündigung (frühester Termin, Bestätigung, Rücknahme), <a class="term" href="glossar.html#widerruf" title="Rücktritt von einem online geschlossenen Vertrag innerhalb von 14 Tagen; im Demo sofort wirksam">Widerruf</a> (14 Tage), Hinweis bei Sperre</td>
+<td><code>…/termination</code>, <code>…/withdrawal</code></td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Navigation des Cockpits:</strong> Abschnitte „Betrieb“ (Übersicht <code>g c</code>, Kunden
+<code>g k</code>, Verträge <code>g v</code>, Produkte <code>g t</code>), „Migration“ (<code>g m</code>, mit <a class="term" href="glossar.html#klärfall" title="Altdatensatz, der ohne Rückfrage nicht übernommen werden kann (z. B. ohne oder mit ungültiger E-Mail-Adresse); steht im Cockpit, nicht in der DLQ">Klärfällen</a>,
+<a class="term" href="glossar.html#dlq" title="Ablage für Nachrichten, die nach mehreren Versuchen nicht verarbeitet werden konnten, zur Analyse und Nachverarbeitung">DLQ</a>, <a class="term" href="glossar.html#event" title="Nachricht, dass etwas passiert ist (z. B. „Zählerstand erfasst&quot;); Empfänger reagieren darauf, ohne dass der Absender sie kennt">Ereignissen</a>), „Verwaltung“ (nur Inhaber: Demo-Pässe <code>g p</code>,
+Einstellungen) und „<a class="term" href="glossar.html#kundenportal" title="Web-Anwendung, in der Endkunden ihre Verträge, Rechnungen und Daten selbst verwalten (Self-Service)">Kundenportal</a>“. Filter sind <a class="term" href="glossar.html#http-methoden" title="Arten von REST-Aufrufen: lesen (GET), anlegen (POST), teilweise ändern (PATCH), ersetzen (PUT), löschen (DELETE)">GET</a>-Formulare: die Adresse
+hält den Zustand, Blättern geht ohne JavaScript. Jede Betreiberaktion
+verlangt eine Begründung; Kündigen und Sperren fragen nach.</p>
 <h2 id="quellen">Quellen<a class="anchor" href="#quellen" title="Permanent link">#</a></h2>
 <ul class="sources">
 <li>CloudFront OAC für Lambda Function URLs (Payload-Hash bei PUT/POST): <a href="https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/private-content-restricting-access-to-lambda.html">https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/private-content-restricting-access-to-lambda.html</a></li>
@@ -740,6 +912,6 @@ Sitzung).</p>
 <li>Custom Elements (MDN): <a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_custom_elements">https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_custom_elements</a></li>
 <li>Cookie-Attribut SameSite (MDN): <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Set-Cookie#samesitesamesite-value">https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Set-Cookie#samesitesamesite-value</a></li>
 </ul></main></div>
-<footer class="site"><a href="../wiki/architektur-zonen.md">Markdown-Quelle</a> · Generiert 2026-10-01 12:29 aus <code>docs/wiki</code> mit <code>scripts/build_reports.py</code></footer>
+<footer class="site"><a href="../wiki/architektur-zonen.md">Markdown-Quelle</a> · Generiert 2026-10-02 16:40 aus <code>docs/wiki</code> mit <code>scripts/build_reports.py</code></footer>
 </body>
 </html>
