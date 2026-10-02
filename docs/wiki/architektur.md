@@ -271,8 +271,20 @@ mit dem Mandanten — mit einer begründeten Ausnahme (`SCHEDULE#DATAVOLUME`):
   Kundenverknüpfungen ohne Nutzer im User Pool (nie Kunden, auf die noch eine
   lebende Identität zeigt) und meldet sie in `MigratedAccountsRemoved` — so
   löscht jede Domäne ihre eigenen Daten wie beim Demo-Reset. Ohne `--apply`
-  nur Probelauf; 2 Identitäten je Ereignis, 15 s Abstand (rund 13 Einträge je
-  Kunde, innerhalb der 5 Schreibeinheiten).
+  nur Probelauf. **Vorsicht:** der Lösch-Handler von consumption scannt je
+  Ereignis die ganze Tabelle (~280 Leseeinheiten); am 02.10.2026 überlasteten
+  121 kleine Ereignisse die Tabelle, Worker scheiterten in ihre DLQs. Für
+  wenige Konten taugt das Skript, für viele der Reset.
+- **Reset der Demodaten:** `scripts/reset-owner-data.py` löscht alle Einträge
+  des Inhaber-Mandanten (`TENANT#owner#…` und seine Einträge in
+  `SCHEDULE#DATAVOLUME`) direkt, ohne Ereignisse: ein gedrosselter Scan, dann
+  Stapel zu 25 mit höchstens 4 Schreibeinheiten je Sekunde (≈ 26 min für 6.400
+  Einträge), danach leert es die DLQs der App. Es bleiben Plattform-Einträge
+  (Pässe, Einladungen, Kontingente), Pass-Tabellen, Cognito-Nutzer und
+  Altsysteme; der Katalog legt seine Standardtarife beim ersten Lesen neu an,
+  wer sich wieder anmeldet, bekommt ein frisches Profil mit Beispielverträgen.
+  Ohne `--apply` nur Probelauf; im eigenen Terminal ausführen, wenn niemand
+  das Portal nutzt und DynamoDB nicht mehr drosselt.
 - **Status einer Kündigung** wird beim Lesen berechnet (`terminated`, sobald
   der Termin vorbei ist); es gibt kein eigenes Ereignis zum Stichtag.
 
