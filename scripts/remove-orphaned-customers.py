@@ -10,13 +10,14 @@ announces the identities in `MigratedAccountsRemoved` — the event the demo res
 so each domain deletes its own data. Small batches, spaced, so the deletes stay within
 the table's 5 write units.
 
-    AWS_PROFILE=kundenportal scripts/remove-orphaned-customers.py          # dry run
-    AWS_PROFILE=kundenportal scripts/remove-orphaned-customers.py --apply  # remove
+    scripts/remove-orphaned-customers.py          # dry run
+    scripts/remove-orphaned-customers.py --apply  # remove
 
 Needs boto3. Reads the table name and user pool from the SSM parameters.
 """
 import argparse
 import collections
+import os
 import datetime
 import json
 import time
@@ -72,7 +73,9 @@ def main():
     parser.add_argument("--limit", type=int, help="only the first N orphaned identities (a trial)")
     args = parser.parse_args()
 
-    session = boto3.Session(region_name="eu-central-1")
+    # The project's profile unless the environment names one or carries credentials (CI).
+    profile = None if os.environ.get("AWS_PROFILE") or os.environ.get("AWS_ACCESS_KEY_ID") else "kundenportal"
+    session = boto3.Session(profile_name=profile, region_name="eu-central-1")
     ssm = session.client("ssm")
     names = {key: parameter(ssm, name) for key, name in PARAMS.items()}
     table = session.resource("dynamodb").Table(names["table"])

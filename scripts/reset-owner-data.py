@@ -14,13 +14,14 @@ write units a second (the table has 5), so it takes about half an hour for ~8,00
 Run it in a terminal of its own while nobody uses the portal, and only after the workers
 stopped retrying (no DynamoDB throttling for a few minutes).
 
-    AWS_PROFILE=kundenportal scripts/reset-owner-data.py          # dry run
-    AWS_PROFILE=kundenportal scripts/reset-owner-data.py --apply  # reset
+    scripts/reset-owner-data.py          # dry run
+    scripts/reset-owner-data.py --apply  # reset
 
 Needs boto3. Reads the table name from SSM.
 """
 import argparse
 import collections
+import os
 import time
 
 import boto3
@@ -91,7 +92,9 @@ def main():
     parser.add_argument("--wcu", type=float, default=4, help="write units per second (default 4)")
     args = parser.parse_args()
 
-    session = boto3.Session(region_name="eu-central-1")
+    # The project's profile unless the environment names one or carries credentials (CI).
+    profile = None if os.environ.get("AWS_PROFILE") or os.environ.get("AWS_ACCESS_KEY_ID") else "kundenportal"
+    session = boto3.Session(profile_name=profile, region_name="eu-central-1")
     table_name = session.client("ssm").get_parameter(Name="/kundenportal/base/table-name")["Parameter"]["Value"]
     keys = scan_keys(session.resource("dynamodb").Table(table_name))
     doomed = [k for k in keys if is_tenant_item(k)]
