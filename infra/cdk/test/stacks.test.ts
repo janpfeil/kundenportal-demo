@@ -181,6 +181,8 @@ describe("identity", () => {
     const svg = Buffer.from(logo?.Bytes ?? "", "base64").toString();
     expect(svg).toContain('fill="#0b6e4f"');
     expect(svg).toContain('fill="#ececec">Kundenportal');
+    // Fixed length, so a wider fallback font cannot cut the name off.
+    expect(svg).toMatch(/<text [^>]*textLength="\d+"/);
     // Cognito rejects logos wider than 4:1 (or taller than 1:1).
     const [, , width, height] = (/viewBox="([\d. ]+)"/.exec(svg)?.[1] ?? "").split(" ").map(Number);
     expect((width ?? 0) / (height ?? 1)).toBeGreaterThanOrEqual(1);

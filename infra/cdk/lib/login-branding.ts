@@ -145,7 +145,9 @@ export function loginBrandingSettings(): Record<string, unknown> {
 
 /**
  * The brand mark (accent tile with the bolt) and the portal's name above the form. Cognito
- * takes logos from 1:1 to 4:1 only, hence the height of 48 for a width of 184.
+ * takes logos from 1:1 to 4:1 only, hence the height of 48 for a width of 184. The name has
+ * a fixed length: the sign-in page renders it in whatever font the visitor has, which may run
+ * wider than the box.
  */
 function formLogo(dark: boolean): string {
   const { text } = palette(dark);
@@ -154,7 +156,7 @@ function formLogo(dark: boolean): string {
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 184 48" width="184" height="48">',
     `<rect x="0" y="8" width="32" height="32" rx="9" fill="${accent}"/>`,
     `<path transform="translate(0 8)" d="M17.5 6 9.5 17.5h6L14 26l8.5-11.5h-6z" fill="${contrast}"/>`,
-    `<text x="44" y="32" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="20" font-weight="600" fill="${text}">Kundenportal</text>`,
+    `<text x="44" y="32" textLength="136" lengthAdjust="spacingAndGlyphs" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="20" font-weight="600" fill="${text}">Kundenportal</text>`,
     "</svg>",
   ].join("");
 }
