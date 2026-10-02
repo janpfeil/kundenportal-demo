@@ -152,7 +152,7 @@ export const en: Dictionary = {
     errorConsent: "Please confirm the binding order.",
     errorUnavailable: "This tariff or option can no longer be ordered. Please choose again.",
     errorConflict:
-      "The order is not possible right now. Please reload the page or try again later.",
+      "Your customer account is still being set up. Please try again in a few seconds; if this message stays, customer service will help.",
     errorInvalid: "The details were not accepted. Please check them.",
     errorSession: "Your session has expired. Please sign in again.",
     errorGeneric: "The order could not be sent. Please try again in a moment.",

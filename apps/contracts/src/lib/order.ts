@@ -138,8 +138,9 @@ export type OrderApiProblem = "session" | "unavailable" | "conflict" | "invalid"
 
 /**
  * Maps an error answer of `POST /contracts` to a message key: 404 means the product (or its
- * option) cannot be ordered (any more), 409 that the account is not ready or already has
- * such a contract, 400/422 that the API rejected a value.
+ * option) cannot be ordered (any more), 409 that the contract domain does not know the
+ * customer's account yet (set up shortly after the first sign-in), 400/422 that the API
+ * rejected a value.
  */
 export function orderProblem(status: number): OrderApiProblem {
   if (status === 401) return "session";

@@ -157,7 +157,7 @@ export const de = {
     errorUnavailable:
       "Dieser Tarif oder diese Option ist nicht mehr bestellbar. Bitte wählen Sie erneut.",
     errorConflict:
-      "Die Bestellung ist gerade nicht möglich. Bitte laden Sie die Seite neu oder versuchen Sie es später noch einmal.",
+      "Ihr Kundenkonto wird noch eingerichtet. Bitte versuchen Sie es in einigen Sekunden noch einmal; bleibt die Meldung, hilft der Kundenservice weiter.",
     errorInvalid: "Die Angaben wurden nicht angenommen. Bitte prüfen Sie sie.",
     errorSession: "Ihre Sitzung ist abgelaufen. Bitte melden Sie sich erneut an.",
     errorGeneric:
