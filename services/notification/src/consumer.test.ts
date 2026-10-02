@@ -316,15 +316,16 @@ describe("notification consumer", () => {
 
     expect(result.batchItemFailures).toEqual([]);
     const items = dbMock.commandCalls(PutCommand).map((call) => call.args[0].input.Item);
-    expect(items[0]).toEqual({ PK: "TENANT#owner#SUBJ#sub-1", SK: "MAILBOX", customerId: "c-1" });
-    expect(items[1]).toEqual({ PK: "TENANT#owner#CUST#c-1", SK: "MAILBOX", locale: "en" });
-    expect(items[2]).toMatchObject({
+    expect(items[0]).toEqual({ PK: "TENANT#owner#CUST#c-1", SK: "MAILBOX", locale: "en" });
+    expect(items[1]).toMatchObject({
       PK: "TENANT#owner#CUST#c-1",
       SK: `NOTE#${notificationId(detail.occurredAt, detail.eventId)}`,
       kind: "welcome",
       title: "Welcome to the customer portal",
       read: false,
     });
+    // The link comes last, so a redelivery after a failure still finds the identity new.
+    expect(items[2]).toEqual({ PK: "TENANT#owner#SUBJ#sub-1", SK: "MAILBOX", customerId: "c-1" });
     expect(snsMock.commandCalls(PublishCommand)).toHaveLength(1);
     expect(snsMock.commandCalls(PublishCommand)[0]?.args[0].input.Message).not.toContain(
       "david@example.org",
@@ -344,7 +345,7 @@ describe("notification consumer", () => {
     const result = await consumer(event(record("m-1", registered(quiet))));
 
     expect(result.batchItemFailures).toEqual([]);
-    expect(dbMock.commandCalls(PutCommand)[2]?.args[0].input.Item).toMatchObject({
+    expect(dbMock.commandCalls(PutCommand)[1]?.args[0].input.Item).toMatchObject({
       kind: "welcome",
     });
     expect(snsMock.commandCalls(PublishCommand)).toHaveLength(0);
@@ -356,9 +357,25 @@ describe("notification consumer", () => {
       payload: { ...detail.payload, locale: "de", origin: "legacy-telco" },
     };
     await consumer(event(record("m-1", registered(migrated))));
-    const note = dbMock.commandCalls(PutCommand)[2]?.args[0].input.Item;
+    const note = dbMock.commandCalls(PutCommand)[1]?.args[0].input.Item;
     expect(note).toMatchObject({ kind: "welcome", title: "Willkommen im neuen Kundenportal" });
     expect(note?.body).toContain("der Telko");
+  });
+
+  it("welcomes a known identity not again when the announcement is repeated", async () => {
+    dbMock
+      .on(GetCommand, { Key: { PK: "TENANT#owner#SUBJ#sub-1", SK: "MAILBOX" } })
+      .resolves({ Item: { customerId: "c-1" } });
+
+    const result = await consumer(event(record("m-1", registered())));
+
+    expect(result.batchItemFailures).toEqual([]);
+    const items = dbMock.commandCalls(PutCommand).map((call) => call.args[0].input.Item);
+    expect(items).toEqual([
+      { PK: "TENANT#owner#CUST#c-1", SK: "MAILBOX", locale: "en" },
+      { PK: "TENANT#owner#SUBJ#sub-1", SK: "MAILBOX", customerId: "c-1" },
+    ]);
+    expect(snsMock.commandCalls(PublishCommand)).toHaveLength(0);
   });
 
   it("is idempotent: a redelivered event neither duplicates the note nor re-notifies the owner", async () => {

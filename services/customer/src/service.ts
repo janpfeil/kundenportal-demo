@@ -44,7 +44,7 @@ export class CustomerService {
   /** Returns the caller's profile and creates it on first access (then publishes `CustomerRegistered`). */
   async me(caller: Caller, correlationId: string): Promise<Customer> {
     const existing = await this.repository.findBySubject(caller.tenantId, caller.subject);
-    if (existing) return this.listed(caller.tenantId, existing);
+    if (existing) return this.backfill(caller, existing, correlationId);
     if (!caller.email) throw forbidden("Token has no email claim");
 
     // Accounts taken over from a legacy system carry their origin in the token; their id
@@ -63,7 +63,7 @@ export class CustomerService {
     if (!created) {
       const winner = await this.repository.findBySubject(caller.tenantId, caller.subject);
       if (!winner) throw new Error("Customer link exists but profile is missing");
-      return this.listed(caller.tenantId, winner);
+      return this.backfill(caller, winner, correlationId);
     }
 
     await this.events.customerRegistered({
@@ -211,6 +211,59 @@ export class CustomerService {
       profileSummary(record.customer),
       record.rev,
     );
+  }
+
+  /** Brings a profile from before a bookkeeping marker up to date on its read. */
+  private async backfill(
+    caller: Caller,
+    record: ProfileRecord,
+    correlationId: string,
+  ): Promise<Customer> {
+    await this.announced(caller, record, correlationId);
+    return this.listed(caller.tenantId, record);
+  }
+
+  /**
+   * Repeats `CustomerRegistered` once for a profile registered before every consuming
+   * domain existed (the contract domain came a day after the first registrations), so
+   * each of them learns whose identity it is. The consumers create nothing twice for an
+   * identity they already know. A failure here never fails the read; the next one tries
+   * again.
+   */
+  private async announced(
+    caller: Caller,
+    record: ProfileRecord,
+    correlationId: string,
+  ): Promise<void> {
+    if (record.announced) return;
+    const { customer } = record;
+    try {
+      await this.events.customerRegistered({
+        eventId: deterministicUuid(customer.customerId, "CustomerRegistered", "announced"),
+        tenantId: caller.tenantId,
+        occurredAt: this.clock.now().toISOString(),
+        correlationId,
+        payload: {
+          customerId: customer.customerId,
+          subject: caller.subject,
+          email: customer.email,
+          displayName: customer.displayName,
+          locale: customer.locale,
+          origin: customer.origin,
+        },
+      });
+      await this.repository.markAnnounced(caller.tenantId, customer.customerId);
+      log("info", "Customer announced again", {
+        tenantId: caller.tenantId,
+        customerId: customer.customerId,
+      });
+    } catch (error) {
+      log("warn", "Announcement failed", {
+        tenantId: caller.tenantId,
+        customerId: customer.customerId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
   }
 
   /**

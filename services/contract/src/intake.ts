@@ -44,16 +44,22 @@ export class ContractIntake {
 
   /**
    * `CustomerRegistered`: remembers whose contracts a sign-in identity opens and gives a
-   * newly registered customer demo contracts. Redelivery creates nothing twice and
-   * re-publishes the same events (same ids), which consumers deduplicate.
+   * newly registered customer demo contracts. An identity known already (a redelivery, or
+   * the announcement repeated for customers registered before this domain existed) only
+   * refreshes its link. The link is written last, so a redelivery after a failure creates
+   * the missing contracts and re-publishes the same events (same ids), which consumers
+   * deduplicate.
    */
   async onCustomerRegistered(event: CustomerRegisteredDetail): Promise<void> {
     const { tenantId, eventId, occurredAt, payload } = event;
     const { subject, customerId, displayName } = payload;
     const testAccount = isTestAccount(payload.email);
-    await this.repository.linkSubject(tenantId, subject, customerId, displayName, testAccount);
-    if (payload.origin !== "registration") {
+    const link = () =>
+      this.repository.linkSubject(tenantId, subject, customerId, displayName, testAccount);
+    const known = await this.repository.customerOf(tenantId, subject);
+    if (known || payload.origin !== "registration") {
       // Contracts of legacy customers arrive with their migration (phase 3).
+      await link();
       return;
     }
     const records = demoContracts(customerId, eventId, occurredAt, displayName).map((record) =>
@@ -67,6 +73,7 @@ export class ContractIntake {
       })),
       { by: "system", correlationId: event.correlationId, occurredAt },
     );
+    await link();
     log("info", "Demo contracts ready", { tenantId, customerId });
   }
 

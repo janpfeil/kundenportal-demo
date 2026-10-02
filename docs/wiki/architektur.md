@@ -192,7 +192,7 @@ mit dem Mandanten — mit einer begründeten Ausnahme (`SCHEDULE#DATAVOLUME`):
 
 | PK | SK | Besitzer | Inhalt |
 |---|---|---|---|
-| `TENANT#<t>#CUST#<c>` | `PROFILE` | customer | Profil (E-Mail, Anzeigename, Sprache, Herkunft) |
+| `TENANT#<t>#CUST#<c>` | `PROFILE` | customer | Profil (E-Mail, Anzeigename, Sprache, Herkunft); Merker `listed` (im Kundenverzeichnis) und `announced` (`CustomerRegistered` erreichte alle Dienste) |
 | `TENANT#<t>#SUBJ#<sub>` | `CUSTOMER` | customer | welche Kundennummer zu einer Anmelde-Identität gehört |
 | `TENANT#<t>#SUBJ#<sub>` | `MAILBOX` | notification | eigene Projektion aus dem Ereignis: wessen Postfach eine Identität öffnet |
 | `TENANT#<t>#CUST#<c>` | `MAILBOX` | notification | Projektion: Sprache des Kunden für die Postfach-Texte (DE/EN) |
@@ -254,6 +254,14 @@ Der Abgleich mit dem geplanten Datenmodell steht im
 - **Idempotenz:** Die Postfach-ID enthält die `eventId`; ein zweites Mal
   zugestellte Ereignisse treffen auf denselben Eintrag (bedingtes Schreiben)
   und lösen keinen zweiten Inhaber-Hinweis aus.
+- **Wiederholte Anmeldung (seit v0.7.1):** Profile von vor dem Merker
+  `announced` (der Vertrags-, Verbrauchs- und Dokumentdienst kamen am 30.09.
+  nach den ersten Registrierungen) melden sich beim nächsten `/me` einmal mit
+  `CustomerRegistered` erneut. Wer die Identität schon kennt, aktualisiert nur
+  seine Zuordnung: keine zweiten Demo-Verträge, keine zweite
+  Willkommensnachricht. Vertrags- und Postfach-Dienst schreiben die Zuordnung
+  deshalb zuletzt, damit eine Wiederholung nach einem Fehler das Fehlende
+  nachholt.
 - **[Partial Batch Response](glossar.md#partial-batch-response):** Stapel bis
   10 Nachrichten; nur fehlgeschlagene werden zurückgemeldet und erneut
   zugestellt.

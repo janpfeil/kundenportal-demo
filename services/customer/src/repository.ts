@@ -12,12 +12,15 @@ import { DirectoryRepository, profileItem } from "./directory-repository.js";
 /**
  * A stored profile with its bookkeeping: `rev` counts the changes (the directory keeps
  * the summary of the highest), `listed` says the directory has a summary of it — missing
- * on profiles from before phase 7 until their next read or change.
+ * on profiles from before phase 7 until their next read or change. `announced` says
+ * `CustomerRegistered` went out after every consuming domain existed — missing on
+ * profiles from before that marker until their next read.
  */
 export interface ProfileRecord {
   customer: Customer;
   rev: number;
   listed: boolean;
+  announced: boolean;
 }
 
 function profileRecord(item: Record<string, unknown>): ProfileRecord {
@@ -25,6 +28,7 @@ function profileRecord(item: Record<string, unknown>): ProfileRecord {
     customer: Customer.parse(item),
     rev: typeof item.rev === "number" ? item.rev : 0,
     listed: item.listed === true,
+    announced: item.announced === true,
   };
 }
 
@@ -104,6 +108,7 @@ export class CustomerRepository {
                     : {}),
                   rev: 1,
                   listed: true,
+                  announced: true,
                 },
                 ConditionExpression: "attribute_not_exists(PK)",
               },
@@ -208,6 +213,21 @@ export class CustomerRepository {
         Key: { PK: tenantKey(tenantId, "CUST", customerId), SK: "PROFILE" },
         UpdateExpression: "SET #listed = :true",
         ExpressionAttributeNames: { "#listed": "listed" },
+        ExpressionAttributeValues: { ":true": true },
+        ConditionExpression: "attribute_exists(PK)",
+      }),
+    );
+  }
+
+  /** Notes that `CustomerRegistered` of a profile from before the marker went out again. */
+  async markAnnounced(tenantId: string, customerId: string): Promise<void> {
+    const { db, tableName } = await this.data(tenantId);
+    await db.send(
+      new UpdateCommand({
+        TableName: tableName,
+        Key: { PK: tenantKey(tenantId, "CUST", customerId), SK: "PROFILE" },
+        UpdateExpression: "SET #announced = :true",
+        ExpressionAttributeNames: { "#announced": "announced" },
         ExpressionAttributeValues: { ":true": true },
         ConditionExpression: "attribute_exists(PK)",
       }),

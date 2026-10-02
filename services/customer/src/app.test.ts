@@ -33,6 +33,7 @@ const profile = {
   createdAt: "2026-09-29T12:00:00.000Z",
   rev: 3,
   listed: true,
+  announced: true,
 };
 
 let ids: string[];
@@ -117,6 +118,60 @@ describe("GET /me", () => {
     expect(dbMock.commandCalls(UpdateCommand)).toHaveLength(0);
   });
 
+  it("repeats CustomerRegistered once for a profile from before the marker", async () => {
+    const { announced: _announced, ...old } = profile;
+    dbMock
+      .on(GetCommand, { Key: { PK: "TENANT#owner#SUBJ#sub-1", SK: "CUSTOMER" } })
+      .resolves({ Item: { customerId: "c-1" } })
+      .on(GetCommand, { Key: { PK: "TENANT#owner#CUST#c-1", SK: "PROFILE" } })
+      .resolves({ Item: old });
+    dbMock.on(UpdateCommand).resolves({});
+    ebMock.on(PutEventsCommand).resolves({ FailedEntryCount: 0 });
+
+    const result = await handler()(apiEvent("GET /me", { claims }));
+
+    expect(result.statusCode).toBe(200);
+    const entries = ebMock.commandCalls(PutEventsCommand).flatMap((c) => c.args[0].input.Entries);
+    expect(entries).toHaveLength(1);
+    expect(entries[0]?.DetailType).toBe("CustomerRegistered");
+    const detail = CustomerRegistered.detail.parse(JSON.parse(entries[0]?.Detail ?? "{}"));
+    expect(detail).toMatchObject({
+      tenantId: "owner",
+      correlationId: "req-1",
+      payload: {
+        customerId: "c-1",
+        subject: "sub-1",
+        email: "david@example.org",
+        displayName: "David",
+        locale: "de",
+        origin: "registration",
+      },
+    });
+    // The same id on every repetition, so a race of two reads announces nothing twice.
+    expect(detail.eventId).toMatch(/^[0-9a-f-]{36}$/);
+    const mark = dbMock.commandCalls(UpdateCommand)[0]?.args[0].input;
+    expect(mark?.Key).toEqual({ PK: "TENANT#owner#CUST#c-1", SK: "PROFILE" });
+    expect(mark?.UpdateExpression).toBe("SET #announced = :true");
+  });
+
+  it("still answers when the announcement fails and leaves the profile unmarked", async () => {
+    const { announced: _announced, ...old } = profile;
+    dbMock
+      .on(GetCommand, { Key: { PK: "TENANT#owner#SUBJ#sub-1", SK: "CUSTOMER" } })
+      .resolves({ Item: { customerId: "c-1" } })
+      .on(GetCommand, { Key: { PK: "TENANT#owner#CUST#c-1", SK: "PROFILE" } })
+      .resolves({ Item: old });
+    ebMock
+      .on(PutEventsCommand)
+      .resolves({ FailedEntryCount: 1, Entries: [{ ErrorCode: "InternalFailure" }] });
+
+    const result = await handler()(apiEvent("GET /me", { claims }));
+
+    expect(result.statusCode).toBe(200);
+    expect(body(result)).toMatchObject({ customerId: "c-1" });
+    expect(dbMock.commandCalls(UpdateCommand)).toHaveLength(0);
+  });
+
   it("creates the customer on first access and publishes CustomerRegistered", async () => {
     dbMock.on(GetCommand).resolves({});
     dbMock.on(TransactWriteCommand).resolves({});
@@ -139,7 +194,7 @@ describe("GET /me", () => {
       "TENANT#owner#CUST#c-new",
       "TENANT#owner#CUSTOMERS",
     ]);
-    expect(writes[1]?.Put?.Item).toMatchObject({ rev: 1, listed: true });
+    expect(writes[1]?.Put?.Item).toMatchObject({ rev: 1, listed: true, announced: true });
     expect(writes[2]?.Put?.Item).toEqual({
       PK: "TENANT#owner#CUSTOMERS",
       SK: "CUST#c-new",

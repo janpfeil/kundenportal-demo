@@ -1,5 +1,6 @@
 import { TransactionCanceledException } from "@aws-sdk/client-dynamodb";
 import { PutCommand, TransactWriteCommand } from "@aws-sdk/lib-dynamodb";
+import { PutEventsCommand } from "@aws-sdk/client-eventbridge";
 import { ContractChanged, InstallmentAdjusted } from "@kundenportal/events";
 import { beforeEach, describe, expect, it } from "vitest";
 import { demoContracts } from "./origins.js";
@@ -120,15 +121,66 @@ describe("CustomerRegistered", () => {
     expect(annual).toEqual([2800, 1200, undefined]);
   });
 
-  it("is idempotent: a redelivery creates nothing new and re-publishes the same event ids", async () => {
+  it("is idempotent: a redelivery after success creates and publishes nothing", async () => {
     await worker(customerRegistered());
-    const firstIds = published().map((e) => e.detail.eventId);
     const items = f.table.items.size;
     f.ebMock.resetHistory();
 
     await expect(worker(customerRegistered())).resolves.toBeUndefined();
     expect(f.table.items.size).toBe(items);
-    expect(published().map((e) => e.detail.eventId)).toEqual(firstIds);
+    expect(published()).toHaveLength(0);
+  });
+
+  it("links last: a redelivery after a failed publish re-publishes the same event ids", async () => {
+    let calls = 0;
+    f.ebMock.on(PutEventsCommand).callsFake(async () => {
+      calls += 1;
+      if (calls === 1) throw new Error("throttled");
+      return { FailedEntryCount: 0 };
+    });
+    await expect(worker(customerRegistered())).rejects.toThrow("throttled");
+    expect(f.table.get("TENANT#owner#SUBJ#sub-1", "CONTRACTS")).toBeUndefined();
+    const items = f.table.items.size;
+    f.ebMock.resetHistory();
+
+    await worker(customerRegistered());
+    expect(f.table.items.size).toBe(items + 1);
+    expect(published()).toHaveLength(3);
+    await worker(customerRegistered({ ...registered, correlationId: "req-9" }));
+    expect(published()).toHaveLength(3);
+  });
+
+  it("gives a customer from before this domain demo contracts on the repeated announcement", async () => {
+    const repeated = {
+      ...registered,
+      eventId: "8b3e3f86-ac6e-4e77-9c5b-7f0c6c2a4e33",
+      occurredAt: "2026-10-02T09:00:00.000Z",
+    };
+    await worker(customerRegistered(repeated));
+    expect(f.table.get("TENANT#owner#SUBJ#sub-1", "CONTRACTS")).toMatchObject({
+      customerId: "c-1",
+    });
+    expect(f.table.partition("TENANT#owner#CONTRACTS")).toHaveLength(3);
+    expect(published()).toHaveLength(3);
+  });
+
+  it("only refreshes the link of a known identity on the repeated announcement", async () => {
+    await worker(customerRegistered());
+    const items = f.table.items.size;
+    f.ebMock.resetHistory();
+
+    await worker(
+      customerRegistered({
+        ...registered,
+        eventId: "8b3e3f86-ac6e-4e77-9c5b-7f0c6c2a4e33",
+        payload: { ...registered.payload, displayName: "Anna Berg" },
+      }),
+    );
+    expect(f.table.items.size).toBe(items);
+    expect(published()).toHaveLength(0);
+    expect(f.table.get("TENANT#owner#SUBJ#sub-1", "CONTRACTS")).toMatchObject({
+      customerName: "Anna Berg",
+    });
   });
 
   it("does not overwrite a contract changed since (redelivery after a change)", async () => {

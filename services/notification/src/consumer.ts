@@ -95,8 +95,15 @@ export function createConsumer(mailbox: Mailbox, ownerHints: OwnerHints) {
       throw new UnprocessableEventError(`Invalid CustomerRegistered: ${parsed.error.message}`);
     const { tenantId, eventId, occurredAt, payload } = parsed.data;
 
-    await mailbox.linkSubject(tenantId, payload.subject, payload.customerId);
+    // An identity with a mailbox was welcomed already: the announcement is repeated for
+    // customers registered before other domains existed. The link is written last, so a
+    // redelivery after a failure still stores the welcome note.
+    const known = await mailbox.customerOf(tenantId, payload.subject);
     await mailbox.rememberLocale(tenantId, payload.customerId, payload.locale);
+    if (known) {
+      await mailbox.linkSubject(tenantId, payload.subject, payload.customerId);
+      return;
+    }
     const created = await mailbox.add(tenantId, payload.customerId, {
       notificationId: notificationId(occurredAt, eventId),
       kind: "welcome",
@@ -112,6 +119,7 @@ export function createConsumer(mailbox: Mailbox, ownerHints: OwnerHints) {
         `Mandant ${tenantId}: Kunde ${payload.customerId} hat sich registriert (${occurredAt}).`,
       );
     }
+    await mailbox.linkSubject(tenantId, payload.subject, payload.customerId);
   }
 
   /** Stores the rule's note once per event (the id contains the event id). */
