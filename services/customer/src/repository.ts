@@ -2,7 +2,7 @@ import {
   ConditionalCheckFailedException,
   TransactionCanceledException,
 } from "@aws-sdk/client-dynamodb";
-import { GetCommand, TransactWriteCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
+import { GetCommand, PutCommand, TransactWriteCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
 import { deleteKeys, tenantKey, type TenantDataSource } from "@kundenportal/service-kit";
 import type { PostalAddress } from "@kundenportal/events";
 import { Customer, type CustomerUpdate } from "./customer.js";
@@ -23,7 +23,7 @@ export interface ProfileRecord {
   announced: boolean;
 }
 
-function profileRecord(item: Record<string, unknown>): ProfileRecord {
+export function profileRecord(item: Record<string, unknown>): ProfileRecord {
   return {
     customer: Customer.parse(item),
     rev: typeof item.rev === "number" ? item.rev : 0,
@@ -31,6 +31,12 @@ function profileRecord(item: Record<string, unknown>): ProfileRecord {
     announced: item.announced === true,
   };
 }
+
+/** Mark of the one-off directory backfill (version 1) of a tenant. */
+const backfillKey = (tenantId: string) => ({
+  PK: tenantKey(tenantId, "BACKFILL"),
+  SK: "CUSTOMERS#v1",
+});
 
 /** Every change of the profile counts up `rev` and marks it as listed in the directory. */
 const REVISED_NAMES = { "#listed": "listed", "#rev": "rev" };
@@ -40,6 +46,7 @@ const REVISED_VALUES = { ":true": true, ":one": 1 };
  * Items of the customer domain in the single table (see fachkonzept §7.1):
  * - `TENANT#<t>#CUST#<customerId>` / `PROFILE` — the profile
  * - `TENANT#<t>#SUBJ#<subject>` / `CUSTOMER` — which customer a sign-in identity belongs to
+ * - `TENANT#<t>#BACKFILL` / `CUSTOMERS#v1` — when the one-off directory backfill finished
  * - the operator's customer directory, see `DirectoryRepository`
  */
 export class CustomerRepository {
@@ -231,6 +238,26 @@ export class CustomerRepository {
         ExpressionAttributeValues: { ":true": true },
         ConditionExpression: "attribute_exists(PK)",
       }),
+    );
+  }
+
+  /** When the one-off directory backfill of a tenant finished, if it did (§3.7). */
+  async backfillFinished(tenantId: string): Promise<string | undefined> {
+    const { db, tableName } = await this.data(tenantId);
+    const result = await db.send(
+      new GetCommand({ TableName: tableName, Key: backfillKey(tenantId), ConsistentRead: true }),
+    );
+    return typeof result.Item?.finishedAt === "string" ? result.Item.finishedAt : undefined;
+  }
+
+  /** Notes that the backfill of a tenant is complete, with what it added. */
+  async markBackfillFinished(
+    tenantId: string,
+    result: { finishedAt: string; profiles: number; addedProfiles: number; addedContracts: number },
+  ): Promise<void> {
+    const { db, tableName } = await this.data(tenantId);
+    await db.send(
+      new PutCommand({ TableName: tableName, Item: { ...backfillKey(tenantId), ...result } }),
     );
   }
 

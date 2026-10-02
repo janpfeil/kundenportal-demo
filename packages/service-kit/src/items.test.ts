@@ -1,8 +1,13 @@
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { BatchWriteCommand, DynamoDBDocumentClient, QueryCommand } from "@aws-sdk/lib-dynamodb";
+import {
+  BatchWriteCommand,
+  DynamoDBDocumentClient,
+  QueryCommand,
+  ScanCommand,
+} from "@aws-sdk/lib-dynamodb";
 import { mockClient } from "aws-sdk-client-mock";
 import { beforeEach, describe, expect, it } from "vitest";
-import { deleteKeys, queryKeys } from "./items.js";
+import { deleteKeys, queryKeys, scanTenant, writePacer } from "./items.js";
 
 const dbMock = mockClient(DynamoDBDocumentClient);
 const table = { db: DynamoDBDocumentClient.from(new DynamoDBClient({})), tableName: "t" };
@@ -56,5 +61,56 @@ describe("deleteKeys", () => {
       .resolves({ UnprocessedItems: { t: [{ DeleteRequest: { Key: keys[0] } }] } });
     await expect(deleteKeys(table, keys.slice(0, 1), noPause)).rejects.toThrow(/throttled/);
     expect(dbMock.commandCalls(BatchWriteCommand)).toHaveLength(8);
+  });
+});
+
+describe("scanTenant", () => {
+  it("yields the tenant's items page by page with a pause between pages", async () => {
+    dbMock
+      .on(ScanCommand)
+      .resolvesOnce({ Items: [{ PK: "TENANT#o#CUST#1" }], LastEvaluatedKey: { PK: "a", SK: "b" } })
+      .resolvesOnce({ Items: [], LastEvaluatedKey: { PK: "c", SK: "d" } })
+      .resolves({ Items: [{ PK: "TENANT#o#CUST#2" }] });
+    const pauses: number[] = [];
+    const pages: unknown[] = [];
+    for await (const page of scanTenant(table, "TENANT#o#CUST#", {
+      pageSize: 50,
+      pauseMs: 700,
+      sleep: async (ms) => void pauses.push(ms),
+    })) {
+      pages.push(page);
+    }
+    // Empty pages are skipped, the scan goes on until DynamoDB has no more.
+    expect(pages).toEqual([[{ PK: "TENANT#o#CUST#1" }], [{ PK: "TENANT#o#CUST#2" }]]);
+    expect(pauses).toEqual([700, 700]);
+    const inputs = dbMock.commandCalls(ScanCommand).map((c) => c.args[0].input);
+    expect(inputs[0]).toMatchObject({
+      Limit: 50,
+      FilterExpression: "begins_with(PK, :prefix)",
+      ExpressionAttributeValues: { ":prefix": "TENANT#o#CUST#" },
+    });
+    expect(inputs[2]?.ExclusiveStartKey).toEqual({ PK: "c", SK: "d" });
+  });
+});
+
+describe("writePacer", () => {
+  it("spaces writes to the given rate and lets a late write go at once", async () => {
+    let clock = 0;
+    const waits: number[] = [];
+    const pace = writePacer(
+      4,
+      async (ms) => {
+        waits.push(ms);
+        clock += ms;
+      },
+      () => clock,
+    );
+    await pace();
+    await pace();
+    await pace();
+    expect(waits).toEqual([250, 250]);
+    clock += 1000;
+    await pace();
+    expect(waits).toEqual([250, 250]);
   });
 });

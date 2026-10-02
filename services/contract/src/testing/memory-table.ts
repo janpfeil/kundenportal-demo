@@ -9,6 +9,7 @@ import {
   GetCommand,
   PutCommand,
   QueryCommand,
+  ScanCommand,
   TransactWriteCommand,
   type TransactWriteCommandInput,
   UpdateCommand,
@@ -43,7 +44,8 @@ function holds(
 /**
  * A single table in memory behind a mocked DynamoDB document client, for tests that walk
  * through several requests: Get, Put, Update (`SET a = :v`), Query (`PK = :pk` with an
- * optional `begins_with(SK, :p)`), TransactWrite (puts) and BatchWrite (deletes).
+ * optional `begins_with(SK, :p)`), Scan (`begins_with(PK, :prefix)`, paged by `Limit`),
+ * TransactWrite (puts) and BatchWrite (deletes).
  */
 export class MemoryTable {
   readonly items = new Map<string, Item>();
@@ -94,6 +96,21 @@ export class MemoryTable {
         .sort((a, b) => (String(a.SK) < String(b.SK) ? -1 : 1));
       if (input.ScanIndexForward === false) items.reverse();
       return { Items: items.map(clone) };
+    });
+    mock.on(ScanCommand).callsFake((input) => {
+      // Pages of `Limit` items in key order; the filter applies after the page is read.
+      const ordered = [...this.items.values()].sort((a, b) => (keyOf(a) < keyOf(b) ? -1 : 1));
+      const start = input.ExclusiveStartKey ? keyOf(input.ExclusiveStartKey) : "";
+      const rest = ordered.filter((item) => keyOf(item) > start);
+      const page = rest.slice(0, input.Limit ?? rest.length);
+      const prefix = String(input.ExpressionAttributeValues?.[":prefix"] ?? "");
+      const last = page.at(-1);
+      return {
+        Items: page.filter((item) => String(item.PK).startsWith(prefix)).map(clone),
+        ...(last && rest.length > page.length
+          ? { LastEvaluatedKey: { PK: last.PK, SK: last.SK } }
+          : {}),
+      };
     });
     mock.on(TransactWriteCommand).callsFake((input: TransactWriteCommandInput) => {
       const puts = (input.TransactItems ?? []).map((entry) => {

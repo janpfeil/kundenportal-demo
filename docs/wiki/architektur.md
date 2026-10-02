@@ -222,6 +222,7 @@ mit dem Mandanten — mit einer begründeten Ausnahme (`SCHEDULE#DATAVOLUME`):
 | `TENANT#<t>#CUSTOMERS` | `CUST#<c>` | customer | Kundenverzeichnis des Betreibers (Phase 7): Profilzusammenfassung mit `rev` |
 | `TENANT#<t>#CUSTOMERS` | `CUST#<c>#C#<contractId>` | customer | je Vertrag Sparte, Status, Kündigung, Sperre — aus `ContractChanged`, Versionsschutz |
 | `TENANT#<t>#CONTRACTS` | `CONTRACT#<contractId>` | contract | Vertragsverzeichnis des Betreibers (Phase 7), in derselben Transaktion wie der Vertrag |
+| `TENANT#<t>#BACKFILL` | `CONTRACTS#v1`, `CUSTOMERS#v1` | contract, customer | Merker des einmaligen Abgleichs alter Daten: Zeitpunkt und Anzahlen |
 | `TENANT#<t>#CUST#<c>` | `HISTORY#<contractId>#<version>` | contract | Verlauf eines Vertrags (wer, wann, Begründung, Zusammenfassung) |
 | `TENANT#<t>#PRODUCTS` | `PRODUCT#<productId>` | contract | Produktkatalog mit allen Preisversionen; Startbestand beim ersten Lesen |
 
@@ -244,10 +245,24 @@ mit dem Mandanten — mit einer begründeten Ausnahme (`SCHEDULE#DATAVOLUME`):
   lesen je **eine** Partition ihres Verzeichnisses und filtern, sortieren und
   blättern im Dienst (Cursor = Position nach dem letzten Eintrag). Ein
   [GSI](glossar.md#single-table-design) bekäme eigene Kapazität und sprengte die 25 freien
-  Einheiten; bis zu einigen Tausend Einträgen je Mandant reicht das. Einträge
-  von vor Phase 7 kommen beim nächsten Lesen bzw. bei der nächsten Änderung
-  hinzu. Testkonten der E2E-Läufe (reservierte Domain `.invalid`) bleiben
-  draußen.
+  Einheiten; bis zu einigen Tausend Einträgen je Mandant reicht das.
+  Testkonten der E2E-Läufe (reservierte Domain `.invalid`) bleiben draußen.
+- **Einmaliger Abgleich alter Daten (Phase 7, Nachtrag):** Einträge von vor
+  Phase 7 kommen beim nächsten Lesen bzw. bei der nächsten Änderung hinzu —
+  für Kunden, die nie wiederkommen, holt `scripts/backfill-directory.sh` das
+  einmal je Mandant nach. Das Skript läuft mit den Zugangsdaten des Betreibers
+  wie eine Datenmigration, nicht als Dienst; jede Domäne schreibt nur ihre
+  eigenen Einträge (`directory-backfill.ts` in contract und customer, mit
+  Tests): contract ergänzt Vertragsverzeichnis und Markierung und liefert die
+  Momentaufnahmen aller Verträge, customer ergänzt Profilzusammenfassungen und
+  daraus die fehlenden Vertragszusammenfassungen. Gelesen wird einmal per
+  gedrosseltem Scan (100 Einträge je Seite, 1 s Pause), geschrieben höchstens
+  2 Einträge je Sekunde — weit unter 5/5. Ein Merker je Domäne
+  (`TENANT#<t>#BACKFILL` / `CONTRACTS#v1`, `CUSTOMERS#v1`) verhindert einen
+  zweiten Lauf. Bewusst **kein** Ereignis je Vertrag: der migration-Worker
+  schreibt jedes Ereignis in die Zeitleiste des Migrations-Cockpits, rund 600
+  Einträge hätten sie überdeckt. Pass-Mandanten brauchen den Abgleich nicht —
+  Pässe leben 48 Stunden, alle heutigen entstanden nach Phase 7.
 - **Status einer Kündigung** wird beim Lesen berechnet (`terminated`, sobald
   der Termin vorbei ist); es gibt kein eigenes Ereignis zum Stichtag.
 
