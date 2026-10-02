@@ -8,7 +8,9 @@
 # shellcheck source=scripts/aws-env.sh
 source "$(dirname "$0")/aws-env.sh"
 
-ensure_credentials
+# No ensure_credentials: the exported session credentials of `aws login` last 15 minutes,
+# less than the run. The SDK reads the profile itself and renews the session as needed.
+log "AWS account $(aws sts get-caller-identity --query Account --output text), region $AWS_REGION"
 TABLE_NAME="$(aws ssm get-parameter --name /kundenportal/base/table-name --query Parameter.Value --output text)"
 export TABLE_NAME
 log "Backfilling the directories of tenant ${1:-owner} in $TABLE_NAME"
