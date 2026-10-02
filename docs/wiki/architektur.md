@@ -56,7 +56,12 @@ aus einem privaten **S3**-Bucket, `/api/*` an das **API Gateway**, alles
 andere an die **Shell** — den Next.js-Server in einer Lambda mit dem
 [Lambda Web Adapter](glossar.md#lambda-web-adapter) und Response Streaming.
 Die Shell leitet zur Anmeldung an **Cognito** (Managed Login) weiter und ruft
-die API serverseitig mit dem Access Token auf. Der Dienst **customer** legt
+die API serverseitig mit dem Access Token auf. Die Anmeldeseite trägt das
+Aussehen des Portals (seit Phase 7, Nachtrag): Farben und Ecken des Presets
+„klar“ in Hell und Dunkel (folgt der Systemeinstellung), App-Icon als Favicon
+und Marke über dem Formular. CDK leitet das Branding beim Synthetisieren aus
+den Theme-Tokens von `packages/ui` und den Icon-Dateien der Shell ab
+(`infra/cdk/lib/login-branding.ts`). Der Dienst **customer** legt
 beim ersten Aufruf von `GET /me` das Profil an und veröffentlicht
 `CustomerRegistered` auf dem eigenen EventBridge-Bus. Eine Regel legt das
 Ereignis in eine SQS-Queue; der **notification-Konsument** schreibt daraus eine

@@ -151,6 +151,37 @@ describe("identity", () => {
     });
     base.hasResourceProperties("AWS::Cognito::UserPoolDomain", { ManagedLoginVersion: 2 });
   });
+
+  it("styles the sign-in page like the portal: accent, icon and logo in light and dark", () => {
+    base.hasResourceProperties("AWS::Cognito::ManagedLoginBranding", {
+      UseCognitoProvidedValues: false,
+      Settings: Match.objectLike({
+        categories: { global: { colorSchemeMode: "DYNAMIC" } },
+        components: Match.objectLike({
+          primaryButton: Match.objectLike({
+            lightMode: Match.objectLike({
+              defaults: { backgroundColor: "0b6e4fff", textColor: "ffffffff" },
+            }),
+          }),
+        }),
+      }),
+    });
+    const [branding] = Object.values(base.findResources("AWS::Cognito::ManagedLoginBranding"));
+    const assets = (branding?.Properties.Assets ?? []) as Record<string, string>[];
+    expect(assets.map((a) => `${a.Category}/${a.ColorMode}`).sort()).toEqual([
+      "FAVICON_ICO/DARK",
+      "FAVICON_ICO/LIGHT",
+      "FAVICON_SVG/DARK",
+      "FAVICON_SVG/LIGHT",
+      "FORM_LOGO/DARK",
+      "FORM_LOGO/LIGHT",
+    ]);
+    const logo = assets.find((a) => a.Category === "FORM_LOGO" && a.ColorMode === "DARK");
+    // The name is light on the dark page; the tile keeps the brand colour.
+    const svg = Buffer.from(logo?.Bytes ?? "", "base64").toString();
+    expect(svg).toContain('fill="#0b6e4f"');
+    expect(svg).toContain('fill="#ececec">Kundenportal');
+  });
 });
 
 describe("api and events", () => {

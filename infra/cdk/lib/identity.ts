@@ -21,6 +21,7 @@ import {
 import { Construct } from "constructs";
 import { ServiceFunction } from "./functions.js";
 import { grantLegacyAccess } from "./legacy-access.js";
+import { loginBrandingAssets, loginBrandingSettings } from "./login-branding.js";
 
 /** Name of the EventBridge bus of the app stack; the identity triggers publish to it. */
 export const EVENT_BUS_NAME = "kundenportal";
@@ -206,11 +207,14 @@ export class Identity extends Construct {
       }),
     });
 
-    // Managed login needs a style per client; Cognito's default look is enough for phase 1.
+    // Managed login needs a style per client: the portal's colours, icon and logo (preset
+    // "klar", light and dark), see login-branding.ts.
     new CfnManagedLoginBranding(this, "Branding", {
       userPoolId: this.userPool.userPoolId,
       clientId: this.client.userPoolClientId,
-      useCognitoProvidedValues: true,
+      useCognitoProvidedValues: false,
+      settings: loginBrandingSettings(),
+      assets: loginBrandingAssets(),
     });
 
     this.issuer = `https://cognito-idp.${Stack.of(this).region}.amazonaws.com/${this.userPool.userPoolId}`;

@@ -27,6 +27,7 @@
     "@kundenportal/migration": "workspace:*",
     "@kundenportal/notification": "workspace:*",
     "@kundenportal/shell": "workspace:*",
+    "@kundenportal/ui": "workspace:*",
     "@kundenportal/widget-notifications": "workspace:*",
     "@kundenportal/zone-cockpit": "workspace:*",
     "@kundenportal/zone-consumption": "workspace:*",

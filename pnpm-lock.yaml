@@ -405,6 +405,9 @@ importers:
       '@kundenportal/shell':
         specifier: workspace:*
         version: link:../../apps/shell
+      '@kundenportal/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
       '@kundenportal/widget-notifications':
         specifier: workspace:*
         version: link:../../packages/widget-notifications
