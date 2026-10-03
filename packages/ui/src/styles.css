@@ -1,8 +1,8 @@
 /*
  * Base and component styles of the customer portal. Every zone imports the built stylesheet
  * once (`import "@kundenportal/ui/styles.css"`); the build puts the theme tokens in front
- * (generated from src/themes.ts) and page.css, widgets.css, charts.css, the frame and
- * navigation (layout.css) and menus.css behind it (see scripts/build-css.mjs).
+ * (generated from src/themes.ts) and controls.css, page.css, widgets.css, charts.css, the
+ * frame and navigation (layout.css) and menus.css behind it (see scripts/build-css.mjs).
  * Every value comes from a `--kp-*` token, so a theme changes the look without touching the
  * components. The theme is chosen by attributes on <html>: data-audience, data-theme-preset,
  * data-color-mode (see theme-runtime.ts).
@@ -197,7 +197,7 @@ a {
   }
 }
 
-/* Buttons */
+/* Buttons (variants beyond primary/secondary and the sizes: controls.css) */
 
 .kp-button {
   display: inline-flex;

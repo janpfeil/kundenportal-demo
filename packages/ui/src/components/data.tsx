@@ -10,12 +10,14 @@ export interface Fact {
 
 export interface FactsProps extends HTMLAttributes<HTMLDListElement> {
   items: readonly Fact[];
+  /** Without frame, padding and background, for facts inside a card that already frames them. */
+  plain?: boolean;
 }
 
 /** Label/value pairs as a definition list; stacks on narrow screens. */
-export function Facts({ items, className, ...rest }: FactsProps) {
+export function Facts({ items, plain = false, className, ...rest }: FactsProps) {
   return (
-    <dl className={joinClasses("kp-facts", className)} {...rest}>
+    <dl className={joinClasses("kp-facts", plain && "kp-facts-plain", className)} {...rest}>
       {items.map((item, index) => (
         <Fragment key={item.id ?? (typeof item.term === "string" ? item.term : index)}>
           <dt>{item.term}</dt>

@@ -4,6 +4,7 @@ import { isColorMode, themeAttributes } from "../src/theme-runtime.js";
 import { PRESETS, THEME_PRESETS, type ThemePreset, themesCss } from "../src/themes.js";
 // Same files, same order as scripts/build-css.mjs.
 import "../src/styles.css";
+import "../src/controls.css";
 import "../src/page.css";
 import "../src/widgets.css";
 import "../src/charts.css";

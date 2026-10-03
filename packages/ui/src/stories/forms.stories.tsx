@@ -1,6 +1,15 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { useState } from "react";
 import { Button, ButtonLink } from "../components/button.js";
-import { NumberField, Select, TextField } from "../components/fields.js";
+import {
+  CheckboxField,
+  NumberField,
+  Select,
+  TextField,
+  TextareaField,
+} from "../components/fields.js";
+import { Icon } from "../components/icon.js";
+import { OptionCards } from "../components/option-cards.js";
 import { storyTexts } from "./texts.js";
 
 const meta: Meta = {
@@ -27,6 +36,53 @@ export const Buttons: Story = {
   },
 };
 
+export const ButtonVariants: Story = {
+  name: "Button variants and sizes",
+  render: (_, { globals }) => {
+    const { demo } = storyTexts(globals);
+    const row = { display: "flex", flexWrap: "wrap", alignItems: "center", gap: 12 } as const;
+    return (
+      <div style={{ display: "grid", gap: 16 }}>
+        <div style={row}>
+          <Button variant="ghost">{demo.correct}</Button>
+          <Button variant="danger">{demo.terminate}</Button>
+          <Button variant="danger-solid">{demo.confirmTerminate}</Button>
+          <Button variant="danger" disabled>
+            {demo.terminate}
+          </Button>
+        </div>
+        <div style={row}>
+          <Button size="small">{demo.save}</Button>
+          <Button variant="secondary" size="small">
+            {demo.cancel}
+          </Button>
+          <Button variant="ghost" size="small">
+            {demo.correct}
+          </Button>
+          <Button variant="danger" size="small">
+            {demo.terminate}
+          </Button>
+          <Button variant="danger-solid" size="small">
+            {demo.confirmTerminate}
+          </Button>
+          <ButtonLink href="#mehr" variant="secondary" size="small">
+            {demo.more}
+            <Icon name="right" />
+          </ButtonLink>
+        </div>
+        <div style={row}>
+          <Button variant="secondary" icon aria-label={demo.revoke} title={demo.revoke}>
+            <Icon name="x" />
+          </Button>
+          <Button variant="danger" size="small" icon aria-label={demo.revoke} title={demo.revoke}>
+            <Icon name="x" />
+          </Button>
+        </div>
+      </div>
+    );
+  },
+};
+
 export const TextFieldStory: Story = {
   name: "TextField",
   render: (_, { globals }) => {
@@ -45,6 +101,76 @@ export const TextFieldStory: Story = {
       </>
     );
   },
+};
+
+export const TextareaFieldStory: Story = {
+  name: "TextareaField",
+  render: (_, { globals }) => {
+    const { demo } = storyTexts(globals);
+    return (
+      <>
+        <TextareaField label={demo.reason} name="reason" hint={demo.reasonHint} maxLength={300} />
+        <TextareaField
+          label={demo.reason}
+          name="reason-invalid"
+          rows={2}
+          defaultValue="ok"
+          hint={demo.reasonHint}
+          error={demo.reasonError}
+        />
+      </>
+    );
+  },
+};
+
+export const CheckboxFieldStory: Story = {
+  name: "CheckboxField",
+  render: (_, { globals }) => {
+    const { demo } = storyTexts(globals);
+    return (
+      <>
+        <CheckboxField label={demo.consent} name="consent" hint={demo.consentHint} />
+        <CheckboxField label={demo.consent} name="consent-invalid" error={demo.consentError} />
+      </>
+    );
+  },
+};
+
+/** Option cards hold no state; the story keeps the choice like a zone's form does. */
+function OptionCardsDemo({
+  invalid,
+  globals,
+}: {
+  invalid: boolean;
+  globals: Record<string, unknown>;
+}) {
+  const { demo } = storyTexts(globals);
+  const [value, setValue] = useState(invalid ? "" : "basis");
+  return (
+    <OptionCards
+      legend={demo.optionLegend}
+      name={invalid ? "option-invalid" : "option"}
+      value={value}
+      onChange={setValue}
+      error={invalid && value === "" ? demo.optionError : undefined}
+      options={demo.options.map((option) => ({
+        value: option.value,
+        label: option.label,
+        price: option.price,
+        description: option.value === "basis" ? [demo.current, ...option.lines] : option.lines,
+      }))}
+    />
+  );
+}
+
+export const OptionCardsStory: Story = {
+  name: "OptionCards",
+  render: (_, { globals }) => (
+    <div style={{ display: "grid", gap: 24, maxWidth: 640 }}>
+      <OptionCardsDemo invalid={false} globals={globals} />
+      <OptionCardsDemo invalid globals={globals} />
+    </div>
+  ),
 };
 
 export const NumberFieldStory: Story = {

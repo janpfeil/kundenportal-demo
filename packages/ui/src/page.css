@@ -131,6 +131,16 @@
   padding: var(--kp-space);
 }
 
+/* Facts inside a card: the card draws the frame. */
+.kp-facts.kp-facts-plain {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
 .kp-facts dt {
   font-weight: 600;
 }

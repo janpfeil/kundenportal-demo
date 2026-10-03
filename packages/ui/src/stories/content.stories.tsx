@@ -65,6 +65,24 @@ export const FactsStory: Story = {
   },
 };
 
+export const FactsPlain: Story = {
+  name: "Facts (plain, inside a card)",
+  render: (_, { globals }) => {
+    const { demo } = storyTexts(globals);
+    return (
+      <Card title={demo.tariff}>
+        <Facts
+          plain
+          items={[
+            { term: demo.minimumTerm, description: demo.minimumTermValue },
+            { term: demo.noticePeriod, description: demo.noticePeriodValue },
+          ]}
+        />
+      </Card>
+    );
+  },
+};
+
 interface Reading {
   date: string;
   meter: string;

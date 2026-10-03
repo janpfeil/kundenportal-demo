@@ -27,9 +27,12 @@ import "@kundenportal/ui/styles.css";
 - **Appearance switch**: `TopBar`/`AppShell` take `appearance={{ audience, texts }}`;
   signed in it is a section of the user menu, signed out a small menu button.
 - **Components**: `AppShell`/`TopBar` (brand, zone navigation, language link,
-  sign-in/out link, slot for the notification bell), `Page`, `Card`, `Facts`,
-  `DataTable`, `Button`/`ButtonLink`, `TextField`, `NumberField`, `Select`,
-  `Notice`, `Badge`, `EmptyState`, `Footer`. Links default to plain `<a>` (a
+  sign-in/out link, slot for the notification bell), `Page`, `Card`, `Facts`
+  (`plain` inside a card), `DataTable`, `Button`/`ButtonLink` (variants primary,
+  secondary, ghost, danger, danger-solid; `size="small"`; `icon` for square
+  icon-only buttons with `aria-label`), `TextField`, `TextareaField`,
+  `NumberField`, `Select`, `CheckboxField`, `OptionCards` (radio group as
+  selectable cards), `Notice`, `Badge`, `EmptyState`, `Footer`. Links default to plain `<a>` (a
   full page load between zones); pass `linkComponent` for client-side
   navigation inside a zone.
 - **i18n**: `Locale` (`"de" | "en"`), `negotiateLocale(cookie, acceptLanguage)`,

@@ -5,7 +5,12 @@ export type { AppearanceSettings } from "./components/appearance-menu.js";
 export type { MenuLink, UserMenuProps } from "./components/user-menu.js";
 export type { AppShellProps, NavItem, TopBarProps } from "./components/app-shell.js";
 export { Button, ButtonLink } from "./components/button.js";
-export type { ButtonLinkProps, ButtonProps, ButtonVariant } from "./components/button.js";
+export type {
+  ButtonLinkProps,
+  ButtonProps,
+  ButtonSize,
+  ButtonVariant,
+} from "./components/button.js";
 export { DataTable, Facts } from "./components/data.js";
 export type { Column, DataTableProps, Fact, FactsProps } from "./components/data.js";
 export { Badge, Banner, EmptyState, Notice } from "./components/feedback.js";
@@ -51,13 +56,23 @@ export { Tabs } from "./components/tabs.js";
 export type { TabItem, TabsProps } from "./components/tabs.js";
 export { Timeline } from "./components/timeline.js";
 export type { TimelineItem, TimelineProps } from "./components/timeline.js";
-export { NumberField, Select, TextField } from "./components/fields.js";
+export {
+  CheckboxField,
+  NumberField,
+  Select,
+  TextField,
+  TextareaField,
+} from "./components/fields.js";
 export type {
+  CheckboxFieldProps,
   NumberFieldProps,
   SelectOption,
   SelectProps,
   TextFieldProps,
+  TextareaFieldProps,
 } from "./components/fields.js";
+export { OptionCards } from "./components/option-cards.js";
+export type { OptionCard, OptionCardsProps } from "./components/option-cards.js";
 export { Footer } from "./components/footer.js";
 export type { FooterProps } from "./components/footer.js";
 export type { LinkComponent, LinkProps } from "./components/link.js";

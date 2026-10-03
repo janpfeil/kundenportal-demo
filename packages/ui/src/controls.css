@@ -1,0 +1,152 @@
+/*
+ * Further controls on top of the base buttons and fields in styles.css: button variants and
+ * sizes, the multi-line text field, the checkbox and the option cards. Loaded right after
+ * styles.css (see scripts/build-css.mjs), so these rules win over the base ones they refine.
+ */
+
+/* Button variants: ghost, danger (outlined) and danger-solid (filled, to confirm) */
+
+.kp-button-ghost {
+  border-color: transparent;
+  background: transparent;
+  color: var(--kp-accent-text);
+}
+
+.kp-button-ghost:hover {
+  filter: none;
+  background: var(--kp-surface-2);
+}
+
+.kp-button-danger {
+  border-color: var(--kp-error-border);
+  background: var(--kp-surface);
+  color: var(--kp-error-text);
+}
+
+.kp-button-danger:hover {
+  filter: none;
+  background: var(--kp-error-bg);
+}
+
+.kp-button-danger-solid {
+  border-color: var(--kp-error-border);
+  background: var(--kp-error-bg);
+  color: var(--kp-error-text);
+}
+
+/* Button sizes and the square icon-only button */
+
+.kp-button-small {
+  min-height: calc(var(--kp-control) - 10px);
+  padding: 0 calc(var(--kp-space) * 0.7);
+  font-size: var(--kp-small);
+}
+
+.kp-button-small .kp-icon {
+  width: 1.1em;
+  height: 1.1em;
+}
+
+.kp-button-icon {
+  width: var(--kp-control);
+  padding: 0;
+}
+
+.kp-button-icon.kp-button-small {
+  width: calc(var(--kp-control) - 10px);
+}
+
+/* Multi-line text field */
+
+.kp-textarea {
+  min-height: calc(var(--kp-control) * 1.6);
+  padding-block: 8px;
+  resize: vertical;
+  font: inherit;
+}
+
+/* Checkbox with its label after the box; the row is a 44 px touch target. */
+
+.kp-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-height: 44px;
+  padding: 10px 0;
+  cursor: pointer;
+}
+
+.kp-check input {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  accent-color: var(--kp-accent);
+}
+
+.kp-check input[aria-invalid="true"] {
+  outline: 2px solid var(--kp-error-text);
+  outline-offset: 2px;
+}
+
+/* Option cards: a radio group whose options are selectable cards. */
+
+.kp-optcards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 140px), 1fr));
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.kp-optcards legend {
+  margin-bottom: 6px;
+  padding: 0;
+  font-weight: 600;
+}
+
+.kp-optcard {
+  position: relative;
+  display: grid;
+  gap: 2px;
+  padding: 12px 14px;
+  border: 1px solid var(--kp-border-strong);
+  border-radius: var(--kp-radius);
+  background: var(--kp-input-bg);
+  cursor: pointer;
+}
+
+/* The native radio stays focusable and keeps the arrow keys; the card shows its state. */
+.kp-optcard input {
+  position: absolute;
+  opacity: 0;
+}
+
+.kp-optcard:has(input:checked) {
+  border-color: var(--kp-accent);
+  box-shadow: inset 0 0 0 1px var(--kp-accent);
+  background: var(--kp-accent-soft);
+}
+
+.kp-optcard:has(input:focus-visible) {
+  outline: 3px solid var(--kp-focus);
+  outline-offset: 2px;
+}
+
+.kp-optcard:has(input:disabled) {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.kp-optcard small {
+  color: var(--kp-muted);
+  font-size: var(--kp-small);
+}
+
+@media (forced-colors: active) {
+  .kp-optcard:has(input:checked) {
+    outline: 3px solid Highlight;
+  }
+}

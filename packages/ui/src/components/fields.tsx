@@ -1,4 +1,10 @@
-import { type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, useId } from "react";
+import {
+  type InputHTMLAttributes,
+  type ReactNode,
+  type SelectHTMLAttributes,
+  type TextareaHTMLAttributes,
+  useId,
+} from "react";
 
 interface FieldFrameProps {
   /** Visible label; it is the field's accessible name. */
@@ -77,6 +83,35 @@ export function TextField({
         id={ids.fieldId}
         type={type}
         className={className ? `kp-input ${className}` : "kp-input"}
+        aria-invalid={error !== undefined ? true : undefined}
+        aria-describedby={describedBy(ids, hint, error, ownDescribedBy)}
+        {...rest}
+      />
+    </Frame>
+  );
+}
+
+export interface TextareaFieldProps
+  extends FieldFrameProps, Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, "children"> {}
+
+/** Multi-line text (reasons, descriptions) with the same label, hint and error as TextField. */
+export function TextareaField({
+  label,
+  hint,
+  error,
+  id,
+  rows = 3,
+  className,
+  "aria-describedby": ownDescribedBy,
+  ...rest
+}: TextareaFieldProps) {
+  const ids = useFieldIds(id);
+  return (
+    <Frame {...ids} label={label} hint={hint} error={error}>
+      <textarea
+        id={ids.fieldId}
+        rows={rows}
+        className={className ? `kp-input kp-textarea ${className}` : "kp-input kp-textarea"}
         aria-invalid={error !== undefined ? true : undefined}
         aria-describedby={describedBy(ids, hint, error, ownDescribedBy)}
         {...rest}
@@ -174,5 +209,49 @@ export function Select({
         ))}
       </select>
     </Frame>
+  );
+}
+
+export interface CheckboxFieldProps
+  extends FieldFrameProps, Omit<InputHTMLAttributes<HTMLInputElement>, "children" | "type"> {}
+
+/**
+ * A checkbox with its label after the box (consents, opt-ins). The whole label row is the
+ * click and touch target; hint and error follow below and are linked via aria-describedby.
+ */
+export function CheckboxField({
+  label,
+  hint,
+  error,
+  id,
+  className,
+  "aria-describedby": ownDescribedBy,
+  ...rest
+}: CheckboxFieldProps) {
+  const ids = useFieldIds(id);
+  return (
+    <div className="kp-field">
+      <label className="kp-check">
+        <input
+          id={ids.fieldId}
+          type="checkbox"
+          className={className}
+          aria-invalid={error !== undefined ? true : undefined}
+          aria-describedby={describedBy(ids, hint, error, ownDescribedBy)}
+          {...rest}
+        />
+        <span>{label}</span>
+      </label>
+      {hint !== undefined && (
+        <span className="kp-hint" id={ids.hintId}>
+          {hint}
+        </span>
+      )}
+      {error !== undefined && (
+        <span className="kp-error" id={ids.errorId}>
+          {error}
+        </span>
+      )}
+    </div>
   );
 }
