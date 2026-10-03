@@ -31,10 +31,10 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      # Turbo's task cache and Next.js' build cache. App builds hash GITHUB_SHA (the version in
+      # Turbo's task cache and Next.js' build cache (saved below). App builds hash GITHUB_SHA (the version in
       # every page), so they run once per commit; a warm Next.js cache makes them about twice
       # as fast. CI on develop fills the cache the deployment of the same commit restores.
-      - uses: actions/cache@v6
+      - uses: actions/cache/restore@v6
         with:
           path: |
             .turbo/cache
@@ -59,6 +59,15 @@ jobs:
         run: |
           find .turbo/cache -name '*.tar.zst' \( -size +5M -o -mtime +14 \) 2>/dev/null |
             while read -r entry; do rm -f "$entry" "${entry%.tar.zst}"-*.json; done
+      # Only develop and main save it (about 290 MB each): feature branches read their
+      # base branch's cache, so short-lived branches do not crowd GitHub's 10 GB limit.
+      - if: always() && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main')
+        uses: actions/cache/save@v6
+        with:
+          path: |
+            .turbo/cache
+            apps/*/.next/cache
+          key: build-${{ runner.os }}-${{ github.sha }}
       - name: Summary
         run: |
           {
