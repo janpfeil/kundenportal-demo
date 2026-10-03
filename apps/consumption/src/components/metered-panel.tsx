@@ -9,19 +9,13 @@ import {
   Notice,
   Split,
   Stack,
+  formatCent,
   formatDate,
   formatQuantity,
 } from "@kundenportal/ui";
 import { type Locale, fill } from "@kundenportal/ui/i18n";
 import type { Dictionary } from "@/i18n";
-import {
-  changeDelta,
-  formatCent,
-  monthLabel,
-  monthRange,
-  monthlyCost,
-  unitLabel,
-} from "@/lib/consumption";
+import { changeDelta, monthLabel, monthRange, monthlyCost, unitLabel } from "@/lib/consumption";
 import { zonePath } from "@/lib/zone";
 import { ReadingForm } from "./reading-form";
 import { UploadForm } from "./upload-form";

@@ -19,6 +19,11 @@ export function formatUnitPrice(cents: number, locale: Locale): string {
   }).format(cents / 100);
 }
 
+/** A price per unit in cents as the tariffs show it, e.g. 32.4 → "32,4 ct" (de). */
+export function formatCent(cents: number, locale: Locale): string {
+  return `${new Intl.NumberFormat(locale, { maximumFractionDigits: 2 }).format(cents)} ct`;
+}
+
 /** A calendar date (`YYYY-MM-DD`) in the locale's medium style, independent of time zones. */
 export function formatDate(isoDate: string, locale: Locale): string {
   const date = new Date(`${isoDate.slice(0, 10)}T00:00:00.000Z`);

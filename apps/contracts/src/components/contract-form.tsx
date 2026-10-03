@@ -1,7 +1,7 @@
 "use client";
 
 import type { Contract, ContractUpdate, Problem } from "@kundenportal/api-contract";
-import { Button, Notice, NumberField, formatEuro } from "@kundenportal/ui";
+import { Button, Notice, NumberField, formatCent, formatEuro } from "@kundenportal/ui";
 import type { Locale } from "@kundenportal/ui/i18n";
 import { sendJson } from "@kundenportal/web-auth/browser";
 import { useRouter } from "next/navigation";
@@ -12,7 +12,7 @@ import {
   contractProblem,
   parseInstallmentEuros,
 } from "@/lib/contract-update";
-import { formatCent, formatWholeEuro, unitLabel } from "@/lib/format";
+import { formatWholeEuro, unitLabel } from "@/lib/format";
 import { fill } from "@kundenportal/ui/i18n";
 import { zonePath } from "@/lib/zone";
 

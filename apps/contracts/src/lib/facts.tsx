@@ -1,6 +1,7 @@
 import type { Contract } from "@kundenportal/api-contract";
 import {
   type Fact,
+  formatCent,
   formatDataVolume,
   formatDate,
   formatEuro,
@@ -8,7 +9,7 @@ import {
 } from "@kundenportal/ui";
 import { type Locale, fill } from "@kundenportal/ui/i18n";
 import type { Dictionary } from "@/i18n";
-import { formatCent, shortContractId, unitLabel } from "./format";
+import { shortContractId, unitLabel } from "./format";
 import { monthsText } from "./products";
 
 /** The contract's facts in the mockup's order; what a division does not have is left out. */

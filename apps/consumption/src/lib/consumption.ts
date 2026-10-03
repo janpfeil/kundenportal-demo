@@ -52,11 +52,6 @@ export function monthlyCost(
   }).format((averagePerMonth * workPriceCent) / 100);
 }
 
-/** A unit price in cents as the mockup shows it, e.g. 32.4 → "32,4 ct" (de). */
-export function formatCent(cents: number, locale: Locale): string {
-  return `${new Intl.NumberFormat(locale, { maximumFractionDigits: 2 }).format(cents)} ct`;
-}
-
 /** The unit as people write it ("m³" instead of the API's "m3"). */
 export function unitLabel(unit: string): string {
   return unit === "m3" ? "m³" : unit;

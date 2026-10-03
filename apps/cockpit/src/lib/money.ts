@@ -4,13 +4,8 @@
  * with a decimal comma or point. Free of server APIs: forms, pages and tests share it.
  */
 
-import { formatEuro } from "@kundenportal/ui";
+import { formatCent, formatEuro } from "@kundenportal/ui";
 import type { Locale } from "@kundenportal/ui/i18n";
-
-/** A price in cents per unit, e.g. 32.4 → "32,4 ct" (de). */
-export function formatCent(cents: number, locale: Locale): string {
-  return `${new Intl.NumberFormat(locale, { maximumFractionDigits: 2 }).format(cents)} ct`;
-}
 
 /** The written unit of a meter, e.g. "m3" → "m³". */
 export function unitLabel(unit: string): string {

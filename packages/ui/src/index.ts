@@ -69,6 +69,7 @@ export { UploadForm } from "./components/upload-form.js";
 export type { UploadFormProps, UploadTexts } from "./components/upload-form.js";
 export { createZoneLink } from "./components/zone-link.js";
 export {
+  formatCent,
   formatDataVolume,
   formatDate,
   formatDateTime,

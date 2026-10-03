@@ -5,7 +5,6 @@ import { en } from "@/i18n/en";
 import {
   billingPeriod,
   changeDelta,
-  formatCent,
   formatVolume,
   gigabytes,
   isImplausible,
@@ -52,7 +51,6 @@ describe("key figures", () => {
   it("estimates the cost of an average month at the unit price", () => {
     expect(plain(monthlyCost(220, 32.4, "de"))).toBe("71 €");
     expect(plain(monthlyCost(220, 32, "de"))).toBe("70 €");
-    expect(formatCent(32.4, "de")).toBe("32,4 ct");
     expect(unitLabel("m3")).toBe("m³");
   });
 });

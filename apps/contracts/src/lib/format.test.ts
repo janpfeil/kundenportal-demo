@@ -2,17 +2,11 @@ import type { Contract } from "@kundenportal/api-contract";
 import { describe, expect, it } from "vitest";
 import { de } from "@/i18n/de";
 import { contractFacts } from "./facts";
-import { formatCent, formatWholeEuro, shortContractId, unitLabel } from "./format";
+import { formatWholeEuro, shortContractId, unitLabel } from "./format";
 
 const plain = (text: string) => text.replace(/[\u00a0\u202f]/g, " ");
 
 describe("format", () => {
-  it("writes unit prices in cents as the mockup does", () => {
-    expect(formatCent(32, "de")).toBe("32 ct");
-    expect(formatCent(32.4, "de")).toBe("32,4 ct");
-    expect(formatCent(32.4, "en")).toBe("32.4 ct");
-  });
-
   it("leaves out the cents of whole euro amounts", () => {
     expect(plain(formatWholeEuro(6000, "de"))).toBe("60 €");
     expect(plain(formatWholeEuro(1999, "de"))).toBe("19,99 €");

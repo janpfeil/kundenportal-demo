@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  formatCent,
   formatDataVolume,
   formatDate,
   formatDateTime,
@@ -22,6 +23,14 @@ describe("formatting", () => {
     expect(formatEuro(8500, "en")).toBe("€85.00");
     expect(plain(formatUnitPrice(32, "de"))).toBe("0,32 €");
     expect(plain(formatUnitPrice(113.5, "de"))).toBe("1,135 €");
+  });
+
+  it("formats unit prices in cents as the tariffs show them", () => {
+    expect(formatCent(32, "de")).toBe("32 ct");
+    expect(formatCent(32.4, "de")).toBe("32,4 ct");
+    expect(formatCent(32.456, "de")).toBe("32,46 ct");
+    expect(formatCent(1234.5, "de")).toBe("1.234,5 ct");
+    expect(formatCent(32.4, "en")).toBe("32.4 ct");
   });
 
   it("formats calendar dates without shifting them across time zones", () => {

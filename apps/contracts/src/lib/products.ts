@@ -3,9 +3,9 @@
  * prices of an option as short lines ("12,00 € Grundpreis / Monat", "32,4 ct/kWh").
  */
 import type { Division, MeterUnit, components } from "@kundenportal/api-contract";
-import { formatDataVolume, formatEuro } from "@kundenportal/ui";
+import { formatCent, formatDataVolume, formatEuro } from "@kundenportal/ui";
 import { type Locale, fill } from "@kundenportal/ui/i18n";
-import { formatCent, unitLabel } from "./format";
+import { unitLabel } from "./format";
 
 export type Product = components["schemas"]["Product"];
 export type ProductOption = components["schemas"]["ProductOption"];

@@ -1,11 +1,6 @@
 import { formatEuro } from "@kundenportal/ui";
 import type { Locale } from "@kundenportal/ui/i18n";
 
-/** A unit price in cents as the mockup shows it, e.g. 32.4 → "32,4 ct" (de). */
-export function formatCent(cents: number, locale: Locale): string {
-  return `${new Intl.NumberFormat(locale, { maximumFractionDigits: 2 }).format(cents)} ct`;
-}
-
 /** An amount in cents without decimals when it is whole euros, e.g. 6000 → "60 €" (de). */
 export function formatWholeEuro(cents: number, locale: Locale): string {
   if (cents % 100 !== 0) return formatEuro(cents, locale);
