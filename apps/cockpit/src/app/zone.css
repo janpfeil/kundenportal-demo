@@ -1,8 +1,8 @@
 /*
  * Zone-specific styles of the cockpit; tokens, base styles and the building blocks come from
- * @kundenportal/ui/styles.css. What the library does not offer yet (small, ghost and danger
- * buttons, the bell, tables inside cards, the inline correction row) follows the mockup
- * (docs/design/mockups.html) here, using only the theme's tokens.
+ * @kundenportal/ui/styles.css. What the library does not offer yet (the bell, tables inside
+ * cards, the inline correction row) follows the mockup (docs/design/mockups.html) here, using
+ * only the theme's tokens.
  */
 
 /* Text helpers */
@@ -58,50 +58,6 @@
 .cockpit-actions > .kp-notice {
   flex-basis: 100%;
   margin: 4px 0 0;
-}
-
-/* Buttons the library has no variant for yet */
-
-.cockpit-button-small {
-  min-height: calc(var(--kp-control) - 10px);
-  padding: 0 calc(var(--kp-space) * 0.7);
-  font-size: var(--kp-small);
-}
-
-.cockpit-button-small .kp-icon {
-  width: 1.1em;
-  height: 1.1em;
-}
-
-.kp-button.cockpit-button-ghost {
-  border-color: transparent;
-  background: transparent;
-  color: var(--kp-accent-text);
-}
-
-.kp-button.cockpit-button-ghost:hover {
-  background: var(--kp-surface-2);
-}
-
-.kp-button.cockpit-button-danger {
-  border-color: var(--kp-error-border);
-  background: var(--kp-surface);
-  color: var(--kp-error-text);
-}
-
-.kp-button.cockpit-button-danger:hover {
-  background: var(--kp-error-bg);
-}
-
-.kp-button.cockpit-button-danger-solid {
-  border-color: var(--kp-error-border);
-  background: var(--kp-error-bg);
-  color: var(--kp-error-text);
-}
-
-.kp-button.cockpit-button-icon {
-  width: calc(var(--kp-control) - 10px);
-  padding: 0;
 }
 
 /* Short feedback next to buttons (status line, not a notice box). */

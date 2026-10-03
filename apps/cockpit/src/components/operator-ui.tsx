@@ -154,7 +154,7 @@ export function FilterBar({
         ),
       )}
       <div className="cockpit-filter-buttons">
-        <Button type="submit" className="cockpit-button-small">
+        <Button type="submit" size="small">
           {t.operator.list.apply}
         </Button>
         {count > 0 && (
@@ -200,7 +200,7 @@ export function Pager({
         {nextCursor && (
           <ButtonLink
             variant="secondary"
-            className="cockpit-button-small"
+            size="small"
             href={listHref(path, filters, nextCursor, defaults)}
             linkComponent={ZoneLink}
             data-testid="list-next"

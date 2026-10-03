@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, Icon, Notice, Select, TextField } from "@kundenportal/ui";
+import { Button, Icon, Notice, Select, TextField, TextareaField } from "@kundenportal/ui";
 import { fill } from "@kundenportal/ui/i18n";
 import { sendJson } from "@kundenportal/web-auth/browser";
 import { useRouter } from "next/navigation";
@@ -23,56 +23,6 @@ type Texts = Dictionary["products"];
 
 /** The unit of a metered division's work price. */
 export const unitOf = (division: Division) => (division === "electricity" ? "kWh" : "m³");
-
-/** A multi-line text field styled like the library's fields. */
-export function TextArea({
-  label,
-  hint,
-  value,
-  onChange,
-  error,
-  name,
-  maxLength,
-}: {
-  label: string;
-  hint?: string | undefined;
-  value: string;
-  onChange: (value: string) => void;
-  error?: string | undefined;
-  name: string;
-  maxLength: number;
-}) {
-  const id = `product-${name}`;
-  const described = [hint && `${id}-hint`, error && `${id}-error`].filter(Boolean).join(" ");
-  return (
-    <div className="kp-field">
-      <label className="kp-label" htmlFor={id}>
-        {label}
-      </label>
-      {hint && (
-        <span className="kp-hint" id={`${id}-hint`}>
-          {hint}
-        </span>
-      )}
-      <textarea
-        id={id}
-        name={name}
-        className="kp-input cockpit-textarea"
-        rows={3}
-        maxLength={maxLength}
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        aria-invalid={error ? true : undefined}
-        aria-describedby={described || undefined}
-      />
-      {error && (
-        <span className="kp-error" id={`${id}-error`}>
-          {error}
-        </span>
-      )}
-    </div>
-  );
-}
 
 /**
  * "Produkt anlegen": id, division, name, description, terms and one to six options with
@@ -205,13 +155,13 @@ export function ProductForm({
           error={error("noticePeriodMonths")}
         />
       </div>
-      <TextArea
+      <TextareaField
         label={f.description}
         hint={texts.edit.descriptionHint}
         name="description"
         maxLength={400}
         value={draft.description}
-        onChange={set("description")}
+        onChange={(event) => set("description")(event.target.value)}
         error={error("description")}
       />
       <fieldset className="cockpit-fieldset">
@@ -281,8 +231,8 @@ export function ProductForm({
               {draft.options.length > 1 && (
                 <div className="cockpit-option-remove">
                   <Button
-                    variant="secondary"
-                    className="cockpit-button-small cockpit-button-ghost"
+                    variant="ghost"
+                    size="small"
                     aria-label={fill(f.removeOption, { number })}
                     onClick={() =>
                       setDraft((current) => ({
@@ -301,7 +251,7 @@ export function ProductForm({
         {draft.options.length < MAX_OPTIONS && (
           <Button
             variant="secondary"
-            className="cockpit-button-small"
+            size="small"
             onClick={() =>
               setDraft((current) => ({
                 ...current,

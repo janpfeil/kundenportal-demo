@@ -99,12 +99,7 @@ export function InvitationForm({
             <code className="cockpit-linkbox-code" data-testid="invitation-link" title={texts.link}>
               {created.link}
             </code>
-            <Button
-              variant="secondary"
-              className="cockpit-button-small"
-              onClick={copyLink}
-              aria-label={texts.copyLink}
-            >
+            <Button variant="secondary" size="small" onClick={copyLink} aria-label={texts.copyLink}>
               <Icon name="copy" />
               {texts.copy}
             </Button>

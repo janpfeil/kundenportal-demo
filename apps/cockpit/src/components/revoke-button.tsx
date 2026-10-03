@@ -41,17 +41,12 @@ export function RevokeButton({
     <div className="cockpit-revoke" data-testid="revoke" data-pass={passId}>
       {state === "confirm" || state === "busy" ? (
         <>
-          <Button
-            variant="secondary"
-            className="cockpit-button-small cockpit-button-danger-solid"
-            disabled={state === "busy"}
-            onClick={revoke}
-          >
+          <Button variant="danger-solid" size="small" disabled={state === "busy"} onClick={revoke}>
             {texts.confirm}
           </Button>
           <Button
             variant="secondary"
-            className="cockpit-button-small"
+            size="small"
             disabled={state === "busy"}
             onClick={() => setState("idle")}
           >
@@ -60,8 +55,9 @@ export function RevokeButton({
         </>
       ) : state !== "done" ? (
         <Button
-          variant="secondary"
-          className="cockpit-button-small cockpit-button-danger cockpit-button-icon"
+          variant="danger"
+          size="small"
+          icon
           aria-label={fill(texts.startLabel, { email })}
           title={texts.start}
           onClick={() => setState("confirm")}

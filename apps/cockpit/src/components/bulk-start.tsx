@@ -58,7 +58,7 @@ export function BulkStart({
             <Button
               key={system}
               variant={index === 0 ? "primary" : "secondary"}
-              className="cockpit-button-small"
+              size="small"
               disabled={busy || isRunning}
               aria-describedby={isRunning ? hintId : undefined}
               onClick={() => start(system)}

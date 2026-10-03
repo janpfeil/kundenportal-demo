@@ -59,7 +59,7 @@ export default async function MigrationPage({ searchParams }: { searchParams: Se
     <ButtonLink
       href={all ? `${MIGRATION_PATH}?klaerfaelle=alle` : MIGRATION_PATH}
       variant="secondary"
-      className="cockpit-button-small"
+      size="small"
       linkComponent={ZoneLink}
     >
       <Icon name="refresh" />

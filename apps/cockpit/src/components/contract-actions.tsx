@@ -1,6 +1,14 @@
 "use client";
 
-import { Button, Notice, Select, type SelectOption, TextField, formatDate } from "@kundenportal/ui";
+import {
+  Button,
+  Notice,
+  Select,
+  type SelectOption,
+  TextField,
+  TextareaField,
+  formatDate,
+} from "@kundenportal/ui";
 import { type Locale, fill } from "@kundenportal/ui/i18n";
 import { sendJson } from "@kundenportal/web-auth/browser";
 import { useRouter } from "next/navigation";
@@ -251,11 +259,15 @@ export function ContractActions(props: ContractActionsProps) {
       )}
       {type === "block" && <p className="cockpit-small">{texts.blockHint}</p>}
       {type === "unblock" && <p className="cockpit-small">{texts.unblockHint}</p>}
-      <ReasonField
+      <TextareaField
         label={texts.reason}
         hint={texts.reasonHint}
+        name="reason"
+        rows={2}
+        maxLength={REASON_MAX}
+        required
         value={reason}
-        onChange={setReason}
+        onChange={(event) => setReason(event.target.value)}
         error={errors.reason}
       />
       {confirming ? (
@@ -265,17 +277,14 @@ export function ContractActions(props: ContractActionsProps) {
           </p>
           <div className="cockpit-actions">
             <Button
-              className="cockpit-button-small cockpit-button-danger-solid"
+              variant="danger-solid"
+              size="small"
               disabled={busy}
               onClick={() => void send(confirming)}
             >
               {busy ? texts.sending : texts.confirm}
             </Button>
-            <Button
-              variant="secondary"
-              className="cockpit-button-small"
-              onClick={() => setConfirming(undefined)}
-            >
+            <Button variant="secondary" size="small" onClick={() => setConfirming(undefined)}>
               {texts.cancel}
             </Button>
           </div>
@@ -285,10 +294,7 @@ export function ContractActions(props: ContractActionsProps) {
           <Button
             type="submit"
             disabled={busy}
-            className={
-              type === "terminate" || type === "block" ? "cockpit-button-danger" : undefined
-            }
-            variant={type === "terminate" || type === "block" ? "secondary" : "primary"}
+            variant={type === "terminate" || type === "block" ? "danger" : "primary"}
           >
             {busy ? texts.sending : texts.types[type]}
           </Button>
@@ -300,49 +306,5 @@ export function ContractActions(props: ContractActionsProps) {
         </Notice>
       )}
     </form>
-  );
-}
-
-/** A multi-line reason with label, hint and error, styled like the library's fields. */
-export function ReasonField({
-  label,
-  hint,
-  value,
-  onChange,
-  error,
-}: {
-  label: string;
-  hint: string;
-  value: string;
-  onChange: (value: string) => void;
-  error?: string | undefined;
-}) {
-  const id = useId();
-  return (
-    <div className="kp-field">
-      <label className="kp-label" htmlFor={id}>
-        {label}
-      </label>
-      <span className="kp-hint" id={`${id}-hint`}>
-        {hint}
-      </span>
-      <textarea
-        id={id}
-        name="reason"
-        className="kp-input cockpit-textarea"
-        rows={2}
-        maxLength={REASON_MAX}
-        required
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        aria-invalid={error !== undefined ? true : undefined}
-        aria-describedby={error !== undefined ? `${id}-hint ${id}-error` : `${id}-hint`}
-      />
-      {error !== undefined && (
-        <span className="kp-error" id={`${id}-error`}>
-          {error}
-        </span>
-      )}
-    </div>
   );
 }

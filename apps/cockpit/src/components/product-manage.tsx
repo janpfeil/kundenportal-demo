@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, Notice, TextField } from "@kundenportal/ui";
+import { Button, Notice, TextField, TextareaField } from "@kundenportal/ui";
 import { fill } from "@kundenportal/ui/i18n";
 import { sendJson } from "@kundenportal/web-auth/browser";
 import { useRouter } from "next/navigation";
@@ -16,7 +16,6 @@ import {
   parseProductUpdate,
 } from "@/lib/products";
 import { zonePath } from "@/lib/zone";
-import { TextArea } from "./product-form";
 
 type Texts = Dictionary["products"];
 type Feedback = { tone: "success" | "error"; text: string };
@@ -74,17 +73,14 @@ export function ProductStatusMoves({
           </p>
           <div className="cockpit-actions">
             <Button
-              className="cockpit-button-small cockpit-button-danger-solid"
+              variant="danger-solid"
+              size="small"
               disabled={busy}
               onClick={() => void move("archived")}
             >
               {m.confirm}
             </Button>
-            <Button
-              variant="secondary"
-              className="cockpit-button-small"
-              onClick={() => setConfirm(false)}
-            >
+            <Button variant="secondary" size="small" onClick={() => setConfirm(false)}>
               {m.cancel}
             </Button>
           </div>
@@ -93,12 +89,14 @@ export function ProductStatusMoves({
         moves.map(({ action, blocked: reason }) => (
           <Button
             key={action}
-            variant={action === "publish" || action === "reactivate" ? "primary" : "secondary"}
-            className={
+            variant={
               action === "archive"
-                ? "cockpit-button-small cockpit-button-danger"
-                : "cockpit-button-small"
+                ? "danger"
+                : action === "publish" || action === "reactivate"
+                  ? "primary"
+                  : "secondary"
             }
+            size="small"
             disabled={busy || reason !== undefined}
             data-move={action}
             onClick={() =>
@@ -183,13 +181,13 @@ export function ProductEditForm({ product, texts }: { product: EditableProduct; 
         onChange={(event) => setName(event.target.value)}
         error={error("name")}
       />
-      <TextArea
+      <TextareaField
         label={e.description}
         hint={e.descriptionHint}
         name="description"
         maxLength={400}
         value={description}
-        onChange={setDescription}
+        onChange={(event) => setDescription(event.target.value)}
       />
       <p className="kp-hint">{e.termHint}</p>
       <div className="cockpit-form-grid">

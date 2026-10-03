@@ -1,6 +1,6 @@
 "use client";
 
-import { StatusBadge } from "@kundenportal/ui";
+import { Button, StatusBadge } from "@kundenportal/ui";
 import { fill } from "@kundenportal/ui/i18n";
 import { Fragment, useId, useState } from "react";
 import type { Dictionary } from "@/i18n";
@@ -79,9 +79,9 @@ export function DeadLetterTable({
                   {row.attempts}
                 </td>
                 <td data-label={texts.action} data-align="end">
-                  <button
-                    type="button"
-                    className="kp-button kp-button-secondary cockpit-button-small cockpit-button-ghost"
+                  <Button
+                    variant="ghost"
+                    size="small"
                     aria-expanded={expanded}
                     aria-controls={formId}
                     aria-label={fill(expanded ? texts.closeLabel : texts.correctLabel, {
@@ -90,7 +90,7 @@ export function DeadLetterTable({
                     onClick={() => toggle(row.id)}
                   >
                     {expanded ? texts.close : texts.correct}
-                  </button>
+                  </Button>
                 </td>
               </tr>
               <tr id={formId} className="cockpit-expanded cockpit-form-row" hidden={!expanded}>
