@@ -223,7 +223,9 @@ bzw. die neue Projektion als „älter" verwürfen [E].</p>
    Konten, weit unter der Grenze von 256 KB je Ereignis und klein genug,
    dass jeder <a class="term" href="glossar.html#konsument" title="Dienst, der Nachrichten oder Events empfängt und verarbeitet">Konsument</a> einen Schub in einem Aufruf abarbeitet. Auch
    Identitäten, deren Cognito-Konto schon fehlte, stehen darin: Ihre Daten
-   können noch da sein.</li>
+   können noch da sein. (Dasselbe Ereignis schicken <a class="term" href="glossar.html#playwright" title="Werkzeug, das echte Browser fernsteuert; prüft die Journeys am laufenden Portal">E2E</a>-Läufe an ihrem Ende
+   für ihre Testregistrierungen — <code>reason: "test-run"</code>, nur mit <code>subject</code>;
+   jede Domäne findet die Kundennummer dann über ihre eigene Zuordnung.)</li>
 <li>Er löscht seine Verknüpfungsangebote (<code>SUBJ#&lt;sub&gt;</code> / <code>LINK#…</code>) und den
    Merker „Übernahme gemeldet" (<code>SUBJ#&lt;sub&gt;</code> / <code>IDENTITY#LEGACY</code>). Der
    Merker gehört dem Identitätsbereich; der hat aber keinen Worker, der auf
@@ -319,6 +321,6 @@ Abfrage (einige Dutzend Einträge im Demo); ein Index hätte eigene Kapazität
 aus den 25 freien Einheiten gebraucht [E]. <a class="term" href="glossar.html#bulk-import" title="Übernahme vieler Konten auf einmal; bei Cognito per CSV-Import oder AdminCreateUser, im Demo ohne Passwörter (Nutzer müssen zurücksetzen); Hash-Import (u. a. bcrypt) ist noch nicht">Bulk-Import</a> und Reset schreiben in
 Schüben; bei 5 <a class="term" href="glossar.html#wcu" title="Schreib-Kapazitätseinheit von DynamoDB: 1 Schreibvorgang pro Sekunde bis 1 KB">WCU</a> drosselt <a class="term" href="glossar.html#dynamodb" title="vollständig verwaltete NoSQL-Datenbank (Schlüssel-Wert/Dokument) mit Antwortzeiten im Millisekundenbereich, ohne Server und ohne Verbindungs-Pool">DynamoDB</a> kurz, die <a class="term" href="glossar.html#sdk" title="Software Development Kit: Bibliothek für den Zugriff auf einen Dienst (z. B. AWS SDK)">SDK</a>-<a class="term" href="glossar.html#retry" title="erneuter Verarbeitungsversuch nach einem Fehler">Wiederholungen</a> bzw. die
 Wiederholung unverarbeiteter Löschungen fangen das ab [E].</p></main></div>
-<footer class="site"><a href="../wiki/architektur-migration.md">Markdown-Quelle</a> · Generiert 2026-10-02 19:19 aus <code>docs/wiki</code> mit <code>scripts/build_reports.py</code></footer>
+<footer class="site"><a href="../wiki/architektur-migration.md">Markdown-Quelle</a> · Generiert 2026-10-03 07:59 aus <code>docs/wiki</code> mit <code>scripts/build_reports.py</code></footer>
 </body>
 </html>

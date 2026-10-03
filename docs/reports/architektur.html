@@ -27,6 +27,7 @@
 </li>
 <li><a href="#7-leitplanken">7. Leitplanken</a></li>
 <li><a href="#7a-stacks-und-lebensdauer-deployment">7a. Stacks und Lebensdauer (Deployment)</a></li>
+<li><a href="#7b-artefakte-und-speicherorte">7b. Artefakte und Speicherorte</a></li>
 <li><a href="#8-pipelines">8. Pipelines</a></li>
 <li><a href="#9-messwerte">9. Messwerte</a></li>
 <li><a href="#10-altsysteme-und-migration-phase-3">10. Altsysteme und Migration (Phase 3)</a></li>
@@ -427,6 +428,12 @@ mit dem <a class="term" href="glossar.html#mandant" title="abgeschotteter Bereic
 <td>Vertragsverzeichnis des Betreibers (Phase 7), in derselben Transaktion wie der Vertrag</td>
 </tr>
 <tr>
+<td><code>TENANT#&lt;t&gt;#BACKFILL</code></td>
+<td><code>CONTRACTS#v1</code>, <code>CUSTOMERS#v1</code></td>
+<td>contract, customer</td>
+<td>Merker des einmaligen Abgleichs alter Daten: Zeitpunkt und Anzahlen</td>
+</tr>
+<tr>
 <td><code>TENANT#&lt;t&gt;#CUST#&lt;c&gt;</code></td>
 <td><code>HISTORY#&lt;contractId&gt;#&lt;version&gt;</code></td>
 <td>contract</td>
@@ -462,11 +469,54 @@ mit dem <a class="term" href="glossar.html#mandant" title="abgeschotteter Bereic
   lesen je <strong>eine</strong> Partition ihres Verzeichnisses und filtern, sortieren und
   blättern im Dienst (Cursor = Position nach dem letzten Eintrag). Ein
   <a href="glossar.html#single-table-design">GSI</a> bekäme eigene Kapazität und sprengte die 25 freien
-  Einheiten; bis zu einigen Tausend Einträgen je Mandant reicht das. Einträge
-  von vor Phase 7 kommen beim nächsten Lesen bzw. bei der nächsten Änderung
-  hinzu. Testkonten der <a class="term" href="glossar.html#playwright" title="Werkzeug, das echte Browser fernsteuert; prüft die Journeys am laufenden Portal">E2E</a>-Läufe (reservierte <a class="term" href="glossar.html#domain" title="Internet-Adresse wie beispiel.de; wird bei einem Registrar für ca. 10–15 €/Jahr registriert">Domain</a> <code>.invalid</code>) bleiben
-  draußen.</p>
+  Einheiten; bis zu einigen Tausend Einträgen je Mandant reicht das.
+  Testkonten der <a class="term" href="glossar.html#playwright" title="Werkzeug, das echte Browser fernsteuert; prüft die Journeys am laufenden Portal">E2E</a>-Läufe (reservierte <a class="term" href="glossar.html#domain" title="Internet-Adresse wie beispiel.de; wird bei einem Registrar für ca. 10–15 €/Jahr registriert">Domain</a> <code>.invalid</code>) bleiben draußen.</p>
 </li>
+<li><strong>Einmaliger Abgleich alter Daten (Phase 7, Nachtrag):</strong> Einträge von vor
+  Phase 7 kommen beim nächsten Lesen bzw. bei der nächsten Änderung hinzu —
+  für Kunden, die nie wiederkommen, holt <code>scripts/backfill-directory.sh</code> das
+  einmal je Mandant nach. Das Skript läuft mit den Zugangsdaten des Betreibers
+  wie eine Datenmigration, nicht als Dienst; jede Domäne schreibt nur ihre
+  eigenen Einträge (<code>directory-backfill.ts</code> in contract und customer, mit
+  Tests): contract ergänzt Vertragsverzeichnis und Markierung und liefert die
+  Momentaufnahmen aller Verträge, customer ergänzt Profilzusammenfassungen und
+  daraus die fehlenden Vertragszusammenfassungen. Gelesen wird einmal per
+  gedrosseltem <a class="term" href="glossar.html#dynamodb-scan" title="liest eine Tabelle vollständig (seitenweise zu 1 MB) und filtert erst danach; verbraucht Lesekapazität für alle gelesenen Einträge, anders als eine Abfrage (Query) über einen Schlü">Scan</a> (100 Einträge je Seite, 1 s Pause), geschrieben höchstens
+  2 Einträge je Sekunde — weit unter 5/5. Ein Merker je Domäne
+  (<code>TENANT#&lt;t&gt;#BACKFILL</code> / <code>CONTRACTS#v1</code>, <code>CUSTOMERS#v1</code>) verhindert einen
+  zweiten Lauf. Bewusst <strong>kein</strong> Ereignis je Vertrag: der migration-Worker
+  schreibt jedes Ereignis in die Zeitleiste des <a class="term" href="glossar.html#migrations-cockpit" title="im Demo geplantes Micro-Frontend, das den Fortschritt der Kontenübernahme, Ereignisse und DLQ-Fälle live zeigt">Migrations-Cockpits</a>, rund 600
+  Einträge hätten sie überdeckt. <a class="term" href="glossar.html#demo-pass" title="im Demo: zeitlich begrenzte Berechtigung (48 Stunden ab der ersten Anmeldung, Kontingent) für eine eigene Instanz; ausgestellt per Einladungslink oder für den Inhaber">Pass</a>-Mandanten brauchen den Abgleich nicht —
+  Pässe leben 48 Stunden, alle heutigen entstanden nach Phase 7.</li>
+<li><strong>Aufräumen nach E2E-Läufen (seit 03.10.2026):</strong> <code>createTestUser</code> merkt sich
+  die <code>sub</code> jedes Testnutzers, der Global <a class="term" href="glossar.html#teardown" title="vollständiges Entfernen aller Demo-Ressourcen per cdk destroy und terraform destroy">Teardown</a> (<code>tests/e2e/src/global-teardown.ts</code>) meldet nach dem letzten Test alle in <strong>einem</strong>
+  <code>MigratedAccountsRemoved</code> (<code>reason: "test-run"</code>, nur <code>subject</code>); jede Domäne
+  findet die Kundennummer über ihre eigene Zuordnung (<code>SUBJ#&lt;sub&gt;</code>) und
+  überspringt unbekannte Identitäten. Die Migrationsreise setzt die Demo
+  außerdem am Ende zurück. Ein Ereignis je Lauf, weil consumption je Ereignis
+  die ganze Tabelle liest.</li>
+<li><strong>Verwaiste Kunden aufräumen:</strong> E2E-Läufe löschten bis zum 03.10.2026 am Ende
+  nur ihre <a class="term" href="glossar.html#amazon-cognito" title="AWS-Identitätsdienst für Registrierung, Login, MFA und Benutzerverwaltung; im Demo der Portal-Login (Entscheidung 29.09.2026), angelegt per CDK">Cognito</a>-Nutzer, die Daten der Domänen blieben; Migrationsläufe, die dasselbe
+  <a class="term" href="glossar.html#altkonto" title="Kundenkonto im Altsystem des Versorgers oder der Telko, das ins neue Portal übernommen wird (nicht zu verwechseln mit einem alten AWS-Konto)">Altkonto</a> mehrfach übernehmen, entgehen zudem dem <a class="term" href="glossar.html#demo-reset" title="Cockpit-Funktion des Inhabers: entfernt die von der Migration angelegten Konten samt ihrer Portaldaten (per Ereignis MigratedAccountsRemoved in jedem Bereich), Migrationsstände, Ti">Demo-Reset</a> (er kennt je
+  Altkonto nur die letzte Identität). Am 02.10.2026 hatten 370 von 375 Kunden
+  keinen Cognito-Nutzer mehr. <code>scripts/remove-orphaned-customers.py</code> findet
+  Kundenverknüpfungen ohne Nutzer im <a class="term" href="glossar.html#user-pool" title="Nutzerverzeichnis in Cognito mit eigenen Nutzern, Gruppen, App-Clients und Triggern; zugleich OIDC-Aussteller">User Pool</a> (nie Kunden, auf die noch eine
+  lebende Identität zeigt) und meldet sie in <code>MigratedAccountsRemoved</code> — so
+  löscht jede Domäne ihre eigenen Daten wie beim Demo-Reset. Ohne <code>--apply</code>
+  nur Probelauf. <strong>Vorsicht:</strong> der Lösch-<a class="term" href="glossar.html#lambda-handler" title="die Einstiegsfunktion einer Lambda, die das Ereignis (HTTP-Request, Queue-Nachricht) erhält">Handler</a> von consumption scannt je
+  Ereignis die ganze Tabelle (~280 Leseeinheiten); am 02.10.2026 überlasteten
+  121 kleine Ereignisse die Tabelle, Worker scheiterten in ihre <a class="term" href="glossar.html#dlq" title="Ablage für Nachrichten, die nach mehreren Versuchen nicht verarbeitet werden konnten, zur Analyse und Nachverarbeitung">DLQs</a>. Für
+  wenige Konten taugt das Skript, für viele der Reset.</li>
+<li><strong>Reset der Demodaten:</strong> <code>scripts/reset-owner-data.py</code> löscht alle Einträge
+  des Inhaber-Mandanten (<code>TENANT#owner#…</code> und seine Einträge in
+  <code>SCHEDULE#DATAVOLUME</code>) direkt, ohne Ereignisse: ein gedrosselter Scan, dann
+  Stapel zu 25 mit höchstens 4 Schreibeinheiten je Sekunde (≈ 26 min für 6.400
+  Einträge), danach leert es die DLQs der App. Es bleiben Plattform-Einträge
+  (Pässe, Einladungen, <a class="term" href="glossar.html#free-tier" title="Sammelbegriff für kostenlose Nutzungsmengen bei AWS">Kontingente</a>), Pass-Tabellen, Cognito-Nutzer und
+  <a class="term" href="glossar.html#legacy-system" title="bestehendes Altsystem mit Kundendaten, das abgelöst werden soll; im Demo simuliert">Altsysteme</a>; der Katalog legt seine Standardtarife beim ersten Lesen neu an,
+  wer sich wieder anmeldet, bekommt ein frisches Profil mit Beispielverträgen.
+  Ohne <code>--apply</code> nur Probelauf; im eigenen Terminal ausführen, wenn niemand
+  das Portal nutzt und DynamoDB nicht mehr drosselt.</li>
 <li><strong>Status einer Kündigung</strong> wird beim Lesen berechnet (<code>terminated</code>, sobald
   der Termin vorbei ist); es gibt kein eigenes Ereignis zum Stichtag.</li>
 </ul>
@@ -797,6 +847,201 @@ aktualisiert <code>KundenportalEdge</code> nach jedem App-<a class="term" href="
 dieselbe <a class="term" href="glossar.html#distribution" title="eine CloudFront-Konfiguration mit eigener Domain, Ursprüngen und Regeln">Distribution</a> auf die neuen Ursprünge zeigt. Nur ein Vollabbau
 entfernt auch <a class="term" href="glossar.html#edge-stack" title="CDK-Stack für alles am Rand des Systems: CloudFront, Zertifikat, CloudFront Functions">Edge</a>, Base und Zertifikat — danach ist ein neuer
 DNS-Eintrag nötig.</p>
+<h2 id="7b-artefakte-und-speicherorte">7b. Artefakte und Speicherorte<a class="anchor" href="#7b-artefakte-und-speicherorte" title="Permanent link">#</a></h2>
+<p>Gemessen am 03.10.2026 (<a class="term" href="glossar.html#deployment" title="Ausliefern einer neuen Version in eine Umgebung">Deploy</a> <code>25c91ff</code>, nach dem Reset der Demodaten); die
+Größen ändern sich mit jedem <a class="term" href="glossar.html#build" title="Übersetzen und Paketieren des Quellcodes zu auslieferbaren Dateien (Artefakten)">Build</a> und Deploy. <a class="term" href="glossar.html#docker" title="Container-Technik; ein Image enthält eine Anwendung mit allen Abhängigkeiten">Docker</a>- oder Container-Images
+gibt es <strong>keine</strong>: alle Funktionen laufen als Zip-Pakete.</p>
+<div class="stats"><div class="stat"><div class="v">29</div><div class="l"><a class="term" href="glossar.html#lambda" title="führt eine einzelne Funktion (z. B. einen HTTP-Handler) bei Bedarf aus; Abrechnung pro Aufruf und Laufzeit, skaliert automatisch von 0 auf viele Instanzen">Lambda-Funktionen</a> (alle Zip)</div></div><div class="stat"><div class="v">0</div><div class="l">Container-Images</div></div><div class="stat"><div class="v">974 <a class="term" href="glossar.html#gb" title="Gigabyte / Terabyte (1 TB = 1.000 GB)">MB</a></div><div class="l"><a class="term" href="glossar.html#cdk" title="Infrastruktur als Programmcode (TypeScript, Java, Python …): man schreibt Klassen wie new Table(...), CDK erzeugt daraus CloudFormation-Vorlagen und legt die Ressourcen an">CDK</a>-<a class="term" href="glossar.html#assets" title="statische Dateien einer Web-App: JavaScript, CSS, Bilder, Schriften">Assets</a> in <a class="term" href="glossar.html#s3" title="Objektspeicher für Dateien beliebiger Größe in „Buckets&quot;; Standard für statische Websites, Uploads, Build-Artefakte">S3</a></div></div><div class="stat"><div class="v">12,6 MB</div><div class="l">statische Dateien</div></div><div class="stat"><div class="v">10,1 GB</div><div class="l"><a class="term" href="glossar.html#github" title="Plattform für Git-Repositories, Pull Requests und CI">GitHub</a>-Actions-<a class="term" href="glossar.html#cache" title="Zwischenspeicher, der wiederholte Anfragen schneller und billiger beantwortet">Caches</a></div></div></div>
+<p><strong>Ausführbarer Code (Lambda, <a class="term" href="glossar.html#region" title="geografischer Standort mit eigenen Rechenzentren; eu-central-1 = Frankfurt, us-east-1 = Nord-Virginia (dort müssen manche globalen Einstellungen, z. B. CloudFront-Zertifikate, lieg">eu-central-1</a>, arm64, Node.js 24)</strong></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Artefakt</th>
+<th>Anzahl</th>
+<th>Größe</th>
+<th>Entsteht aus</th>
+<th>Lebensdauer</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a class="term" href="glossar.html#shell" title="Rahmenanwendung, die Navigation, Login und Layout stellt und die Micro-Frontends einbindet">Shell</a> und <a class="term" href="glossar.html#multi-zones" title="Next.js-Ansatz, mehrere Next.js-Apps unter einer Domain zu betreiben, aufgeteilt nach Pfaden">Zonen</a> (<a class="term" href="glossar.html#nextjs" title="React-Framework (von Vercel) mit Routing, Server-Rendering, API-Routen und Build-Optimierung">Next.js</a> <a class="term" href="glossar.html#standalone-build" title="Next.js-Build-Modus, der einen schlanken, eigenständigen Node.js-Server mit allen benötigten Dateien erzeugt">standalone</a>)</td>
+<td class="num">4</td>
+<td>Zip 4,6–5,0 MB, entpackt 22–24 MB; 1024 MB Speicher</td>
+<td><code>apps/*/.next/&lt;app&gt;-lambda.zip</code> (<code>next build</code> + <code>package-next-lambda.mjs</code>)</td>
+<td>bis zum nächsten Deploy</td>
+</tr>
+<tr>
+<td>Layer <a class="term" href="glossar.html#lambda-web-adapter" title="Werkzeug, mit dem normale Web-Server-Apps (Express, Spring Boot, Next.js) unverändert in Lambda laufen">Lambda Web Adapter</a></td>
+<td>1 (von <a class="term" href="glossar.html#aws" title="Cloud-Plattform von Amazon mit über 200 Diensten (Rechenleistung, Datenbanken, Netzwerk, Messaging …), abgerechnet nach Nutzung">AWS</a>, Konto 753240598075)</td>
+<td>1,5 MB</td>
+<td>öffentlicher Layer, nur referenziert</td>
+<td>—</td>
+</tr>
+<tr>
+<td><a class="term" href="glossar.html#api" title="Programmierschnittstelle, über die Programme miteinander sprechen">API</a>-Funktionen, Worker, <a class="term" href="glossar.html#lambda-trigger-cognito" title="Lambda-Funktion, die Cognito an festen Punkten aufruft (vor Registrierung, vor/nach Login, Token-Erzeugung, Migration); im Demo in services/identity">Cognito-Trigger</a>, <a class="term" href="glossar.html#demo-pass" title="im Demo: zeitlich begrenzte Berechtigung (48 Stunden ab der ersten Anmeldung, Kontingent) für eine eigene Instanz; ausgestellt per Einladungslink oder für den Inhaber">Pass</a>-Aufräumer</td>
+<td class="num">20</td>
+<td>je 366–429 KB, zusammen 7,7 MB; 256 MB Speicher</td>
+<td>esbuild-Bündel aus <code>services/*</code> beim <code>cdk synth</code></td>
+<td>bis zum nächsten Deploy</td>
+</tr>
+<tr>
+<td><a class="term" href="glossar.html#cdk" title="Infrastruktur als Programmcode (TypeScript, Java, Python …): man schreibt Klassen wie new Table(...), CDK erzeugt daraus CloudFormation-Vorlagen und legt die Ressourcen an">CDK</a>-Hilfsfunktionen (BucketDeployment, AutoDeleteObjects, Cross-<a class="term" href="glossar.html#region" title="geografischer Standort mit eigenen Rechenzentren; eu-central-1 = Frankfurt, us-east-1 = Nord-Virginia (dort müssen manche globalen Einstellungen, z. B. CloudFront-Zertifikate, lieg">Region</a>-Export)</td>
+<td>5 (+ 1 in us-east-1)</td>
+<td>wenige KB; BucketDeployment mit AWS-CLI-Layer 21 MB, ein Layer je statischem <a class="term" href="glossar.html#upload" title="Hochladen einer Datei vom Browser zum Server bzw. nach S3">Upload</a> (5)</td>
+<td>von CDK mitgeliefert</td>
+<td>mit dem <a class="term" href="glossar.html#stack" title="Einheit in CloudFormation/CDK: eine Gruppe von Ressourcen, die gemeinsam angelegt und gelöscht wird">Stack</a></td>
+</tr>
+<tr>
+<td>Container-Images (<a class="term" href="glossar.html#ecr" title="AWS-Registry für Docker-Images">ECR</a> <code>cdk-hnb659fds-container-assets-…</code>, eu-central-1 und us-east-1)</td>
+<td class="num">0</td>
+<td>leer</td>
+<td>CDK-<a class="term" href="glossar.html#cdk-bootstrap" title="einmalig je Konto und Region angelegte CDK-Hilfsressourcen (S3-Bucket für Artefakte, ECR-Repository, Rollen)">Bootstrap</a></td>
+<td>—</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Dateien in S3</strong></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Bucket (Stack)</th>
+<th>Inhalt</th>
+<th>Umfang</th>
+<th>Lebensdauer</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>cdk-hnb659fds-assets-…-eu-central-1</code> (<a class="term" href="glossar.html#cdk" title="Infrastruktur als Programmcode (TypeScript, Java, Python …): man schreibt Klassen wie new Table(...), CDK erzeugt daraus CloudFormation-Vorlagen und legt die Ressourcen an">CDK</a>-<a class="term" href="glossar.html#cdk-bootstrap" title="einmalig je Konto und Region angelegte CDK-Hilfsressourcen (S3-Bucket für Artefakte, ECR-Repository, Rollen)">Bootstrap</a>)</td>
+<td>jedes Deploy lädt Lambda-Zips und Templates hoch (Name = <a class="term" href="glossar.html#passwort-hash" title="Einweg-verschlüsselte Form eines Passworts; alte Systeme nutzen oft schwache Verfahren (MD5, SHA-1), die bei der Migration einen Passwort-Reset erzwingen">Hash</a> des Inhalts)</td>
+<td>667 Objekte, 974 MB: 549 Zips (962 MB), 118 Templates (12,7 MB)</td>
+<td><strong>wächst</strong>: nur alte Objektversionen werden gelöscht, alte Assets nie</td>
+</tr>
+<tr>
+<td><code>cdk-hnb659fds-assets-…-us-east-1</code></td>
+<td>Template des Zertifikat-Stacks</td>
+<td>3 Objekte, 11 KB</td>
+<td>wie oben</td>
+</tr>
+<tr>
+<td><code>kundenportaledge-staticassets…</code> (<a class="term" href="glossar.html#edge-stack" title="CDK-Stack für alles am Rand des Systems: CloudFront, Zertifikat, CloudFront Functions">Edge</a>)</td>
+<td>gehashte Next.js-Dateien: Shell 2,5 MB, <code>/vertraege</code> 3,2 MB, <code>/verbrauch</code> 2,5 MB, <code>/cockpit</code> 3,8 MB; <a class="term" href="glossar.html#widget" title="kleiner, eingebetteter Oberflächenbaustein">Widget</a> <code>bell.js</code> 2,3 kB</td>
+<td>684 Dateien, 12,6 MB</td>
+<td>alte Dateien bleiben, damit zwischengespeicherte Seiten ihre Skripte finden</td>
+</tr>
+<tr>
+<td><code>kundenportalbase-uploadsbucket…</code> (Base)</td>
+<td>Dokumente der Kunden (<code>uploads/&lt;mandant&gt;/&lt;kunde&gt;/&lt;id&gt;</code>)</td>
+<td>7 Objekte, 490 Bytes</td>
+<td>7 Tage (Lebenszyklus-Regel)</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Daten und Betrieb</strong></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Ort</th>
+<th>Inhalt</th>
+<th>Umfang</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a class="term" href="glossar.html#dynamodb" title="vollständig verwaltete NoSQL-Datenbank (Schlüssel-Wert/Dokument) mit Antwortzeiten im Millisekundenbereich, ohne Server und ohne Verbindungs-Pool">DynamoDB</a>, Basistabelle (Base)</td>
+<td>alle Domänen des Inhaber-<a class="term" href="glossar.html#mandant" title="abgeschotteter Bereich eines Kunden in einer gemeinsam betriebenen Anwendung; im Demo je Demo-Pass ein Mandant">Mandanten</a>, Plattform-Einträge</td>
+<td>720 Einträge, 203 KB; <a class="term" href="glossar.html#provisioned" title="DynamoDB-Modus mit fest eingestellter Kapazität (RCU/WCU); im Always Free bis 25 Einheiten; bei Überlast wird gedrosselt statt berechnet">provisioned</a> 5/5</td>
+</tr>
+<tr>
+<td><a class="term" href="glossar.html#dynamodb" title="vollständig verwaltete NoSQL-Datenbank (Schlüssel-Wert/Dokument) mit Antwortzeiten im Millisekundenbereich, ohne Server und ohne Verbindungs-Pool">DynamoDB</a>, <code>kp-tenant-&lt;id&gt;</code></td>
+<td>je Demo-Pass eine Tabelle, mit dem Pass gelöscht</td>
+<td>derzeit keine</td>
+</tr>
+<tr>
+<td><a class="term" href="glossar.html#amazon-cognito" title="AWS-Identitätsdienst für Registrierung, Login, MFA und Benutzerverwaltung; im Demo der Portal-Login (Entscheidung 29.09.2026), angelegt per CDK">Cognito</a> (Base)</td>
+<td><a class="term" href="glossar.html#user-pool" title="Nutzerverzeichnis in Cognito mit eigenen Nutzern, Gruppen, App-Clients und Triggern; zugleich OIDC-Aussteller">User Pool</a>, Branding der Anmeldeseite (Favicon, Logo; von Cognito über dessen <a class="term" href="glossar.html#cloudfront" title="Content Delivery Network (CDN): liefert Inhalte weltweit aus nahen Standorten aus, cacht sie und leitet Pfade an verschiedene Ziele (S3, API Gateway, Lambda) weiter">CloudFront</a> ausgeliefert)</td>
+<td>1 User Pool</td>
+</tr>
+<tr>
+<td><a class="term" href="glossar.html#cloudwatch" title="AWS-Dienst für Logs, Metriken und Alarme">CloudWatch Logs</a></td>
+<td>Log-Gruppen der Funktionen, 3 Tage Aufbewahrung</td>
+<td>34 Gruppen, 7,6 MB; 5 Gruppen von CDK-Hilfsfunktionen ohne <a class="term" href="glossar.html#log-retention" title="Dauer, nach der Logs automatisch gelöscht werden; ohne Frist wachsen Kosten">Aufbewahrungsfrist</a> (je unter 2 KB)</td>
+</tr>
+<tr>
+<td><a class="term" href="glossar.html#sqs" title="Nachrichtenwarteschlange: Absender legt Nachrichten ab, Empfänger holt sie ab und bestätigt sie; entkoppelt Dienste und puffert Last">SQS</a>, <a class="term" href="glossar.html#sns" title="Publish/Subscribe-Dienst: eine Nachricht an ein Topic geht an alle Abonnenten (E-Mail, SQS, Lambda, HTTP, SMS)">SNS</a>, <a class="term" href="glossar.html#ssm-parameter-store" title="Ablage für Konfigurationswerte und (verschlüsselt als SecureString) Geheimnisse; Standard-Stufe kostenlos. Im Demo auch Übergabestelle zwischen Terraform und CDK">SSM</a>, CloudFront</td>
+<td>9 Queues (davon 8 <a class="term" href="glossar.html#dlq" title="Ablage für Nachrichten, die nach mehreren Versuchen nicht verarbeitet werden konnten, zur Analyse und Nachverarbeitung">DLQs</a>), 2 Topics (Hinweise an den Inhaber, <a class="term" href="glossar.html#aws-budgets" title="kostenloser Dienst für Kostengrenzen mit E-Mail-/SNS-Alarm bei Überschreitung; kein harter Stopp, Daten kommen Stunden verzögert">Budget</a>), 29 Parameter unter <code>/kundenportal/…</code>, 1 <a class="term" href="glossar.html#distribution" title="eine CloudFront-Konfiguration mit eigener Domain, Ursprüngen und Regeln">Distribution</a> (PriceClass_100)</td>
+<td>—</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Außerhalb von AWS</strong></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Ort</th>
+<th>Inhalt</th>
+<th>Umfang</th>
+<th>Lebensdauer</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GitHub-<a class="term" href="glossar.html#repository" title="von Git verwaltetes Projektverzeichnis, z. B. auf GitHub">Repository</a></td>
+<td>Quellcode, Berichte (<code>docs/reports</code>, 1,5 MB)</td>
+<td>2 MB (<a class="term" href="glossar.html#git" title="verteilte Versionsverwaltung">Git</a>)</td>
+<td>dauerhaft</td>
+</tr>
+<tr>
+<td><a class="term" href="glossar.html#github" title="Plattform für Git-Repositories, Pull Requests und CI">GitHub</a>-Releases</td>
+<td>nur Versionshinweise und <a class="term" href="glossar.html#tags" title="Schlüssel-Wert-Etiketten an Ressourcen, z. B. project=kundenportal-demo; wichtig für Kostenauswertung und Aufräumen">Tags</a>, keine Binärdateien</td>
+<td>—</td>
+<td>dauerhaft</td>
+</tr>
+<tr>
+<td><a class="term" href="glossar.html#github-pages" title="kostenloses Hosting statischer Websites direkt aus einem GitHub-Repository; im Demo für Storybook und Berichte">GitHub Pages</a></td>
+<td>Berichte, <a class="term" href="glossar.html#storybook" title="Werkzeug, das jede Komponente der Component Library isoliert darstellt und dokumentiert; als statische Seite veröffentlicht">Storybook</a> (8,6 MB), Mockups</td>
+<td>Pages-Artefakt rund 2 MB komprimiert</td>
+<td>bis zum nächsten Pages-Lauf</td>
+</tr>
+<tr>
+<td><a class="term" href="glossar.html#github" title="Plattform für Git-Repositories, Pull Requests und CI">GitHub</a>-Actions-<a class="term" href="glossar.html#build" title="Übersetzen und Paketieren des Quellcodes zu auslieferbaren Dateien (Artefakten)">Artefakte</a></td>
+<td><code>playwright-report</code> je <a class="term" href="glossar.html#playwright" title="Werkzeug, das echte Browser fernsteuert; prüft die Journeys am laufenden Portal">E2E</a>-Lauf</td>
+<td>0–25 MB</td>
+<td>7 Tage</td>
+</tr>
+<tr>
+<td><a class="term" href="glossar.html#github" title="Plattform für Git-Repositories, Pull Requests und CI">GitHub</a>-Actions-<a class="term" href="glossar.html#cache" title="Zwischenspeicher, der wiederholte Anfragen schneller und billiger beantwortet">Caches</a></td>
+<td>Build-Cache (Turbo und Next.js) je <a class="term" href="glossar.html#commit" title="Commit = gespeicherter Änderungsstand in Git; Git-Tag = Name für einen bestimmten Commit, z. B. eine Version v1.2.0 (nicht zu verwechseln mit AWS-Tags)">Commit</a>: 26 × rund 290 MB = 7,6 GB, davon 3,4 GB gelöschter Feature-Branches; pnpm-Store 10 × 255 MB</td>
+<td>36 Caches, 10,1 GB — am Limit von 10 GB je Repository, GitHub verdrängt die ältesten</td>
+<td>bis verdrängt bzw. 7 Tage ungenutzt</td>
+</tr>
+<tr>
+<td><a class="term" href="glossar.html#gitlab" title="Git-Plattform mit CI, auch selbst betreibbar; bei rypox intern auf gitlab.rypox.org im Einsatz">GitLab</a> (<code>gitlab.rypox.org</code>)</td>
+<td><a class="term" href="glossar.html#terraform" title="verbreitetes IaC-Werkzeug von HashiCorp: Infrastruktur deklarativ in HCL beschreiben, für viele Anbieter (AWS, Azure, Keycloak, GitHub …) über Provider">Terraform</a>-Zustand des <a class="term" href="glossar.html#plattform-schicht" title="im Demo: per Terraform aus GitLab CI verwaltete Grundlagen (OIDC-Vertrauensstellungen, Budget + SNS-Grundlage des Kill-Switch, SSM-Grundwerte, ab Phase 3 Zugangsdaten der Altsystem">Fundaments</a> (<a class="term" href="glossar.html#https" title="verschlüsseltes Web-Protokoll; HTTP ohne Verschlüsselung">HTTP</a>-<a class="term" href="glossar.html#backend" title="der serverseitige Teil einer Anwendung (Fachlogik, Datenhaltung, APIs)">Backend</a> mit Sperre); <a class="term" href="glossar.html#pipeline" title="automatisierte Abfolge von Schritten (bauen, testen, ausliefern)">Pipeline</a> der <a class="term" href="glossar.html#legacy-system" title="bestehendes Altsystem mit Kundendaten, das abgelöst werden soll; im Demo simuliert">Altsysteme</a></td>
+<td>—</td>
+<td>dauerhaft</td>
+</tr>
+<tr>
+<td><a class="term" href="glossar.html#eigener-server" title="vom Projektinhaber selbst betriebener Server mit Docker; im Demo Standort der simulierten Altsysteme">Eigener Server</a></td>
+<td>simulierte Altsysteme und <a class="term" href="glossar.html#keycloak" title="Open-Source-Identitätsdienst (OIDC, SAML), selbst betrieben; im Demo unter id.rypox.net die Anmeldung des Telko-Altsystems und ab Phase 3 Gegenstelle des Migrate-User-Triggers">Keycloak</a></td>
+<td>—</td>
+<td>dauerhaft</td>
+</tr>
+<tr>
+<td>Lokal beim <a class="term" href="glossar.html#build" title="Übersetzen und Paketieren des Quellcodes zu auslieferbaren Dateien (Artefakten)">Build</a> (nicht im <a class="term" href="glossar.html#repository" title="von Git verwaltetes Projektverzeichnis, z. B. auf GitHub">Repository</a>)</td>
+<td><code>apps/*/.next</code> (Standalone und Zip je App), <code>infra/cdk/cdk.out</code> (1,1 GB, alle Assets der Synthese), <code>.turbo/cache</code></td>
+<td>—</td>
+<td>bis zum nächsten Build</td>
+</tr>
+</tbody>
+</table></div>
+<p>Zwei Befunde ohne Handlungsdruck: Die CDK-Assets wachsen mit jedem Deploy um
+die neuen Pakete (bisher rund 1 GB in vier Tagen; außerhalb des <a class="term" href="glossar.html#free-tier" title="Sammelbegriff für kostenlose Nutzungsmengen bei AWS">Freikontingents</a>
+etwa 0,02 <a class="term" href="glossar.html#usd" title="Währung, in der AWS abrechnet">$</a> je GB und Monat) — <code>cdk gc</code> könnte nicht mehr benutzte Assets
+entfernen. Und der Build-Cache füllt das Cache-Limit von GitHub; ihn nur auf
+<code>develop</code> und <code>main</code> zu speichern, hielte den Platz für die Caches, die das
+Deploy wirklich nutzt.</p>
 <h2 id="8-pipelines">8. Pipelines<a class="anchor" href="#8-pipelines" title="Permanent link">#</a></h2>
 <div class="table-wrap"><table>
 <thead>
@@ -1093,6 +1338,6 @@ Seiten in <a class="term" href="glossar.html#shell" title="Rahmenanwendung, die 
 <li>EventBridge, Wiederholungen und DLQ am Regelziel: <a href="https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-rule-dlq.html">https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-rule-dlq.html</a></li>
 <li>S3-Ereignisse über EventBridge: <a href="https://docs.aws.amazon.com/AmazonS3/latest/userguide/EventBridge.html">https://docs.aws.amazon.com/AmazonS3/latest/userguide/EventBridge.html</a></li>
 </ul></main></div>
-<footer class="site"><a href="../wiki/architektur.md">Markdown-Quelle</a> · Generiert 2026-10-02 19:19 aus <code>docs/wiki</code> mit <code>scripts/build_reports.py</code></footer>
+<footer class="site"><a href="../wiki/architektur.md">Markdown-Quelle</a> · Generiert 2026-10-03 07:59 aus <code>docs/wiki</code> mit <code>scripts/build_reports.py</code></footer>
 </body>
 </html>

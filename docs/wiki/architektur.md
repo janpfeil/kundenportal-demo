@@ -715,6 +715,65 @@ dieselbe Distribution auf die neuen Ursprünge zeigt. Nur ein Vollabbau
 entfernt auch Edge, Base und Zertifikat — danach ist ein neuer
 DNS-Eintrag nötig.
 
+## 7b. Artefakte und Speicherorte
+
+Gemessen am 03.10.2026 (Deploy `25c91ff`, nach dem Reset der Demodaten); die
+Größen ändern sich mit jedem Build und Deploy. Docker- oder Container-Images
+gibt es **keine**: alle Funktionen laufen als Zip-Pakete.
+
+```chart
+{"type": "stats", "items": [["29", "Lambda-Funktionen (alle Zip)"], ["0", "Container-Images"], ["974 MB", "CDK-Assets in S3"], ["12,6 MB", "statische Dateien"], ["10,1 GB", "GitHub-Actions-Caches"]]}
+```
+
+**Ausführbarer Code (Lambda, eu-central-1, arm64, Node.js 24)**
+
+| Artefakt | Anzahl | Größe | Entsteht aus | Lebensdauer |
+|---|---|---|---|---|
+| Shell und Zonen (Next.js standalone) | 4 | Zip 4,6–5,0 MB, entpackt 22–24 MB; 1024 MB Speicher | `apps/*/.next/<app>-lambda.zip` (`next build` + `package-next-lambda.mjs`) | bis zum nächsten Deploy |
+| Layer Lambda Web Adapter | 1 (von AWS, Konto 753240598075) | 1,5 MB | öffentlicher Layer, nur referenziert | — |
+| API-Funktionen, Worker, Cognito-Trigger, Pass-Aufräumer | 20 | je 366–429 KB, zusammen 7,7 MB; 256 MB Speicher | esbuild-Bündel aus `services/*` beim `cdk synth` | bis zum nächsten Deploy |
+| CDK-Hilfsfunktionen (BucketDeployment, AutoDeleteObjects, Cross-Region-Export) | 5 (+ 1 in us-east-1) | wenige KB; BucketDeployment mit AWS-CLI-Layer 21 MB, ein Layer je statischem Upload (5) | von CDK mitgeliefert | mit dem Stack |
+| Container-Images (ECR `cdk-hnb659fds-container-assets-…`, eu-central-1 und us-east-1) | 0 | leer | CDK-Bootstrap | — |
+
+**Dateien in S3**
+
+| Bucket (Stack) | Inhalt | Umfang | Lebensdauer |
+|---|---|---|---|
+| `cdk-hnb659fds-assets-…-eu-central-1` (CDK-Bootstrap) | jedes Deploy lädt Lambda-Zips und Templates hoch (Name = Hash des Inhalts) | 667 Objekte, 974 MB: 549 Zips (962 MB), 118 Templates (12,7 MB) | **wächst**: nur alte Objektversionen werden gelöscht, alte Assets nie |
+| `cdk-hnb659fds-assets-…-us-east-1` | Template des Zertifikat-Stacks | 3 Objekte, 11 KB | wie oben |
+| `kundenportaledge-staticassets…` (Edge) | gehashte Next.js-Dateien: Shell 2,5 MB, `/vertraege` 3,2 MB, `/verbrauch` 2,5 MB, `/cockpit` 3,8 MB; Widget `bell.js` 2,3 kB | 684 Dateien, 12,6 MB | alte Dateien bleiben, damit zwischengespeicherte Seiten ihre Skripte finden |
+| `kundenportalbase-uploadsbucket…` (Base) | Dokumente der Kunden (`uploads/<mandant>/<kunde>/<id>`) | 7 Objekte, 490 Bytes | 7 Tage (Lebenszyklus-Regel) |
+
+**Daten und Betrieb**
+
+| Ort | Inhalt | Umfang |
+|---|---|---|
+| DynamoDB, Basistabelle (Base) | alle Domänen des Inhaber-Mandanten, Plattform-Einträge | 720 Einträge, 203 KB; provisioned 5/5 |
+| DynamoDB, `kp-tenant-<id>` | je Demo-Pass eine Tabelle, mit dem Pass gelöscht | derzeit keine |
+| Cognito (Base) | User Pool, Branding der Anmeldeseite (Favicon, Logo; von Cognito über dessen CloudFront ausgeliefert) | 1 User Pool |
+| CloudWatch Logs | Log-Gruppen der Funktionen, 3 Tage Aufbewahrung | 34 Gruppen, 7,6 MB; 5 Gruppen von CDK-Hilfsfunktionen ohne Aufbewahrungsfrist (je unter 2 KB) |
+| SQS, SNS, SSM, CloudFront | 9 Queues (davon 8 DLQs), 2 Topics (Hinweise an den Inhaber, Budget), 29 Parameter unter `/kundenportal/…`, 1 Distribution (PriceClass_100) | — |
+
+**Außerhalb von AWS**
+
+| Ort | Inhalt | Umfang | Lebensdauer |
+|---|---|---|---|
+| GitHub-Repository | Quellcode, Berichte (`docs/reports`, 1,5 MB) | 2 MB (Git) | dauerhaft |
+| GitHub-Releases | nur Versionshinweise und Tags, keine Binärdateien | — | dauerhaft |
+| GitHub Pages | Berichte, Storybook (8,6 MB), Mockups | Pages-Artefakt rund 2 MB komprimiert | bis zum nächsten Pages-Lauf |
+| GitHub-Actions-Artefakte | `playwright-report` je E2E-Lauf | 0–25 MB | 7 Tage |
+| GitHub-Actions-Caches | Build-Cache (Turbo und Next.js) je Commit: 26 × rund 290 MB = 7,6 GB, davon 3,4 GB gelöschter Feature-Branches; pnpm-Store 10 × 255 MB | 36 Caches, 10,1 GB — am Limit von 10 GB je Repository, GitHub verdrängt die ältesten | bis verdrängt bzw. 7 Tage ungenutzt |
+| GitLab (`gitlab.rypox.org`) | Terraform-Zustand des Fundaments (HTTP-Backend mit Sperre); Pipeline der Altsysteme | — | dauerhaft |
+| Eigener Server | simulierte Altsysteme und Keycloak | — | dauerhaft |
+| Lokal beim Build (nicht im Repository) | `apps/*/.next` (Standalone und Zip je App), `infra/cdk/cdk.out` (1,1 GB, alle Assets der Synthese), `.turbo/cache` | — | bis zum nächsten Build |
+
+Zwei Befunde ohne Handlungsdruck: Die CDK-Assets wachsen mit jedem Deploy um
+die neuen Pakete (bisher rund 1 GB in vier Tagen; außerhalb des Freikontingents
+etwa 0,02 $ je GB und Monat) — `cdk gc` könnte nicht mehr benutzte Assets
+entfernen. Und der Build-Cache füllt das Cache-Limit von GitHub; ihn nur auf
+`develop` und `main` zu speichern, hielte den Platz für die Caches, die das
+Deploy wirklich nutzt.
+
 ## 8. Pipelines
 
 | Was | Werkzeug | Wer löst aus | AWS-Zugang | Freigabe |
