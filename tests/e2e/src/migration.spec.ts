@@ -42,6 +42,8 @@ test.beforeAll(async () => {
 test.afterAll(async ({ browser }) => {
   if (!owner) return;
   const page = await browser.newPage({ locale: "de-DE" });
+  // A bulk import still running would create accounts after the reset collected them.
+  await waitForImports(page).catch(() => undefined);
   await resetDemo(page).catch(() => undefined);
   await page.close();
   await owner.remove();
@@ -62,6 +64,14 @@ async function resetDemo(page: Page) {
   // Removing the accounts takes a while, more so right after a deploy (cold functions);
   // a failure shows as an alert, never as this status.
   await expect(reset.getByRole("status")).toContainText("Zurückgesetzt", { timeout: 30_000 });
+}
+
+/** Waits until no bulk import run is marked running ("läuft") in the cockpit. */
+async function waitForImports(page: Page) {
+  await expect(async () => {
+    await openCockpit(page);
+    await expect(page.getByTestId("runs")).not.toContainText("läuft");
+  }).toPass({ timeout: 90_000, intervals: [3_000, 5_000] });
 }
 
 /** Signs a demo person in with the legacy password (first sign-in: lazy migration). */
