@@ -1,6 +1,6 @@
 # Architektur — Ist-Stand des Portals
 
-Stand: 2026-10-02 · Beschreibt den **Ist-Stand** des Codes (Phase 1 bis 7 abgeschlossen, Release v0.7.1), nicht die Zielarchitektur. Kennzeichnung: **[B]** belegt (offizielle Quelle oder Messung), **[A]** Annahme, **[E]** Einschätzung.
+Stand: 2026-10-02 · Beschreibt den **Ist-Stand** des Codes (Phase 1 bis 7 abgeschlossen, Release v0.7.2), nicht die Zielarchitektur. Kennzeichnung: **[B]** belegt (offizielle Quelle oder Messung), **[A]** Annahme, **[E]** Einschätzung.
 
 Fachbegriffe sind in jedem Abschnitt beim ersten Vorkommen mit dem [Glossar](glossar.md) verlinkt (Erklärung und Entsprechung außerhalb von AWS).
 
@@ -29,7 +29,7 @@ diese Seite zeigt, was davon tatsächlich gebaut ist:
 - **Phase 6 (abgeschlossen, v0.6.2):** alle Oberflächen wie im Mockup, das
   Cockpit mit Migrationsstand und Demo-Pässen, Verbrauchsverlauf
   ([Zonen und Frontend](architektur-zonen.md) §13).
-- **Phase 7 (abgeschlossen, v0.7.0, Nachtrag v0.7.1):** Betreiber-Cockpit mit Kunden-, Vertrags-
+- **Phase 7 (abgeschlossen, v0.7.0, Nachträge v0.7.1 und v0.7.2):** Betreiber-Cockpit mit Kunden-, Vertrags-
   und Produktlisten, Produktkatalog mit Preisversionen, Vertragsabschluss,
   Kündigung und Widerruf durch Kunden (Abschnitte 4–6,
   [Zonen und Frontend](architektur-zonen.md) §14); Nachtrag: Anmeldeseite im
