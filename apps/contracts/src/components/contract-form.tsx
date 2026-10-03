@@ -1,7 +1,7 @@
 "use client";
 
 import type { Contract, ContractUpdate, Problem } from "@kundenportal/api-contract";
-import { Button, Notice, NumberField, formatCent, formatEuro } from "@kundenportal/ui";
+import { Button, Notice, NumberField, OptionCards, formatCent, formatEuro } from "@kundenportal/ui";
 import type { Locale } from "@kundenportal/ui/i18n";
 import { sendJson } from "@kundenportal/web-auth/browser";
 import { useRouter } from "next/navigation";
@@ -249,22 +249,17 @@ export function ContractForm({
         </>
       )}
       {current.tariffOptions.length > 1 && (
-        <fieldset className="zone-optcards">
-          <legend>{texts.option}</legend>
-          {current.tariffOptions.map((id) => (
-            <label key={id} className="zone-optcard">
-              <input
-                type="radio"
-                name="tariffOption"
-                value={id}
-                checked={option === id}
-                onChange={() => setOption(id)}
-              />
-              <b>{label(id)}</b>
-              {optionNote(id) !== undefined && <small>{optionNote(id)}</small>}
-            </label>
-          ))}
-        </fieldset>
+        <OptionCards
+          legend={texts.option}
+          name="tariffOption"
+          value={option}
+          onChange={setOption}
+          options={current.tariffOptions.map((id) => ({
+            value: id,
+            label: label(id),
+            price: optionNote(id),
+          }))}
+        />
       )}
       {feedback && (
         <Notice tone={feedback.tone} className="zone-feedback">

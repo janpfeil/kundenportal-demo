@@ -45,7 +45,7 @@ export function ProductCatalogue({ products, locale, t }: ProductCatalogueProps)
               >
                 {product.description && <p className="zone-product-text">{product.description}</p>}
                 <Facts
-                  className="zone-facts-plain"
+                  plain
                   items={[
                     {
                       term: texts.minimumTerm,

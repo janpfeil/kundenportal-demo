@@ -72,61 +72,6 @@
   accent-color: var(--kp-accent);
 }
 
-/* Tariff options as radio cards. */
-.zone-optcards {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 140px), 1fr));
-  gap: 8px;
-  min-width: 0;
-  margin: 0;
-  padding: 0;
-  border: 0;
-}
-
-.zone-optcards legend {
-  margin-bottom: 6px;
-  padding: 0;
-  font-weight: 600;
-}
-
-.zone-optcard {
-  position: relative;
-  display: grid;
-  gap: 2px;
-  padding: 12px 14px;
-  border: 1px solid var(--kp-border-strong);
-  border-radius: var(--kp-radius);
-  background: var(--kp-input-bg);
-  cursor: pointer;
-}
-
-.zone-optcard input {
-  position: absolute;
-  opacity: 0;
-}
-
-.zone-optcard:has(input:checked) {
-  border-color: var(--kp-accent);
-  box-shadow: inset 0 0 0 1px var(--kp-accent);
-  background: var(--kp-accent-soft);
-}
-
-.zone-optcard:has(input:focus-visible) {
-  outline: 3px solid var(--kp-focus);
-  outline-offset: 2px;
-}
-
-.zone-optcard small {
-  color: var(--kp-muted);
-  font-size: var(--kp-small);
-}
-
-@media (forced-colors: active) {
-  .zone-optcard:has(input:checked) {
-    outline: 3px solid Highlight;
-  }
-}
-
 .zone-buttons {
   display: flex;
   flex-wrap: wrap;
@@ -143,16 +88,6 @@
   display: inline-flex;
   flex-wrap: wrap;
   gap: 6px;
-}
-
-/* Facts inside a card: no second frame around them. */
-.zone-facts-plain.kp-facts {
-  margin: 0;
-  padding: 0;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
 }
 
 /* Product catalogue: one section per division, products as cards, options as tiles. */
@@ -237,29 +172,7 @@
   margin-top: auto;
 }
 
-/* Order: consent checkbox with a 44 px touch target, confirmation. */
-.zone-check {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  min-height: 44px;
-  padding: 10px 0;
-  cursor: pointer;
-}
-
-.zone-check input {
-  flex: none;
-  width: 22px;
-  height: 22px;
-  margin: 0;
-  accent-color: var(--kp-accent);
-}
-
-.zone-check input[aria-invalid="true"] {
-  outline: 2px solid var(--kp-error-text);
-  outline-offset: 2px;
-}
-
+/* Order: the confirmation takes the focus without a ring. */
 .zone-confirmation:focus {
   outline: none;
 }

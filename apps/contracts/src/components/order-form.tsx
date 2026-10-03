@@ -5,9 +5,11 @@ import {
   Button,
   ButtonLink,
   Card,
+  CheckboxField,
   Facts,
   Notice,
   NumberField,
+  OptionCards,
   Split,
   TextField,
   formatDate,
@@ -147,7 +149,7 @@ export function OrderForm({ product, initialOption, today, locale, t, loginHref 
   const summary = (
     <Card as="section" title={texts.summary} className="zone-summary">
       <Facts
-        className="zone-facts-plain"
+        plain
         items={[
           { term: texts.product, description: product.name },
           ...(option && price
@@ -208,40 +210,23 @@ export function OrderForm({ product, initialOption, today, locale, t, loginHref 
     <Split>
       <Card as="section" title={texts.formTitle}>
         <form className="zone-form" onSubmit={submit} noValidate data-testid="order-form">
-          <fieldset
-            className="zone-optcards"
-            aria-describedby={errors.optionId ? fieldId("optionId") : undefined}
-          >
-            <legend>{texts.optionLegend}</legend>
-            {product.options.map((entry) => {
+          <OptionCards
+            id={fieldId("optionId")}
+            legend={texts.optionLegend}
+            name={`${baseId}-option`}
+            value={input.optionId}
+            onChange={(value) => set("optionId", value)}
+            error={message("optionId")}
+            options={product.options.map((entry) => {
               const entryPrice = optionPrice(entry, product, locale, t.prices);
-              return (
-                <label key={entry.optionId} className="zone-optcard">
-                  <input
-                    type="radio"
-                    name={`${baseId}-option`}
-                    value={entry.optionId}
-                    checked={input.optionId === entry.optionId}
-                    onChange={() => set("optionId", entry.optionId)}
-                  />
-                  <b>{entry.label}</b>
-                  <small>
-                    {entryPrice.amount} {entryPrice.amountLabel}
-                  </small>
-                  {entryPrice.lines.map((line) => (
-                    <small key={line.term}>
-                      {line.term} {line.value}
-                    </small>
-                  ))}
-                </label>
-              );
+              return {
+                value: entry.optionId,
+                label: entry.label,
+                price: `${entryPrice.amount} ${entryPrice.amountLabel}`,
+                description: entryPrice.lines.map((line) => `${line.term} ${line.value}`),
+              };
             })}
-            {errors.optionId && (
-              <span className="kp-error" id={fieldId("optionId")}>
-                {message("optionId")}
-              </span>
-            )}
-          </fieldset>
+          />
           <TextField
             id={fieldId("startDate")}
             type="date"
@@ -282,25 +267,14 @@ export function OrderForm({ product, initialOption, today, locale, t, loginHref 
               />
             </>
           )}
-          <div className="kp-field">
-            <label className="zone-check">
-              <input
-                id={fieldId("consent")}
-                type="checkbox"
-                checked={input.consent}
-                onChange={(event) => set("consent", event.target.checked)}
-                aria-invalid={errors.consent ? true : undefined}
-                aria-describedby={errors.consent ? `${fieldId("consent")}-error` : undefined}
-                required
-              />
-              <span>{texts.consent}</span>
-            </label>
-            {errors.consent && (
-              <span className="kp-error" id={`${fieldId("consent")}-error`}>
-                {message("consent")}
-              </span>
-            )}
-          </div>
+          <CheckboxField
+            id={fieldId("consent")}
+            label={texts.consent}
+            error={message("consent")}
+            checked={input.consent}
+            onChange={(event) => set("consent", event.target.checked)}
+            required
+          />
           {failure && (
             <Notice tone="error" className="zone-feedback">
               <p>{texts[API_TEXT[failure]]}</p>
