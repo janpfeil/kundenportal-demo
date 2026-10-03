@@ -14,16 +14,25 @@ sie im Bild zu sehen sind.
 {"type": "timeline", "title": "Ablauf der Demo (Minuten)", "events": [["0:00", "Einstieg: das Portal"], ["0:20", "Anmeldung"], ["0:45", "Konto und Postfach"], ["1:15", "Verträge und Bestellung"], ["2:05", "Verbrauch"], ["2:30", "Kündigung und Widerruf"], ["2:55", "Altkunde: Übernahme beim Anmelden"], ["3:30", "Betreiber-Cockpit"], ["4:30", "Demo-Pass, Themes, Architektur"]]}
 ```
 
-## Vorbereitung
+## Vorbereitung und Aufnahme
 
-- Demodaten zurücksetzen (`scripts/reset-owner-data.py --apply`), damit Listen
-  und Kennzahlen überschaubar sind; danach einen Bulk-Import beider Altsysteme
-  im Cockpit starten, damit die Betreiberansichten Inhalt haben.
-- Die Aufnahme legt sich ihre Nutzer selbst an (Kundin „Lena Wagner“ und eine
-  Betreiberin, beide an der reservierten Domain `.invalid`) und räumt sie am
-  Ende weg; der Altkunde ist die Demo-Person Anna Becker aus dem
-  Versorger-Altsystem (Passwort aus `LEGACY_DEMO_PASSWORD`).
-- Browserfenster 1920 × 1080, Theme „Klar“ hell; im Cockpit „Dicht“.
+- Die Aufnahme bereitet sich selbst vor, ohne Kamera: Sie legt die Kundin
+  „Lena Wagner“ und die Betreiberin „Petra Schulz“ an (reservierte Domain
+  `.invalid`), setzt die Migrations-Demo zurück, startet den Bulk-Import beider
+  Altsysteme und meldet Lena einmal an, damit Beispielverträge und
+  Willkommensnachricht schon da sind. **Der Demo-Reset entfernt dabei alle
+  bisher übernommenen Demo-Personen.** Am Ende räumt sie ihre Testnutzer weg wie
+  jeder E2E-Lauf; Anna, die übernommenen Demo-Personen, die Bestellung und der
+  neue Tarif „Strom Natur“ bleiben als Demodaten stehen.
+- Der Altkunde ist die Demo-Person Anna Becker aus dem Versorger-Altsystem
+  (Passwort aus `LEGACY_DEMO_PASSWORD`, siehe Vault `vault_demo_password`).
+- Aufnahme und Schnitt: `LEGACY_DEMO_PASSWORD=… scripts/demo-video.py`
+  (Ergebnis in `demo-output/`: `demo.mp4`, `demo.gif`, `scenes.json`, nur
+  lokal); `--skip-record` schneidet die letzte Aufnahme neu. Liegen
+  Sprecherdateien je Szene in `tests/e2e/demo/audio/` (`scene-1.wav` …), hält
+  jede Szene so lange wie ihr Text, und der Ton liegt darunter.
+- Browserfenster 1920 × 1080 mit sichtbarem Mauszeiger, Theme „Klar“ hell; im
+  Cockpit „Dicht“.
 
 ## Szenen
 

@@ -35,7 +35,10 @@ export interface TestUser {
  * sees the real first sign-in including the welcome message). The address uses the
  * reserved `.invalid` domain and can never receive e-mail.
  */
-export async function createTestUser(poolId: string): Promise<TestUser> {
+export async function createTestUser(
+  poolId: string,
+  options: { name?: string } = {},
+): Promise<TestUser> {
   const email = `e2e-${randomUUID()}@kundenportal.invalid`;
   const password = `E2e-${randomBytes(12).toString("base64url")}!9a`;
   const created = await cognito.send(
@@ -46,7 +49,7 @@ export async function createTestUser(poolId: string): Promise<TestUser> {
       UserAttributes: [
         { Name: "email", Value: email },
         { Name: "email_verified", Value: "true" },
-        { Name: "name", Value: "E2E Test" },
+        { Name: "name", Value: options.name ?? "E2E Test" },
         { Name: "locale", Value: "de" },
       ],
     }),

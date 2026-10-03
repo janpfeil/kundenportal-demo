@@ -49,3 +49,5 @@ __pycache__/
 .ruflo/
 ruvector.db
 .swarm/
+# Local output of the demo recording (scripts/demo-video.py), reviewed before publishing.
+demo-output/
