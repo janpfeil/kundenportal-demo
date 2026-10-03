@@ -1,11 +1,5 @@
 import { ConditionalCheckFailedException } from "@aws-sdk/client-dynamodb";
-import {
-  DeleteCommand,
-  GetCommand,
-  PutCommand,
-  QueryCommand,
-  ScanCommand,
-} from "@aws-sdk/lib-dynamodb";
+import { DeleteCommand, GetCommand, PutCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
 import {
   deleteKeys,
   type ItemKey,
@@ -34,6 +28,17 @@ export interface WatchedContract {
 
 const contractPk = (tenantId: string, contractId: string) =>
   tenantKey(tenantId, "CONTRACT", contractId);
+/** The customer's index entry of a contract: removing a customer finds its contracts. */
+const indexKey = (tenantId: string, customerId: string, contractId: string): ItemKey => ({
+  PK: tenantKey(tenantId, "CUST", customerId),
+  SK: `${INDEX_PREFIX}${contractId}`,
+});
+const INDEX_PREFIX = "CONSUMPTION#";
+/** Mark of the one-off backfill of the customer index (version 1) of a tenant. */
+const backfillKey = (tenantId: string): ItemKey => ({
+  PK: tenantKey(tenantId, "BACKFILL"),
+  SK: "CONSUMPTION#v1",
+});
 
 /**
  * Items of the consumption domain in the single table (fachkonzept §7.1):
@@ -41,6 +46,8 @@ const contractPk = (tenantId: string, contractId: string) =>
  * - `TENANT#<t>#CONTRACT#<contractId>` / `USAGE#<month>` — data volume warning sent
  * - `TENANT#<t>#CONTRACT#<contractId>` / `CONSUMPTION` — own projection of `ContractChanged`
  * - `TENANT#<t>#SUBJ#<subject>` / `CONSUMPTION` — own projection of `CustomerRegistered`
+ * - `TENANT#<t>#CUST#<customerId>` / `CONSUMPTION#<contractId>` — index of the customer's
+ *   contracts, written with the projection, so removing a customer needs no scan
  * - `SCHEDULE#DATAVOLUME` / `TENANT#<t>#CONTRACT#<contractId>` — mobile contracts the
  *   scheduled check visits; the only key not led by the tenant, because the check runs
  *   across tenants (the tenant still leads the sort key)
@@ -86,21 +93,46 @@ export class ConsumptionRepository {
    */
   async saveContract(tenantId: string, contract: ContractProjection): Promise<boolean> {
     const { db, tableName } = await this.data(tenantId);
+    let before: Record<string, unknown> | undefined;
     try {
-      await db.send(
+      const result = await db.send(
         new PutCommand({
           TableName: tableName,
           Item: { PK: contractPk(tenantId, contract.contractId), SK: "CONSUMPTION", ...contract },
           ConditionExpression: "attribute_not_exists(PK) OR #version < :version",
           ExpressionAttributeNames: { "#version": "version" },
           ExpressionAttributeValues: { ":version": contract.version },
+          ReturnValues: "ALL_OLD",
         }),
       );
-      return true;
+      before = result.Attributes;
     } catch (error) {
       if (error instanceof ConditionalCheckFailedException) return false;
       throw error;
     }
+    await this.index(tenantId, contract.customerId, contract.contractId);
+    // Account linking moves a contract to another customer: the old entry goes.
+    const previous = before?.customerId;
+    if (typeof previous === "string" && previous !== contract.customerId) {
+      await db.send(
+        new DeleteCommand({
+          TableName: tableName,
+          Key: indexKey(tenantId, previous, contract.contractId),
+        }),
+      );
+    }
+    return true;
+  }
+
+  /** Writes the customer's index entry of a contract (also used by the backfill). */
+  async index(tenantId: string, customerId: string, contractId: string): Promise<void> {
+    const { db, tableName } = await this.data(tenantId);
+    await db.send(
+      new PutCommand({
+        TableName: tableName,
+        Item: { ...indexKey(tenantId, customerId, contractId), contractId },
+      }),
+    );
   }
 
   async watch(contract: WatchedContract): Promise<void> {
@@ -128,42 +160,38 @@ export class ConsumptionRepository {
   }
 
   /**
-   * Ids of the contracts whose projection belongs to one of these customers (at most 100,
-   * the limit of `IN`). There is no index by customer, so this scans the tenant's table —
-   * acceptable for the rare demo reset and the demo's few hundred items; a regular use
-   * case would need a `CUST#…` item per contract instead.
+   * The contracts of these customers, from their index entries (one query per customer, no
+   * scan). An entry whose contract has moved to another customer since (account linking)
+   * is stale and goes; a contract whose projection is already gone is still returned, so
+   * its remaining items and the entry are removed.
    */
-  async contractsOf(tenantId: string, customerIds: readonly string[]): Promise<string[]> {
-    if (customerIds.length === 0) return [];
-    const { db, tableName } = await this.data(tenantId);
-    const values = Object.fromEntries(customerIds.map((id, i) => [`:c${i}`, id]));
-    const ids: string[] = [];
-    let startKey: Record<string, unknown> | undefined;
-    do {
-      const result = await db.send(
-        new ScanCommand({
-          TableName: tableName,
-          FilterExpression: `SK = :sk AND begins_with(PK, :prefix) AND customerId IN (${Object.keys(values).join(", ")})`,
-          ExpressionAttributeValues: {
-            ":sk": "CONSUMPTION",
-            ":prefix": `${tenantKey(tenantId, "CONTRACT")}#`,
-            ...values,
-          },
-          ProjectionExpression: "contractId",
-          ExclusiveStartKey: startKey,
-        }),
-      );
-      for (const item of result.Items ?? []) ids.push(item.contractId as string);
-      startKey = result.LastEvaluatedKey;
-    } while (startKey);
-    return ids;
+  async contractsOf(
+    tenantId: string,
+    customerIds: readonly string[],
+  ): Promise<{ contractId: string; customerId: string }[]> {
+    const table = await this.data(tenantId);
+    const owned: { contractId: string; customerId: string }[] = [];
+    for (const customerId of customerIds) {
+      const entries = await queryKeys(table, tenantKey(tenantId, "CUST", customerId), INDEX_PREFIX);
+      for (const entry of entries) {
+        const contractId = entry.SK.slice(INDEX_PREFIX.length);
+        const projection = await this.contract(tenantId, contractId);
+        if (projection && projection.customerId !== customerId) {
+          await deleteKeys(table, [entry]);
+          continue;
+        }
+        owned.push({ contractId, customerId });
+      }
+    }
+    return owned;
   }
 
   /**
-   * Deletes everything the domain keeps of a contract: watch list entry, readings, usage
-   * and — last, so a failed attempt can find the contract again — the projection.
+   * Deletes everything the domain keeps of a contract: watch list entry, readings, usage,
+   * the projection and — last, so a failed attempt can find the contract again — the
+   * customer's index entry.
    */
-  async removeContract(tenantId: string, contractId: string): Promise<void> {
+  async removeContract(tenantId: string, contractId: string, customerId: string): Promise<void> {
     await this.unwatch(tenantId, contractId);
     const table = await this.data(tenantId);
     const keys = await queryKeys(table, contractPk(tenantId, contractId));
@@ -171,6 +199,27 @@ export class ConsumptionRepository {
     await deleteKeys(
       table,
       [...keys].sort((a, b) => last(a) - last(b)),
+    );
+    // The index entry goes last: a failed attempt still finds the contract again.
+    await deleteKeys(table, [indexKey(tenantId, customerId, contractId)]);
+  }
+
+  /** When the one-off backfill of the customer index finished, if it did. */
+  async backfillFinished(tenantId: string): Promise<string | undefined> {
+    const { db, tableName } = await this.data(tenantId);
+    const result = await db.send(
+      new GetCommand({ TableName: tableName, Key: backfillKey(tenantId), ConsistentRead: true }),
+    );
+    return typeof result.Item?.finishedAt === "string" ? result.Item.finishedAt : undefined;
+  }
+
+  async markBackfillFinished(
+    tenantId: string,
+    result: { finishedAt: string; contracts: number },
+  ): Promise<void> {
+    const { db, tableName } = await this.data(tenantId);
+    await db.send(
+      new PutCommand({ TableName: tableName, Item: { ...backfillKey(tenantId), ...result } }),
     );
   }
 

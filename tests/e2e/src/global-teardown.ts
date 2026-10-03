@@ -13,7 +13,7 @@ const SETTLE_MS = 15_000;
  * customers' data. The run therefore announces its identities in one
  * `MigratedAccountsRemoved` (reason `test-run`, only the subjects): each domain finds the
  * customer through its own identity link and deletes its data, as after the demo reset.
- * One event per run, because the consumption domain reads the whole table per event.
+ * One event per run is enough.
  * Identities of a pass tenant are not found in the owner's data and are skipped; the pass
  * tenant's table goes with the pass.
  */

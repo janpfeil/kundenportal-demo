@@ -216,13 +216,14 @@ mit dem Mandanten — mit einer begründeten Ausnahme (`SCHEDULE#DATAVOLUME`):
 | `TENANT#<t>#CONTRACT#<contractId>` | `READING#<readAt>#<readingId>` | consumption | Zählerstände, sortiert nach Ablesedatum |
 | `TENANT#<t>#CONTRACT#<contractId>` | `USAGE#<yyyy-mm>` | consumption | Merker: Datenvolumen-Warnung für diesen Monat verschickt |
 | `TENANT#<t>#SUBJ#<sub>` | `CONSUMPTION` | consumption | Projektion aus `CustomerRegistered` |
+| `TENANT#<t>#CUST#<c>` | `CONSUMPTION#<contractId>` | consumption | Index der Verträge je Kunde (seit Phase 8): Konten löschen ohne Scan |
 | `SCHEDULE#DATAVOLUME` | `TENANT#<t>#CONTRACT#<contractId>` | consumption | Mobilfunkverträge, die der tägliche Lauf prüft |
 | `TENANT#<t>#CUST#<c>` | `DOC#<documentId>` | documents | Dokument-Metadaten; die ID beginnt mit dem Zeitpunkt, der Sort Key ordnet also nach Datum |
 | `TENANT#<t>#SUBJ#<sub>` | `DOCUMENTS` | documents | Projektion aus `CustomerRegistered` |
 | `TENANT#<t>#CUSTOMERS` | `CUST#<c>` | customer | Kundenverzeichnis des Betreibers (Phase 7): Profilzusammenfassung mit `rev` |
 | `TENANT#<t>#CUSTOMERS` | `CUST#<c>#C#<contractId>` | customer | je Vertrag Sparte, Status, Kündigung, Sperre — aus `ContractChanged`, Versionsschutz |
 | `TENANT#<t>#CONTRACTS` | `CONTRACT#<contractId>` | contract | Vertragsverzeichnis des Betreibers (Phase 7), in derselben Transaktion wie der Vertrag |
-| `TENANT#<t>#BACKFILL` | `CONTRACTS#v1`, `CUSTOMERS#v1` | contract, customer | Merker des einmaligen Abgleichs alter Daten: Zeitpunkt und Anzahlen |
+| `TENANT#<t>#BACKFILL` | `CONTRACTS#v1`, `CUSTOMERS#v1`, `CONSUMPTION#v1` | contract, customer, consumption | Merker des einmaligen Abgleichs alter Daten: Zeitpunkt und Anzahlen |
 | `TENANT#<t>#CUST#<c>` | `HISTORY#<contractId>#<version>` | contract | Verlauf eines Vertrags (wer, wann, Begründung, Zusammenfassung) |
 | `TENANT#<t>#PRODUCTS` | `PRODUCT#<productId>` | contract | Produktkatalog mit allen Preisversionen; Startbestand beim ersten Lesen |
 
@@ -268,8 +269,7 @@ mit dem Mandanten — mit einer begründeten Ausnahme (`SCHEDULE#DATAVOLUME`):
   `MigratedAccountsRemoved` (`reason: "test-run"`, nur `subject`); jede Domäne
   findet die Kundennummer über ihre eigene Zuordnung (`SUBJ#<sub>`) und
   überspringt unbekannte Identitäten. Die Migrationsreise setzt die Demo
-  außerdem am Ende zurück. Ein Ereignis je Lauf, weil consumption je Ereignis
-  die ganze Tabelle liest.
+  außerdem am Ende zurück. Ein Ereignis je Lauf genügt.
 - **Verwaiste Kunden aufräumen:** E2E-Läufe löschten bis zum 03.10.2026 am Ende
   nur ihre Cognito-Nutzer, die Daten der Domänen blieben; Migrationsläufe, die dasselbe
   Altkonto mehrfach übernehmen, entgehen zudem dem Demo-Reset (er kennt je
@@ -278,10 +278,19 @@ mit dem Mandanten — mit einer begründeten Ausnahme (`SCHEDULE#DATAVOLUME`):
   Kundenverknüpfungen ohne Nutzer im User Pool (nie Kunden, auf die noch eine
   lebende Identität zeigt) und meldet sie in `MigratedAccountsRemoved` — so
   löscht jede Domäne ihre eigenen Daten wie beim Demo-Reset. Ohne `--apply`
-  nur Probelauf. **Vorsicht:** der Lösch-Handler von consumption scannt je
+  nur Probelauf. Bis Phase 7 scannte der Lösch-Handler von consumption je
   Ereignis die ganze Tabelle (~280 Leseeinheiten); am 02.10.2026 überlasteten
-  121 kleine Ereignisse die Tabelle, Worker scheiterten in ihre DLQs. Für
-  wenige Konten taugt das Skript, für viele der Reset.
+  121 kleine Ereignisse die Tabelle, Worker scheiterten in ihre DLQs. Für viele
+  Konten bleibt der Reset der einfachere Weg.
+- **Index der Verträge je Kunde (consumption, seit Phase 8):** Zur Projektion
+  eines Vertrags schreibt consumption einen Eintrag beim Kunden
+  (`TENANT#<t>#CUST#<c>` / `CONSUMPTION#<contractId>`); zieht der Vertrag per
+  Kontoverknüpfung zu einem anderen Kunden, geht der alte Eintrag. Beim
+  Löschen eines Kunden liest der Handler nur diese Einträge (eine Abfrage je
+  Kunde, kein Scan), prüft, dass der Vertrag noch diesem Kunden gehört, und
+  löscht den Eintrag zuletzt. Projektionen von vorher ergänzt der dritte Schritt
+  von `scripts/backfill-directory.sh` einmalig (Merker
+  `TENANT#<t>#BACKFILL` / `CONSUMPTION#v1`).
 - **Reset der Demodaten:** `scripts/reset-owner-data.py` löscht alle Einträge
   des Inhaber-Mandanten (`TENANT#owner#…` und seine Einträge in
   `SCHEDULE#DATAVOLUME`) direkt, ohne Ereignisse: ein gedrosselter Scan, dann

@@ -67,7 +67,12 @@ const mobile = {
   status: "active",
   version: 1,
 };
-const puts = () => dbMock.commandCalls(PutCommand).map((call) => call.args[0].input);
+/** Writes of the projection and readings; the customer's index entries are checked apart. */
+const puts = () =>
+  dbMock
+    .commandCalls(PutCommand)
+    .map((call) => call.args[0].input)
+    .filter((input) => !String(input.Item?.SK).startsWith("CONSUMPTION#"));
 
 beforeEach(() => {
   dbMock.reset();

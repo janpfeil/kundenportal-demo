@@ -172,9 +172,9 @@ export class ConsumptionService {
       const id = customerId ?? (await this.repository.customerOf(tenantId, subject));
       if (id) customerIds.push(id);
     }
-    const contractIds = await this.repository.contractsOf(tenantId, customerIds);
-    for (const contractId of contractIds) {
-      await this.repository.removeContract(tenantId, contractId);
+    const contracts = await this.repository.contractsOf(tenantId, customerIds);
+    for (const { contractId, customerId } of contracts) {
+      await this.repository.removeContract(tenantId, contractId, customerId);
     }
     for (const { subject } of payload.accounts) {
       await this.repository.unlinkSubject(tenantId, subject);
@@ -182,7 +182,7 @@ export class ConsumptionService {
     log("info", "Consumption of removed customers deleted", {
       tenantId,
       customers: payload.accounts.length,
-      contracts: contractIds.length,
+      contracts: contracts.length,
     });
   }
 

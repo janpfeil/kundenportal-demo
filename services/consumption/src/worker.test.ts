@@ -81,7 +81,12 @@ const mobile = {
   status: "active",
   version: 1,
 };
-const puts = () => dbMock.commandCalls(PutCommand).map((call) => call.args[0].input);
+/** Writes of the projection and readings; the customer's index entries are checked apart. */
+const puts = () =>
+  dbMock
+    .commandCalls(PutCommand)
+    .map((call) => call.args[0].input)
+    .filter((input) => !String(input.Item?.SK).startsWith("CONSUMPTION#"));
 
 beforeEach(() => {
   now = new Date("2026-09-30T06:00:00.000Z");
@@ -338,8 +343,21 @@ describe("MigratedAccountsRemoved", () => {
     },
   });
   const contractPk = (id: string) => `TENANT#${PASS}#CONTRACT#${id}`;
+  const custPk = (id: string) => `TENANT#${PASS}#CUST#${id}`;
+  const projection = (customerId: string, contractId: string) => ({
+    customerId,
+    contractId,
+    division: "electricity",
+    status: "active",
+    version: 1,
+    startDate: "2026-04-05",
+  });
+  const index = (customer: string, contract: string) => ({
+    PK: custPk(customer),
+    SK: `CONSUMPTION#${contract}`,
+  });
 
-  it("deletes the removed customers' contract data in the tenant's table, the watch list entry in the base table", async () => {
+  it("finds the customers' contracts through their index entries and deletes their data, the watch list entry in the base table", async () => {
     const { data } = vendedTenantData({ baseTable: "base-table" });
     const tenantWorker = createWorker(
       new ConsumptionService(
@@ -347,78 +365,93 @@ describe("MigratedAccountsRemoved", () => {
         new ConsumptionEvents(new EventBridgeClient({}), "bus"),
       ),
     );
-    // The scan filters by customer: only c-1's two contracts come back, not c-9's.
+    // c-1 has two contracts in its index, c-2 none; no scan of the table.
     dbMock
-      .on(ScanCommand)
-      .resolvesOnce({ Items: [{ contractId: electricityId }], LastEvaluatedKey: { PK: "x" } })
-      .resolvesOnce({ Items: [{ contractId: mobileId }] })
-      .resolves({ Items: [] });
-    dbMock
+      .on(QueryCommand, {
+        ExpressionAttributeValues: { ":pk": custPk("c-1"), ":prefix": "CONSUMPTION#" },
+      })
+      .resolves({ Items: [index("c-1", electricityId), index("c-1", mobileId)] })
+      .on(QueryCommand, {
+        ExpressionAttributeValues: { ":pk": custPk("c-2"), ":prefix": "CONSUMPTION#" },
+      })
+      .resolves({ Items: [] })
       .on(QueryCommand, { ExpressionAttributeValues: { ":pk": contractPk(electricityId) } })
       .resolves({
         Items: [
           { PK: contractPk(electricityId), SK: "CONSUMPTION" },
           { PK: contractPk(electricityId), SK: "READING#2026-04-03#r-0" },
-          { PK: contractPk(electricityId), SK: "READING#2026-09-30#r-1" },
         ],
-      });
-    dbMock
+      })
       .on(QueryCommand, { ExpressionAttributeValues: { ":pk": contractPk(mobileId) } })
-      .resolves({
-        Items: [
-          { PK: contractPk(mobileId), SK: "CONSUMPTION" },
-          { PK: contractPk(mobileId), SK: "USAGE#2026-09" },
-        ],
-      });
+      .resolves({ Items: [{ PK: contractPk(mobileId), SK: "CONSUMPTION" }] });
+    dbMock.on(GetCommand).resolves({ Item: projection("c-1", electricityId) });
     dbMock.on(BatchWriteCommand).resolves({});
+    dbMock.on(DeleteCommand).resolves({});
 
     await tenantWorker(removed);
 
-    const scan = dbMock.commandCalls(ScanCommand)[0]?.args[0].input;
-    expect(scan?.TableName).toBe(`kp-tenant-${PASS}`);
-    expect(scan?.FilterExpression).toBe(
-      "SK = :sk AND begins_with(PK, :prefix) AND customerId IN (:c0, :c1)",
-    );
-    expect(scan?.ExpressionAttributeValues).toEqual({
-      ":sk": "CONSUMPTION",
-      ":prefix": `TENANT#${PASS}#CONTRACT#`,
-      ":c0": "c-1",
-      ":c1": "c-2",
-    });
-    const batches = dbMock.commandCalls(BatchWriteCommand).map((call) => call.args[0].input);
-    expect(batches.map((b) => Object.keys(b.RequestItems ?? {}))).toEqual([
-      [`kp-tenant-${PASS}`],
-      [`kp-tenant-${PASS}`],
+    expect(dbMock.commandCalls(ScanCommand)).toHaveLength(0);
+    const deleted = dbMock
+      .commandCalls(BatchWriteCommand)
+      .flatMap((call) => call.args[0].input.RequestItems?.[`kp-tenant-${PASS}`] ?? [])
+      .map((r) => r.DeleteRequest?.Key);
+    // The projection after the readings, the index entry last.
+    expect(deleted).toEqual([
+      { PK: contractPk(electricityId), SK: "READING#2026-04-03#r-0" },
+      { PK: contractPk(electricityId), SK: "CONSUMPTION" },
+      index("c-1", electricityId),
+      { PK: contractPk(mobileId), SK: "CONSUMPTION" },
+      index("c-1", mobileId),
     ]);
-    // The projection goes last, so a failed attempt finds the contract again.
-    expect(
-      batches[0]?.RequestItems?.[`kp-tenant-${PASS}`]?.map((r) => r.DeleteRequest?.Key?.SK),
-    ).toEqual(["READING#2026-04-03#r-0", "READING#2026-09-30#r-1", "CONSUMPTION"]);
-    expect(dbMock.commandCalls(DeleteCommand).map((call) => call.args[0].input)).toEqual([
-      { TableName: "base-table", Key: { PK: WATCH_PK, SK: contractPk(electricityId) } },
-      { TableName: "base-table", Key: { PK: WATCH_PK, SK: contractPk(mobileId) } },
-      {
-        TableName: `kp-tenant-${PASS}`,
-        Key: { PK: `TENANT#${PASS}#SUBJ#sub-1`, SK: "CONSUMPTION" },
-      },
-      {
-        TableName: `kp-tenant-${PASS}`,
-        Key: { PK: `TENANT#${PASS}#SUBJ#sub-2`, SK: "CONSUMPTION" },
-      },
+    expect(dbMock.commandCalls(DeleteCommand).map((call) => call.args[0].input.Key)).toEqual([
+      { PK: WATCH_PK, SK: contractPk(electricityId) },
+      { PK: WATCH_PK, SK: contractPk(mobileId) },
+      { PK: `TENANT#${PASS}#SUBJ#sub-1`, SK: "CONSUMPTION" },
+      { PK: `TENANT#${PASS}#SUBJ#sub-2`, SK: "CONSUMPTION" },
     ]);
-
-    // Redelivered: nothing is found any more, only the identity links are deleted again.
-    await tenantWorker(removed);
-    expect(dbMock.commandCalls(BatchWriteCommand)).toHaveLength(2);
-    expect(dbMock.commandCalls(DeleteCommand)).toHaveLength(6);
   });
+
+  it("leaves a contract that moved to another customer alone and drops the stale entry", async () => {
+    dbMock
+      .on(QueryCommand, {
+        ExpressionAttributeValues: { ":pk": "TENANT#owner#CUST#c-1", ":prefix": "CONSUMPTION#" },
+      })
+      .resolves({ Items: [{ PK: "TENANT#owner#CUST#c-1", SK: `CONSUMPTION#${electricityId}` }] });
+    // Account linking moved the contract to c-9.
+    dbMock.on(GetCommand).resolves({ Item: projection("c-9", electricityId) });
+    dbMock.on(BatchWriteCommand).resolves({});
+    dbMock.on(DeleteCommand).resolves({});
+
+    await worker(
+      envelope("kundenportal.migration", "MigratedAccountsRemoved", {
+        ...metadata,
+        tenantId: "owner",
+        payload: { reason: "demo-reset", accounts: [{ subject: "sub-1", customerId: "c-1" }] },
+      }),
+    );
+
+    const deleted = dbMock
+      .commandCalls(BatchWriteCommand)
+      .flatMap((call) => Object.values(call.args[0].input.RequestItems ?? {}).flat())
+      .map((r) => r.DeleteRequest?.Key);
+    expect(deleted).toEqual([{ PK: "TENANT#owner#CUST#c-1", SK: `CONSUMPTION#${electricityId}` }]);
+    // No contract data of c-9 is touched.
+    expect(
+      dbMock
+        .commandCalls(QueryCommand)
+        .some((call) =>
+          String(call.args[0].input.ExpressionAttributeValues?.[":pk"]).includes("#CONTRACT#"),
+        ),
+    ).toBe(false);
+  });
+
   it("finds the customer through the identity link when the event names only the subject (E2E run)", async () => {
     dbMock
       .on(GetCommand, { Key: { PK: "TENANT#owner#SUBJ#sub-1", SK: "CONSUMPTION" } })
       .resolves({ Item: { customerId: "c-1" } })
       .on(GetCommand, { Key: { PK: "TENANT#owner#SUBJ#sub-unknown", SK: "CONSUMPTION" } })
       .resolves({});
-    dbMock.on(ScanCommand).resolves({ Items: [] });
+    dbMock.on(QueryCommand).resolves({ Items: [] });
     dbMock.on(DeleteCommand).resolves({});
 
     await worker(
@@ -432,11 +465,11 @@ describe("MigratedAccountsRemoved", () => {
       }),
     );
 
-    // One scan for all known customers; the unknown identity adds none.
-    const scans = dbMock.commandCalls(ScanCommand).map((call) => call.args[0].input);
-    expect(scans).toHaveLength(1);
-    expect(scans[0]?.ExpressionAttributeValues).toMatchObject({ ":c0": "c-1" });
-    expect(scans[0]?.ExpressionAttributeValues).not.toHaveProperty(":c1");
+    // Only the known customer's index is read; the unknown identity adds none.
+    const queried = dbMock
+      .commandCalls(QueryCommand)
+      .map((call) => call.args[0].input.ExpressionAttributeValues?.[":pk"]);
+    expect(queried).toEqual(["TENANT#owner#CUST#c-1"]);
   });
 });
 

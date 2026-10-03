@@ -1,7 +1,8 @@
 /**
  * One-off backfill of the operator's directories (phase 7, §3.7) for one tenant: contracts
  * and customers from before phase 7 enter the contract and customer directories, as their
- * next read or change would put them there. Run by scripts/backfill-directory.sh with the
+ * next read or change would put them there. Since phase 8 also the consumption domain's
+ * customer index (contracts per customer) for projections saved before it existed. Run by scripts/backfill-directory.sh with the
  * operator's AWS credentials; each domain's part writes only that domain's items (see
  * services/contract and services/customer: directory-backfill.ts). Safe to repeat: a
  * finished run leaves a mark per domain and the next one writes nothing.
@@ -12,6 +13,8 @@ import { backfillContractDirectory } from "../services/contract/src/directory-ba
 import { ContractRepository } from "../services/contract/src/repository.js";
 import { backfillCustomerDirectory } from "../services/customer/src/directory-backfill.js";
 import { CustomerRepository } from "../services/customer/src/repository.js";
+import { backfillCustomerIndex } from "../services/consumption/src/index-backfill.js";
+import { ConsumptionRepository } from "../services/consumption/src/repository.js";
 import { tenantData } from "../packages/service-kit/src/tenant-data.js";
 
 const tenantId = process.argv[2] ?? "owner";
@@ -38,4 +41,13 @@ console.log(
     ? `${seconds()} s customers: finished before (${customers.finishedBefore})`
     : `${seconds()} s customers: ${customers.profiles} found, ${customers.addedProfiles} added, ` +
         `${customers.addedContracts} contract summaries added`,
+);
+
+// Since phase 8: the consumption domain's index of each customer's contracts, so removing
+// a customer needs no scan of the table.
+const index = await backfillCustomerIndex(tenantData, new ConsumptionRepository(tenantData), tenantId);
+console.log(
+  index.finishedBefore
+    ? `${seconds()} s consumption index: finished before (${index.finishedBefore})`
+    : `${seconds()} s consumption index: ${index.contracts} contracts indexed`,
 );
