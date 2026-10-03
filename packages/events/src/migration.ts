@@ -245,14 +245,20 @@ export type MigrationRecordFailedDetail = z.infer<typeof MigrationRecordFailed.d
  */
 export const MAX_REMOVED_ACCOUNTS_PER_EVENT = 100;
 
-/** Why migrated portal accounts were removed; so far only the cockpit's demo reset. */
-export const AccountsRemovedReason = z.enum(["demo-reset"]);
+/**
+ * Why portal accounts were removed: the cockpit's demo reset, or the end of an E2E run
+ * (its throw-away test users).
+ */
+export const AccountsRemovedReason = z.enum(["demo-reset", "test-run"]);
 
 /**
- * The migration removed the portal accounts (Cognito users) it had created. The
- * identities cannot sign in any more, and a new sign-in of the same person creates a new
- * subject and customer id; every domain therefore deletes its data of these customers in
- * the event's tenant — idempotently, a redelivered event finds nothing left to delete.
+ * Portal accounts (Cognito users) were removed — by the migration's demo reset, or at the
+ * end of an E2E run (published by the test run itself). The identities cannot sign in any
+ * more, and a new sign-in of the same person creates a new subject and customer id; every
+ * domain therefore deletes its data of these customers in the event's tenant —
+ * idempotently, a redelivered event finds nothing left to delete. Without `customerId`
+ * (the E2E run knows only the subject) each domain finds the customer through its own
+ * identity link and skips an identity it does not know.
  */
 export const MigratedAccountsRemoved = {
   source: EventSource.migration,
@@ -264,8 +270,8 @@ export const MigratedAccountsRemoved = {
         .array(
           z.object({
             subject: z.string().min(1),
-            /** `customerIdFor(tenantId, subject)`. */
-            customerId: z.string().min(1),
+            /** `customerIdFor(tenantId, subject)`; missing: from each domain's identity link. */
+            customerId: z.string().min(1).optional(),
           }),
         )
         .min(1)

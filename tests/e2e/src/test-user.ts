@@ -1,4 +1,5 @@
 import { randomBytes, randomUUID } from "node:crypto";
+import { appendFileSync } from "node:fs";
 import { CloudFormationClient, DescribeStacksCommand } from "@aws-sdk/client-cloudformation";
 import {
   AdminAddUserToGroupCommand,
@@ -37,7 +38,7 @@ export interface TestUser {
 export async function createTestUser(poolId: string): Promise<TestUser> {
   const email = `e2e-${randomUUID()}@kundenportal.invalid`;
   const password = `E2e-${randomBytes(12).toString("base64url")}!9a`;
-  await cognito.send(
+  const created = await cognito.send(
     new AdminCreateUserCommand({
       UserPoolId: poolId,
       Username: email,
@@ -50,6 +51,7 @@ export async function createTestUser(poolId: string): Promise<TestUser> {
       ],
     }),
   );
+  rememberForCleanup(created.User?.Attributes?.find((a) => a.Name === "sub")?.Value);
   await cognito.send(
     new AdminSetUserPasswordCommand({
       UserPoolId: poolId,
@@ -65,6 +67,15 @@ export async function createTestUser(poolId: string): Promise<TestUser> {
       await cognito.send(new AdminDeleteUserCommand({ UserPoolId: poolId, Username: email }));
     },
   };
+}
+
+/**
+ * Notes a test user's subject for the cleanup after the run (global-teardown.ts): deleting
+ * the Cognito user leaves the domains' data, so the run announces its identities at the end.
+ */
+function rememberForCleanup(subject: string | undefined) {
+  const file = process.env.E2E_IDENTITIES_FILE;
+  if (subject && file) appendFileSync(file, `${subject}\n`);
 }
 
 /** Adds a user to a Cognito group, e.g. `owner` for the migration cockpit. */

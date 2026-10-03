@@ -166,10 +166,13 @@ export class ConsumptionService {
    */
   async onMigratedAccountsRemoved(event: MigratedAccountsRemovedDetail): Promise<void> {
     const { tenantId, payload } = event;
-    const contractIds = await this.repository.contractsOf(
-      tenantId,
-      payload.accounts.map((a) => a.customerId),
-    );
+    // Without a customer id (end of an E2E run) the own identity link tells it.
+    const customerIds: string[] = [];
+    for (const { subject, customerId } of payload.accounts) {
+      const id = customerId ?? (await this.repository.customerOf(tenantId, subject));
+      if (id) customerIds.push(id);
+    }
+    const contractIds = await this.repository.contractsOf(tenantId, customerIds);
     for (const contractId of contractIds) {
       await this.repository.removeContract(tenantId, contractId);
     }

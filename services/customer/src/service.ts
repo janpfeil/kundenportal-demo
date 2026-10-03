@@ -170,12 +170,15 @@ export class CustomerService {
   }
 
   /**
-   * `MigratedAccountsRemoved` (demo reset): deletes profile, identity link and the
-   * directory's entries of each account.
+   * `MigratedAccountsRemoved` (demo reset, end of an E2E run): deletes profile, identity
+   * link and the directory's entries of each account.
    */
   async onMigratedAccountsRemoved(event: MigratedAccountsRemovedDetail): Promise<void> {
     const { tenantId, payload } = event;
-    for (const { subject, customerId } of payload.accounts) {
+    for (const { subject, customerId: given } of payload.accounts) {
+      // Without a customer id (end of an E2E run) the identity link tells it.
+      const customerId = given ?? (await this.repository.customerIdOf(tenantId, subject));
+      if (!customerId) continue;
       await this.repository.directory.removeCustomer(tenantId, customerId);
       await this.repository.remove(tenantId, subject, customerId);
     }

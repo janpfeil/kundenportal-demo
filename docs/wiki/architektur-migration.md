@@ -190,7 +190,9 @@ Ablauf im Migrationsdienst:
    Konten, weit unter der Grenze von 256 KB je Ereignis und klein genug,
    dass jeder Konsument einen Schub in einem Aufruf abarbeitet. Auch
    Identitäten, deren Cognito-Konto schon fehlte, stehen darin: Ihre Daten
-   können noch da sein.
+   können noch da sein. (Dasselbe Ereignis schicken E2E-Läufe an ihrem Ende
+   für ihre Testregistrierungen — `reason: "test-run"`, nur mit `subject`;
+   jede Domäne findet die Kundennummer dann über ihre eigene Zuordnung.)
 4. Er löscht seine Verknüpfungsangebote (`SUBJ#<sub>` / `LINK#…`) und den
    Merker „Übernahme gemeldet" (`SUBJ#<sub>` / `IDENTITY#LEGACY`). Der
    Merker gehört dem Identitätsbereich; der hat aber keinen Worker, der auf

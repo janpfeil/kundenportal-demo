@@ -233,6 +233,30 @@ describe("MigratedAccountsRemoved", () => {
     expect(deletedKeys()).toHaveLength(4);
   });
 
+  it("finds the customer through the identity link when the event names only the subject (E2E run)", async () => {
+    dbMock
+      .on(GetCommand, { Key: { PK: "TENANT#owner#SUBJ#sub-1", SK: "DOCUMENTS" } })
+      .resolves({ Item: { customerId: "c-1" } })
+      .on(GetCommand, { Key: { PK: "TENANT#owner#SUBJ#sub-unknown", SK: "DOCUMENTS" } })
+      .resolves({});
+    dbMock.on(QueryCommand).resolves({ Items: [] });
+    dbMock.on(BatchWriteCommand).resolves({});
+    const byTestRun = removed("owner");
+    byTestRun.detail.payload = {
+      reason: "test-run",
+      accounts: [{ subject: "sub-1" }, { subject: "sub-unknown" }],
+    } as unknown as typeof byTestRun.detail.payload;
+
+    await worker(byTestRun);
+
+    expect(dbMock.commandCalls(QueryCommand)[0]?.args[0].input.ExpressionAttributeValues).toEqual({
+      ":pk": "TENANT#owner#CUST#c-1",
+      ":prefix": "DOC#",
+    });
+    // Only the known identity's link goes; the unknown one has nothing to delete.
+    expect(deletedKeys()).toEqual([{ PK: "TENANT#owner#SUBJ#sub-1", SK: "DOCUMENTS" }]);
+  });
+
   it("deletes a pass's files with the pass's vended credentials in its own table", async () => {
     const { data, sessions } = vendedTenantData({
       baseTable: "base-table",

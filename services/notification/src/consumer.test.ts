@@ -463,6 +463,29 @@ describe("MigratedAccountsRemoved", () => {
     expect(snsMock.commandCalls(PublishCommand)).toHaveLength(0);
   });
 
+  it("finds the customer through the mailbox link when the event names only the subject (E2E run)", async () => {
+    dbMock
+      .on(GetCommand, { Key: { PK: "TENANT#owner#SUBJ#sub-1", SK: "MAILBOX" } })
+      .resolves({ Item: { customerId: "c-1" } })
+      .on(GetCommand, { Key: { PK: "TENANT#owner#SUBJ#sub-unknown", SK: "MAILBOX" } })
+      .resolves({});
+    dbMock.on(QueryCommand).resolves({ Items: [{ PK: "TENANT#owner#CUST#c-1", SK: "NOTE#a" }] });
+    dbMock.on(BatchWriteCommand).resolves({});
+    const byTestRun = domainEvent("kundenportal.migration", "MigratedAccountsRemoved", {
+      reason: "test-run",
+      accounts: [{ subject: "sub-1" }, { subject: "sub-unknown" }],
+    });
+
+    const result = await consumer(event(record("m-2", byTestRun)));
+
+    expect(result.batchItemFailures).toEqual([]);
+    expect(deletedKeys()).toEqual([
+      { PK: "TENANT#owner#CUST#c-1", SK: "NOTE#a" },
+      { PK: "TENANT#owner#CUST#c-1", SK: "MAILBOX" },
+      { PK: "TENANT#owner#SUBJ#sub-1", SK: "MAILBOX" },
+    ]);
+  });
+
   it("reports an invalid removal as failed so it ends up in the DLQ", async () => {
     const broken = domainEvent("kundenportal.migration", "MigratedAccountsRemoved", {
       reason: "demo-reset",

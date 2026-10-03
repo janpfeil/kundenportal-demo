@@ -476,6 +476,23 @@ describe("MigratedAccountsRemoved", () => {
     await expect(worker(removed)).resolves.toBeUndefined();
     expect(published()).toEqual([]);
   });
+
+  it("finds the customer through the identity link when the event names only the subject (E2E run)", async () => {
+    await worker(customerRegistered());
+    const byTestRun = envelope("kundenportal.migration", "MigratedAccountsRemoved", {
+      eventId: "9c4f4097-bd7f-4f88-8d6c-8a1d7d3f5f44",
+      tenantId: "owner",
+      occurredAt: "2026-10-03T08:00:00.000Z",
+      correlationId: "e2e-run",
+      payload: { reason: "test-run", accounts: [{ subject: "sub-1" }, { subject: "sub-unknown" }] },
+    });
+
+    await worker(byTestRun);
+
+    expect(f.table.partition("TENANT#owner#CUST#c-1", "CONTRACT#")).toEqual([]);
+    expect(f.table.partition("TENANT#owner#CONTRACTS")).toEqual([]);
+    expect(f.table.get("TENANT#owner#SUBJ#sub-1", "CONTRACTS")).toBeUndefined();
+  });
 });
 
 describe("failures", () => {

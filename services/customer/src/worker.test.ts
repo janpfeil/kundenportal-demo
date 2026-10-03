@@ -234,6 +234,37 @@ describe("customer worker", () => {
     expect(dbMock.calls()).toHaveLength(6);
   });
 
+  it("finds the customer through the identity link when the event names only the subject (E2E run)", async () => {
+    dbMock.on(BatchWriteCommand).resolves({});
+    dbMock.on(QueryCommand).resolves({ Items: [] });
+    dbMock
+      .on(GetCommand, { Key: { PK: `TENANT#owner#SUBJ#${SUB}`, SK: "CUSTOMER" } })
+      .resolves({ Item: { customerId } })
+      .on(GetCommand, { Key: { PK: "TENANT#owner#SUBJ#sub-unknown", SK: "CUSTOMER" } })
+      .resolves({});
+    const removed = {
+      source: "kundenportal.migration",
+      "detail-type": "MigratedAccountsRemoved",
+      detail: {
+        eventId: "6f1c1f64-8a4c-4c55-9a39-5d8a4a0f2c14",
+        tenantId: "owner",
+        occurredAt: "2026-10-03T08:00:00.000Z",
+        correlationId: "e2e-run",
+        payload: { reason: "test-run", accounts: [{ subject: SUB }, { subject: "sub-unknown" }] },
+      },
+    };
+
+    await createWorker(service())(removed);
+
+    const deletes = dbMock
+      .commandCalls(BatchWriteCommand)
+      .flatMap((c) => c.args[0].input.RequestItems?.table?.map((r) => r.DeleteRequest?.Key) ?? []);
+    expect(deletes).toContainEqual({ PK: `TENANT#owner#CUST#${customerId}`, SK: "PROFILE" });
+    expect(deletes).toContainEqual({ PK: `TENANT#owner#SUBJ#${SUB}`, SK: "CUSTOMER" });
+    // The unknown identity costs one read and deletes nothing.
+    expect(deletes.some((key) => key?.PK.includes("sub-unknown"))).toBe(false);
+  });
+
   it("rejects invalid and unknown events so they end in the DLQ", async () => {
     const worker = createWorker(service());
     await expect(

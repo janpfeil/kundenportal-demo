@@ -412,6 +412,32 @@ describe("MigratedAccountsRemoved", () => {
     expect(dbMock.commandCalls(BatchWriteCommand)).toHaveLength(2);
     expect(dbMock.commandCalls(DeleteCommand)).toHaveLength(6);
   });
+  it("finds the customer through the identity link when the event names only the subject (E2E run)", async () => {
+    dbMock
+      .on(GetCommand, { Key: { PK: "TENANT#owner#SUBJ#sub-1", SK: "CONSUMPTION" } })
+      .resolves({ Item: { customerId: "c-1" } })
+      .on(GetCommand, { Key: { PK: "TENANT#owner#SUBJ#sub-unknown", SK: "CONSUMPTION" } })
+      .resolves({});
+    dbMock.on(ScanCommand).resolves({ Items: [] });
+    dbMock.on(DeleteCommand).resolves({});
+
+    await worker(
+      envelope("kundenportal.migration", "MigratedAccountsRemoved", {
+        ...metadata,
+        tenantId: "owner",
+        payload: {
+          reason: "test-run",
+          accounts: [{ subject: "sub-1" }, { subject: "sub-unknown" }],
+        },
+      }),
+    );
+
+    // One scan for all known customers; the unknown identity adds none.
+    const scans = dbMock.commandCalls(ScanCommand).map((call) => call.args[0].input);
+    expect(scans).toHaveLength(1);
+    expect(scans[0]?.ExpressionAttributeValues).toMatchObject({ ":c0": "c-1" });
+    expect(scans[0]?.ExpressionAttributeValues).not.toHaveProperty(":c1");
+  });
 });
 
 describe("failures", () => {

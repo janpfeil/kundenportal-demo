@@ -263,8 +263,15 @@ mit dem Mandanten — mit einer begründeten Ausnahme (`SCHEDULE#DATAVOLUME`):
   schreibt jedes Ereignis in die Zeitleiste des Migrations-Cockpits, rund 600
   Einträge hätten sie überdeckt. Pass-Mandanten brauchen den Abgleich nicht —
   Pässe leben 48 Stunden, alle heutigen entstanden nach Phase 7.
-- **Verwaiste Kunden aufräumen:** E2E-Läufe löschen am Ende ihre
-  Cognito-Nutzer, die Daten der Domänen bleiben; Migrationsläufe, die dasselbe
+- **Aufräumen nach E2E-Läufen (seit 03.10.2026):** `createTestUser` merkt sich
+  die `sub` jedes Testnutzers, der Global Teardown (`tests/e2e/src/global-teardown.ts`) meldet nach dem letzten Test alle in **einem**
+  `MigratedAccountsRemoved` (`reason: "test-run"`, nur `subject`); jede Domäne
+  findet die Kundennummer über ihre eigene Zuordnung (`SUBJ#<sub>`) und
+  überspringt unbekannte Identitäten. Die Migrationsreise setzt die Demo
+  außerdem am Ende zurück. Ein Ereignis je Lauf, weil consumption je Ereignis
+  die ganze Tabelle liest.
+- **Verwaiste Kunden aufräumen:** E2E-Läufe löschten bis zum 03.10.2026 am Ende
+  nur ihre Cognito-Nutzer, die Daten der Domänen blieben; Migrationsläufe, die dasselbe
   Altkonto mehrfach übernehmen, entgehen zudem dem Demo-Reset (er kennt je
   Altkonto nur die letzte Identität). Am 02.10.2026 hatten 370 von 375 Kunden
   keinen Cognito-Nutzer mehr. `scripts/remove-orphaned-customers.py` findet

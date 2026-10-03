@@ -111,8 +111,11 @@ export class ContractIntake {
   async onMigratedAccountsRemoved(event: MigratedAccountsRemovedDetail): Promise<void> {
     const { tenantId, payload } = event;
     let contracts = 0;
-    for (const { subject, customerId } of payload.accounts) {
-      contracts += await this.repository.removeCustomer(tenantId, subject, customerId);
+    for (const { subject, customerId: given } of payload.accounts) {
+      // Without a customer id (end of an E2E run) the identity link tells it.
+      const customerId = given ?? (await this.repository.customerOf(tenantId, subject))?.customerId;
+      if (customerId)
+        contracts += await this.repository.removeCustomer(tenantId, subject, customerId);
     }
     log("info", "Contracts of removed customers deleted", {
       tenantId,

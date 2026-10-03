@@ -152,8 +152,10 @@ export function createConsumer(mailbox: Mailbox, ownerHints: OwnerHints) {
     }
     const { tenantId, payload } = parsed.data;
     let notes = 0;
-    for (const { subject, customerId } of payload.accounts) {
-      notes += await mailbox.removeCustomer(tenantId, subject, customerId);
+    for (const { subject, customerId: given } of payload.accounts) {
+      // Without a customer id (end of an E2E run) the mailbox link tells it.
+      const customerId = given ?? (await mailbox.customerOf(tenantId, subject));
+      if (customerId) notes += await mailbox.removeCustomer(tenantId, subject, customerId);
     }
     log("info", "Mailboxes of removed customers deleted", {
       tenantId,

@@ -850,6 +850,9 @@ importers:
       '@aws-sdk/client-cognito-identity-provider':
         specifier: ^3.1142.0
         version: 3.1142.0
+      '@aws-sdk/client-eventbridge':
+        specifier: ^3.1142.0
+        version: 3.1142.0
       '@playwright/test':
         specifier: ^1.63.0
         version: 1.63.0

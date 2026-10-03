@@ -57,6 +57,12 @@ export class CustomerRepository {
   }
 
   async findBySubject(tenantId: string, subject: string): Promise<ProfileRecord | undefined> {
+    const customerId = await this.customerIdOf(tenantId, subject);
+    return customerId ? this.get(tenantId, customerId) : undefined;
+  }
+
+  /** The customer a sign-in identity belongs to, from the identity link. */
+  async customerIdOf(tenantId: string, subject: string): Promise<string | undefined> {
     const { db, tableName } = await this.data(tenantId);
     const link = await db.send(
       new GetCommand({
@@ -65,8 +71,7 @@ export class CustomerRepository {
         ConsistentRead: true,
       }),
     );
-    const customerId = link.Item?.customerId as string | undefined;
-    return customerId ? this.get(tenantId, customerId) : undefined;
+    return link.Item?.customerId as string | undefined;
   }
 
   async get(tenantId: string, customerId: string): Promise<ProfileRecord | undefined> {
